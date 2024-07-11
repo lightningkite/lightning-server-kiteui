@@ -1,0 +1,16 @@
+.idea
+build
+.gradle
+local.properties
+node_modules
+java_pid*.hprof
+local
+settings.yaml
+.terraform
+*.tfstate
+settings.json
+local.tf
+local.tfvars
+
+bssoftware
+**/.DS_Store
