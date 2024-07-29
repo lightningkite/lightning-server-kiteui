@@ -9,6 +9,7 @@ import kotlinx.datetime.Instant
 import kotlinx.serialization.KSerializer
 import kotlin.coroutines.Continuation
 import kotlin.coroutines.resume
+import kotlin.random.Random
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 
@@ -144,6 +145,8 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
             updating.fullPull(value)
             super.onFreshData(value)
         }
+
+        override fun toString(): String = "ListHolder(${serializer.descriptor.serialName}, establishingSocket=$establishingSocket, upToDate=$upToDate, inUse=$inUse, requestOpen=$requestOpen)"
     }
 
     override fun get(id: ID): WritableModel<T> = itemHolder(id)
@@ -416,6 +419,7 @@ open class WatchingWrapper<R : CacheReadable<T>, T>(val base: R, val outsideReso
         if (!starting && !started) {
             starting = true
             base.establishingSocket = true
+            val attempt = Random.nextInt()
             launchGlobal {
                 try {
                     started = outsideResource.start()
@@ -439,6 +443,8 @@ open class WatchingWrapper<R : CacheReadable<T>, T>(val base: R, val outsideReso
             }
         }
     }
+
+    override fun toString(): String = "Wrapping$base"
 }
 
 abstract class CacheReadable<T> : BaseReadable2<T>() {
