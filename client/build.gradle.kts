@@ -2,7 +2,6 @@ import com.lightningkite.deployhelpers.developer
 import com.lightningkite.deployhelpers.github
 import com.lightningkite.deployhelpers.mit
 import com.lightningkite.deployhelpers.standardPublishing
-import java.util.*
 
 group = "com.lightningkite.lightningserver"
 
