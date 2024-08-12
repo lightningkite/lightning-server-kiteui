@@ -5,10 +5,12 @@ import com.lightningkite.lightningdb.DataClassPathSelf
 import com.lightningkite.lightningdb.Modification
 import com.lightningkite.kiteui.delay
 import com.lightningkite.kiteui.reactive.*
+import com.lightningkite.lightningdb.path
+import kotlinx.serialization.serializer
 
 private object NotInUse
 
-fun <O, T> WritableModel<O>.prop(
+fun <O, T> WritableModel<O>.liveEditProp(
     debounceTime: Long = 1000,
     property: (DataClassPathSelf<O>) -> DataClassPath<O, T>
 ): Writable<T> {
@@ -16,7 +18,7 @@ fun <O, T> WritableModel<O>.prop(
     val override = Property<Any?>(NotInUse)
     var lastWriteRequest: Int = 0
     return shared {
-        val original = this@prop.awaitNotNull().let { property.get(it) as T }
+        val original = this@liveEditProp.awaitNotNull().let { property.get(it) as T }
         val o = override.await()
         if (o != NotInUse) o as T
         else original
