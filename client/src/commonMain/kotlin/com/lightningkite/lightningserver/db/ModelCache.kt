@@ -90,7 +90,11 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
             if (value == null) delete()
             else {
                 apiCalls++
-                onFreshData(skipCache.replace(id, value))
+                val existing = awaitOnce()
+                if(existing == null)
+                    onFreshData(skipCache.insert(value))
+                else
+                    modification(serializer, existing, value)?.let { onFreshData(skipCache.modify(id, it)) }
                 flushLists()
             }
         }
@@ -224,6 +228,7 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
         log.info("Starting loop")
         universalLoop.add(l)
         isLooping = true
+        log.info("Loop started.")
     }
 
     internal fun regularly() {

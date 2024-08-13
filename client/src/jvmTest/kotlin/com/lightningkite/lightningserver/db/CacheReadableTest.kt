@@ -5,11 +5,8 @@ import com.lightningkite.kiteui.launch
 import com.lightningkite.kiteui.launchGlobal
 import com.lightningkite.kiteui.reactive.*
 import com.lightningkite.lightningdb.*
-import com.lightningkite.lightningserver.db.ClientModelRestEndpoints
-import com.lightningkite.lightningserver.db.prepareModels
 import com.lightningkite.now
 import kotlinx.datetime.Instant
-import kotlinx.serialization.Serializable
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -263,14 +260,18 @@ class ModelCache3Test() {
     }
     @Test fun websocket() {
         val r = MockClientModelRestEndpoints<Item, Int>(::println)
-        val c = ModelCache(r, Item.serializer())
+        val cache = ModelCache(r, Item.serializer())
+        cache.allowLoop = false
 
         testContext {
-            reactiveScope { println("c.watch(1): ${c.watch(1)()}") }
+            println("Scope starting...")
+            reactiveScope { println("c.watch(1): ${cache.watch(1)()}") }
+            println("Scope started.")
             launch {
+                println("Will insert")
                 r.insert(Item(1))
                 println("Insert finished")
-                c.regularly()
+                cache.regularly()
             }
             println("Complete")
         }

@@ -27,7 +27,7 @@ data class LargeTestModel(
     var double: Double = 0.0,
     var char: Char = ' ',
     var string: String = "",
-    var uuid: UUID = UUID(0L, 0L),
+    var uuid: UUID = uuid(),
     @Contextual var instant: Instant = Instant.fromEpochMilliseconds(0L),
     var list: List<Int> = listOf(),
     var listEmbedded: List<ClassUsedForEmbedding> = listOf(),
