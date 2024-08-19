@@ -15,10 +15,6 @@ plugins {
     `maven-publish`
 }
 
-repositories{
-    maven("https://jitpack.io")
-}
-
 kotlin {
     targetHierarchy.default()
     androidTarget {
