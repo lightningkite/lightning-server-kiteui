@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalSerializationApi::class)
+
 package com.lightningkite.lightningserver.db
 
 import com.lightningkite.kiteui.*
@@ -6,6 +8,7 @@ import com.lightningkite.lightningdb.*
 import com.lightningkite.lightningserver.db.*
 import com.lightningkite.now
 import kotlinx.datetime.Instant
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlin.coroutines.Continuation
 import kotlin.coroutines.resume

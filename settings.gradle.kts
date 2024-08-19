@@ -38,4 +38,6 @@ pluginManagement {
 }
 
 include(":client")
+include(":demo-server")
+include(":demo-client")
 

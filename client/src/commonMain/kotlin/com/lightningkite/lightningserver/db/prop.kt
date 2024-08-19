@@ -10,6 +10,7 @@ import kotlinx.serialization.serializer
 
 private object NotInUse
 
+@Suppress("UNCHECKED_CAST")
 fun <O, T> WritableModel<O>.liveEditProp(
     debounceTime: Long = 1000,
     property: (DataClassPathSelf<O>) -> DataClassPath<O, T>

@@ -10,17 +10,36 @@ ksp="2.0.0-1.0.21"
 lightningServer="version-2-SNAPSHOT"
 proguard="7.3.2"
 shadow="7.1.0"
+kotlinerCli="1.0.3"
+ktor="2.3.9"
 
 [libraries]
 androidDesugaring={module="com.android.tools:desugar_jdk_libs", version.ref="androidDesugaring"}
 deployHelpers={module="com.lightningkite:deploy-helpers", version.ref="deployHelpers"}
 kiteUI={module="com.lightningkite.kiteui:library", version.ref="kiteUI"}
+kiteUIProcessor={module="com.lightningkite.kiteui:processor", version.ref="kiteUI"}
 lightningServerProcessor={module="com.lightningkite.lightningserver:processor", version.ref="lightningServer"}
 lightningServerShared={module="com.lightningkite.lightningserver:shared", version.ref="lightningServer"}
+lightningServerAws={module="com.lightningkite.lightningserver:server-aws", version.ref="lightningServer"}
+lightningServerAzure={module="com.lightningkite.lightningserver:server-azure", version.ref="lightningServer"}
+lightningServerCore={module="com.lightningkite.lightningserver:server-core", version.ref="lightningServer"}
+lightningServerTesting={module="com.lightningkite.lightningserver:server-testing", version.ref="lightningServer"}
+lightningServerDynamodb={module="com.lightningkite.lightningserver:server-dynamodb", version.ref="lightningServer"}
+lightningServerFirebase={module="com.lightningkite.lightningserver:server-firebase", version.ref="lightningServer"}
+lightningServerKtor={module="com.lightningkite.lightningserver:server-ktor", version.ref="lightningServer"}
+lightningServerMemcached={module="com.lightningkite.lightningserver:server-memcached", version.ref="lightningServer"}
+lightningServerMongo={module="com.lightningkite.lightningserver:server-mongo", version.ref="lightningServer"}
+lightningServerRedis={module="com.lightningkite.lightningserver:server-redis", version.ref="lightningServer"}
+lightningServerSentry={module="com.lightningkite.lightningserver:server-sentry", version.ref="lightningServer"}
+lightningServerSftp={module="com.lightningkite.lightningserver:server-sftp", version.ref="lightningServer"}
 proguard={module="com.guardsquare:proguard-gradle", version.ref="proguard"}
+ktorCallLogging={module="io.ktor:ktor-server-call-logging", version.ref="ktor"}
+kotlinerCli={module="com.lightningkite:kotliner-cli", version.ref="kotlinerCli"}
 
 
 [plugins]
+id = {id="com.android.application", version.ref = "agp"}
+kiteui = {id="com.lightningkite.kiteui", version.ref = "kiteUI"}
 androidApp = {id="com.android.application", version.ref = "agp"}
 androidLibrary = { id="com.android.library", version.ref = "agp"}
 dokka={id="org.jetbrains.dokka", version.ref="dokka"}
