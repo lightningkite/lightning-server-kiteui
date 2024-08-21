@@ -64,8 +64,9 @@ class MockModelCollection<T : HasId<ID>, ID : Comparable<ID>>(val serializer: KS
     }
 
     override fun get(id: ID): WritableModel<T> = models.getOrPut(id) { MockWritableModel(id) }
-    override suspend fun query(query: Query<T>): Readable<List<T>> = object : Readable<List<T>> {
+    override suspend fun query(query: Query<T>): LimitReadable<T> = object : LimitReadable<T> {
         override fun addListener(listener: () -> Unit): () -> Unit = this@MockModelCollection.addListener(listener)
+        override var limit: Int = query.limit
         override val state: ReadableState<List<T>>
             get() = ReadableState(models.values.asSequence()
             .mapNotNull { if (it.property.state.ready) it.property.value else null }
@@ -75,12 +76,11 @@ class MockModelCollection<T : HasId<ID>, ID : Comparable<ID>>(val serializer: KS
                     it.sortedWith(c)
                 } ?: it.sortedBy { it._id }
             }
-            .drop(query.skip)
-            .take(query.limit)
+            .take(limit)
             .toList())
     }
 
-    override suspend fun watch(query: Query<T>): Readable<List<T>> = query(query)
+    override suspend fun watch(query: Query<T>): LimitReadable<T> = query(query)
 
     override suspend fun insert(item: T): WritableModel<T> {
         return models.getOrPut(item._id) { MockWritableModel(item._id) }.also { it.property.value = item }.also {

@@ -85,6 +85,34 @@ class ModelCache3Test() {
             println("Complete")
         }
     }
+    @Test fun basicsLocalPullMore() {
+        val r = MockClientModelRestEndpoints<Item, Int>(::println)
+        r.items += (0..100).map { it to Item(it) }
+        val cache = ModelCache(r, Item.serializer())
+        cache.allowLoop = false
+
+        testContext {
+            val p = shared { cache.watch(Query(condition { it._id gte 50 }, limit = 5)) }
+            var out: List<Item> = listOf()
+            reactiveScope {
+                out = p()()
+            }
+
+            cache.regularly()
+            assertEquals((50..<50+5).map { Item(it) }, out)
+            launch {
+                p().limit = 10
+            }
+            cache.regularly()
+            assertEquals((50..<50+10).map { Item(it) }, out)
+            launch {
+                p().limit = 15
+            }
+            cache.regularly()
+            assertEquals((50..<50+15).map { Item(it) }, out)
+            println("Complete")
+        }
+    }
     @Test fun followUpQuery() {
         val r = MockClientModelRestEndpoints<Item, Int>(::println)
         val cache = ModelCache(r, Item.serializer())
@@ -745,7 +773,7 @@ class UpdatingQueryListTest {
     }
 
     class TestWrapper<T : HasId<ID>, ID : Comparable<ID>>(val query: Query<T>, val asserting: Boolean = true) {
-        val underlying: UpdatingQueryList<T, ID> = UpdatingQueryList<T, ID>(query)
+        val underlying: UpdatingQueryList<T, ID> = UpdatingQueryList<T, ID>(query.condition, query.orderBy, query.limit)
         var list: List<T> = listOf()
         val comparator: Comparator<T> get() = underlying.comparator
         var complete = false

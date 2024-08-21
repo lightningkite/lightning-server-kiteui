@@ -5,7 +5,6 @@ package com.lightningkite.lightningserver.db
 import com.lightningkite.kiteui.*
 import com.lightningkite.kiteui.reactive.*
 import com.lightningkite.lightningdb.*
-import com.lightningkite.lightningserver.db.*
 import com.lightningkite.now
 import kotlinx.datetime.Instant
 import kotlinx.serialization.ExperimentalSerializationApi
@@ -37,7 +36,7 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
     //    private var desiredSocketCondition: Condition<T> = Condition.Never()
 //    private var activeSocketCondition: Condition<T> = Condition.Never()
     private val itemCache = HashMap<ID, ItemHolder>()
-    private val queryCache = HashMap<Query<T>, ListHolder>()
+    private val queryCache = HashMap<Pair<Condition<T>, List<SortPart<T>>>, ListHolder>()
     private val itemWatchCache = HashMap<ID, WritableModel<T>>()
     private val queryWatchCache = HashMap<Query<T>, WatchingWrapper<ListHolder, List<T>>>()
     internal val sockets =
@@ -53,15 +52,6 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
         }
 
     private fun itemHolder(id: ID): ItemHolder = itemCache.getOrPut(id) { ItemHolder(id) }
-    private fun itemHolderWatch(id: ID): WritableModel<T> =
-        sockets?.let { sockets ->
-            itemWatchCache.getOrPut(id) {
-                WatchingWrapperWritableModel(
-                    itemHolder(id),
-                    sockets.outsideResource(DataClassPathAccess(DataClassPathSelf(serializer), idProp).eq(id))
-                )
-            }
-        } ?: itemHolder(id)
 
     private inner class ItemHolder(val id: ID) : WritableModel<T>, CacheReadable<T?>() {
         override val showReload: Boolean get() = this@ModelCache.showReload
@@ -94,7 +84,7 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
             else {
                 apiCalls++
                 val existing = awaitOnce()
-                if(existing == null)
+                if (existing == null)
                     onFreshData(skipCache.insert(value))
                 else
                     modification(serializer, existing, value)?.let { onFreshData(skipCache.modify(id, it)) }
@@ -105,8 +95,8 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
         override fun onFreshData(value: T?) {
             queryCache.values.asSequence()
                 .filter {
-                    val matchesOld = lastKnownValue?.let { old -> it.query.condition(old) } ?: false
-                    val matchesNew = value?.let { new -> it.query.condition(new) } ?: false
+                    val matchesOld = lastKnownValue?.let { old -> it.condition(old) } ?: false
+                    val matchesNew = value?.let { new -> it.condition(new) } ?: false
                     matchesNew || matchesOld
                 }
                 .forEach {
@@ -125,18 +115,22 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
         override fun toString(): String = "ItemHolder<${serializer.descriptor.serialName.substringAfterLast('.')}>($id)"
     }
 
-    private fun listHolder(query: Query<T>): ListHolder = queryCache.getOrPut(query) { ListHolder(query) }
-    private fun listHolderWatch(query: Query<T>): Readable<List<T>> =
-        sockets?.let { sockets ->
-            queryWatchCache.getOrPut(query) {
-                WatchingWrapper(
-                    listHolder(query),
-                    sockets.outsideResource(query.condition)
-                )
-            }
-        } ?: listHolder(query)
+    private fun listHolder(query: Query<T>): ListHolder {
+        val order = query.orderBy.ensureTotal(serializer)
+        return queryCache.getOrPut(query.condition to order) {
+            ListHolder(
+                query.condition,
+                order,
+                query.limit + query.skip
+            )
+        }
+    }
 
-    private inner class ListHolder(val query: Query<T>) : CacheReadable<List<T>>() {
+    private inner class ListHolder(
+        val condition: Condition<T> = Condition.Always<T>(),
+        val orderBy: List<SortPart<T>> = listOf(),
+        limit: Int,
+    ) : CacheReadable<List<T>>(), LimitReadable<T> {
         override val showReload: Boolean get() = this@ModelCache.showReload
         override val showReloadOnInvalidate: Boolean get() = this@ModelCache.showReloadOnInvalidate
         override val totalInvalidation: Instant get() = this@ModelCache.totalInvalidation
@@ -146,20 +140,53 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
             return super.addListener(listener)
         }
 
-        val updating = UpdatingQueryList(query)
+        var limitLoaded: Int = -1
+        val updating = UpdatingQueryList(condition, orderBy, limit)
+        override var limit: Int by updating::limit
 
         override fun onFreshData(value: List<T>) {
             updating.fullPull(value)
             super.onFreshData(value)
         }
 
-        override fun toString(): String = "ListHolder(${serializer.descriptor.serialName}, establishingSocket=$establishingSocket, upToDate=$upToDate, inUse=$inUse, requestOpen=$requestOpen)"
+        fun onAdditionalData(value: List<T>) {
+            val list = (lastKnownValue ?: listOf()) + value
+            updating.fullPull(list)
+            super.onFreshData(list)
+        }
+
+        val shouldPullMore: Boolean
+            get() = !establishingSocket && upToDate && inUse && !requestOpen && limit > limitLoaded
+
+        override fun toString(): String =
+            "ListHolder(${serializer.descriptor.serialName}, establishingSocket=$establishingSocket, upToDate=$upToDate, inUse=$inUse, requestOpen=$requestOpen)"
     }
 
     override fun get(id: ID): WritableModel<T> = itemHolder(id)
-    override fun watch(id: ID): WritableModel<T> = itemHolderWatch(id)
-    override suspend fun query(query: Query<T>): Readable<List<T>> = listHolder(query)
-    override suspend fun watch(query: Query<T>): Readable<List<T>> = listHolderWatch(query)
+    override fun watch(id: ID): WritableModel<T> = sockets?.let { sockets ->
+        itemWatchCache.getOrPut(id) {
+            WatchingWrapperWritableModel(
+                itemHolder(id),
+                sockets.outsideResource(DataClassPathAccess(DataClassPathSelf(serializer), idProp).eq(id))
+            )
+        }
+    } ?: itemHolder(id)
+
+    override suspend fun query(query: Query<T>): LimitReadable<T> = listHolder(query)
+    override suspend fun watch(query: Query<T>): LimitReadable<T> = object : LimitReadable<T> {
+        val under = listHolder(query)
+        val basis = sockets?.let { sockets ->
+            queryWatchCache.getOrPut(query) {
+                WatchingWrapper(
+                    under,
+                    sockets.outsideResource(query.condition)
+                )
+            }
+        } ?: under
+        override val state: ReadableState<List<T>> get() = basis.state
+        override fun addListener(listener: () -> Unit): () -> Unit = basis.addListener(listener)
+        override var limit: Int by under::limit
+    }
 
     override suspend fun bulkModify(bulkUpdate: MassModification<T>): Int {
         apiCalls++
@@ -189,11 +216,11 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
     internal var allowLoop = true
 
     companion object {
-        val universalLoop: ArrayList<()->Unit> by lazy {
-            val listeners = ArrayList<()->Unit>()
+        val universalLoop: ArrayList<() -> Unit> by lazy {
+            val listeners = ArrayList<() -> Unit>()
             CalculationContext.NeverEnds.reactiveScope {
-                if(AppState.inForeground()) {
-                    while(true) {
+                if (AppState.inForeground()) {
+                    while (true) {
                         delay(100)
                         listeners.invokeAllSafe()
                     }
@@ -207,7 +234,7 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
     internal fun startLoop() {
         if (!allowLoop) return
         if (isLooping) return
-        var l: ()->Unit = {}
+        var l: () -> Unit = {}
         var exceptionReported = false
         l = {
             try {
@@ -245,11 +272,44 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
                     it.onLoadStart()
                     try {
                         apiCalls++
-                        val data = skipCache.query(it.query)
+                        val data = skipCache.query(Query(it.condition, it.orderBy, limit = it.limit))
                         data.forEach { itemHolder(it._id).onFreshDataSkipQueries(it) }
+                        it.limitLoaded = it.limit
                         it.onFreshData(data)
                     } catch (e: Exception) {
                         it.onRetrievalError(e)
+                    }
+                }
+            }
+        queryCache.values.asSequence()
+            .filter { it.shouldPullMore }
+            .forEach { q ->
+                launchGlobal {
+                    q.onLoadStart()
+                    try {
+                        apiCalls++
+                        val last = q.lastKnownValue?.lastOrNull() ?: return@launchGlobal
+                        val after = Condition.And<T>(q.orderBy.mapIndexed { index, it ->
+                            val isLast = index == q.orderBy.lastIndex
+                            val f = it.field as DataClassPath<T, Comparable<Comparable<*>>>
+                            val v = f.get(last)!!
+                            f.mapCondition(
+                                if (it.ascending) {
+                                    if (isLast) Condition.GreaterThan(v)
+                                    else Condition.GreaterThanOrEqual(v)
+                                } else {
+                                    if (isLast) Condition.LessThan(v)
+                                    else Condition.LessThanOrEqual(v)
+                                }
+                            )
+                        })
+                        val limitDiff = q.limit - q.limitLoaded
+                        val data = skipCache.query(Query(q.condition and after, q.orderBy, limit = limitDiff))
+                        data.forEach { itemHolder(it._id).onFreshDataSkipQueries(it) }
+                        q.limitLoaded = q.limit
+                        q.onAdditionalData(data)
+                    } catch (e: Exception) {
+                        q.onRetrievalError(e)
                     }
                 }
             }
@@ -543,8 +603,9 @@ abstract class BaseReadable2<T>(start: ReadableState<T> = ReadableState.notReady
     }
 }
 
-class UpdatingQueryList<T : HasId<ID>, ID : Comparable<ID>>(val query: Query<T>) {
-    val comparator = query.orderBy.comparator?.thenBy { it._id } ?: compareBy { it._id }
+class UpdatingQueryList<T : HasId<ID>, ID : Comparable<ID>>(val condition: Condition<T>, val orderBy: List<SortPart<T>>, limit: Int) {
+    var limit: Int = limit
+    val comparator = orderBy.comparator!!
     val queued = ArrayList<T>()
     var updatesMade: Boolean = false
     fun delete(id: ID) {
@@ -555,14 +616,14 @@ class UpdatingQueryList<T : HasId<ID>, ID : Comparable<ID>>(val query: Query<T>)
     fun fullPull(list: List<T>) {
         queued.clear()
         queued.addAll(list.sortedWith(comparator))
-        total = list.size < query.limit
+        total = list.size < limit
         updatesMade = true
     }
 
     fun queueItemUpdate(item: T) {
         val afterEnd = queued.lastOrNull()?.let { comparator.compare(item, it) > 0 } ?: false
         var itemFound = false
-        var itemReplaced = !query.condition(item)
+        var itemReplaced = !condition(item)
         var index = 0
         while (!(itemReplaced && itemFound) && index < queued.size) {
             val found = queued[index]
@@ -593,4 +654,10 @@ class UpdatingQueryList<T : HasId<ID>, ID : Comparable<ID>>(val query: Query<T>)
         }
         return null
     }
+}
+
+fun <T> List<SortPart<T>>.ensureTotal(serializer: KSerializer<T>): List<SortPart<T>> {
+    if(lastOrNull()?.field?.properties?.singleOrNull()?.name == "_id") return this
+    @Suppress("UNCHECKED_CAST")
+    return this + SortPart(DataClassPathAccess(DataClassPathSelf<T>(serializer), serializer.serializableProperties!!.find { it.name == "_id" } as SerializableProperty<T, Comparable<*>>))
 }
