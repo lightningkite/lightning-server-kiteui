@@ -8,7 +8,7 @@ import org.junit.Assert.*
 import org.junit.Test
 import kotlin.time.Duration
 
-class FormRenderersKtTest {
+class HelpersKtTest {
     @Serializable
     data class TestModel(
         val _id: UUID = uuid(),
