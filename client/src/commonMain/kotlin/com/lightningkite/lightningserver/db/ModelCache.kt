@@ -7,6 +7,7 @@ import com.lightningkite.kiteui.reactive.*
 import com.lightningkite.lightningdb.*
 import com.lightningkite.lightningserver.db.*
 import com.lightningkite.now
+import kotlinx.coroutines.delay
 import kotlinx.datetime.Instant
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
@@ -191,7 +192,7 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
     companion object {
         val universalLoop: ArrayList<()->Unit> by lazy {
             val listeners = ArrayList<()->Unit>()
-            CalculationContext.NeverEnds.reactiveScope {
+            CalculationContext.NeverEnds.reactiveSuspending {
                 if(AppState.inForeground()) {
                     while(true) {
                         delay(100)

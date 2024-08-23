@@ -64,8 +64,19 @@ interface FormRenderer<T> {
                 return NullableFormRenderer(selector.serializer as KSerializer<Any>) as FormRenderer<T>
             }
 
+            (selector.serializer as? WrappingSerializer<*, *>)?.let {
+                return WrapperFormRenderer(it) as FormRenderer<T>
+            }
+
+            (selector.serializer as? MySealedClassSerializerInterface<*>)?.let {
+                return MySealedFormRenderer(it) as FormRenderer<T>
+            }
+
             if (selector.serializer.descriptor.kind == StructureKind.CLASS) {
                 return StructFormRenderer(selector.serializer)
+            }
+            if (selector.serializer.descriptor.kind == StructureKind.OBJECT) {
+                return ObjectFormRenderer(selector.serializer)
             }
 
             println("Could not find or create form renderer for ${selector.serializer.descriptor.serialName}")

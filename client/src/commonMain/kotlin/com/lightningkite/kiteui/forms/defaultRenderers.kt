@@ -2,14 +2,14 @@ package com.lightningkite.kiteui.forms
 
 import com.lightningkite.kiteui.models.rem
 import com.lightningkite.kiteui.reactive.*
-import com.lightningkite.kiteui.views.ViewWriter
-import com.lightningkite.kiteui.views.card
+import com.lightningkite.kiteui.views.*
 import com.lightningkite.kiteui.views.direct.*
-import com.lightningkite.kiteui.views.expanding
-import com.lightningkite.kiteui.views.fieldTheme
 import com.lightningkite.lightningdb.*
 import com.lightningkite.titleCase
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.InternalSerializationApi
 import kotlinx.serialization.KSerializer
+import kotlinx.serialization.internal.GeneratedSerializer
 
 
 internal class EnumFormRenderer<T>(val serializer: KSerializer<T>) : FormRenderer<T> {
@@ -94,12 +94,30 @@ internal class StructFormRenderer<T>(val serializer: KSerializer<T>) : FormRende
     }
 
     @Suppress("UNCHECKED_CAST")
-    private val subs = serializer.serializableProperties?.map {
+    @OptIn(InternalSerializationApi::class, ExperimentalSerializationApi::class)
+    fun bestPropertiesAttempt(): Array<SerializableProperty<T, *>> {
+        val serializer = serializer
+        if(serializer is GeneratedSerializer<*>) {
+            return serializer.childSerializers().mapIndexed { index, it ->
+                object: SerializableProperty<T, Any?> {
+                    override val name: String = serializer.descriptor.getElementName(index)
+                    override val serializer: KSerializer<Any?> = it as KSerializer<Any?>
+                    override fun setCopy(receiver: T, value: Any?): T = (serializer as KSerializer<T>).set(receiver, index, value)
+                    override fun get(receiver: T): Any? = (serializer as KSerializer<T>).get(receiver, index)
+                    override val serializableAnnotations: List<SerializableAnnotation> = serializer.descriptor.getElementAnnotations(index).mapNotNull { SerializableAnnotation.parseOrNull(it) }
+                }
+            }.toTypedArray()
+        }
+        return arrayOf()
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private val subs = (serializer.serializableProperties ?: bestPropertiesAttempt()).map {
         Sub(
             it as SerializableProperty<T, Any?>,
             FormRenderer[FormSelector(it.serializer, it.serializableAnnotations)]
         )
-    }?.filter { it.field.visibility != FieldVisibility.HIDDEN } ?: listOf()
+    }.filter { it.field.visibility != FieldVisibility.HIDDEN }
 
 
     private val grouped: List<List<Sub<*>>> = run {
@@ -180,6 +198,101 @@ internal class StructFormRenderer<T>(val serializer: KSerializer<T>) : FormRende
     }
 }
 
+internal class WrapperFormRenderer<I, O>(val serializer: WrappingSerializer<I, O>): FormRenderer<I> {
+    val innerSel = FormSelector(serializer.getDeferred(), listOf())
+    val inner = FormRenderer[innerSel]
+    override fun size(selector: FormSelector<I>): FormSize = inner.size(innerSel)
+    override fun render(
+        writer: ViewWriter,
+        selector: FormSelector<I>,
+        field: SerializableProperty<*, *>?,
+        writable: Writable<I>
+    ) {
+        inner.render(writer, innerSel, field, writable.lens(get = serializer::inner, set = serializer::outer))
+    }
+    override fun renderReadOnly(
+        writer: ViewWriter,
+        selector: FormSelector<I>,
+        field: SerializableProperty<*, *>?,
+        readable: Readable<I>
+    ) {
+        inner.renderReadOnly(writer, innerSel, field, readable.lens(get = serializer::inner))
+    }
+}
+
+internal class MySealedFormRenderer<T: Any>(val serializer: MySealedClassSerializerInterface<T>) : FormRenderer<T> {
+    override fun render(
+        writer: ViewWriter,
+        selector: FormSelector<T>,
+        field: SerializableProperty<*, *>?,
+        writable: Writable<T>
+    ): Unit = with(writer) {
+        val type = writable.lens(
+            get = { serializer.options.find { o -> o.isInstance(it) } ?: serializer.options.first() },
+            set = { it.serializer.default() }
+        )
+
+        defaultFieldWrapper(field) {
+            row {
+                atTop - sizeConstraints(width = 10.rem) - select {
+                    bind(type, Constant(serializer.options)) { it.serializer.displayName }
+                }
+                expanding - stack {
+                    reactive {
+                        val type = type()
+                        clearChildren()
+                        @Suppress("UNCHECKED_CAST")
+                        form(type.serializer as KSerializer<Any>, writable.lens(
+                            get = { if(type.isInstance(it)) it else type.serializer.default() },
+                            set = { it as T }
+                        ))
+                    }
+                }
+            }
+        }
+    }
+    override fun renderReadOnly(
+        writer: ViewWriter,
+        selector: FormSelector<T>,
+        field: SerializableProperty<*, *>?,
+        readable: Readable<T>
+    ): Unit = with(writer) {
+        val type = readable.lens(
+            get = { serializer.options.find { o -> o.isInstance(it) } ?: serializer.options.first() },
+        )
+
+        defaultFieldWrapper(field) {
+            row {
+                atTop - text { ::content { type().serializer.displayName } }
+                expanding - stack {
+                    reactive {
+                        val type = type()
+                        clearChildren()
+                        @Suppress("UNCHECKED_CAST")
+                        view(type.serializer as KSerializer<Any>, readable.lens(
+                            get = { if(type.isInstance(it)) it else type.serializer.default() },
+                        ))
+                    }
+                }
+            }
+        }
+    }
+
+}
+
+internal class ObjectFormRenderer<T>(val serializer: KSerializer<T>): FormRenderer<T> {
+    override fun render(
+        writer: ViewWriter,
+        selector: FormSelector<T>,
+        field: SerializableProperty<*, *>?,
+        writable: Writable<T>
+    ): Unit = with(writer) {
+        // No op; type determined at this point
+        stack {}
+//        defaultFieldWrapper(field) { text(serializer.displayName) }
+    }
+}
+
 internal class NullableFormRenderer<T>(val serializer: KSerializer<T>) : FormRenderer<T?> {
     override fun size(selector: FormSelector<T?>): FormSize {
         @Suppress("UNCHECKED_CAST")
@@ -237,7 +350,7 @@ internal class NullableFormRenderer<T>(val serializer: KSerializer<T>) : FormRen
                         text("N/A")
                     } else {
                         FormRenderer[selector].renderReadOnly(
-                            this,
+                            this@stack,
                             selector,
                             field,
                             readable.lens { it ?: selector.serializer.default() })

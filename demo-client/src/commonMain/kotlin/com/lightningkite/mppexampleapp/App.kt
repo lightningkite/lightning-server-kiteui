@@ -20,6 +20,7 @@ import com.lightningkite.uuid
 import kotlinx.datetime.Instant
 import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.serializer
 import kotlin.math.absoluteValue
 import kotlin.time.Duration.Companion.seconds
 
@@ -52,9 +53,11 @@ class HomeScreen : Screen {
 //            val prop = Property(Post())
 //            card - form(Post.serializer(), prop)
 //            card - view(Post.serializer(), prop)
-            val prop = Property(LargeTestModel())
-            card - form(LargeTestModel.serializer(), prop)
-            card - view(LargeTestModel.serializer(), prop)
+            val prop = Property<Modification<LargeTestModel>>(Modification.Nothing())
+            card - form(serializer<Modification<LargeTestModel>>(), prop)
+            text { ::content{ prop().toString() } }
+//            card - form(LargeTestModel.serializer(), prop)
+//            card - view(LargeTestModel.serializer(), prop)
 //            text { ::content { prop().toString() }}
 //
 //            val vtype = LargeTestModel.serializer().makeVirtualType() as VirtualStructure
@@ -85,8 +88,10 @@ data class Post(
 enum class PostVisibility {
     @DisplayName("Hidden")
     HIDDEN,
+
     @DisplayName("Friends Only")
     FRIENDS_ONLY,
+
     @DisplayName("Public")
     PUBLIC,
 }
@@ -95,6 +100,7 @@ enum class PostVisibility {
 enum class ShippingOptions {
     Slow,
     Prime,
+
     @DisplayName("ASAP")
     Panic,
 }

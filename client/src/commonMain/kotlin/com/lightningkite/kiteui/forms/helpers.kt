@@ -83,6 +83,11 @@ object GenericPlaceholderSerializer: KSerializer<Any?> {
     override fun deserialize(decoder: Decoder): Any? = null
     override fun serialize(encoder: Encoder, value: Any?) {}
 }
+object GenericNotNullPlaceholderSerializer: KSerializer<Any> {
+    override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("Placeholder", PrimitiveKind.STRING)
+    override fun deserialize(decoder: Decoder): Any = 0
+    override fun serialize(encoder: Encoder, value: Any) {}
+}
 
 @ViewDsl
 fun ViewWriter.defaultFieldWrapper(field: SerializableProperty<*, *>? = null, inner: ViewWriter.() -> Unit) {

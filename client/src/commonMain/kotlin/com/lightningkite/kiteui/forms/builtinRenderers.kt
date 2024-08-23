@@ -8,14 +8,12 @@ import com.lightningkite.kiteui.views.*
 import com.lightningkite.kiteui.views.direct.*
 import com.lightningkite.kiteui.views.direct.icon
 import com.lightningkite.kiteui.views.l2.icon
-import com.lightningkite.lightningdb.SerializableAnnotation
-import com.lightningkite.lightningdb.SerializableProperty
-import com.lightningkite.lightningdb.UUIDSerializer
-import com.lightningkite.lightningdb.tryTypeParameterSerializers3
+import com.lightningkite.lightningdb.*
 import com.lightningkite.uuid
 import kotlinx.datetime.*
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.builtins.*
+import kotlin.random.Random
 
 abstract class FormRendererForType<T>(val serializer: KSerializer<T>, val alwaysSize: FormSize = FormSize.Large) :
     FormRenderer<T> {
@@ -569,7 +567,7 @@ fun FormRenderer.Companion.builtins() {
             defaultFieldWrapper(field) {
                 card - col {
                     col {
-                        forEachUpdating(prop.lensByElement { it }) {
+                        forEachUpdating(prop.lensByElementAssumingSetNeverManipulates()) {
                             row {
                                 @Suppress("UNCHECKED_CAST")
                                 expanding - form(
@@ -581,8 +579,8 @@ fun FormRenderer.Companion.builtins() {
                                 centered - button {
                                     icon(Icon.deleteForever, "Delete")
                                     onClick {
-                                        prop set prop().filter { o ->
-                                            o != it.state.getOrNull()?.value
+                                        prop set prop().toMutableList().apply {
+                                            removeAt(it().index.value)
                                         }
                                     }
                                 }
@@ -614,7 +612,10 @@ fun FormRenderer.Companion.builtins() {
             defaultFieldWrapper(field) {
                 card - col {
                     col {
-                        forEachUpdating(prop.lensByElement { it }) {
+                        forEachUpdating(prop.lens(
+                            get = { it.toList() },
+                            set = { it.toSet() }
+                        ).lensByElementAssumingSetNeverManipulates()) {
                             row {
                                 @Suppress("UNCHECKED_CAST")
                                 expanding - form(
@@ -625,7 +626,7 @@ fun FormRenderer.Companion.builtins() {
                                 )
                                 centered - button {
                                     icon(Icon.deleteForever, "Delete")
-                                    onClick { prop set prop().minus(it.state.getOrNull()?.value) }
+                                    onClick { prop set prop().minus(it.state.getOrNull()) }
                                 }
                             }
                         }
