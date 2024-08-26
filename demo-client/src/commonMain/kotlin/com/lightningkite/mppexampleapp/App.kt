@@ -9,6 +9,8 @@ import com.lightningkite.kiteui.views.ViewWriter
 import com.lightningkite.kiteui.models.*
 import com.lightningkite.kiteui.navigation.Screen
 import com.lightningkite.kiteui.navigation.ScreenNavigator
+import com.lightningkite.kiteui.navigation.UrlProperties
+import com.lightningkite.kiteui.navigation.encodeToString
 import com.lightningkite.kiteui.reactive.*
 import com.lightningkite.kiteui.views.*
 import com.lightningkite.kiteui.views.direct.col
@@ -21,6 +23,7 @@ import kotlinx.datetime.Instant
 import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.serializer
 import kotlin.math.absoluteValue
 import kotlin.time.Duration.Companion.seconds
@@ -66,10 +69,12 @@ class HomeScreen : Screen {
 //                text { ::content { prop().toString() }}
 //            }
 //
+            val json = Json { serializersModule = ClientModule }
             Query.serializer(LargeTestModel.serializer()).let {
                 val prop = Property(Query<LargeTestModel>())
                 card - form(it, prop)
-                text { ::content { prop().toString() }}
+                text { ::content { json.encodeToString(it, prop()) }}
+                text { ::content { UrlProperties.encodeToString(it, prop()) }}
             }
 
 //            ListSerializer(SortPartSerializer(LargeTestModel.serializer())).let {

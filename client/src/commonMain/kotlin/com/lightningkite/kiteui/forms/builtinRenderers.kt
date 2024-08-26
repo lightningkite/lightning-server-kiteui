@@ -3,6 +3,7 @@ package com.lightningkite.kiteui.forms
 import com.lightningkite.*
 import com.lightningkite.kiteui.locale.renderToString
 import com.lightningkite.kiteui.models.Icon
+import com.lightningkite.kiteui.models.rem
 import com.lightningkite.kiteui.reactive.*
 import com.lightningkite.kiteui.views.*
 import com.lightningkite.kiteui.views.direct.*
@@ -573,34 +574,64 @@ fun FormRenderer.Companion.builtins() {
             writable: Writable<List<Any?>>
         ): Unit = with(writer) {
             val prop = writable
-//            val inner = selector.serializer.tryTypeParameterSerializers3() ?: arrayOf()
+            @Suppress("UNCHECKED_CAST")
             val innerSel = FormSelector(selector.serializer.listElement()!! as KSerializer<Any?>, field?.serializableAnnotations ?: listOf())
             val inner = FormRenderer[innerSel]
             defaultFieldWrapper(field) {
-                card - col {
-                    col {
-                        forEachUpdating(prop.lensByElementAssumingSetNeverManipulates()) {
+                when(inner.size(innerSel)) {
+                    FormSize.Small -> {
+                        row {
                             row {
-                                @Suppress("UNCHECKED_CAST")
-                                expanding - inner.render(writer, innerSel, field, it.flatten())
-                                centered - button {
-                                    icon(Icon.deleteForever, "Delete")
-                                    onClick {
-                                        prop set prop().toMutableList().apply {
-                                            removeAt(it().index.value)
+                                forEachUpdating(prop.lensByElementAssumingSetNeverManipulates()) {
+                                    card - row {
+                                        @Suppress("UNCHECKED_CAST")
+                                        inner.render(this, innerSel, null, it.flatten())
+                                        centered - button {
+                                            icon(Icon.close.copy(width = 1.rem, height = 1.rem), "Delete")
+                                            onClick {
+                                                prop set prop().toMutableList().apply {
+                                                    removeAt(it().index.value)
+                                                }
+                                            }
                                         }
                                     }
                                 }
                             }
+                            button {
+                                centered - icon(Icon.add.copy(width = 1.rem, height = 1.rem), "")
+                                onClick {
+                                    prop set prop() + innerSel.serializer.default()
+                                }
+                            }
                         }
                     }
-                    button {
-                        centered - row {
-                            centered - icon(Icon.add, "")
-                            centered - text("Add Entry")
-                        }
-                        onClick {
-                            prop set prop() + innerSel.serializer.default()
+                    FormSize.Large -> {
+                        card - col {
+                            col {
+                                forEachUpdating(prop.lensByElementAssumingSetNeverManipulates()) {
+                                    row {
+                                        @Suppress("UNCHECKED_CAST")
+                                        expanding - inner.render(this, innerSel, null, it.flatten())
+                                        centered - button {
+                                            icon(Icon.deleteForever, "Delete")
+                                            onClick {
+                                                prop set prop().toMutableList().apply {
+                                                    removeAt(it().index.value)
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            button {
+                                centered - row {
+                                    centered - icon(Icon.add, "")
+                                    centered - text("Add Entry")
+                                }
+                                onClick {
+                                    prop set prop() + innerSel.serializer.default()
+                                }
+                            }
                         }
                     }
                 }
@@ -673,6 +704,7 @@ fun FormRenderer.Companion.builtins() {
     object : FormRendererForType<DataClassPathPartial<Any?>>(
         DataClassPathSerializer(GenericPlaceholderSerializer)
     ) {
+        override fun size(selector: FormSelector<DataClassPathPartial<Any?>>): FormSize = FormSize.Small
         override fun render(
             writer: ViewWriter,
             selector: FormSelector<DataClassPathPartial<Any?>>,
@@ -719,7 +751,7 @@ fun FormRenderer.Companion.builtins() {
                                 }
                             }
                         }) {
-                            select {
+                            fieldTheme - select {
                                 val options = shared {
                                     (properties().getOrNull(it().index() - 1)
                                         ?.let {
@@ -776,6 +808,7 @@ fun FormRenderer.Companion.builtins() {
             DurationSerializer.descriptor.serialName,
             DurationMsSerializer.descriptor.serialName,
         ) + stringTypes
+        override fun size(selector: FormSelector<SortPart<Any?>>): FormSize = FormSize.Small
         override fun render(
             writer: ViewWriter,
             selector: FormSelector<SortPart<Any?>>,
@@ -813,7 +846,7 @@ fun FormRenderer.Companion.builtins() {
                 it.field.properties.lastOrNull()?.indexed ?: false
             }
             defaultFieldWrapper(field) {
-                select {
+                fieldTheme - select {
                     bind(writable, Constant(options), ::toString)
                 }
             }

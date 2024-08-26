@@ -236,7 +236,7 @@ internal class MySealedFormRenderer<T: Any>(val serializer: MySealedClassSeriali
 
         defaultFieldWrapper(field) {
             row {
-                atTop - sizeConstraints(width = 10.rem) - select {
+                atTop - sizeConstraints(width = 10.rem) - fieldTheme - select {
                     bind(type, Constant(serializer.options)) { it.serializer.displayName }
                 }
                 expanding - stack {
