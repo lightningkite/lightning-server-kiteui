@@ -8,13 +8,8 @@ import kotlinx.serialization.DeserializationStrategy
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.descriptors.SerialDescriptor
-import kotlinx.serialization.encoding.AbstractDecoder
-import kotlinx.serialization.encoding.AbstractEncoder
-import kotlinx.serialization.encoding.CompositeDecoder
-import kotlinx.serialization.encoding.Decoder
-import kotlinx.serialization.modules.EmptySerializersModule
+import kotlinx.serialization.encoding.*
 import kotlinx.serialization.modules.SerializersModule
-import kotlin.time.Duration.Companion.seconds
 
 private class EnumValueGetter(var index: Int = 0): Decoder {
     override val serializersModule: SerializersModule
@@ -105,37 +100,74 @@ fun <T: Any> SerializersModule.getContextual(contextualSerializer: ContextualSer
 private class DesWrap(val deserializer: DeserializationStrategy<*>): Exception()
 
 @OptIn(ExperimentalSerializationApi::class)
-internal class ListEncoder : AbstractEncoder() {
-    val list = mutableListOf<Any?>()
-    override val serializersModule: SerializersModule = EmptySerializersModule()
+private class MinEncoder() : AbstractEncoder() {
+    var out: Any? = null
+    override val serializersModule: SerializersModule = FormRenderer.module
+    var index = -1
     override fun encodeValue(value: Any) {
-        list.add(value)
+        if(index == -1) out = value
+        else (out as MutableMap<Int, Any?>)[index] = value
     }
+    override fun encodeElement(descriptor: SerialDescriptor, index: Int): Boolean {
+//        val opt = descriptor.isElementOptional(index)
+        this.index = index
+        return true
+    }
+    override fun beginStructure(descriptor: SerialDescriptor): CompositeEncoder {
+        return if(index == -1) {
+            out = mutableMapOf<Int, Any?>()
+            this
+        } else {
+            val l = MinEncoder()
+            val m = mutableMapOf<Int, Any?>()
+            l.index = 0
+            l.out = m
+            (out as MutableMap<Int, Any?>)[index] = m
+            l
+        }
+    }
+
+    override fun shouldEncodeElementDefault(descriptor: SerialDescriptor, index: Int): Boolean = true
     override fun encodeNull() {
-        list.add(null)
+        if(index == -1) out = null
+        else (out as MutableMap<Int, Any?>)[index] = null
     }
 }
 @OptIn(ExperimentalSerializationApi::class)
-internal class ListDecoder(val list: ArrayDeque<Any?>) : AbstractDecoder() {
-    private var elementIndex = 0
-    override val serializersModule: SerializersModule = EmptySerializersModule()
-    override fun decodeNotNullMark(): Boolean = list[elementIndex] != null
-    override fun decodeValue(): Any = list.removeFirst()!!
+private class MinDecoder(var item: Any?) : AbstractDecoder() {
+    override val serializersModule: SerializersModule = FormRenderer.module
+    var lastIndex: Int = -1
+    var lastValue: Any? = item
+    val indexIter by lazy { (item as Map<Int, Any?>).iterator() }
+    override fun decodeValue(): Any = lastValue!!
+    override fun decodeNotNullMark(): Boolean = lastValue != null
     override fun decodeElementIndex(descriptor: SerialDescriptor): Int {
-        if (elementIndex == descriptor.elementsCount) return CompositeDecoder.DECODE_DONE
-        return elementIndex++
+        if (!indexIter.hasNext()) return CompositeDecoder.DECODE_DONE
+        val l = indexIter.next()
+        lastIndex = l.key
+        lastValue = l.value
+        return l.key
     }
-    override fun beginStructure(descriptor: SerialDescriptor): CompositeDecoder =
-        ListDecoder(list)
+    override fun beginStructure(descriptor: SerialDescriptor): CompositeDecoder {
+        if(lastValue == null) return MinDecoder(mapOf<Int, Any?>())
+        @Suppress("UNCHECKED_CAST")
+        return MinDecoder(lastValue!! as Map<Int, Any?>)
+    }
 }
-internal fun <T> KSerializer<T>.get(instance: T, index: Int): Any? {
-    val e = ListEncoder()
+internal fun <T, V> KSerializer<T>.get(instance: T, index: Int, childSerializer: KSerializer<V>): V {
+    val e = MinEncoder()
     this.serialize(e, instance)
-    return e.list[index]
+    val encodedValue = (e.out as Map<Int, Any?>)[index]
+    val d = MinDecoder(encodedValue)
+    return childSerializer.deserialize(d)
 }
-internal fun <T> KSerializer<T>.set(instance: T, index: Int, value: Any?): T {
-    val e = ListEncoder()
+internal fun <T, V> KSerializer<T>.set(instance: T, index: Int, childSerializer: KSerializer<V>, value: V): T {
+    val e = MinEncoder()
     this.serialize(e, instance)
-    e.list[index] = value
-    return this.deserialize(ListDecoder(ArrayDeque(e.list)))
+    val e2 = MinEncoder()
+    childSerializer.serialize(e2, value)
+    val eo = e.out as MutableMap<Int, Any?>
+    eo[index] = e2.out
+    @Suppress("UNCHECKED_CAST") val d = MinDecoder(e.out)
+    return deserialize(d)
 }

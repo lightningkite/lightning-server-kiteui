@@ -20,6 +20,7 @@ import com.lightningkite.uuid
 import kotlinx.datetime.Instant
 import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.serializer
 import kotlin.math.absoluteValue
 import kotlin.time.Duration.Companion.seconds
@@ -57,11 +58,37 @@ class HomeScreen : Screen {
 //            card - form(serializer<Condition<LargeTestModel>>(), prop)
 //            text { ::content{ prop().toString() } }
 
-            DataClassPathSerializer(LargeTestModel.serializer()).let {
-                val prop = Property<DataClassPathPartial<LargeTestModel>>(DataClassPathSelf(LargeTestModel.serializer()))
+
+
+//            Condition.serializer(LargeTestModel.serializer()).let {
+//                val prop = Property(it.default())
+//                card - form(it, prop)
+//                text { ::content { prop().toString() }}
+//            }
+//
+            Query.serializer(LargeTestModel.serializer()).let {
+                val prop = Property(Query<LargeTestModel>())
                 card - form(it, prop)
                 text { ::content { prop().toString() }}
             }
+
+//            ListSerializer(SortPartSerializer(LargeTestModel.serializer())).let {
+//                val prop = Property(it.default())
+//                card - form(it, prop)
+//                text { ::content { prop().toString() }}
+//            }
+
+//            SortPartSerializer(LargeTestModel.serializer()).let {
+//                val prop = Property<SortPart<LargeTestModel>>(it.default())
+//                card - form(it, prop)
+//                text { ::content { prop().toString() }}
+//            }
+//
+//            DataClassPathSerializer(LargeTestModel.serializer()).let {
+//                val prop = Property(it.default())
+//                card - form(it, prop)
+//                text { ::content { prop().toString() }}
+//            }
 
 //            card - form(LargeTestModel.serializer(), prop)
 //            card - view(LargeTestModel.serializer(), prop)

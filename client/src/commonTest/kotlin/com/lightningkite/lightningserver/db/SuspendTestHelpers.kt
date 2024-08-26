@@ -1,10 +1,12 @@
 package com.lightningkite.lightningserver.db
 
-import com.lightningkite.kiteui.Cancellable
 import com.lightningkite.kiteui.reactive.CalculationContext
 import com.lightningkite.kiteui.reactive.CalculationContextStack
 import com.lightningkite.kiteui.suspendCoroutineCancellable
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlin.coroutines.Continuation
+import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.resume
 import kotlin.test.assertEquals
 
@@ -50,21 +52,21 @@ class VirtualDelayer() {
     }
 }
 
-fun testContext(action: CalculationContext.()->Unit): Cancellable {
+fun testContext(action: CalculationContext.()->Unit): Job {
     var error: Throwable? = null
-    val onRemoveSet = HashSet<()->Unit>()
+    val job = Job()
     var numOutstandingContracts = 0
     with(object: CalculationContext {
-        override fun onRemove(action: () -> Unit) {
-            onRemoveSet.add(action)
-        }
+        override val coroutineContext: CoroutineContext = job + Dispatchers.Unconfined
 
         override fun notifyLongComplete(result: Result<Unit>) {
             numOutstandingContracts--
+            println("Long load complete")
         }
 
         override fun notifyStart() {
             numOutstandingContracts++
+            println("Long load start")
         }
 
         override fun notifyComplete(result: Result<Unit>) {
@@ -77,13 +79,9 @@ fun testContext(action: CalculationContext.()->Unit): Cancellable {
         CalculationContextStack.useIn(this) {
             action()
         }
+        job.cancel()
         if(error != null) throw error!!
-        assertEquals(numOutstandingContracts, 0)
+        assertEquals(0, numOutstandingContracts, "Some work was not completed.")
     }
-    return object: Cancellable {
-        override fun cancel() {
-            onRemoveSet.forEach { it() }
-            onRemoveSet.clear()
-        }
-    }
+    return job
 }

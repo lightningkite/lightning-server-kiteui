@@ -26,7 +26,7 @@ class ModelCache3Test() {
 
         testContext {
             var c: List<Item> = listOf()
-            reactiveScope { c = cache.watch(Query())() }
+            reactiveSuspending { c = cache.watch(Query())() }
 
             launch {
                 repeat(100) {
@@ -49,9 +49,9 @@ class ModelCache3Test() {
             var b: Item? = null
             reactiveScope { b = cache.get(1)() }
             var c: List<Item> = listOf()
-            reactiveScope { c = cache.watch(Query())() }
+            reactiveSuspending { c = cache.watch(Query())() }
             var d: List<Item> = listOf()
-            reactiveScope { d = cache.query(Query())() }
+            reactiveSuspending { d = cache.query(Query())() }
 
             launch {
                 val x = Item(1)
@@ -92,7 +92,7 @@ class ModelCache3Test() {
 
         testContext {
             var c: List<Item> = listOf()
-            reactiveScope { c = cache.query(Query())() }
+            reactiveSuspending { c = cache.query(Query())() }
 
             launch {
                 val x = Item(1)
@@ -108,7 +108,7 @@ class ModelCache3Test() {
                 assertEquals(listOf(x, y), c)
 
                 var d: List<Item> = listOf()
-                reactiveScope { d = cache.query(Query(condition = condition { it._id lt 10 }))() }
+                reactiveSuspending { d = cache.query(Query(condition = condition { it._id lt 10 }))() }
                 cache.regularly()
                 assertEquals(listOf(x, y), d)
 
@@ -132,7 +132,7 @@ class ModelCache3Test() {
 
         testContext {
             var c: List<Item> = listOf()
-            reactiveScope { c = cache.query(Query())() }
+            reactiveSuspending { c = cache.query(Query())() }
 
             launch {
                 val x = Item(1)
@@ -175,9 +175,9 @@ class ModelCache3Test() {
             var b: Item? = null
             reactiveScope { b = cache.get(1)() }
             var c: List<Item> = listOf()
-            reactiveScope { c = cache.watch(Query())() }
+            reactiveSuspending { c = cache.watch(Query())() }
             var d: List<Item> = listOf()
-            reactiveScope { d = cache.query(Query())() }
+            reactiveSuspending { d = cache.query(Query())() }
 
             launch {
                 val x = Item(1)
@@ -222,9 +222,9 @@ class ModelCache3Test() {
             var b: Item? = null
             reactiveScope { b = cache.get(1)() }
             var c: List<Item> = listOf()
-            reactiveScope { c = cache.watch(Query())() }
+            reactiveSuspending { c = cache.watch(Query())() }
             var d: List<Item> = listOf()
-            reactiveScope { d = cache.query(Query())() }
+            reactiveSuspending { d = cache.query(Query())() }
 
             launch {
                 val x = Item(1)
@@ -284,7 +284,7 @@ class ModelCache3Test() {
 
         testContext {
             var itemsList: List<Item> = listOf()
-            reactiveScope { itemsList = cache.watch(Query())().also { println(it) } }
+            reactiveSuspending { itemsList = cache.watch(Query())().also { println(it) } }
             launch {
                 cache.regularly()
                 val x = Item(1)
@@ -310,7 +310,7 @@ class ModelCache3Test() {
 
         testContext {
             var itemsList: List<Item> = listOf()
-            reactiveScope { itemsList = cache.watch(Query())().also { println(it) } }
+            reactiveSuspending { itemsList = cache.watch(Query())().also { println(it) } }
             launch {
                 cache.regularly()
                 val x = Item(1)
@@ -339,7 +339,7 @@ class ModelCache3Test() {
 
         testContext {
             var itemsList: List<Item> = listOf()
-            reactiveScope { itemsList = cache.watch(Query())().also { println(it) } }
+            reactiveSuspending { itemsList = cache.watch(Query())().also { println(it) } }
             launch {
                 val items = listOf(Item(1), Item(2), Item(3))
                 r.insertBulk(items)

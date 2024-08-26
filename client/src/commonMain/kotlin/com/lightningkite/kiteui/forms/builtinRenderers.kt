@@ -1,6 +1,6 @@
 package com.lightningkite.kiteui.forms
 
-import com.lightningkite.UUID
+import com.lightningkite.*
 import com.lightningkite.kiteui.locale.renderToString
 import com.lightningkite.kiteui.models.Icon
 import com.lightningkite.kiteui.reactive.*
@@ -9,8 +9,8 @@ import com.lightningkite.kiteui.views.direct.*
 import com.lightningkite.kiteui.views.direct.icon
 import com.lightningkite.kiteui.views.l2.icon
 import com.lightningkite.lightningdb.*
-import com.lightningkite.uuid
 import kotlinx.datetime.*
+import kotlinx.serialization.ContextualSerializer
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.builtins.*
 import kotlin.random.Random
@@ -573,19 +573,16 @@ fun FormRenderer.Companion.builtins() {
             writable: Writable<List<Any?>>
         ): Unit = with(writer) {
             val prop = writable
-            val inner = selector.serializer.tryTypeParameterSerializers3() ?: arrayOf()
+//            val inner = selector.serializer.tryTypeParameterSerializers3() ?: arrayOf()
+            val innerSel = FormSelector(selector.serializer.listElement()!! as KSerializer<Any?>, field?.serializableAnnotations ?: listOf())
+            val inner = FormRenderer[innerSel]
             defaultFieldWrapper(field) {
                 card - col {
                     col {
                         forEachUpdating(prop.lensByElementAssumingSetNeverManipulates()) {
                             row {
                                 @Suppress("UNCHECKED_CAST")
-                                expanding - form(
-                                    inner[0] as KSerializer<Any?>,
-                                    it.flatten(),
-                                    selector.annotations,
-                                    null
-                                )
+                                expanding - inner.render(writer, innerSel, field, it.flatten())
                                 centered - button {
                                     icon(Icon.deleteForever, "Delete")
                                     onClick {
@@ -603,7 +600,7 @@ fun FormRenderer.Companion.builtins() {
                             centered - text("Add Entry")
                         }
                         onClick {
-                            prop set prop() + inner[0].default()
+                            prop set prop() + innerSel.serializer.default()
                         }
                     }
                 }
@@ -725,13 +722,16 @@ fun FormRenderer.Companion.builtins() {
                             select {
                                 val options = shared {
                                     (properties().getOrNull(it().index() - 1)
-                                        ?.let { it.serializer.let { it.nullElement() ?: it }.serializableProperties ?: arrayOf() }
+                                        ?.let {
+                                            it.serializer.let { it.nullElement() ?: it }.serializableProperties
+                                                ?: arrayOf()
+                                        }
                                         ?: serializer.inner.serializableProperties ?: arrayOf()).toList().let {
                                         listOf(null) + it
                                     }
                                 }
                                 ::opacity {
-                                    if(options().size == 1) 0.0 else 1.0
+                                    if (options().size == 1) 0.0 else 1.0
                                 }
                                 bind(
                                     edits = it.flatten().withWrite { value ->
@@ -745,6 +745,103 @@ fun FormRenderer.Companion.builtins() {
                         }
                     }
                 }
+            }
+        }
+    }
+    object : FormRendererForType<SortPart<Any?>>(
+        SortPartSerializer(GenericPlaceholderSerializer)
+    ) {
+        val stringTypes = setOf(
+            Char.serializer().descriptor.serialName,
+            String.serializer().descriptor.serialName,
+            CaselessStringSerializer.descriptor.serialName,
+            TrimmedStringSerializer.descriptor.serialName,
+            TrimmedCaselessStringSerializer.descriptor.serialName,
+        )
+        val comparableTypes = setOf(
+            Boolean.serializer().descriptor.serialName,
+            Byte.serializer().descriptor.serialName,
+            Short.serializer().descriptor.serialName,
+            Int.serializer().descriptor.serialName,
+            Long.serializer().descriptor.serialName,
+            UByte.serializer().descriptor.serialName,
+            UShort.serializer().descriptor.serialName,
+            UInt.serializer().descriptor.serialName,
+            ULong.serializer().descriptor.serialName,
+            UUIDSerializer.descriptor.serialName,
+            InstantIso8601Serializer.descriptor.serialName,
+            LocalDateIso8601Serializer.descriptor.serialName,
+            LocalDateTimeIso8601Serializer.descriptor.serialName,
+            LocalTimeIso8601Serializer.descriptor.serialName,
+            DurationSerializer.descriptor.serialName,
+            DurationMsSerializer.descriptor.serialName,
+        ) + stringTypes
+        override fun render(
+            writer: ViewWriter,
+            selector: FormSelector<SortPart<Any?>>,
+            field: SerializableProperty<*, *>?,
+            writable: Writable<SortPart<Any?>>
+        ): Unit = with(writer) {
+            val serializer = selector.serializer as SortPartSerializer<Any?>
+            val options = ArrayList<SortPart<Any?>>()
+            fun traverse(serializer: KSerializer<Any?>, base: DataClassPath<Any?, Any?>) {
+                serializer.serializableProperties?.forEach {
+                    val ser = it.serializer.let {
+                        if(it is ContextualSerializer<*>) module.getContextual(it)
+                        else it
+                    }
+                    if (ser.descriptor.serialName in comparableTypes) {
+                        val access = DataClassPathAccess(base, it)
+                        if(ser.descriptor.serialName !in stringTypes) {
+                            options += listOf(
+                                SortPart(access, ascending = true, ignoreCase = false),
+                                SortPart(access, ascending = false, ignoreCase = false),
+                            )
+                        } else {
+                            options += listOf(
+                                SortPart(access, ascending = true, ignoreCase = false),
+                                SortPart(access, ascending = false, ignoreCase = false),
+                                SortPart(access, ascending = true, ignoreCase = true),
+                                SortPart(access, ascending = false, ignoreCase = true),
+                            )
+                        }
+                    }
+                }
+            }
+            traverse(serializer.inner, DataClassPathSelf(serializer.inner))
+            options.sortByDescending {
+                it.field.properties.lastOrNull()?.indexed ?: false
+            }
+            defaultFieldWrapper(field) {
+                select {
+                    bind(writable, Constant(options), ::toString)
+                }
+            }
+        }
+
+        fun toString(it: SortPart<Any?>) : String {
+            val path = it.field.properties.joinToString(" / ") { it.displayName }
+            return if (it.field.serializerAny.descriptor.serialName in stringTypes) {
+                when {
+                    it.ignoreCase && it.ascending -> "$path A-Z"
+                    it.ignoreCase -> "$path Z-A"
+                    it.ascending -> "$path A-z (case sensitive)"
+                    else -> "$path z-A (case sensitive)"
+                }
+            } else {
+                if (it.ascending) "$path Low - High"
+                else "$path High - Low"
+            }
+        }
+
+        override fun renderReadOnly(
+            writer: ViewWriter,
+            selector: FormSelector<SortPart<Any?>>,
+            field: SerializableProperty<*, *>?,
+            readable: Readable<SortPart<Any?>>
+        ) = with(writer) {
+            defaultFieldWrapper(field) {
+                text { ::content { readable().let(::toString) } }
             }
         }
     }

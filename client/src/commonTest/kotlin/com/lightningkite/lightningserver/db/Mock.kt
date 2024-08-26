@@ -245,7 +245,7 @@ class MockClientModelRestEndpoints<T : HasId<ID>, ID : Comparable<ID>>(val log: 
 
 
 
-class ConnectivityGate(val delay: suspend (ms: Long) -> Unit = { ms -> com.lightningkite.kiteui.delay(ms) }) {
+class ConnectivityGate(val delay: suspend (ms: Long) -> Unit = { ms -> kotlinx.coroutines.delay(ms) }) {
     val gate = WaitGate(true)
     val baseRetry = 5.seconds
     var nextRetry = baseRetry

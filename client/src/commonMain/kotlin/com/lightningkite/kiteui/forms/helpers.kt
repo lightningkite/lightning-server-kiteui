@@ -77,6 +77,9 @@ val SerializableProperty<*, *>.visibility get() = when {
 val SerializableProperty<*, *>.doesNotNeedLabel get() = serializableAnnotations.any {
     it.fqn == "com.lightningkite.lightningdb.DoesNotNeedLabel"
 }
+val SerializableProperty<*, *>.indexed get() = serializableAnnotations.any {
+    it.fqn == "com.lightningkite.lightningdb.Index"
+}
 
 object GenericPlaceholderSerializer: KSerializer<Any?> {
     override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("Placeholder", PrimitiveKind.STRING)

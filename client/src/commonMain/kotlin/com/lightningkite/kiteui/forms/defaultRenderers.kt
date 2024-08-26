@@ -76,6 +76,7 @@ internal class StructFormRenderer<T>(val serializer: KSerializer<T>) : FormRende
         val selector = FormSelector(field.serializer, field.serializableAnnotations)
         val size = renderer.size(selector)
         fun form(writer: ViewWriter, writable: Writable<T>) {
+            println("RENDER ${field.name}")
             val w = writable.lensPath(
                 DataClassPathAccess<T, T, S>(
                     DataClassPathSelf(serializer),
@@ -88,6 +89,7 @@ internal class StructFormRenderer<T>(val serializer: KSerializer<T>) : FormRende
                 renderer.render(writer, selector, field, w)
         }
         fun view(writer: ViewWriter, readable: Readable<T>) {
+            println("RENDER ${field.name}")
             val r = readable.lens { field.get(it) }
             renderer.renderReadOnly(writer, selector, field, r)
         }
@@ -102,8 +104,8 @@ internal class StructFormRenderer<T>(val serializer: KSerializer<T>) : FormRende
                 object: SerializableProperty<T, Any?> {
                     override val name: String = serializer.descriptor.getElementName(index)
                     override val serializer: KSerializer<Any?> = it as KSerializer<Any?>
-                    override fun setCopy(receiver: T, value: Any?): T = (serializer as KSerializer<T>).set(receiver, index, value)
-                    override fun get(receiver: T): Any? = (serializer as KSerializer<T>).get(receiver, index)
+                    override fun setCopy(receiver: T, value: Any?): T = (serializer as KSerializer<T>).set(receiver, index, it as KSerializer<Any?>, value)
+                    override fun get(receiver: T): Any? = (serializer as KSerializer<T>).get(receiver, index, it)
                     override val serializableAnnotations: List<SerializableAnnotation> = serializer.descriptor.getElementAnnotations(index).mapNotNull { SerializableAnnotation.parseOrNull(it) }
                 }
             }.toTypedArray()
