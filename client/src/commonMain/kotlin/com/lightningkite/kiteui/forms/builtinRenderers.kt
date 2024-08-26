@@ -646,36 +646,62 @@ fun FormRenderer.Companion.builtins() {
             writable: Writable<Set<Any?>>
         ): Unit = with(writer) {
             val prop = writable
-            val inner = selector.serializer.tryTypeParameterSerializers3() ?: arrayOf()
+            @Suppress("UNCHECKED_CAST")
+            val innerSel = FormSelector(selector.serializer.listElement()!! as KSerializer<Any?>, field?.serializableAnnotations ?: listOf())
+            val inner = FormRenderer[innerSel]
             defaultFieldWrapper(field) {
-                card - col {
-                    col {
-                        forEachUpdating(prop.lens(
-                            get = { it.toList() },
-                            set = { it.toSet() }
-                        ).lensByElementAssumingSetNeverManipulates()) {
+                when(inner.size(innerSel)) {
+                    FormSize.Small -> {
+                        row {
                             row {
-                                @Suppress("UNCHECKED_CAST")
-                                expanding - form(
-                                    inner[0] as KSerializer<Any?>,
-                                    it.flatten(),
-                                    selector.annotations,
-                                    null
-                                )
-                                centered - button {
-                                    icon(Icon.deleteForever, "Delete")
-                                    onClick { prop set prop().minus(it.state.getOrNull()) }
+                                forEachUpdating(prop.lens(
+                                    get = { it.toList() },
+                                    set = { it.toSet() }
+                                ).lensByElementAssumingSetNeverManipulates()) {
+                                    card - row {
+                                        @Suppress("UNCHECKED_CAST")
+                                        inner.render(this, innerSel, null, it.flatten())
+                                        centered - button {
+                                            icon(Icon.close.copy(width = 1.rem, height = 1.rem), "Delete")
+                                            onClick { prop set prop().minus(it.state.getOrNull()) }
+                                        }
+                                    }
+                                }
+                            }
+                            button {
+                                centered - icon(Icon.add.copy(width = 1.rem, height = 1.rem), "")
+                                onClick {
+                                    prop set prop() + innerSel.serializer.default()
                                 }
                             }
                         }
                     }
-                    button {
-                        centered - row {
-                            centered - icon(Icon.add, "")
-                            centered - text("Add Entry")
-                        }
-                        onClick {
-                            prop set prop() + inner[0].default()
+                    FormSize.Large -> {
+                        card - col {
+                            col {
+                                forEachUpdating(prop.lens(
+                                    get = { it.toList() },
+                                    set = { it.toSet() }
+                                ).lensByElementAssumingSetNeverManipulates()) {
+                                    row {
+                                        @Suppress("UNCHECKED_CAST")
+                                        expanding - inner.render(this, innerSel, null, it.flatten())
+                                        centered - button {
+                                            icon(Icon.deleteForever, "Delete")
+                                            onClick { prop set prop().minus(it.state.getOrNull()) }
+                                        }
+                                    }
+                                }
+                            }
+                            button {
+                                centered - row {
+                                    centered - icon(Icon.add, "")
+                                    centered - text("Add Entry")
+                                }
+                                onClick {
+                                    prop set prop() + innerSel.serializer.default()
+                                }
+                            }
                         }
                     }
                 }
