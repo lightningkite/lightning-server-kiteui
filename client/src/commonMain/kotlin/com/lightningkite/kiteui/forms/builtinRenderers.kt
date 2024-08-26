@@ -28,6 +28,7 @@ abstract class FormRendererForType<T>(val serializer: KSerializer<T>, val always
             text { ::content { readable()?.let(::format) ?: "N/A" } }
         }
     }
+
     open fun format(item: T): String = item.toString()
 
     init {
@@ -88,6 +89,7 @@ fun FormRenderer.Companion.builtins() {
                 }
             }
         }
+
         override fun renderReadOnly(
             writer: ViewWriter,
             selector: FormSelector<Boolean?>,
@@ -96,7 +98,7 @@ fun FormRenderer.Companion.builtins() {
         ): Unit = with(writer) {
             text {
                 ::content {
-                    when(readable()) {
+                    when (readable()) {
                         true -> "✓ ${field?.descriptionOrDisplayName ?: ""}"
                         false -> "✘ ${field?.descriptionOrDisplayName ?: ""}"
                         null -> "${field?.descriptionOrDisplayName ?: ""} N/A"
@@ -367,7 +369,7 @@ fun FormRenderer.Companion.builtins() {
         ): Unit = with(writer) {
             val prop = writable
             defaultFieldWrapper(field) {
-                if(selector.annotations.any { it.fqn == "com.lightningkite.lightningdb.Multiline" }) {
+                if (selector.annotations.any { it.fqn == "com.lightningkite.lightningdb.Multiline" }) {
                     fieldTheme - textArea {
                         field?.hint?.let { hint = it }
                         content bind prop
@@ -424,6 +426,7 @@ fun FormRenderer.Companion.builtins() {
                 }
             }
         }
+
         override fun format(item: Instant): String = item.renderToString()
     }
     object : FormRendererForType<Instant?>(Instant.serializer().nullable, alwaysSize = FormSize.Small) {
@@ -443,6 +446,7 @@ fun FormRenderer.Companion.builtins() {
                 }
             }
         }
+
         override fun format(item: Instant?): String = item?.renderToString() ?: "N/A"
     }
     object : FormRendererForType<LocalDateTime>(LocalDateTime.serializer(), alwaysSize = FormSize.Small) {
@@ -462,6 +466,7 @@ fun FormRenderer.Companion.builtins() {
                 }
             }
         }
+
         override fun format(item: LocalDateTime): String = item.renderToString()
     }
 
@@ -479,6 +484,7 @@ fun FormRenderer.Companion.builtins() {
                 }
             }
         }
+
         override fun format(item: LocalDateTime?): String = item?.renderToString() ?: "N/A"
     }
 
@@ -499,6 +505,7 @@ fun FormRenderer.Companion.builtins() {
                 }
             }
         }
+
         override fun format(item: LocalDate): String = item.renderToString()
     }
 
@@ -516,6 +523,7 @@ fun FormRenderer.Companion.builtins() {
                 }
             }
         }
+
         override fun format(item: LocalDate?): String = item?.renderToString() ?: "N/A"
     }
 
@@ -536,6 +544,7 @@ fun FormRenderer.Companion.builtins() {
                 }
             }
         }
+
         override fun format(item: LocalTime): String = item.renderToString()
     }
 
@@ -553,6 +562,7 @@ fun FormRenderer.Companion.builtins() {
                 }
             }
         }
+
         override fun format(item: LocalTime?): String = item?.renderToString() ?: "N/A"
     }
     object : FormRendererForType<List<Any?>>(ListSerializer(GenericPlaceholderSerializer)) {
@@ -660,6 +670,81 @@ fun FormRenderer.Companion.builtins() {
             val inner = selector.serializer.tryTypeParameterSerializers3() ?: arrayOf()
             defaultFieldWrapper(field) {
                 text("Sorry, we haven't made a map editor yet.")
+            }
+        }
+    }
+    object : FormRendererForType<DataClassPathPartial<Any?>>(
+        DataClassPathSerializer(GenericPlaceholderSerializer)
+    ) {
+        override fun render(
+            writer: ViewWriter,
+            selector: FormSelector<DataClassPathPartial<Any?>>,
+            field: SerializableProperty<*, *>?,
+            writable: Writable<DataClassPathPartial<Any?>>
+        ): Unit = with(writer) {
+            val serializer = selector.serializer as DataClassPathSerializer<Any?>
+            defaultFieldWrapper(field) {
+                val properties = writable.lens(
+                    get = { it.properties },
+                    set = {
+                        var out: DataClassPath<Any?, Any?> = DataClassPathSelf(serializer.inner)
+                        var lastNullable = false
+                        for (prop in it) {
+                            if (lastNullable) {
+                                @Suppress("UNCHECKED_CAST")
+                                out = DataClassPathAccess<Any?, Any, Any?>(
+                                    DataClassPathNotNull(out),
+                                    prop as SerializableProperty<Any, Any?>
+                                )
+                            } else {
+                                @Suppress("UNCHECKED_CAST")
+                                out = DataClassPathAccess<Any?, Any, Any?>(
+                                    out as DataClassPath<Any?, Any>,
+                                    prop as SerializableProperty<Any, Any?>
+                                )
+                            }
+                        }
+                        out
+                    }
+                )
+                col {
+//                    text { ::content { properties().joinToString(", ") { it.name} }}
+                    row {
+                        forEachUpdating(properties.lensByElementAssumingSetNeverManipulates().lens {
+                            it + object : ListItemWritable<SerializableProperty<*, *>?> {
+                                override val index: ImmediateReadable<Int> get() = Constant(it.size)
+                                override val value: SerializableProperty<*, *>? = null
+                                override fun addListener(listener: () -> Unit): () -> Unit = {}
+                                override suspend fun set(value: SerializableProperty<*, *>?) {
+                                    if (value != null) {
+                                        properties.set(properties() + value)
+                                    }
+                                }
+                            }
+                        }) {
+                            select {
+                                val options = shared {
+                                    (properties().getOrNull(it().index() - 1)
+                                        ?.let { it.serializer.let { it.nullElement() ?: it }.serializableProperties ?: arrayOf() }
+                                        ?: serializer.inner.serializableProperties ?: arrayOf()).toList().let {
+                                        listOf(null) + it
+                                    }
+                                }
+                                ::opacity {
+                                    if(options().size == 1) 0.0 else 1.0
+                                }
+                                bind(
+                                    edits = it.flatten().withWrite { value ->
+                                        properties.set(properties().take(it().index()) + (value?.let { listOf(it) }
+                                            ?: listOf()))
+                                    },
+                                    data = options,
+                                    render = { it?.displayName ?: "+" }
+                                )
+                            }
+                        }
+                    }
+                }
             }
         }
     }

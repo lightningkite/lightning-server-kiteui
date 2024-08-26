@@ -53,9 +53,16 @@ class HomeScreen : Screen {
 //            val prop = Property(Post())
 //            card - form(Post.serializer(), prop)
 //            card - view(Post.serializer(), prop)
-            val prop = Property<Modification<LargeTestModel>>(Modification.Nothing())
-            card - form(serializer<Modification<LargeTestModel>>(), prop)
-            text { ::content{ prop().toString() } }
+//            val prop = Property<Condition<LargeTestModel>>(Condition.Never)
+//            card - form(serializer<Condition<LargeTestModel>>(), prop)
+//            text { ::content{ prop().toString() } }
+
+            DataClassPathSerializer(LargeTestModel.serializer()).let {
+                val prop = Property<DataClassPathPartial<LargeTestModel>>(DataClassPathSelf(LargeTestModel.serializer()))
+                card - form(it, prop)
+                text { ::content { prop().toString() }}
+            }
+
 //            card - form(LargeTestModel.serializer(), prop)
 //            card - view(LargeTestModel.serializer(), prop)
 //            text { ::content { prop().toString() }}
