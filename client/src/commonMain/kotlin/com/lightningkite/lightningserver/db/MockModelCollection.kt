@@ -5,6 +5,7 @@ import com.lightningkite.kiteui.reactive.LateInitProperty
 import com.lightningkite.kiteui.reactive.Readable
 import com.lightningkite.kiteui.reactive.ReadableState
 import kotlinx.serialization.KSerializer
+import com.lightningkite.serialization.*
 
 class MockModelCollection<T : HasId<ID>, ID : Comparable<ID>>(val serializer: KSerializer<T>) : ModelCollection<T, ID> {
     val models = HashMap<ID, MockWritableModel>()

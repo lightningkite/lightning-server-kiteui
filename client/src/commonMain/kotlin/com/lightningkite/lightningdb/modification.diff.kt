@@ -5,6 +5,7 @@ package com.lightningkite.lightningdb
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.serializer
+import com.lightningkite.serialization.*
 
 inline fun <reified T> modification(old: T, new: T): Modification<T>? = modification(serializerOrContextual(), old, new)
 fun <T> modification(serializer: KSerializer<T>, old: T, new: T): Modification<T>? {

@@ -4,6 +4,7 @@ import com.lightningkite.lightningdb.*
 import com.lightningkite.kiteui.TypedWebSocket
 import com.lightningkite.kiteui.reactive.*
 import kotlinx.serialization.KSerializer
+import com.lightningkite.serialization.*
 
 interface ClientModelRestEndpoints<T : HasId<ID>, ID : Comparable<ID>> {
     suspend fun default(): T = throw IllegalArgumentException()

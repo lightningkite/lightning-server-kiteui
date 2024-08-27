@@ -2,15 +2,13 @@ package com.lightningkite.mppexampleapp
 
 import com.lightningkite.UUID
 import com.lightningkite.kiteui.Routable
+import com.lightningkite.kiteui.fetch
 import com.lightningkite.kiteui.forms.FieldVisibility
 import com.lightningkite.kiteui.forms.form
 import com.lightningkite.kiteui.forms.view
 import com.lightningkite.kiteui.views.ViewWriter
 import com.lightningkite.kiteui.models.*
-import com.lightningkite.kiteui.navigation.Screen
-import com.lightningkite.kiteui.navigation.ScreenNavigator
-import com.lightningkite.kiteui.navigation.UrlProperties
-import com.lightningkite.kiteui.navigation.encodeToString
+import com.lightningkite.kiteui.navigation.*
 import com.lightningkite.kiteui.reactive.*
 import com.lightningkite.kiteui.views.*
 import com.lightningkite.kiteui.views.direct.col
@@ -18,6 +16,12 @@ import com.lightningkite.kiteui.views.direct.scrolls
 import com.lightningkite.kiteui.views.direct.text
 import com.lightningkite.kiteui.views.l2.*
 import com.lightningkite.lightningdb.*
+import com.lightningkite.lightningserver.schema.LightningServerKSchema
+import com.lightningkite.lightningserver.schema.register
+import com.lightningkite.prepareModelsShared
+import com.lightningkite.serialization.ClientModule
+import com.lightningkite.serialization.DefaultDecoder
+import com.lightningkite.serialization.SerializationRegistry
 import com.lightningkite.uuid
 import kotlinx.datetime.Instant
 import kotlinx.serialization.Contextual
@@ -25,6 +29,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.serializer
+import prepareModelsClient
 import kotlin.math.absoluteValue
 import kotlin.time.Duration.Companion.seconds
 
@@ -33,8 +38,8 @@ val defaultTheme = Theme.flat("default", Angle(0.55f))// brandBasedExperimental(
 val appTheme = Property<Theme>(defaultTheme)
 
 fun ViewWriter.app(navigator: ScreenNavigator, dialog: ScreenNavigator) {
-    prepareModels()
-    com.lightningkite.lightningdb.prepareModels()
+    prepareModelsShared()
+    prepareModelsClient()
 //    rootTheme = { appTheme() }
     appNav(navigator, dialog) {
         appName = "KiteUI Sample App"
@@ -69,7 +74,7 @@ class HomeScreen : Screen {
 //                text { ::content { prop().toString() }}
 //            }
 //
-            val json = Json { serializersModule = ClientModule }
+            val json = DefaultJson
             Query.serializer(LargeTestModel.serializer()).let {
                 val prop = Property(Query<LargeTestModel>())
                 card - form(it, prop)
@@ -104,6 +109,24 @@ class HomeScreen : Screen {
 //            val prop2 = Property(vtype())
 //            form(vtype, prop2, listOf())
 //            text { ::content { prop2().toString() }}
+        }
+    }
+}
+
+@Routable("real-test")
+class RealTestScreen : Screen {
+    override fun ViewWriter.render() {
+        scrolls - col {
+            val schema = asyncReadable { fetch("http://localhost:8080/meta/kschema").text().let { DefaultJson.decodeFromString(LightningServerKSchema.serializer(), it) } }
+            reactive {
+                clearChildren()
+                val s = schema()
+                val registry = SerializationRegistry(ClientModule)
+                registry.register(s)
+                val user = s.structures.values.find { it.serialName.contains("User") }!!
+                val userT = user.Concrete(registry, arrayOf())
+                form(userT, Property(userT()))
+            }
         }
     }
 }

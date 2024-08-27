@@ -7,6 +7,7 @@ import com.lightningkite.kiteui.reactive.Writable
 import com.lightningkite.kiteui.reactive.withWrite
 import com.lightningkite.kiteui.views.ViewWriter
 import com.lightningkite.lightningdb.*
+import com.lightningkite.serialization.*
 import kotlinx.serialization.ContextualSerializer
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer

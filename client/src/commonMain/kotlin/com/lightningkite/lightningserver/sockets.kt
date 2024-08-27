@@ -1,7 +1,8 @@
-package com.lightningkite.lightningdb
+package com.lightningkite.lightningserver
 
 import com.lightningkite.kiteui.*
 import com.lightningkite.kiteui.reactive.*
+import com.lightningkite.lightningserver.websocket.MultiplexMessage
 import com.lightningkite.uuid
 import kotlinx.serialization.json.Json
 
@@ -57,9 +58,9 @@ fun multiplexSocket(
 
         val lifecycle = CalculationContext.Standard().apply {
             reactiveScope {
-                val shouldBeOn = shouldBeOn.await() > 0
-                val isOn = channelOpen.await()
-                val parentConnected = shared.connected.await()
+                val shouldBeOn = shouldBeOn() > 0
+                val isOn = channelOpen()
+                val parentConnected = shared.connected()
                 if (shouldBeOn && parentConnected && !isOn) {
                     shared.send(
                         MultiplexMessage(
