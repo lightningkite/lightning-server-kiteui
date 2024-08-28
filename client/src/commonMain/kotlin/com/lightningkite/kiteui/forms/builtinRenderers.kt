@@ -10,6 +10,10 @@ import com.lightningkite.kiteui.views.direct.*
 import com.lightningkite.kiteui.views.direct.icon
 import com.lightningkite.kiteui.views.l2.icon
 import com.lightningkite.lightningdb.*
+import com.lightningkite.lightningserver.files.ServerFile
+import com.lightningkite.lightningserver.files.ServerFileSerializer
+import com.lightningkite.lightningserver.schema.VirtualInstanceWithId
+import com.lightningkite.lightningserver.schema.VirtualStructConcreteWithId
 import com.lightningkite.serialization.*
 import kotlinx.datetime.*
 import kotlinx.serialization.ContextualSerializer
@@ -407,6 +411,19 @@ fun FormRenderer.Companion.builtins() {
                         }
                     )
                 }
+            }
+        }
+    }
+    object : FormRendererForType<ServerFile>(ServerFileSerializer) {
+        override fun render(
+            writer: ViewWriter,
+            selector: FormSelector<ServerFile>,
+            field: SerializableProperty<*, *>?,
+            writable: Writable<ServerFile>
+        ): Unit = with(writer) {
+            val prop = writable
+            defaultFieldWrapper(field) {
+                text("File will go here")
             }
         }
     }

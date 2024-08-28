@@ -12,13 +12,16 @@ import com.lightningkite.kiteui.navigation.*
 import com.lightningkite.kiteui.reactive.*
 import com.lightningkite.kiteui.views.*
 import com.lightningkite.kiteui.views.direct.col
+import com.lightningkite.kiteui.views.direct.recyclerView
 import com.lightningkite.kiteui.views.direct.scrolls
 import com.lightningkite.kiteui.views.direct.text
 import com.lightningkite.kiteui.views.l2.*
 import com.lightningkite.lightningdb.*
-import com.lightningkite.lightningserver.schema.LightningServerKSchema
-import com.lightningkite.lightningserver.schema.register
+import com.lightningkite.lightningserver.db.ClientModelRestEndpoints
+import com.lightningkite.lightningserver.db.ClientModelRestEndpointsStandardImpl
+import com.lightningkite.lightningserver.schema.*
 import com.lightningkite.prepareModelsShared
+import com.lightningkite.registerShared
 import com.lightningkite.serialization.ClientModule
 import com.lightningkite.serialization.DefaultDecoder
 import com.lightningkite.serialization.SerializationRegistry
@@ -126,6 +129,28 @@ class RealTestScreen : Screen {
                 val user = s.structures.values.find { it.serialName.contains("User") }!!
                 val userT = user.Concrete(registry, arrayOf())
                 form(userT, Property(userT()))
+            }
+        }
+    }
+}
+@Routable("real-test-2")
+class RealTest2Screen : Screen {
+    override fun ViewWriter.render() {
+        col {
+            val schema = asyncReadable { fetch("http://localhost:8080/meta/kschema").text().let { DefaultJson.decodeFromString(LightningServerKSchema.serializer(), it) } }
+            reactive {
+                clearChildren()
+                val s = schema()
+                val registry = SerializationRegistry(ClientModule)
+                registry.registerShared()
+                registry.register(s)
+                val endpoints = s.clientModelRestEndpoints(registry, wsToken = null, token = null)
+                val user = endpoints["test-model"] as ClientModelRestEndpointsStandardImpl<VirtualInstanceWithId, Comparable<Comparable<*>>>
+                expanding - recyclerView {
+                    children(asyncReadable { user.query(Query()) }) {
+                        card - view((user.serializer as VirtualStructConcreteWithId).wraps, it.lens { it.virtualInstance })
+                    }
+                }
             }
         }
     }

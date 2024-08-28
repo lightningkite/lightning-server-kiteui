@@ -77,7 +77,6 @@ internal class StructFormRenderer<T>(val serializer: KSerializer<T>) : FormRende
         val selector = FormSelector(field.serializer, field.serializableAnnotations)
         val size = renderer.size(selector)
         fun form(writer: ViewWriter, writable: Writable<T>) {
-            println("RENDER ${field.name}")
             val w = writable.lensPath(
                 DataClassPathAccess<T, T, S>(
                     DataClassPathSelf(serializer),
@@ -90,7 +89,6 @@ internal class StructFormRenderer<T>(val serializer: KSerializer<T>) : FormRende
                 renderer.render(writer, selector, field, w)
         }
         fun view(writer: ViewWriter, readable: Readable<T>) {
-            println("RENDER ${field.name}")
             val r = readable.lens { field.get(it) }
             renderer.renderReadOnly(writer, selector, field, r)
         }
@@ -141,10 +139,10 @@ internal class StructFormRenderer<T>(val serializer: KSerializer<T>) : FormRende
                 when(item.size) {
                     FormSize.Small -> current.add(item)
                     FormSize.Large -> {
-                        if(current.isNotEmpty()) {
-                            m.add(current)
-                            current = ArrayList()
-                        }
+//                        if(current.isNotEmpty()) {
+//                            m.add(current)
+//                            current = ArrayList()
+//                        }
                         m.add(listOf(item))
                     }
                 }
