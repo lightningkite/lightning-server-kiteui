@@ -289,19 +289,21 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
                     try {
                         apiCalls++
                         val last = q.lastKnownValue?.lastOrNull() ?: return@launchGlobal
-                        val after = Condition.And<T>(q.orderBy.mapIndexed { index, it ->
-                            val isLast = index == q.orderBy.lastIndex
-                            val f = it.field as DataClassPath<T, Comparable<Comparable<*>>>
-                            val v = f.get(last)!!
-                            f.mapCondition(
-                                if (it.ascending) {
-                                    if (isLast) Condition.GreaterThan(v)
-                                    else Condition.GreaterThanOrEqual(v)
-                                } else {
-                                    if (isLast) Condition.LessThan(v)
-                                    else Condition.LessThanOrEqual(v)
-                                }
-                            )
+                        val after = Condition.Or<T>((1..q.orderBy.size).map { count ->
+                            Condition.And(q.orderBy.take(count).mapIndexed { index, it ->
+                            val isLast = index == count - 1
+                                val f = it.field as DataClassPath<T, Comparable<Comparable<*>>>
+                                val v = f.get(last)!!
+                                f.mapCondition(
+                                    if (it.ascending) {
+                                        if (isLast) Condition.GreaterThan(v)
+                                        else Condition.GreaterThanOrEqual(v)
+                                    } else {
+                                        if (isLast) Condition.LessThan(v)
+                                        else Condition.LessThanOrEqual(v)
+                                    }
+                                )
+                            })
                         })
                         val limitDiff = q.limit - q.limitLoaded
                         val data = skipCache.query(Query(q.condition and after, q.orderBy, limit = limitDiff))

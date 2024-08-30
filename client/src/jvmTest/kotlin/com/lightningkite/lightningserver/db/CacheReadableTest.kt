@@ -113,6 +113,34 @@ class ModelCache3Test() {
             println("Complete")
         }
     }
+    @Test fun basicsLocalPullMoreSorted() {
+        val r = MockClientModelRestEndpoints<Item, Int>(::println)
+        r.items += (0..100).map { it to Item(it, 100 - it) }
+        val cache = ModelCache(r, Item.serializer())
+        cache.allowLoop = false
+
+        testContext {
+            val p = shared { cache.watch(Query<Item>(condition { it._id gte 50 }, orderBy = sort { it.creation.ascending(); it._id.ascending() }, limit = 5)) }
+            var out: List<Item> = listOf()
+            reactiveScope {
+                out = p()()
+            }
+
+            cache.regularly()
+            assertEquals((100 downTo 96).map { Item(it, 100 - it) }, out)
+            launch {
+                p().limit = 10
+            }
+            cache.regularly()
+            assertEquals((100 downTo 91).map { Item(it, 100 - it) }, out)
+            launch {
+                p().limit = 15
+            }
+            cache.regularly()
+            assertEquals((100 downTo 86).map { Item(it, 100 - it) }, out)
+            println("Complete")
+        }
+    }
     @Test fun followUpQuery() {
         val r = MockClientModelRestEndpoints<Item, Int>(::println)
         val cache = ModelCache(r, Item.serializer())
