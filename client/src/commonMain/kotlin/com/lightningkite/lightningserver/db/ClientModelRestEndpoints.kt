@@ -42,10 +42,14 @@ interface WritableModel<T> : Writable<T?> {
     fun invalidate(): Unit
 }
 
+interface LimitReadable<T>: Readable<List<T>> {
+    var limit: Int
+}
+
 interface ModelCollection<T : HasId<ID>, ID : Comparable<ID>> {
     operator fun get(id: ID): WritableModel<T>
-    suspend fun query(query: Query<T>): Readable<List<T>>
-    suspend fun watch(query: Query<T>): Readable<List<T>>
+    suspend fun query(query: Query<T>): LimitReadable<T>
+    suspend fun watch(query: Query<T>): LimitReadable<T>
     fun watch(id: ID): WritableModel<T> = get(id)
     suspend fun insert(item: T): WritableModel<T>
     suspend fun insert(item: List<T>): List<T>
