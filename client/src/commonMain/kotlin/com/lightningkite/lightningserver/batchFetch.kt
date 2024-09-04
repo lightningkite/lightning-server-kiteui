@@ -21,7 +21,7 @@ private class DomainRequestHandler(
     val delay: suspend (ms: Long) -> Unit = { ms -> kotlinx.coroutines.delay(ms) }
 ) {
     inner class TokenHandler(
-        val token: (suspend () -> String)?,
+        val token: (suspend () -> String?),
         val delay: suspend (ms: Long) -> Unit = { ms -> kotlinx.coroutines.delay(ms) }
     ) {
         var byId = HashMap<String, BulkHandler>()
@@ -69,8 +69,8 @@ private class DomainRequestHandler(
         }
     }
 
-    val byToken = HashMap<(suspend () -> String)?, TokenHandler>()
-    fun token(token: (suspend () -> String)?) = byToken.getOrPut(token) { TokenHandler(token, delay) }
+    val byToken = HashMap<(suspend () -> String?), TokenHandler>()
+    fun token(token: (suspend () -> String?)) = byToken.getOrPut(token) { TokenHandler(token, delay) }
 }
 
 private val queuedRequests = HashMap<String, DomainRequestHandler>()
@@ -80,7 +80,7 @@ private class BulkHandler(val request: BulkRequest, val response: Continuation<B
 suspend fun <OUT> batchFetch(
     url: String,
     method: HttpMethod = HttpMethod.GET,
-    token: (suspend () -> String)? = null,
+    token: (suspend () -> String?) = { null },
     bodyJson: String?,
     type: KSerializer<OUT>,
     json: Json = DefaultJson,
@@ -118,7 +118,7 @@ suspend fun <OUT> batchFetch(
 suspend inline fun <reified OUT> batchFetch(
     url: String,
     method: HttpMethod = HttpMethod.GET,
-    noinline token: (suspend () -> String)? = null,
+    noinline token: (suspend () -> String?) = { null },
     bodyJson: String?,
     json: Json = DefaultJson,
 ): OUT = batchFetch(url, method, token, bodyJson, json.serializersModule.serializer(typeOf<OUT>()) as KSerializer<OUT>, json)

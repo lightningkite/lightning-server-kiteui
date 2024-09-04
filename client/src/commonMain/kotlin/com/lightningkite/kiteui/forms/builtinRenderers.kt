@@ -67,6 +67,14 @@ object BuiltinRendering {
         FormRenderer.forType<Short>(FormSize.Inline, name = "Hexadecimal", priority = 0.9f) { it -> fieldTheme - textField { content bind it.lens(get = { it.toString(16) }, modify = { o, it -> it?.toShortOrNull(16) ?: o }) } }
         FormRenderer.forType<Int>(FormSize.Inline, name = "Hexadecimal", priority = 0.9f) { it -> fieldTheme - textField { content bind it.lens(get = { it.toString(16) }, modify = { o, it -> it?.toIntOrNull(16) ?: o }) } }
         FormRenderer.forType<Long>(FormSize.Inline, name = "Hexadecimal", priority = 0.9f) { it -> fieldTheme - textField { content bind it.lens(get = { it.toString(16) }, modify = { o, it -> it?.toLongOrNull(16) ?: o }) } }
+        FormRenderer.forType<Byte?>(FormSize.Inline, name = "Binary", priority = 0.8f) { it -> fieldTheme - textField { content bind it.lens(get = { it?.toString(2) ?: "" }, set = { it?.toByteOrNull(2) }) } }
+        FormRenderer.forType<Short?>(FormSize.Inline, name = "Binary", priority = 0.8f) { it -> fieldTheme - textField { content bind it.lens(get = { it?.toString(2) ?: "" }, set = { it?.toShortOrNull(2) }) } }
+        FormRenderer.forType<Int?>(FormSize.Inline, name = "Binary", priority = 0.8f) { it -> fieldTheme - textField { content bind it.lens(get = { it?.toString(2) ?: "" }, set = { it?.toIntOrNull(2) }) } }
+        FormRenderer.forType<Long?>(FormSize.Inline, name = "Binary", priority = 0.8f) { it -> fieldTheme - textField { content bind it.lens(get = { it?.toString(2) ?: "" }, set = { it?.toLongOrNull(2) }) } }
+        FormRenderer.forType<Byte>(FormSize.Inline, name = "Binary", priority = 0.8f) { it -> fieldTheme - textField { content bind it.lens(get = { it.toString(2) }, modify = { o, it -> it?.toByteOrNull(2) ?: o }) } }
+        FormRenderer.forType<Short>(FormSize.Inline, name = "Binary", priority = 0.8f) { it -> fieldTheme - textField { content bind it.lens(get = { it.toString(2) }, modify = { o, it -> it?.toShortOrNull(2) ?: o }) } }
+        FormRenderer.forType<Int>(FormSize.Inline, name = "Binary", priority = 0.8f) { it -> fieldTheme - textField { content bind it.lens(get = { it.toString(2) }, modify = { o, it -> it?.toIntOrNull(2) ?: o }) } }
+        FormRenderer.forType<Long>(FormSize.Inline, name = "Binary", priority = 0.8f) { it -> fieldTheme - textField { content bind it.lens(get = { it.toString(2) }, modify = { o, it -> it?.toLongOrNull(2) ?: o }) } }
         FormRenderer.forType<Float?>(FormSize.Inline, name = "Number") { it -> fieldTheme - numberField { content bind it.lens(get = { it?.toDouble() }, set = { it?.toFloat() }) } }
         FormRenderer.forType<Double?>(FormSize.Inline, name = "Number") { it -> fieldTheme - numberField { content bind it } }
         FormRenderer.forType<Float>(FormSize.Inline, name = "Number") { it -> fieldTheme - numberField { content bind it.lens(get = { it.toDouble() }, modify = { o, it -> it?.toFloat() ?: o }) } }

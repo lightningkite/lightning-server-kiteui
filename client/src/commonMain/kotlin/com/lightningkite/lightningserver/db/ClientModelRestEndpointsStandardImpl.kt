@@ -6,6 +6,7 @@ import com.lightningkite.kiteui.*
 import com.lightningkite.kiteui.navigation.DefaultJson
 import com.lightningkite.kiteui.navigation.UrlProperties
 import com.lightningkite.lightningdb.*
+import com.lightningkite.lightningserver.networking.Fetcher
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.builtins.ListSerializer
@@ -15,10 +16,6 @@ import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.properties.Properties
 import com.lightningkite.serialization.*
-
-interface Fetcher {
-    suspend operator fun <T> invoke(url: String, method: HttpMethod, jsonBody: String?, outSerializer: KSerializer<T>): T
-}
 
 open class ClientModelRestEndpointsStandardImpl<T: HasId<ID>, ID: Comparable<ID>>(
     val fetchImplementation: Fetcher,

@@ -5,16 +5,24 @@ import com.lightningkite.kiteui.navigation.DefaultJson
 import com.lightningkite.lightningdb.*
 import com.lightningkite.lightningserver.LSError
 import com.lightningkite.lightningserver.LsErrorException
+import com.lightningkite.lightningserver.auth.AuthClientEndpoints
+import com.lightningkite.lightningserver.auth.UserAuthClientEndpoints
 import com.lightningkite.lightningserver.batchFetch
 import com.lightningkite.lightningserver.db.ClientModelRestEndpoints
 import com.lightningkite.lightningserver.db.ClientModelRestEndpointsStandardImpl
-import com.lightningkite.lightningserver.db.Fetcher
+import com.lightningkite.lightningserver.networking.BulkFetcher
+import com.lightningkite.lightningserver.networking.ConnectivityOnlyFetcher
 import com.lightningkite.serialization.*
+import kotlinx.datetime.Clock.System.now
+import kotlinx.datetime.Instant
 import kotlinx.serialization.KSerializer
+import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.Json
+import kotlin.time.Duration.Companion.minutes
 
 fun SerializationRegistry.register(schema: LightningServerKSchema) {
     schema.structures.values.forEach { register(it) }
@@ -31,52 +39,11 @@ fun LightningServerKSchema.bulkEndpoint() = endpoints.find {
             it.output.serialName == "com.lightningkite.lightningserver.typed.BulkResponse"
 }
 
-private class BulkFetcher(val base: String, val json: Json, val token: (suspend () -> String)?) : Fetcher {
-    override suspend fun <T> invoke(
-        url: String,
-        method: HttpMethod,
-        jsonBody: String?,
-        outSerializer: KSerializer<T>
-    ): T {
-        return batchFetch("$base/$url", method, token, jsonBody, outSerializer, json)
-    }
-}
-
-private class ConnectivityOnlyFetcher(val base: String, val json: Json, val token: (suspend () -> String)?) : Fetcher {
-    override suspend fun <T> invoke(
-        url: String,
-        method: HttpMethod,
-        jsonBody: String?,
-        outSerializer: KSerializer<T>
-    ): T {
-        return connectivityFetch("$base/$url", method, {
-            if (token != null) httpHeaders(
-                "Authorization" to token.invoke(),
-                "Accept" to "application/json"
-            ) else httpHeaders("Accept" to "application/json")
-        }, RequestBodyText(jsonBody ?: "{}", "application/json")).let {
-            if (!it.ok) {
-                val text = it.text()
-                try {
-                    val e = json.decodeFromString(LSError.serializer(), text)
-                    throw LsErrorException(it.status, e)
-                } catch (e: Exception) {
-                    throw LsErrorException(it.status, LSError(it.status.toInt(), "Unknown", message = text))
-                }
-            } else {
-                @Suppress("UNCHECKED_CAST")
-                if (outSerializer.descriptor.serialName == "kotlin.Unit") return Unit as T
-                json.decodeFromString(outSerializer, it.text())
-            }
-        }
-    }
-}
-
 fun LightningServerKSchema.clientModelRestEndpoints(
     registry: SerializationRegistry,
     json: Json = DefaultJson,
-    wsToken: String?,
-    token: (suspend () -> String)?
+    wsToken: () -> String?,
+    token: (suspend () -> String?)
 ): Map<String, ClientModelRestEndpoints<*, *>> {
     val bulk = bulkEndpoint()
     return this.models.mapValues { entry ->
@@ -97,7 +64,7 @@ fun LightningServerKSchema.clientModelRestEndpoints(
                 } ?: ConnectivityOnlyFetcher(httpPath, json, token),
                 wsImplementation = {
                     multiplexSocket(
-                        url = this.baseWsUrl + "?path=multiplex" + (wsToken?.let { "?jwt=$it" } ?: ""),
+                        url = this.baseWsUrl + "?path=multiplex" + (wsToken()?.let { "?jwt=$it" } ?: ""),
                         path = entry.value.path,
                         params = emptyMap(),
                         json = json,
@@ -125,12 +92,48 @@ class VirtualInstanceWithId(val virtualInstance: VirtualInstance): HasId<Compara
     override fun toString(): String = "${type.struct.serialName}(${values.zip(type.struct.fields).joinToString { "${it.second.name}=${it.first}" }})"
 }
 
-private interface ignoreClientModelRestEndpointsPlusWs<T : HasId<ID>, ID : Comparable<ID>> :
-    ClientModelRestEndpoints<T, ID> {
-    fun watch(): TypedWebSocket<Query<T>, ListChange<T>>
-}
+//fun LightningServerKSchema.authEndpoints(
+//    registry: SerializationRegistry,
+//    json: Json = DefaultJson,
+//    wsToken: () -> String?,
+//    token: (suspend () -> String?)
+//): AuthClientEndpoints {
+//    val bulk = bulkEndpoint()
+//    return AuthClientEndpoints(
+//        subjects = endpoints.filter {
+//            it.path.endsWith("login") && it.input.serialName == ListSerializer(Unit.serializer()).descriptor.serialName && it.input.arguments.firstOrNull()?.serialName == "com.lightningkite.lightningserver.auth.proof.Proof"
+//        }.map {
+//            val httpPath = it.path.substringBeforeLast('/')
+//            UserAuthClientEndpoints.StandardImpl(
+//                fetchImplementation = bulk?.let {
+//                    BulkFetcher(httpPath, json, token)
+//                } ?: ConnectivityOnlyFetcher(httpPath, json, token),,
+//                idSerializer = re
+//            )
+//        }
+//    )
+//}
 
-private interface ignoreClientModelRestEndpointsPlusUpdatesWebsocket<T : HasId<ID>, ID : Comparable<ID>> :
-    ClientModelRestEndpoints<T, ID> {
-    fun updates(): TypedWebSocket<Condition<T>, CollectionUpdates<T, ID>>
+class ExternalServer(
+    val schema: LightningServerKSchema,
+    val registry: SerializationRegistry = SerializationRegistry.master,
+) {
+    val auth: AuthClientEndpoints = TODO()
+    var subjectIndex = 0
+    var sessionToken: String? = null
+    private var lastRefresh: Instant = now()
+    private var token: Async<String> = asyncGlobal {
+        auth.authenticatedSubjects[subjectIndex]!!.getTokenSimple(sessionToken!!)
+    }
+    private suspend fun accessToken(): String? {
+        if (sessionToken == null) return null
+        if (now() - lastRefresh > 4.minutes) {
+            lastRefresh = now()
+            token = asyncGlobal {
+                auth.authenticatedSubjects[subjectIndex]!!.getTokenSimple(sessionToken!!)
+            }
+        }
+        return token.await()
+    }
+//    val models: Map<String, ClientModelRestEndpoints<*, *>> = schema.clientModelRestEndpoints(registry)
 }
