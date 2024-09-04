@@ -3,7 +3,6 @@ package com.lightningkite.mppexampleapp
 import com.lightningkite.UUID
 import com.lightningkite.kiteui.Routable
 import com.lightningkite.kiteui.fetch
-import com.lightningkite.kiteui.forms.FieldVisibility
 import com.lightningkite.kiteui.forms.form
 import com.lightningkite.kiteui.forms.view
 import com.lightningkite.kiteui.views.ViewWriter
@@ -17,24 +16,18 @@ import com.lightningkite.kiteui.views.direct.scrolls
 import com.lightningkite.kiteui.views.direct.text
 import com.lightningkite.kiteui.views.l2.*
 import com.lightningkite.lightningdb.*
-import com.lightningkite.lightningserver.db.ClientModelRestEndpoints
 import com.lightningkite.lightningserver.db.ClientModelRestEndpointsStandardImpl
 import com.lightningkite.lightningserver.schema.*
 import com.lightningkite.prepareModelsShared
 import com.lightningkite.registerShared
 import com.lightningkite.serialization.ClientModule
-import com.lightningkite.serialization.DefaultDecoder
 import com.lightningkite.serialization.SerializationRegistry
+import com.lightningkite.serialization.serializableProperties
 import com.lightningkite.uuid
 import kotlinx.datetime.Instant
 import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.builtins.ListSerializer
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.serializer
 import prepareModelsClient
-import kotlin.math.absoluteValue
-import kotlin.time.Duration.Companion.seconds
 
 //val defaultTheme = brandBasedExperimental("bsa", normalBack = Color.white)
 val defaultTheme = Theme.flat("default", Angle(0.55f))// brandBasedExperimental("bsa", normalBack = Color.white)
@@ -43,6 +36,8 @@ val appTheme = Property<Theme>(defaultTheme)
 fun ViewWriter.app(navigator: ScreenNavigator, dialog: ScreenNavigator) {
     prepareModelsShared()
     prepareModelsClient()
+    prepareModelsDemoClient()
+    LargeTestModel.serializer().serializableProperties!!
 //    rootTheme = { appTheme() }
     appNav(navigator, dialog) {
         appName = "KiteUI Sample App"

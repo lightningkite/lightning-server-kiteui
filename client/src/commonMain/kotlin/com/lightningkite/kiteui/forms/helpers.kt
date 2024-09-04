@@ -5,22 +5,19 @@ package com.lightningkite.kiteui.forms
 import com.lightningkite.*
 import com.lightningkite.kiteui.models.*
 import kotlinx.serialization.KSerializer
-import com.lightningkite.kiteui.reactive.*
 import com.lightningkite.kiteui.views.*
 import com.lightningkite.kiteui.views.direct.*
-import com.lightningkite.kiteui.views.l2.icon
-import com.lightningkite.lightningdb.*
 import com.lightningkite.serialization.*
-import kotlinx.datetime.*
-import kotlinx.serialization.ContextualSerializer
 import kotlinx.serialization.ExperimentalSerializationApi
-import kotlinx.serialization.builtins.*
 import kotlinx.serialization.descriptors.*
 import kotlinx.serialization.encoding.*
 
 
 
-enum class FormSize { Small, Large }
+enum class FormSize {
+    Inline,
+    Block,
+}
 
 val SerializableProperty<*, *>.displayName: String
     get() = this.serializableAnnotations.find { it.fqn == "com.lightningkite.lightningdb.DisplayName" }?.values?.get(
