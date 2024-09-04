@@ -58,8 +58,6 @@ data class ViewRenderer<T>(
     }
 
     companion object {
-        var module by FormRenderer.Companion::module
-
         private val others: ArrayList<Generator> = ArrayList()
         private val type: HashMap<String, ArrayList<Generator>> = HashMap()
         private val kind: HashMap<SerialKind, ArrayList<Generator>> = HashMap()

@@ -135,12 +135,9 @@ class RealTest2Screen : Screen {
             val schema = asyncReadable { fetch("http://localhost:8080/meta/kschema").text().let { DefaultJson.decodeFromString(LightningServerKSchema.serializer(), it) } }
             reactive {
                 clearChildren()
-                val s = schema()
-                val registry = SerializationRegistry(ClientModule)
-                registry.registerShared()
-                registry.register(s)
-                val endpoints = s.clientModelRestEndpoints(registry, wsToken = null, token = null)
-                val user = endpoints["test-model"] as ClientModelRestEndpointsStandardImpl<VirtualInstanceWithId, Comparable<Comparable<*>>>
+                val server = ExternalLightningServer(schema())
+                println(server.models)
+                val user = server.models["/test-model/rest"] as ClientModelRestEndpointsStandardImpl<VirtualInstanceWithId, Comparable<Comparable<*>>>
                 expanding - recyclerView {
                     children(asyncReadable { user.query(Query()) }) {
                         card - view((user.serializer as VirtualStructConcreteWithId).wraps, it.lens { it.virtualInstance })

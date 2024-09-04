@@ -10,12 +10,12 @@ import kotlinx.serialization.serializer
 
 inline fun <reified V> ViewRenderer.Companion.forType(
     size: FormSize,
-    name: String = module.serializer<V>().descriptor.serialName.substringAfterLast('.').titleCase(),
+    name: String = FormRenderer.module.serializer<V>().descriptor.serialName.substringAfterLast('.').titleCase(),
     priority: Float = 1f,
     crossinline generate: ViewWriter.(prop: Readable<V>)->Unit
 ) {
     plusAssign(object: ViewRenderer.Generator {
-        override val type: String? = module.serializer<V>().descriptor.serialName
+        override val type: String? = FormRenderer.module.serializer<V>().descriptor.serialName
         override val name: String = name
         override val basePriority: Float = priority
         @Suppress("UNCHECKED_CAST")
@@ -26,12 +26,12 @@ inline fun <reified V> ViewRenderer.Companion.forType(
 }
 inline fun <reified V> FormRenderer.Companion.forType(
     size: FormSize,
-    name: String = module.serializer<V>().descriptor.serialName.substringAfterLast('.').titleCase(),
+    name: String = FormRenderer.module.serializer<V>().descriptor.serialName.substringAfterLast('.').titleCase(),
     priority: Float = 1f,
     crossinline generate: ViewWriter.(prop: Writable<V>)->Unit
 ) {
     plusAssign(object: FormRenderer.Generator {
-        override val type: String? = module.serializer<V>().descriptor.serialName
+        override val type: String? = FormRenderer.module.serializer<V>().descriptor.serialName
         override val name: String = name
         override val basePriority: Float = priority
         @Suppress("UNCHECKED_CAST")
@@ -43,12 +43,12 @@ inline fun <reified V> FormRenderer.Companion.forType(
 
 inline fun <reified V> ViewRenderer.Companion.forTypeWithField(
     size: FormSize,
-    name: String = module.serializer<V>().descriptor.serialName.substringAfterLast('.').titleCase(),
+    name: String = FormRenderer.module.serializer<V>().descriptor.serialName.substringAfterLast('.').titleCase(),
     priority: Float = 1f,
     crossinline generate: ViewWriter.(field: SerializableProperty<*, *>?, prop: Readable<V>)->Unit
 ) {
     plusAssign(object: ViewRenderer.Generator {
-        override val type: String? = module.serializer<V>().descriptor.serialName
+        override val type: String? = FormRenderer.module.serializer<V>().descriptor.serialName
         override val name: String = name
         override val basePriority: Float = priority
         @Suppress("UNCHECKED_CAST")
@@ -60,12 +60,12 @@ inline fun <reified V> ViewRenderer.Companion.forTypeWithField(
 }
 inline fun <reified V> FormRenderer.Companion.forTypeWithField(
     size: FormSize,
-    name: String = module.serializer<V>().descriptor.serialName.substringAfterLast('.').titleCase(),
+    name: String = FormRenderer.module.serializer<V>().descriptor.serialName.substringAfterLast('.').titleCase(),
     priority: Float = 1f,
     crossinline generate: ViewWriter.(field: SerializableProperty<*, *>?, prop: Writable<V>)->Unit
 ) {
     plusAssign(object: FormRenderer.Generator {
-        override val type: String? = module.serializer<V>().descriptor.serialName
+        override val type: String? = FormRenderer.module.serializer<V>().descriptor.serialName
         override val name: String = name
         override val basePriority: Float = priority
         @Suppress("UNCHECKED_CAST")

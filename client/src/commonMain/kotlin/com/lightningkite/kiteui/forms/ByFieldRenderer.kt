@@ -74,28 +74,27 @@ object ByFieldRenderer : FormRenderer.Generator, ViewRenderer.Generator {
         ) {
 
             inline fun f(viewWriter: ViewWriter, render: Renderer<*>, inner: ViewWriter.()->Unit) = with(viewWriter) {
-                if(render.handlesField) {
-                    inner()
-                } else {
-                    field?.importance?.let {
-                        when (it) {
-                            in 1..6 -> HeaderSizeSemantic(it).onNext
-                            7 -> {}
-                            8 -> SubtextSemantic.onNext
-                            else -> {}
-                        }
+                field.importance.let {
+                    when (it) {
+                        in 1..6 -> HeaderSizeSemantic(it).onNext
+                        7 -> {}
+                        8 -> SubtextSemantic.onNext
+                        else -> {}
                     }
-                    if (field == null || field.doesNotNeedLabel) inner()
-                    else field.sentence?.let {
+                }
+                if(render.handlesField || field.doesNotNeedLabel) {
+                    inner(this)
+                } else {
+                    field.sentence?.let {
                         val before = it.substringBefore('_')
                         val after = it.substringAfter('_')
-                        atBottom - row {
+                        row {
                             spacing = 0.3.rem
                             if (before.isNotBlank()) {
                                 centered - text(before)
                             }
                             if (before.isBlank() || after.isBlank()) expanding
-                            inner()
+                            inner(this)
                             if (after.isNotBlank()) {
                                 centered - text(after)
                             }
@@ -103,7 +102,7 @@ object ByFieldRenderer : FormRenderer.Generator, ViewRenderer.Generator {
                     } ?: col {
                         spacing = 0.px
                         subtext(field.displayName)
-                        inner()
+                        inner(this)
                     }
                 }
             }
@@ -116,14 +115,18 @@ object ByFieldRenderer : FormRenderer.Generator, ViewRenderer.Generator {
                     )
                 )
                 if (field.visibility == FieldVisibility.READ)
-                    f(writer, view) { view.render(this, field, w) }
+                    f(writer, view) {
+                        view.render(this, field, w)
+                    }
                 else
-                    f(writer, form) { form.render(this, field, w) }
+                    f(writer, form) {
+                        form.render(this, field, w)
+                    }
             }
 
             fun view(writer: ViewWriter, readable: Readable<T>) {
                 val r = readable.lens { field.get(it) }
-                f(writer, view) { view.render(writer, field, r) }
+                f(writer, view) { view.render(this@f, field, r) }
             }
         }
 

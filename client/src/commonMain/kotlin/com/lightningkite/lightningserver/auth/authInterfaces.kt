@@ -23,8 +23,8 @@ import kotlinx.serialization.serializer
 
 
 data class AuthClientEndpoints(
-    val subjects: List<UserAuthClientEndpoints<*>>,
-    val authenticatedSubjects: List<UserAuthClientEndpoints<*>>,
+    val subjects: Map<String, UserAuthClientEndpoints<*>>,
+    val authenticatedSubjects: Map<String, AuthenticatedUserAuthClientEndpoints<*, *>>,
     val smsProof: SmsProofClientEndpoints? = null,
     val emailProof: EmailProofClientEndpoints? = null,
     val oneTimePasswordProof: OneTimePasswordProofClientEndpoints? = null,
