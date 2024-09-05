@@ -58,8 +58,8 @@ val SerializableProperty<*, *>.sentence get() = serializableAnnotations.find {
 val SerializableProperty<*, *>.importance get() = serializableAnnotations.find {
     it.fqn == "com.lightningkite.lightningdb.Importance"
 }?.values?.values?.first()?.let {
-    it as? SerializableAnnotationValue.IntValue
-}?.value ?: if(name == "title") 1 else 7
+    it as? SerializableAnnotationValue.ByteValue
+}?.value?.toInt() ?: if(name == "title") 1 else 7
 val SerializableProperty<*, *>.visibility get() = when {
     serializableAnnotations.any {
         it.fqn == "com.lightningkite.lightningdb.AdminHidden"

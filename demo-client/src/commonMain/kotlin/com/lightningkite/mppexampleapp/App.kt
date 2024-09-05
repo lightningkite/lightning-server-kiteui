@@ -1,6 +1,6 @@
 package com.lightningkite.mppexampleapp
 
-import com.lightningkite.UUID
+import com.lightningkite.*
 import com.lightningkite.kiteui.Routable
 import com.lightningkite.kiteui.fetch
 import com.lightningkite.kiteui.forms.form
@@ -18,12 +18,9 @@ import com.lightningkite.kiteui.views.l2.*
 import com.lightningkite.lightningdb.*
 import com.lightningkite.lightningserver.db.ClientModelRestEndpointsStandardImpl
 import com.lightningkite.lightningserver.schema.*
-import com.lightningkite.prepareModelsShared
-import com.lightningkite.registerShared
 import com.lightningkite.serialization.ClientModule
 import com.lightningkite.serialization.SerializationRegistry
 import com.lightningkite.serialization.serializableProperties
-import com.lightningkite.uuid
 import kotlinx.datetime.Instant
 import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
@@ -57,13 +54,12 @@ fun ViewWriter.app(navigator: ScreenNavigator, dialog: ScreenNavigator) {
 class HomeScreen : Screen {
     override fun ViewWriter.render() {
         scrolls - col {
-//            val prop = Property(Post())
-//            card - form(Post.serializer(), prop)
-//            card - view(Post.serializer(), prop)
+            val prop = Property(Post())
+            card - form(Post.serializer(), prop)
+            card - view(Post.serializer(), prop)
 //            val prop = Property<Condition<LargeTestModel>>(Condition.Never)
 //            card - form(serializer<Condition<LargeTestModel>>(), prop)
 //            text { ::content{ prop().toString() } }
-
 
 
 //            Condition.serializer(LargeTestModel.serializer()).let {
@@ -72,13 +68,13 @@ class HomeScreen : Screen {
 //                text { ::content { prop().toString() }}
 //            }
 //
-            val json = DefaultJson
-            Query.serializer(LargeTestModel.serializer()).let {
-                val prop = Property(Query<LargeTestModel>())
-                card - form(it, prop)
-                text { ::content { json.encodeToString(it, prop()) }}
-                text { ::content { UrlProperties.encodeToString(it, prop()) }}
-            }
+//            val json = DefaultJson
+//            Query.serializer(LargeTestModel.serializer()).let {
+//                val prop = Property(Query<LargeTestModel>())
+//                card - form(it, prop)
+//                text { ::content { json.encodeToString(it, prop()) }}
+//                text { ::content { UrlProperties.encodeToString(it, prop()) }}
+//            }
 
 //            ListSerializer(SortPartSerializer(LargeTestModel.serializer())).let {
 //                val prop = Property(it.default())
@@ -128,6 +124,7 @@ class RealTestScreen : Screen {
         }
     }
 }
+
 @Routable("real-test-2")
 class RealTest2Screen : Screen {
     override fun ViewWriter.render() {
@@ -136,7 +133,6 @@ class RealTest2Screen : Screen {
             reactive {
                 clearChildren()
                 val server = ExternalLightningServer(schema())
-                println(server.models)
                 val user = server.models["/test-model/rest"] as ClientModelRestEndpointsStandardImpl<VirtualInstanceWithId, Comparable<Comparable<*>>>
                 expanding - recyclerView {
                     children(asyncReadable { user.query(Query()) }) {
@@ -159,8 +155,14 @@ data class Post(
     @Multiline
     val body: String = "",
 
+    @Importance(8)
+    @Sentence("Posted at _")
+    @Denormalized
+    val postedAt: Instant = now(),
+
+    @Importance(8)
     @DoesNotNeedLabel val visibility: PostVisibility = PostVisibility.HIDDEN,
-    @Denormalized val likes: Int = 32
+    @Sentence("_ likes") @Denormalized val likes: Int = 32
 ) : HasId<UUID>
 
 @Serializable

@@ -75,6 +75,8 @@ object ByFieldRenderer : FormRenderer.Generator, ViewRenderer.Generator {
 
             inline fun f(viewWriter: ViewWriter, render: Renderer<*>, inner: ViewWriter.()->Unit) = with(viewWriter) {
                 field.importance.let {
+                    println("${field.name} annos are ${field.serializableAnnotations}")
+                    println("${field.name} importance is $it")
                     when (it) {
                         in 1..6 -> HeaderSizeSemantic(it).onNext
                         7 -> {}
@@ -93,8 +95,8 @@ object ByFieldRenderer : FormRenderer.Generator, ViewRenderer.Generator {
                             if (before.isNotBlank()) {
                                 centered - text(before)
                             }
-                            if (before.isBlank() || after.isBlank()) expanding
-                            inner(this)
+//                            if (before.isBlank() || after.isBlank()) expanding
+                            centered - inner(this)
                             if (after.isNotBlank()) {
                                 centered - text(after)
                             }
@@ -174,7 +176,9 @@ object ByFieldRenderer : FormRenderer.Generator, ViewRenderer.Generator {
                         m.add(current)
                         current = ArrayList()
                     }
-                    when (item.form.size) {
+                    if(item.field.importance < 7)
+                        m.add(listOf(item))
+                    else when (item.form.size) {
                         FormSize.Inline -> current.add(item)
                         FormSize.Block -> {
 //                        if(current.isNotEmpty()) {

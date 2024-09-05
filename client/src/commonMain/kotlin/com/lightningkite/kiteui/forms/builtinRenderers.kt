@@ -9,6 +9,7 @@ import com.lightningkite.kiteui.reactive.*
 import com.lightningkite.kiteui.views.centered
 import com.lightningkite.kiteui.views.direct.*
 import com.lightningkite.kiteui.views.fieldTheme
+import com.lightningkite.lightningdb.Multiline
 import com.lightningkite.lightningserver.files.ServerFile
 import com.lightningkite.uuid
 import kotlinx.datetime.*
@@ -196,6 +197,7 @@ object BuiltinRendering {
         FormRenderer.forType<Char>(FormSize.Inline, name = "Character") { it -> fieldTheme - textField { content bind it.lens(get = { it.toString() }, modify = { o, it -> it.firstOrNull() ?: o }) } }
         FormRenderer.forType<Char?>(FormSize.Inline, name = "Character") { it -> fieldTheme - textField { content bind it.lens(get = { it.toString() }, modify = { o, it -> it.firstOrNull() }) } }
         FormRenderer.forType<String>(FormSize.Inline, name = "Text") { it -> fieldTheme - textField { content bind it } }
+        FormRenderer.forType<String>(FormSize.Block, name = "Large Text", annotation = "com.lightningkite.lightningdb.Multiline", priority = 2f) { it -> fieldTheme - textArea { content bind it } }
         FormRenderer.forType<UUID>(FormSize.Inline) { it ->
             fieldTheme - textField {
                 content bind it.lens(get = { it.toString() }, modify = { o, it ->

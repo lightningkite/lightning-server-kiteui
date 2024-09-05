@@ -34,7 +34,7 @@ interface RendererGenerator {
     fun matches(selector: FormSelector<*>): Boolean {
         if (type != null && selector.serializer.descriptor.serialName != type) return false
         if (kind != null && selector.serializer.descriptor.kind != kind) return false
-        if (annotation != null && selector.serializer.serializableAnnotations.none { it.fqn == annotation }) return false
+        if (annotation != null && selector.annotations.none { it.fqn == annotation }) return false
         return true
     }
 }
@@ -124,7 +124,9 @@ data class FormRenderer<T>(
             type[key.serializer.descriptor.serialName]?.let { yieldAll(it) }
             kind[key.serializer.descriptor.kind]?.let { yieldAll(it) }
             key.annotations.forEach {  anno ->
-                annotation[anno.fqn]?.let { yieldAll(it) }
+                annotation[anno.fqn]?.let {
+                    yieldAll(it)
+                }
             }
             yieldAll(others)
         }
