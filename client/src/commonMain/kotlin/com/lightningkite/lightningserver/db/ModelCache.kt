@@ -175,8 +175,8 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
         }
     } ?: itemHolder(id)
 
-    override suspend fun query(query: Query<T>): LimitReadable<T> = listHolder(query)
-    override suspend fun watch(query: Query<T>): LimitReadable<T> = object : LimitReadable<T> {
+    override fun query(query: Query<T>): LimitReadable<T> = listHolder(query)
+    override fun watch(query: Query<T>): LimitReadable<T> = object : LimitReadable<T> {
         val under = listHolder(query)
         val basis = sockets?.let { sockets ->
             queryWatchCache.getOrPut(query) {
