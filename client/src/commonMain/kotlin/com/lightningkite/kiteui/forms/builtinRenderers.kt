@@ -3,6 +3,7 @@ package com.lightningkite.kiteui.forms
 import com.lightningkite.UUID
 import com.lightningkite.kiteui.locale.renderToString
 import com.lightningkite.kiteui.models.ThemeDerivation
+import com.lightningkite.kiteui.models.rem
 import com.lightningkite.kiteui.models.systemDefaultFixedWidthFont
 import com.lightningkite.kiteui.navigation.DefaultJson
 import com.lightningkite.kiteui.reactive.*
@@ -11,10 +12,13 @@ import com.lightningkite.kiteui.views.direct.*
 import com.lightningkite.kiteui.views.fieldTheme
 import com.lightningkite.lightningdb.Multiline
 import com.lightningkite.lightningserver.files.ServerFile
+import com.lightningkite.serialization.SerializableAnnotationValue
+import com.lightningkite.serialization.UUIDSerializer
 import com.lightningkite.uuid
 import kotlinx.datetime.*
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.serializer
 
 object BuiltinRendering {
     init {
@@ -196,13 +200,56 @@ object BuiltinRendering {
         FormRenderer.forType<Double>(FormSize.Inline, name = "Number") { it -> fieldTheme - numberField { content bind it.nullable() } }
         FormRenderer.forType<Char>(FormSize.Inline, name = "Character") { it -> fieldTheme - textField { content bind it.lens(get = { it.toString() }, modify = { o, it -> it.firstOrNull() ?: o }) } }
         FormRenderer.forType<Char?>(FormSize.Inline, name = "Character") { it -> fieldTheme - textField { content bind it.lens(get = { it.toString() }, modify = { o, it -> it.firstOrNull() }) } }
-        FormRenderer.forType<String>(FormSize.Inline, name = "Text") { it -> fieldTheme - textField { content bind it } }
-        FormRenderer.forType<String>(FormSize.Block, name = "Large Text", annotation = "com.lightningkite.lightningdb.Multiline", priority = 2f) { it -> fieldTheme - textArea { content bind it } }
-        FormRenderer.forType<UUID>(FormSize.Inline) { it ->
+        FormRenderer.forType<String>(
+            size = { selector ->
+                val maxLengthAnno = selector.annotations.find { it.fqn == "com.lightningkite.lightningdb.MaxLength" }?.values
+                val maxSize = (maxLengthAnno?.get("size") as? SerializableAnnotationValue.IntValue)?.value
+                val averageSize = ((maxLengthAnno?.get("average") as? SerializableAnnotationValue.IntValue)?.value ?: maxSize)?.times(3 / 4.0) ?: 20.0
+
+                FormSize(
+                    approximateWidth = averageSize * 3.0 / 4.0,
+                    approximateHeight = 1.0
+                )
+            },
+            name = "Text",
+            generate = { it -> fieldTheme - textField { content bind it } }
+        )
+        FormRenderer.forType<String>(
+            size = FormSize(40.0, 10.0),
+            name = "Large Text",
+            annotation = "com.lightningkite.lightningdb.Multiline",
+            priority = 2f,
+            generate = { it -> fieldTheme - sizeConstraints(minHeight = 10.rem) - textArea { content bind it } }
+        )
+        ViewRenderer.forType<String>(
+            size = FormSize(40.0, 10.0),
+            name = "Large Text Summary",
+            annotation = "com.lightningkite.lightningdb.Multiline",
+            priority = 0.8f,
+            generate = { it ->
+                text {
+                    ::content { it().substringBefore('\n') }
+                    wraps = false
+                    ellipsis = true
+                }
+            }
+        )
+        FormRenderer.forType<UUID>(FormSize(12.0, 1.0), UUIDSerializer) {
             fieldTheme - textField {
                 content bind it.lens(get = { it.toString() }, modify = { o, it ->
                     try {
-                        uuid(it)
+                        UUID.parse(it)
+                    } catch (e: Exception) {
+                        o
+                    }
+                })
+            }
+        }
+        FormRenderer.forType<UUID>(FormSize(12.0, 1.0)) {
+            fieldTheme - textField {
+                content bind it.lens(get = { it.toString() }, modify = { o, it ->
+                    try {
+                        UUID.parse(it)
                     } catch (e: Exception) {
                         o
                     }
@@ -211,7 +258,7 @@ object BuiltinRendering {
         }
         FormRenderer.forType<ServerFile>(FormSize.Inline) { it -> text("TODO") }
         FormRenderer.forType<Map<Unit, Unit>>(FormSize.Inline) { it -> text("TODO") }
-        FormRenderer.forType<Instant>(FormSize.Inline) { prop ->
+        FormRenderer.forType<Instant>(FormSize(approximateWidth = 16.0, approximateHeight = 1.0)) { prop ->
             fieldTheme - localDateTimeField {
                 content bind prop.lens(
                     get = { it.toLocalDateTime(TimeZone.currentSystemDefault()) },
@@ -219,7 +266,7 @@ object BuiltinRendering {
                 )
             }
         }
-        FormRenderer.forType<Instant?>(FormSize.Inline) { prop ->
+        FormRenderer.forType<Instant?>(FormSize(approximateWidth = 16.0, approximateHeight = 1.0)) { prop ->
             fieldTheme - localDateTimeField {
                 content bind prop.lens(
                     get = { it?.toLocalDateTime(TimeZone.currentSystemDefault()) },
@@ -227,17 +274,17 @@ object BuiltinRendering {
                 )
             }
         }
-        FormRenderer.forType<LocalDateTime>(FormSize.Inline) { prop -> fieldTheme - localDateTimeField { content bind prop.lens(get = { it }, modify = { old, it -> it ?: old }) } }
-        FormRenderer.forType<LocalDateTime?>(FormSize.Inline) { prop -> fieldTheme - localDateTimeField { content bind prop } }
-        FormRenderer.forType<LocalDate>(FormSize.Inline) { prop -> fieldTheme - localDateField { content bind prop.lens(get = { it }, modify = { old, it -> it ?: old }) } }
-        FormRenderer.forType<LocalDate?>(FormSize.Inline) { prop -> fieldTheme - localDateField { content bind prop } }
-        FormRenderer.forType<LocalTime>(FormSize.Inline) { prop -> fieldTheme - localTimeField { content bind prop.lens(get = { it }, modify = { old, it -> it ?: old }) } }
-        FormRenderer.forType<LocalTime?>(FormSize.Inline) { prop -> fieldTheme - localTimeField { content bind prop } }
+        FormRenderer.forType<LocalDateTime>(FormSize(approximateWidth = 16.0, approximateHeight = 1.0)) { prop -> fieldTheme - localDateTimeField { content bind prop.lens(get = { it }, modify = { old, it -> it ?: old }) } }
+        FormRenderer.forType<LocalDateTime?>(FormSize(approximateWidth = 16.0, approximateHeight = 1.0)) { prop -> fieldTheme - localDateTimeField { content bind prop } }
+        FormRenderer.forType<LocalDate>(FormSize(approximateWidth = 11.0, approximateHeight = 1.0)) { prop -> fieldTheme - localDateField { content bind prop.lens(get = { it }, modify = { old, it -> it ?: old }) } }
+        FormRenderer.forType<LocalDate?>(FormSize(approximateWidth = 11.0, approximateHeight = 1.0)) { prop -> fieldTheme - localDateField { content bind prop } }
+        FormRenderer.forType<LocalTime>(FormSize(approximateWidth = 5.0, approximateHeight = 1.0)) { prop -> fieldTheme - localTimeField { content bind prop.lens(get = { it }, modify = { old, it -> it ?: old }) } }
+        FormRenderer.forType<LocalTime?>(FormSize(approximateWidth = 5.0, approximateHeight = 1.0)) { prop -> fieldTheme - localTimeField { content bind prop } }
 
-        ViewRenderer.forType<Instant>(FormSize.Inline) { prop -> text { ::content { prop().renderToString() } } }
-        ViewRenderer.forType<LocalDateTime>(FormSize.Inline) { prop -> text { ::content { prop().renderToString() } } }
-        ViewRenderer.forType<LocalDate>(FormSize.Inline) { prop -> text { ::content { prop().renderToString() } } }
-        ViewRenderer.forType<LocalTime>(FormSize.Inline) { prop -> text { ::content { prop().renderToString() } } }
+        ViewRenderer.forType<Instant>(FormSize(approximateWidth = 16.0, approximateHeight = 1.0)) { prop -> text { ::content { prop().renderToString() } } }
+        ViewRenderer.forType<LocalDateTime>(FormSize(approximateWidth = 16.0, approximateHeight = 1.0)) { prop -> text { ::content { prop().renderToString() } } }
+        ViewRenderer.forType<LocalDate>(FormSize(approximateWidth = 11.0, approximateHeight = 1.0)) { prop -> text { ::content { prop().renderToString() } } }
+        ViewRenderer.forType<LocalTime>(FormSize(approximateWidth = 5.0, approximateHeight = 1.0)) { prop -> text { ::content { prop().renderToString() } } }
 
         FormRenderer += HorizontalListRenderer
         FormRenderer += VerticalListRenderer
@@ -272,6 +319,12 @@ object BuiltinRendering {
 
         ViewRenderer += JsonRenderer
         FormRenderer += JsonRenderer
+
+        ViewRenderer += ServerFileRenderer
+        FormRenderer += ServerFileRenderer
+
+        ViewRenderer += TableRenderer
+        FormRenderer += TableRenderer
     }
 }
 

@@ -24,7 +24,7 @@ import kotlinx.serialization.descriptors.StructureKind
 object MySealedFormRenderer : FormRenderer.Generator {
     override val name: String = "Options"
     override val kind: SerialKind = StructureKind.CLASS
-    override val size: FormSize = FormSize.Block
+    override fun size(selector: FormSelector<*>): FormSize = FormSize.Block
     override fun matches(selector: FormSelector<*>): Boolean {
         return selector.serializer is MySealedClassSerializerInterface<*>
     }

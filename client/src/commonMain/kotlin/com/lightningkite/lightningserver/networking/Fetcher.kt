@@ -33,7 +33,9 @@ class ConnectivityOnlyFetcher(val base: String, val json: Json, val token: (susp
         jsonBody: String?,
         outSerializer: KSerializer<T>
     ): T {
+        println("ConnectivityOnlyFetcher: $method $url $jsonBody, ${outSerializer.descriptor.serialName}")
         val token = token()
+        println("token: $token")
         return connectivityFetch("$base/$url", method, {
             if (token != null) httpHeaders(
                 "Authorization" to token,

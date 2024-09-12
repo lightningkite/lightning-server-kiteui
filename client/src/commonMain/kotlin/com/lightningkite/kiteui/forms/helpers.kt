@@ -13,10 +13,25 @@ import kotlinx.serialization.descriptors.*
 import kotlinx.serialization.encoding.*
 
 
-
-enum class FormSize {
-    Inline,
-    Block,
+data class FormSize(
+    val approximateWidth: Double,
+    val approximateHeight: Double,
+) {
+    companion object {
+        val Inline = FormSize(12.0, 1.0)
+        val Block = FormSize(100.0, 5.0)
+    }
+}
+data class FormLayoutPreferences(
+    val approximateWidthBound: Double? = null,
+    val approximateHeightBound: Double? = null,
+) {
+    companion object {
+        val Inline = FormLayoutPreferences(approximateWidthBound = 12.0, approximateHeightBound = null)
+        val Block = FormLayoutPreferences(approximateWidthBound = null, approximateHeightBound = 12.0)
+        val Bound = FormLayoutPreferences(approximateWidthBound = 12.0, approximateHeightBound = 2.0)
+        val Unbound = FormLayoutPreferences(approximateWidthBound = null, approximateHeightBound = null)
+    }
 }
 
 val SerializableProperty<*, *>.displayName: String

@@ -1,16 +1,16 @@
-package com.lightningkite.kiteui.forms
+package com.lightningkite.lightningserver.db
 
 import com.lightningkite.UUID
+import com.lightningkite.kiteui.forms.get
+import com.lightningkite.kiteui.forms.set
 import com.lightningkite.lightningdb.Query
-import com.lightningkite.lightningdb.default
-import com.lightningkite.lightningserver.db.LargeTestModel
+import com.lightningkite.serialization.default
 import com.lightningkite.uuid
 import kotlinx.datetime.Instant
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.serializer
-import org.junit.Assert.*
-import org.junit.Test
+import kotlin.test.Test
 import kotlin.time.Duration
 
 class HelpersKtTest {

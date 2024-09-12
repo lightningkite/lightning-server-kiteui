@@ -13,18 +13,17 @@ import com.lightningkite.kiteui.views.*
 import com.lightningkite.kiteui.views.direct.col
 import com.lightningkite.kiteui.views.direct.recyclerView
 import com.lightningkite.kiteui.views.direct.scrolls
-import com.lightningkite.kiteui.views.direct.text
 import com.lightningkite.kiteui.views.l2.*
 import com.lightningkite.lightningdb.*
 import com.lightningkite.lightningserver.db.ClientModelRestEndpointsStandardImpl
 import com.lightningkite.lightningserver.schema.*
 import com.lightningkite.serialization.ClientModule
 import com.lightningkite.serialization.SerializationRegistry
+import com.lightningkite.serialization.VirtualInstance
 import com.lightningkite.serialization.serializableProperties
 import kotlinx.datetime.Instant
 import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
-import prepareModelsClient
 
 //val defaultTheme = brandBasedExperimental("bsa", normalBack = Color.white)
 val defaultTheme = Theme.flat("default", Angle(0.55f))// brandBasedExperimental("bsa", normalBack = Color.white)
@@ -32,7 +31,6 @@ val appTheme = Property<Theme>(defaultTheme)
 
 fun ViewWriter.app(navigator: ScreenNavigator, dialog: ScreenNavigator) {
     prepareModelsShared()
-    prepareModelsClient()
     prepareModelsDemoClient()
     LargeTestModel.serializer().serializableProperties!!
 //    rootTheme = { appTheme() }
@@ -133,10 +131,10 @@ class RealTest2Screen : Screen {
             reactive {
                 clearChildren()
                 val server = ExternalLightningServer(schema())
-                val user = server.models["/test-model/rest"] as ClientModelRestEndpointsStandardImpl<VirtualInstanceWithId, Comparable<Comparable<*>>>
+                val user = server.models["/test-model/rest"] as ClientModelRestEndpointsStandardImpl<VirtualInstance, Comparable<Comparable<*>>>
                 expanding - recyclerView {
                     children(asyncReadable { user.query(Query()) }) {
-                        card - view((user.serializer as VirtualStructConcreteWithId).wraps, it.lens { it.virtualInstance })
+                        card - view(user.serializer, it)
                     }
                 }
             }

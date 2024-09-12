@@ -6,6 +6,7 @@ import com.lightningkite.kiteui.reactive.Property
 import com.lightningkite.kiteui.reactive.Readable
 import com.lightningkite.lightningdb.*
 import com.lightningkite.now
+import com.lightningkite.serialization.Partial
 import kotlinx.datetime.Instant
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.coroutineContext

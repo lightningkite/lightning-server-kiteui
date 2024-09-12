@@ -1,12 +1,15 @@
 package com.lightningkite.kiteui.forms
 
 import com.lightningkite.kiteui.models.Icon
+import com.lightningkite.kiteui.models.px
 import com.lightningkite.kiteui.models.rem
+import com.lightningkite.kiteui.models.times
 import com.lightningkite.kiteui.reactive.*
 import com.lightningkite.kiteui.views.card
 import com.lightningkite.kiteui.views.centered
 import com.lightningkite.kiteui.views.direct.button
 import com.lightningkite.kiteui.views.direct.row
+import com.lightningkite.kiteui.views.direct.scrollsHorizontally
 import com.lightningkite.kiteui.views.direct.text
 import com.lightningkite.kiteui.views.expanding
 import com.lightningkite.kiteui.views.forEachUpdating
@@ -29,23 +32,27 @@ abstract class ListRenderer<C> : FormRenderer.Generator, ViewRenderer.Generator 
 
     override val name: String get() = if(vertical) "Vertical $typeName" else "Horizontal $typeName"
     abstract override val type: String
-    override val size: FormSize = FormSize.Block
-    override fun priority(selector: FormSelector<*>): Float {
+    override fun size(selector: FormSelector<*>): FormSize {
         val innerSer = inner(selector.serializer as KSerializer<C>)
-        val inner = FormRenderer[selector.copy(innerSer, desiredSize = FormSize.Inline)] as FormRenderer<Any?>
-        return super<FormRenderer.Generator>.priority(selector) * (if(inner.size == (if(vertical) FormSize.Block else FormSize.Inline)) 1f else 0.5f)
+        val inner = FormRenderer[selector.copy(innerSer, desiredSize = if(vertical) FormLayoutPreferences.Block else FormLayoutPreferences.Bound)] as FormRenderer<Any?>
+        return if(vertical)
+            inner.size.copy(approximateHeight = (inner.size.approximateHeight) * 3 + 3)
+        else
+            inner.size.copy(approximateWidth = (inner.size.approximateWidth + 3) * 3 + 3)
     }
     @Suppress("UNCHECKED_CAST")
     override fun <T> form(selector: FormSelector<T>): FormRenderer<T> {
         val innerSer = selector.serializer.listElement()!!
-        val inner = FormRenderer[selector.copy(innerSer, desiredSize = FormSize.Inline)] as FormRenderer<Any?>
+        val inner = FormRenderer[selector.copy(innerSer, desiredSize = if(vertical) FormLayoutPreferences.Block else FormLayoutPreferences.Bound)] as FormRenderer<Any?>
         return FormRenderer(this, selector as FormSelector<C>) { _, writable ->
             row {
                 vertical = this@ListRenderer.vertical
+                if(!vertical) expanding - scrollsHorizontally
                 row {
                     vertical = this@ListRenderer.vertical
                     forEachUpdating(lens(writable).lensByElementAssumingSetNeverManipulates()) {
                         card - row {
+                            spacing = 0.px
                             if(this@ListRenderer.vertical) expanding
                             inner.render(this, null, it.flatten())
                             centered - button {
@@ -76,7 +83,7 @@ abstract class ListRenderer<C> : FormRenderer.Generator, ViewRenderer.Generator 
     @Suppress("UNCHECKED_CAST")
     override fun <T> view(selector: FormSelector<T>): ViewRenderer<T> {
         val innerSer = inner(selector.serializer as KSerializer<C>)
-        val inner = ViewRenderer[selector.copy(innerSer, desiredSize = FormSize.Inline)] as ViewRenderer<Any?>
+        val inner = ViewRenderer[selector.copy(innerSer, desiredSize = if(vertical) FormLayoutPreferences.Block else FormLayoutPreferences.Bound)] as ViewRenderer<Any?>
         return ViewRenderer(this, selector as FormSelector<C>) { _, readable ->
             row {
                 vertical = this@ListRenderer.vertical

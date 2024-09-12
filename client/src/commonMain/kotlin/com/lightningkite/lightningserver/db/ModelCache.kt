@@ -30,6 +30,8 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
         private set
     val log = ConsoleRoot.tag("ModelCache3(${serializer.descriptor.serialName.substringAfterLast('.')})")
     var totalInvalidation: Instant = Instant.DISTANT_PAST
+        private set
+
     override fun totallyInvalidate() {
         totalInvalidation = now()
     }
@@ -83,6 +85,7 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
         }
 
         override suspend fun set(value: T?) {
+            println("set $value")
             if (value == null) delete()
             else {
                 apiCalls++
@@ -90,7 +93,11 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
                 if (existing == null)
                     onFreshData(skipCache.insert(value))
                 else
-                    modification(serializer, existing, value)?.let { onFreshData(skipCache.modify(id, it)) }
+                    modification(serializer, existing, value)?.let {
+                        println("Will modify $id $it")
+                        onFreshData(skipCache.modify(id, it))
+                        println("Did modify $id $it")
+                    }
                 flushLists()
             }
         }
@@ -219,11 +226,11 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
     internal var allowLoop = true
 
     companion object {
-        val universalLoop: ArrayList<()->Unit> by lazy {
-            val listeners = ArrayList<()->Unit>()
+        val universalLoop: ArrayList<() -> Unit> by lazy {
+            val listeners = ArrayList<() -> Unit>()
             CalculationContext.NeverEnds.reactiveSuspending {
-                if(AppState.inForeground()) {
-                    while(true) {
+                if (AppState.inForeground()) {
+                    while (true) {
                         delay(100)
                         listeners.invokeAllSafe()
                     }
@@ -292,22 +299,7 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
                     try {
                         apiCalls++
                         val last = q.lastKnownValue?.lastOrNull() ?: return@launchGlobal
-                        val after = Condition.Or<T>((1..q.orderBy.size).map { count ->
-                            Condition.And(q.orderBy.take(count).mapIndexed { index, it ->
-                            val isLast = index == count - 1
-                                val f = it.field as DataClassPath<T, Comparable<Comparable<*>>>
-                                val v = f.get(last)!!
-                                f.mapCondition(
-                                    if (it.ascending) {
-                                        if (isLast) Condition.GreaterThan(v)
-                                        else Condition.GreaterThanOrEqual(v)
-                                    } else {
-                                        if (isLast) Condition.LessThan(v)
-                                        else Condition.LessThanOrEqual(v)
-                                    }
-                                )
-                            })
-                        })
+                        val after = q.orderBy.after(last)
                         val limitDiff = q.limit - q.limitLoaded
                         val data = skipCache.query(Query(q.condition and after, q.orderBy, limit = limitDiff))
                         data.forEach { itemHolder(it._id).onFreshDataSkipQueries(it) }
@@ -412,7 +404,7 @@ class ChangeUpdateWrapper<T : HasId<ID>, ID : Comparable<ID>>(
             if (it.condition == this.condition) {
                 messageList.forEach { it.resume(Unit) }
                 messageList.clear()
-            } else if(it.condition != null) println("Ignoring condition update ${it.condition}; does not match ${this.condition}")
+            } else if (it.condition != null) println("Ignoring condition update ${it.condition}; does not match ${this.condition}")
             onMessage(it)
         }
     }
@@ -535,7 +527,7 @@ abstract class CacheReadable<T> : BaseReadable2<T>() {
 
     fun invalidate() {
         freshDataReceivedAt = Instant.DISTANT_PAST
-        if(showReloadOnInvalidate) state = ReadableState.notReady
+        if (showReloadOnInvalidate) state = ReadableState.notReady
     }
 
     val upToDate: Boolean
@@ -546,6 +538,7 @@ abstract class CacheReadable<T> : BaseReadable2<T>() {
         get() {
             return !establishingSocket && !upToDate && inUse && !requestOpen
         }
+    val shouldPullExplanation: String get() = "!establishingSocket($establishingSocket) && !upToDate($upToDate)(!totalInvalidationRequired($totalInvalidationRequired) && (freshWithinCacheTime($freshWithinCacheTime) || wouldHaveSeenChanges($wouldHaveSeenChanges))) && inUse($inUse) && !requestOpen($requestOpen)"
 
     var establishingSocket: Boolean = false
     var socketIsLive: Boolean = false
@@ -562,7 +555,7 @@ abstract class CacheReadable<T> : BaseReadable2<T>() {
 
     fun onLoadStart() {
         requestOpen = true
-        if(showReload) state = ReadableState.notReady
+        if (showReload) state = ReadableState.notReady
     }
 
     fun partialUpdate(value: T) {
@@ -610,7 +603,7 @@ abstract class BaseReadable2<T>(start: ReadableState<T> = ReadableState.notReady
 
 class UpdatingQueryList<T : HasId<ID>, ID : Comparable<ID>>(val condition: Condition<T>, val orderBy: List<SortPart<T>>, limit: Int) {
     var limit: Int = limit
-    val comparator = orderBy.comparator!!
+    val comparator = orderBy.comparator ?: throw Error("No comparator found for ordering - this should not be possible")
     val queued = ArrayList<T>()
     var updatesMade: Boolean = false
     fun delete(id: ID) {
@@ -662,7 +655,7 @@ class UpdatingQueryList<T : HasId<ID>, ID : Comparable<ID>>(val condition: Condi
 }
 
 fun <T> List<SortPart<T>>.ensureTotal(serializer: KSerializer<T>): List<SortPart<T>> {
-    if(lastOrNull()?.field?.properties?.singleOrNull()?.name == "_id") return this
+    if (lastOrNull()?.field?.properties?.singleOrNull()?.name == "_id") return this
     @Suppress("UNCHECKED_CAST")
     return this + SortPart(DataClassPathAccess(DataClassPathSelf<T>(serializer), serializer.serializableProperties!!.find { it.name == "_id" } as SerializableProperty<T, Comparable<*>>))
 }

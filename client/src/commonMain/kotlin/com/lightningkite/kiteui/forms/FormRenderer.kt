@@ -3,9 +3,7 @@
 package com.lightningkite.kiteui.forms
 
 import com.lightningkite.kiteui.forms.ViewRenderer.Companion
-import com.lightningkite.kiteui.models.SubtextSemantic
-import com.lightningkite.kiteui.models.px
-import com.lightningkite.kiteui.models.rem
+import com.lightningkite.kiteui.models.*
 import com.lightningkite.kiteui.reactive.*
 import com.lightningkite.kiteui.views.RView
 import com.lightningkite.kiteui.views.ViewWriter
@@ -23,12 +21,17 @@ interface RendererGenerator {
     val type: String? get() = null
     val annotation: String? get() = null
     val handlesField: Boolean get() = false
-    val size: FormSize? get() = FormSize.Inline
+    fun size(selector: FormSelector<*>): FormSize = FormSize.Inline
     val basePriority: Float get() = 1f
     fun priority(selector: FormSelector<*>): Float {
         var amount = basePriority
         if (handlesField && selector.handlesField) amount *= 1.2f
-        if (size != null && size != selector.desiredSize) amount *= 0.8f
+        size(selector).let { size ->
+            val widthOverage = ((size.approximateWidth - (selector.desiredSize.approximateWidthBound ?: 1000.0)) / (selector.desiredSize.approximateWidthBound ?: 1000.0)).coerceAtLeast(0.0)
+            val heightOverage = ((size.approximateHeight - (selector.desiredSize.approximateHeightBound ?: 1000.0)) / (selector.desiredSize.approximateHeightBound ?: 1000.0)).coerceAtLeast(0.0)
+            amount *= 1 / (1f + widthOverage.toFloat())
+            amount *= 1 / (1f + heightOverage.toFloat())
+        }
         return amount
     }
     fun matches(selector: FormSelector<*>): Boolean {
@@ -49,7 +52,7 @@ interface Renderer<T> {
 data class ViewRenderer<T>(
     override val generator: ViewRenderer.Generator?,
     override val selector: FormSelector<T>,
-    override val size: FormSize = generator!!.size ?: FormSize.Block,
+    override val size: FormSize = generator!!.size(selector),
     override val handlesField: Boolean = generator!!.handlesField,
     val render: ViewWriter.(field: SerializableProperty<*, *>?, readable: Readable<T>) -> Unit
 ): Renderer<T> {
@@ -72,7 +75,8 @@ data class ViewRenderer<T>(
         }
         operator fun <T> get(key: FormSelector<T>): ViewRenderer<T> {
             val options = candidates(key).filter { it.matches(key) }.sortedByDescending { it.priority(key) }.map { it.view(key) }.toList()
-            return ViewRenderer(null, key, size = options.first().size ?: FormSize.Block, handlesField = options.first().handlesField) { field, readable ->
+            if(!key.withPicker) return options.first()
+            return ViewRenderer(null, key, size = options.first().size, handlesField = options.first().handlesField) { field, readable ->
                 val selected = Property(options.first())
                 stack {
                     stack {
@@ -84,7 +88,7 @@ data class ViewRenderer<T>(
                     }
                     sizeConstraints(width = 0.75.rem, height = 0.75.rem) - SubtextSemantic.onNext - atTopEnd - select {
                         spacing = 0.px
-                        bind(selected, Constant(options)) { it.generator?.name ?: "-" }
+                        bind(selected, Constant(options)) { (it.generator?.name ?: "-") + " (${it.generator?.priority(key)}, ${it.size.approximateWidth} x ${it.size.approximateHeight})" }
                     }
                 }
             }
@@ -105,7 +109,7 @@ data class ViewRenderer<T>(
 data class FormRenderer<T>(
     override val generator: FormRenderer.Generator?,
     override val selector: FormSelector<T>,
-    override val size: FormSize = generator!!.size ?: FormSize.Block,
+    override val size: FormSize = generator!!.size(selector),
     override val handlesField: Boolean = generator!!.handlesField,
     val render: ViewWriter.(field: SerializableProperty<*, *>?, writable: Writable<T>) -> Unit
 ): Renderer<T> {
@@ -132,7 +136,8 @@ data class FormRenderer<T>(
         }
         operator fun <T> get(key: FormSelector<T>): FormRenderer<T> {
             val options = candidates(key).filter { it.matches(key) }.sortedByDescending { it.priority(key) }.map { it.form(key) }.toList()
-            return FormRenderer(null, key, size = options.first().size ?: FormSize.Block, handlesField = options.first().handlesField) { field, writable ->
+            if(!key.withPicker) return options.first()
+            return FormRenderer(null, key, size = options.first().size, handlesField = options.first().handlesField) { field, writable ->
                 val selected = Property(options.first())
                 stack {
                     stack {
@@ -144,7 +149,7 @@ data class FormRenderer<T>(
                     }
                     sizeConstraints(width = 0.75.rem, height = 0.75.rem) - SubtextSemantic.onNext - atTopEnd - select {
                         spacing = 0.px
-                        bind(selected, Constant(options)) { it.generator?.name ?: "-" }
+                        bind(selected, Constant(options)) { (it.generator?.name ?: "-") + " (${it.generator?.priority(key)}, ${it.size.approximateWidth} x ${it.size.approximateHeight})" }
                     }
                 }
             }
@@ -165,8 +170,9 @@ data class FormRenderer<T>(
 class FormSelector<T>(
     serializer: KSerializer<T>,
     val annotations: List<SerializableAnnotation>,
-    val desiredSize: FormSize = FormSize.Block,
+    val desiredSize: FormLayoutPreferences = FormLayoutPreferences.Block,
     val handlesField: Boolean = false,
+    val withPicker: Boolean = true,
 ) {
     @Suppress("UNCHECKED_CAST")
     val serializer = run {
@@ -178,13 +184,15 @@ class FormSelector<T>(
     fun <O> copy(
         serializer: KSerializer<O>,
         annotations: List<SerializableAnnotation> = this.annotations,
-        desiredSize: FormSize = this.desiredSize,
+        desiredSize: FormLayoutPreferences = this.desiredSize,
         handlesField: Boolean = this.handlesField,
+        withPicker: Boolean = this.withPicker,
     ) = FormSelector<O>(
         serializer = serializer,
         annotations = annotations,
         desiredSize = desiredSize,
         handlesField = handlesField,
+        withPicker = withPicker
     )
 }
 
@@ -192,9 +200,10 @@ fun <T> ViewWriter.form(
     serializer: KSerializer<T>,
     writable: Writable<T>,
     annotations: List<SerializableAnnotation> = serializer.serializableAnnotations,
+    desiredSize: FormLayoutPreferences = FormLayoutPreferences.Unbound,
     field: SerializableProperty<*, *>? = null
 ) {
-    val sel = FormSelector<T>(serializer, annotations)
+    val sel = FormSelector<T>(serializer, annotations, desiredSize)
     FormRenderer[sel].render(this, field, writable)
 }
 
@@ -202,8 +211,9 @@ fun <T> ViewWriter.view(
     serializer: KSerializer<T>,
     readable: Readable<T>,
     annotations: List<SerializableAnnotation> = serializer.serializableAnnotations,
+    desiredSize: FormLayoutPreferences = FormLayoutPreferences.Unbound,
     field: SerializableProperty<*, *>? = null
 ) {
-    val sel = FormSelector<T>(serializer, annotations)
+    val sel = FormSelector<T>(serializer, annotations, desiredSize)
     ViewRenderer[sel].render(this, field, readable)
 }

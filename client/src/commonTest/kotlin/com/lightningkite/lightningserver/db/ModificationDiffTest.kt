@@ -1,15 +1,20 @@
 package com.lightningkite.lightningserver.db
 
 import com.lightningkite.lightningdb.*
+import com.lightningkite.serialization.*
 import com.lightningkite.now
+import com.lightningkite.prepareModelsShared
 import com.lightningkite.uuid
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class ModificationDiffTest {
+    init  {
+        prepareModelsShared()
+        prepareModelsClientTest()
+    }
     @Test
     fun testNullToNot() {
-        prepareModels()
         val old = LargeTestModel(embeddedNullable = null)
         val new = old.copy(embeddedNullable = ClassUsedForEmbedding())
         println(modification(old, new))
@@ -17,7 +22,6 @@ class ModificationDiffTest {
 
     @Test
     fun testNotToNull() {
-        prepareModels()
         val old = LargeTestModel(embeddedNullable = ClassUsedForEmbedding())
         val new = old.copy(embeddedNullable = null)
         println(modification(old, new))
@@ -25,7 +29,6 @@ class ModificationDiffTest {
 
     @Test
     fun testNotToNot() {
-        prepareModels()
         val old = LargeTestModel(embeddedNullable = ClassUsedForEmbedding())
         val new = old.copy(embeddedNullable = old.embeddedNullable?.copy(value2 = 42))
         println(modification(old, new))
@@ -33,7 +36,6 @@ class ModificationDiffTest {
 
     @Test
     fun cycling() {
-        prepareModels()
         fun check(mod: Modification<LargeTestModel>) {
             println("Checking $mod")
             run {
