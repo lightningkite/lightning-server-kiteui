@@ -32,19 +32,19 @@ abstract class ListRenderer<C> : FormRenderer.Generator, ViewRenderer.Generator 
 
     override val name: String get() = if(vertical) "Vertical $typeName" else "Horizontal $typeName"
     abstract override val type: String
-    override fun size(selector: FormSelector<*>): FormSize {
+    override fun size(module: FormModule, selector: FormSelector<*>): FormSize {
         val innerSer = inner(selector.serializer as KSerializer<C>)
-        val inner = FormRenderer[selector.copy(innerSer, desiredSize = if(vertical) FormLayoutPreferences.Block else FormLayoutPreferences.Bound)] as FormRenderer<Any?>
+        val inner = module.form(selector.copy(innerSer, desiredSize = if(vertical) FormLayoutPreferences.Block else FormLayoutPreferences.Bound)) as FormRenderer<Any?>
         return if(vertical)
             inner.size.copy(approximateHeight = (inner.size.approximateHeight) * 3 + 3)
         else
             inner.size.copy(approximateWidth = (inner.size.approximateWidth + 3) * 3 + 3)
     }
     @Suppress("UNCHECKED_CAST")
-    override fun <T> form(selector: FormSelector<T>): FormRenderer<T> {
+    override fun <T> form(module: FormModule, selector: FormSelector<T>): FormRenderer<T> {
         val innerSer = selector.serializer.listElement()!!
-        val inner = FormRenderer[selector.copy(innerSer, desiredSize = if(vertical) FormLayoutPreferences.Block else FormLayoutPreferences.Bound)] as FormRenderer<Any?>
-        return FormRenderer(this, selector as FormSelector<C>) { _, writable ->
+        val inner = module.form(selector.copy(innerSer, desiredSize = if(vertical) FormLayoutPreferences.Block else FormLayoutPreferences.Bound)) as FormRenderer<Any?>
+        return FormRenderer(module, this, selector as FormSelector<C>) { _, writable ->
             row {
                 vertical = this@ListRenderer.vertical
                 if(!vertical) expanding - scrollsHorizontally
@@ -81,10 +81,10 @@ abstract class ListRenderer<C> : FormRenderer.Generator, ViewRenderer.Generator 
         } as FormRenderer<T>
     }
     @Suppress("UNCHECKED_CAST")
-    override fun <T> view(selector: FormSelector<T>): ViewRenderer<T> {
+    override fun <T> view(module: FormModule, selector: FormSelector<T>): ViewRenderer<T> {
         val innerSer = inner(selector.serializer as KSerializer<C>)
-        val inner = ViewRenderer[selector.copy(innerSer, desiredSize = if(vertical) FormLayoutPreferences.Block else FormLayoutPreferences.Bound)] as ViewRenderer<Any?>
-        return ViewRenderer(this, selector as FormSelector<C>) { _, readable ->
+        val inner = module.view(selector.copy(innerSer, desiredSize = if(vertical) FormLayoutPreferences.Block else FormLayoutPreferences.Bound)) as ViewRenderer<Any?>
+        return ViewRenderer(module, this, selector as FormSelector<C>) { _, readable ->
             row {
                 vertical = this@ListRenderer.vertical
                 forEachUpdating(lens(readable)) {

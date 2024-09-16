@@ -15,42 +15,42 @@ import kotlinx.serialization.builtins.serializer
 object TableRenderer : FormRenderer.Generator, ViewRenderer.Generator {
     override val name: String = "Table"
     override val type: String = ListSerializer(Unit.serializer()).descriptor.serialName
-    override fun size(selector: FormSelector<*>): FormSize = FormSize.Block
+    override fun size(module: FormModule, selector: FormSelector<*>): FormSize = FormSize.Block
     fun add(collection: List<Any?>, item: Any?): List<Any?> = collection + item
     fun remove(collection: List<Any?>, item: Any?, index: Int): List<Any?> = collection.toMutableList().apply { this.removeAt(index) }
     fun inner(serializer: KSerializer<*>): KSerializer<Any?> = serializer.listElement()!! as KSerializer<Any?>
-    override fun matches(selector: FormSelector<*>): Boolean {
-        return super<FormRenderer.Generator>.matches(selector) && inner(selector.serializer).serializableProperties != null
+    override fun matches(module: FormModule, selector: FormSelector<*>): Boolean {
+        return super<FormRenderer.Generator>.matches(module, selector) && inner(selector.serializer).serializableProperties != null
     }
 
     val flp = FormLayoutPreferences(25.0, 10.0)
 
-    override fun priority(selector: FormSelector<*>): Float {
+    override fun priority(module: FormModule, selector: FormSelector<*>): Float {
         val innerSer = inner(selector.serializer)
-        val inner = FormRenderer[selector.copy(innerSer, desiredSize = flp)] as FormRenderer<Any?>
-        return super<FormRenderer.Generator>.priority(selector) * (if (inner.size == FormSize.Block) 1.1f else 0.6f)
+        val inner = module.form(selector.copy(innerSer, desiredSize = flp)) as FormRenderer<Any?>
+        return super<FormRenderer.Generator>.priority(module, selector) * (if (inner.size == FormSize.Block) 1.1f else 0.6f)
     }
 
     @Suppress("UNCHECKED_CAST")
-    override fun <T> form(selector: FormSelector<T>): FormRenderer<T> {
+    override fun <T> form(module: FormModule, selector: FormSelector<T>): FormRenderer<T> {
         val innerSer = selector.serializer.listElement()!!
-        val inner = FormRenderer[selector.copy(innerSer, desiredSize = flp)] as FormRenderer<Any?>
-        return FormRenderer(this, selector as FormSelector<List<Any?>>) { _, writable ->
+        val inner = module.form(selector.copy(innerSer, desiredSize = flp)) as FormRenderer<Any?>
+        return FormRenderer(module, this, selector as FormSelector<List<Any?>>) { _, writable ->
             text("TODO")
         } as FormRenderer<T>
     }
 
     @Suppress("UNCHECKED_CAST")
-    override fun <T> view(selector: FormSelector<T>): ViewRenderer<T> {
+    override fun <T> view(module: FormModule, selector: FormSelector<T>): ViewRenderer<T> {
         val innerSer = inner(selector.serializer as KSerializer<List<Any?>>)
-        return ViewRenderer(this, selector as FormSelector<List<Any?>>) { _, readable ->
-            sizeConstraints(height = 30.rem) - view(this, selector.context, innerSer, Constant(readable))
+        return ViewRenderer(module, this, selector as FormSelector<List<Any?>>) { _, readable ->
+            sizeConstraints(height = 30.rem) - view(this, module, innerSer, Constant(readable))
         } as ViewRenderer<T>
     }
 
     fun <T> view(
         writer: ViewWriter,
-        formContext: FormContext,
+        formModule: FormModule,
         innerSer: KSerializer<T>,
         readable: Readable<Readable<List<T>>>,
         columns: ImmediateWritable<List<DataClassPath<T, *>>> = Property(run {
@@ -73,13 +73,12 @@ object TableRenderer : FormRenderer.Generator, ViewRenderer.Generator {
         val rendererCache = HashMap<DataClassPath<T, Any?>, ViewRenderer<Any?>>()
         val anyCols = columns as ImmediateWritable<List<DataClassPath<T, Any?>>>
         fun renderer(path: DataClassPath<T, Any?>) = rendererCache.getOrPut(path) {
-            ViewRenderer[FormSelector(
-                context = formContext,
+            formModule.view(FormSelector(
                 serializer = path.serializer,
                 annotations = path.properties.lastOrNull()?.serializableAnnotations ?: listOf(),
                 desiredSize = flp,
                 handlesField = true
-            )]
+            ))
         }
         scrollsHorizontally - col {
             expanding - changingSizeConstraints {
@@ -108,7 +107,7 @@ object TableRenderer : FormRenderer.Generator, ViewRenderer.Generator {
                         opensMenu {
                             val newField = Property<DataClassPathPartial<T>>(DataClassPathSelf(innerSer))
                             col {
-                                form(formContext, DataClassPathSerializer(innerSer), newField)
+                                form(formModule, DataClassPathSerializer(innerSer), newField)
                                 button {
                                     text("OK")
                                     onClick {

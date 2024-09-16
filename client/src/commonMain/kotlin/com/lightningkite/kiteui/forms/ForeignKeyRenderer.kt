@@ -31,26 +31,26 @@ object ForeignKeyRenderer : FormRenderer.Generator, ViewRenderer.Generator {
     override val basePriority: Float
         get() = 2f
 
-    override fun size(selector: FormSelector<*>): FormSize = FormSize(16.0, 1.0)
-    override fun matches(selector: FormSelector<*>): Boolean {
+    override fun size(module: FormModule, selector: FormSelector<*>): FormSize = FormSize(16.0, 1.0)
+    override fun matches(module: FormModule, selector: FormSelector<*>): Boolean {
         val anno = selector.annotations.find {
             it.fqn == "com.lightningkite.lightningdb.References" ||
                     it.fqn == "com.lightningkite.lightningdb.MultipleReferences"
         }?.values ?: return false
         val typeName = anno.get("references")?.let { it as? SerializableAnnotationValue.ClassValue }?.fqn ?: return false
-        val typeInfo = selector.context.typeInfo(typeName) as? FormTypeInfo<HasId<Comparable<Comparable<*>>>, Comparable<Comparable<*>>> ?: return false
+        val typeInfo = module.typeInfo(typeName) as? FormTypeInfo<HasId<Comparable<Comparable<*>>>, Comparable<Comparable<*>>> ?: return false
         return true
     }
 
     @Suppress("UNCHECKED_CAST")
-    override fun <T> form(selector: FormSelector<T>): FormRenderer<T> {
+    override fun <T> form(module: FormModule, selector: FormSelector<T>): FormRenderer<T> {
         val anno = selector.annotations.find {
             it.fqn == "com.lightningkite.lightningdb.References" ||
                     it.fqn == "com.lightningkite.lightningdb.MultipleReferences"
         }!!.values
         val typeName = anno.get("references")!!.let { it as SerializableAnnotationValue.ClassValue }.fqn
-        val typeInfo = selector.context.typeInfo(typeName)!! as FormTypeInfo<HasId<Comparable<Comparable<*>>>, Comparable<Comparable<*>>>
-        return FormRenderer(this, selector as FormSelector<Comparable<Comparable<*>>?>) { field, writable ->
+        val typeInfo = module.typeInfo(typeName)!! as FormTypeInfo<HasId<Comparable<Comparable<*>>>, Comparable<Comparable<*>>>
+        return FormRenderer(module, this, selector as FormSelector<Comparable<Comparable<*>>?>) { field, writable ->
             link {
                 ::to label@{
                     val id = writable() ?: return@label { Screen.Empty }
@@ -66,14 +66,14 @@ object ForeignKeyRenderer : FormRenderer.Generator, ViewRenderer.Generator {
     }
 
     @Suppress("UNCHECKED_CAST")
-    override fun <T> view(selector: FormSelector<T>): ViewRenderer<T> {
+    override fun <T> view(module: FormModule, selector: FormSelector<T>): ViewRenderer<T> {
         val anno = selector.annotations.find {
             it.fqn == "com.lightningkite.lightningdb.References" ||
                     it.fqn == "com.lightningkite.lightningdb.MultipleReferences"
         }!!.values
         val typeName = anno.get("references")!!.let { it as SerializableAnnotationValue.ClassValue }.fqn
-        val typeInfo = selector.context.typeInfo(typeName)!! as FormTypeInfo<HasId<Comparable<Comparable<*>>>, Comparable<Comparable<*>>>
-        return ViewRenderer(this, selector as FormSelector<Comparable<Comparable<*>>?>) { field, readable ->
+        val typeInfo = module.typeInfo(typeName)!! as FormTypeInfo<HasId<Comparable<Comparable<*>>>, Comparable<Comparable<*>>>
+        return ViewRenderer(module, this, selector as FormSelector<Comparable<Comparable<*>>?>) { field, readable ->
             link {
                 ::to label@{
                     val id = readable() ?: return@label null

@@ -35,9 +35,9 @@ object EnumFormRenderer: FormRenderer.Generator, ViewRenderer.Generator {
             } ?: it.toString().titleCase()
         }
     }
-    override fun <T> form(selector: FormSelector<T>): FormRenderer<T> {
+    override fun <T> form(module: FormModule, selector: FormSelector<T>): FormRenderer<T> {
         val info = TypeInfo(selector.serializer)
-        return FormRenderer(this, selector) { _, writable ->
+        return FormRenderer(module, this, selector) { _, writable ->
             fieldTheme - select {
                 @Suppress("UNCHECKED_CAST")
                 bind(
@@ -50,9 +50,9 @@ object EnumFormRenderer: FormRenderer.Generator, ViewRenderer.Generator {
             }
         }
     }
-    override fun <T> view(selector: FormSelector<T>): ViewRenderer<T> {
+    override fun <T> view(module: FormModule, selector: FormSelector<T>): ViewRenderer<T> {
         val info = TypeInfo(selector.serializer)
-        return ViewRenderer(this, selector) { _, readable ->
+        return ViewRenderer(module, this, selector) { _, readable ->
             text {
                 ::content { info.toDisplayName(readable.invoke()) }
             }

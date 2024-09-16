@@ -14,23 +14,23 @@ object NullableFormRenderer : FormRenderer.Generator, ViewRenderer.Generator {
     override val basePriority: Float
         get() = 0.3f
 
-    override fun matches(selector: FormSelector<*>): Boolean {
+    override fun matches(module: FormModule, selector: FormSelector<*>): Boolean {
         return selector.serializer.descriptor.isNullable
     }
 
-    override fun size(selector: FormSelector<*>): FormSize {
+    override fun size(module: FormModule, selector: FormSelector<*>): FormSize {
         val innerSerializer = selector.serializer.nullElement()!! as KSerializer<Any>
         val innerSelector = selector.copy(innerSerializer)
-        val inner = FormRenderer[innerSelector]
+        val inner = module.form(innerSelector)
         return inner.size.copy(approximateWidth = inner.size.approximateWidth + 3.0)
     }
 
     @Suppress("UNCHECKED_CAST")
-    override fun <T> form(selector: FormSelector<T>): FormRenderer<T> {
+    override fun <T> form(module: FormModule, selector: FormSelector<T>): FormRenderer<T> {
         val innerSerializer = selector.serializer.nullElement()!! as KSerializer<Any>
         val innerSelector = selector.copy(innerSerializer)
-        val inner = FormRenderer[innerSelector]
-        return FormRenderer(this, selector as FormSelector<Any?>) { field, writable ->
+        val inner = module.form(innerSelector)
+        return FormRenderer(module, this, selector as FormSelector<Any?>) { field, writable ->
             row {
                 var ifNotNull: Any = writable.state.getOrNull() ?: innerSerializer.default()
                 checkbox {
@@ -57,11 +57,11 @@ object NullableFormRenderer : FormRenderer.Generator, ViewRenderer.Generator {
     }
 
     @Suppress("UNCHECKED_CAST")
-    override fun <T> view(selector: FormSelector<T>): ViewRenderer<T> {
+    override fun <T> view(module: FormModule, selector: FormSelector<T>): ViewRenderer<T> {
         val innerSerializer = selector.serializer.nullElement()!! as KSerializer<Any>
         val innerSelector = selector.copy(innerSerializer)
-        val inner = ViewRenderer[innerSelector]
-        return ViewRenderer(this, selector as FormSelector<Any?>) { field, readable ->
+        val inner = module.view(innerSelector)
+        return ViewRenderer(module, this, selector as FormSelector<Any?>) { field, readable ->
             stack {
                 val isNull = shared { readable() == null }
                 reactiveScope {

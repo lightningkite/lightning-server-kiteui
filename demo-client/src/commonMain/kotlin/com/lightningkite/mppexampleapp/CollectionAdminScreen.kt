@@ -8,22 +8,13 @@ import com.lightningkite.kiteui.reactive.*
 import com.lightningkite.kiteui.views.*
 import com.lightningkite.kiteui.views.direct.*
 import com.lightningkite.lightningdb.*
-import com.lightningkite.lightningserver.db.ClientModelRestEndpointsStandardImpl
 import com.lightningkite.lightningserver.db.ModelCache
-import com.lightningkite.lightningserver.files.ServerFile
-import com.lightningkite.lightningserver.files.UploadInformation
 import com.lightningkite.lightningserver.schema.ExternalLightningServer
 import com.lightningkite.lightningserver.schema.LightningServerKSchema
-import com.lightningkite.serialization.VirtualInstance
 import com.lightningkite.serialization.default
 import kotlinx.coroutines.GlobalScope
-import kotlinx.serialization.DeserializationStrategy
-import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.SerializationStrategy
 import kotlinx.serialization.builtins.ListSerializer
-import kotlinx.serialization.modules.SerializersModuleCollector
-import kotlin.reflect.KClass
 
 @Serializable
 data class AdminCredentials(
@@ -169,7 +160,7 @@ class CollectionAdminScreen(val adminUrl: String, val collectionName: String) : 
                 )
                 form(server().context, ListSerializer(SortPartSerializer(mc.serializer)), sort)
                 expanding - TableRenderer.view(
-                    formContext = server().context,
+                    formModule = server().context,
                     writer = this@col,
                     innerSer = mc.serializer,
                     readable = shared { mc.watch(Query(condition.debounce(500)(), sort.debounce(500)())) },

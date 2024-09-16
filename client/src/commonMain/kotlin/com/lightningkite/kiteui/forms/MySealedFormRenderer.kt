@@ -24,14 +24,14 @@ import kotlinx.serialization.descriptors.StructureKind
 object MySealedFormRenderer : FormRenderer.Generator {
     override val name: String = "Options"
     override val kind: SerialKind = StructureKind.CLASS
-    override fun size(selector: FormSelector<*>): FormSize = FormSize.Block
-    override fun matches(selector: FormSelector<*>): Boolean {
+    override fun size(module: FormModule, selector: FormSelector<*>): FormSize = FormSize.Block
+    override fun matches(module: FormModule, selector: FormSelector<*>): Boolean {
         return selector.serializer is MySealedClassSerializerInterface<*>
     }
 
-    override fun <T> form(selector: FormSelector<T>): FormRenderer<T> {
+    override fun <T> form(module: FormModule, selector: FormSelector<T>): FormRenderer<T> {
         val serializer = selector.serializer as MySealedClassSerializerInterface<Any>
-        return FormRenderer(this, selector as FormSelector<Any>) { _, writable ->
+        return FormRenderer(module, this, selector as FormSelector<Any>) { _, writable ->
             val type = writable.lens(
                 get = { serializer.options.find { o -> o.isInstance(it) } ?: serializer.options.first() },
                 set = { it.serializer.default() }
@@ -45,7 +45,7 @@ object MySealedFormRenderer : FormRenderer.Generator {
                         val type = type()
                         clearChildren()
                         @Suppress("UNCHECKED_CAST")
-                        (form(selector.context, type.serializer as KSerializer<Any>, writable.lens(
+                        (form(module, type.serializer as KSerializer<Any>, writable.lens(
                             get = { if (type.isInstance(it)) it else type.serializer.default() },
                             set = { it }
                         )))

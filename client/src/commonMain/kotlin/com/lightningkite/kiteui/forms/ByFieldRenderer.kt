@@ -24,16 +24,16 @@ object ByFieldRenderer : FormRenderer.Generator, ViewRenderer.Generator {
     override val basePriority: Float
         get() = 0.7f
     override val kind = StructureKind.CLASS
-    override fun size(selector: FormSelector<*>): FormSize {
-        val info = TypeInfo(selector.context, selector.serializer, selector.desiredSize.approximateWidthBound ?: (AppState.windowInfo.value.width.px / 1.rem.px))
+    override fun size(module: FormModule, selector: FormSelector<*>): FormSize {
+        val info = TypeInfo(module, selector.serializer, selector.desiredSize.approximateWidthBound ?: (AppState.windowInfo.value.width.px / 1.rem.px))
         return FormSize(
             selector.desiredSize.approximateWidthBound ?: (AppState.windowInfo.value.width.px / 1.rem.px),
             info.viewApproximateHeight
         )
     }
-    override fun <T> form(selector: FormSelector<T>): FormRenderer<T> {
-        val info = TypeInfo(selector.context, selector.serializer, selector.desiredSize.approximateWidthBound ?: (AppState.windowInfo.value.width.px / 1.rem.px))
-        return FormRenderer<T>(this, selector) { field, writable ->
+    override fun <T> form(module: FormModule, selector: FormSelector<T>): FormRenderer<T> {
+        val info = TypeInfo(module, selector.serializer, selector.desiredSize.approximateWidthBound ?: (AppState.windowInfo.value.width.px / 1.rem.px))
+        return FormRenderer<T>(module, this, selector) { field, writable ->
             if (field != null) card
             col {
 //                text("Available width: ${info.availableWidth} ${info.formGroup.map { it.size }}")
@@ -53,9 +53,9 @@ object ByFieldRenderer : FormRenderer.Generator, ViewRenderer.Generator {
         }
     }
 
-    override fun <T> view(selector: FormSelector<T>): ViewRenderer<T> {
-        val info = TypeInfo(selector.context, selector.serializer, selector.desiredSize.approximateWidthBound ?: (AppState.windowInfo.value.width.px / 1.rem.px))
-        return ViewRenderer<T>(this, selector) { field, readable ->
+    override fun <T> view(module: FormModule, selector: FormSelector<T>): ViewRenderer<T> {
+        val info = TypeInfo(module, selector.serializer, selector.desiredSize.approximateWidthBound ?: (AppState.windowInfo.value.width.px / 1.rem.px))
+        return ViewRenderer<T>(module, this, selector) { field, readable ->
             if (field != null) card
             col {
 //                text("Available width: ${info.availableWidth} ${info.viewGroup.map { it.size }}")
@@ -75,7 +75,7 @@ object ByFieldRenderer : FormRenderer.Generator, ViewRenderer.Generator {
         }
     }
 
-    private class TypeInfo<T>(val context: FormContext, val serializer: KSerializer<T>, val availableWidth: Double = AppState.windowInfo.value.width.px / 1.rem.px) {
+    private class TypeInfo<T>(val module: FormModule, val serializer: KSerializer<T>, val availableWidth: Double = AppState.windowInfo.value.width.px / 1.rem.px) {
         inner class Sub<S>(
             val field: SerializableProperty<T, S>,
             val form: FormRenderer<S>,
@@ -164,11 +164,11 @@ object ByFieldRenderer : FormRenderer.Generator, ViewRenderer.Generator {
 
         @Suppress("UNCHECKED_CAST")
         val subs = (serializer.serializableProperties ?: bestPropertiesAttempt()).map {
-            val sel = FormSelector(it.serializer, it.serializableAnnotations, FormLayoutPreferences(availableWidth - 2.0, 10.0), context = context) as FormSelector<Any?>
+            val sel = FormSelector(it.serializer, it.serializableAnnotations, FormLayoutPreferences(availableWidth - 2.0, 10.0)) as FormSelector<Any?>
             Sub(
                 it as SerializableProperty<T, Any?>,
-                FormRenderer[sel],
-                ViewRenderer[sel],
+                module.form(sel),
+                module.view(sel),
             )
         }.filter { it.field.visibility != FieldVisibility.HIDDEN }
 

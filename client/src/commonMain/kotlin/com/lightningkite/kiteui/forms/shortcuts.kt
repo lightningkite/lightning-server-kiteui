@@ -9,9 +9,9 @@ import kotlinx.serialization.KSerializer
 import kotlinx.serialization.descriptors.SerialKind
 import kotlinx.serialization.serializer
 
-inline fun <reified V> ViewRenderer.Companion.forType(
+inline fun <reified V> FormModule.viewForType(
     size: FormSize,
-    serializer: KSerializer<V> = FormRenderer.module.serializer<V>(),
+    serializer: KSerializer<V> = module.serializer<V>(),
     name: String = serializer.descriptor.serialName.substringAfterLast('.').titleCase(),
     annotation: String? = null,
     priority: Float = 1f,
@@ -22,16 +22,16 @@ inline fun <reified V> ViewRenderer.Companion.forType(
         override val type: String? = serializer.descriptor.serialName
         override val name: String = name
         override val basePriority: Float = priority
-        override fun size(selector: FormSelector<*>): FormSize = size
+        override fun size(module: FormModule, selector: FormSelector<*>): FormSize = size
         @Suppress("UNCHECKED_CAST")
-        override fun <T> view(selector: FormSelector<T>): ViewRenderer<T> = ViewRenderer<V>(this, selector as FormSelector<V>) { field, readable ->
+        override fun <T> view(module: FormModule, selector: FormSelector<T>): ViewRenderer<T> = ViewRenderer<V>(module, this, selector as FormSelector<V>) { field, readable ->
             generate(this, readable)
         } as ViewRenderer<T>
     })
 }
-inline fun <reified V> FormRenderer.Companion.forType(
+inline fun <reified V> FormModule.formForType(
     size: FormSize,
-    serializer: KSerializer<V> = FormRenderer.module.serializer<V>(),
+    serializer: KSerializer<V> = module.serializer<V>(),
     name: String = serializer.descriptor.serialName.substringAfterLast('.').titleCase(),
     annotation: String? = null,
     priority: Float = 1f,
@@ -42,17 +42,17 @@ inline fun <reified V> FormRenderer.Companion.forType(
         override val type: String? = serializer.descriptor.serialName
         override val name: String = name
         override val basePriority: Float = priority
-        override fun size(selector: FormSelector<*>): FormSize = size
+        override fun size(module: FormModule, selector: FormSelector<*>): FormSize = size
         @Suppress("UNCHECKED_CAST")
-        override fun <T> form(selector: FormSelector<T>): FormRenderer<T> = FormRenderer<V>(this, selector as FormSelector<V>) { field, writable ->
+        override fun <T> form(module: FormModule, selector: FormSelector<T>): FormRenderer<T> = FormRenderer<V>(module, this, selector as FormSelector<V>) { field, writable ->
             generate(this, writable)
         } as FormRenderer<T>
     })
 }
 
-inline fun <reified V> ViewRenderer.Companion.forType(
+inline fun <reified V> FormModule.viewForType(
     crossinline size: (FormSelector<*>) -> FormSize,
-    serializer: KSerializer<V> = FormRenderer.module.serializer<V>(),
+    serializer: KSerializer<V> = module.serializer<V>(),
     name: String = serializer.descriptor.serialName.substringAfterLast('.').titleCase(),
     annotation: String? = null,
     priority: Float = 1f,
@@ -63,16 +63,16 @@ inline fun <reified V> ViewRenderer.Companion.forType(
         override val type: String? = serializer.descriptor.serialName
         override val name: String = name
         override val basePriority: Float = priority
-        override fun size(selector: FormSelector<*>): FormSize = size(selector)
+        override fun size(module: FormModule, selector: FormSelector<*>): FormSize = size(selector)
         @Suppress("UNCHECKED_CAST")
-        override fun <T> view(selector: FormSelector<T>): ViewRenderer<T> = ViewRenderer<V>(this, selector as FormSelector<V>) { field, readable ->
+        override fun <T> view(module: FormModule, selector: FormSelector<T>): ViewRenderer<T> = ViewRenderer<V>(module, this, selector as FormSelector<V>) { field, readable ->
             generate(this, readable)
         } as ViewRenderer<T>
     })
 }
-inline fun <reified V> FormRenderer.Companion.forType(
+inline fun <reified V> FormModule.formForType(
     crossinline size: (FormSelector<*>) -> FormSize,
-    serializer: KSerializer<V> = FormRenderer.module.serializer<V>(),
+    serializer: KSerializer<V> = module.serializer<V>(),
     name: String = serializer.descriptor.serialName.substringAfterLast('.').titleCase(),
     annotation: String? = null,
     priority: Float = 1f,
@@ -83,17 +83,17 @@ inline fun <reified V> FormRenderer.Companion.forType(
         override val type: String? = serializer.descriptor.serialName
         override val name: String = name
         override val basePriority: Float = priority
-        override fun size(selector: FormSelector<*>): FormSize = size(selector)
+        override fun size(module: FormModule, selector: FormSelector<*>): FormSize = size(selector)
         @Suppress("UNCHECKED_CAST")
-        override fun <T> form(selector: FormSelector<T>): FormRenderer<T> = FormRenderer<V>(this, selector as FormSelector<V>) { field, writable ->
+        override fun <T> form(module: FormModule, selector: FormSelector<T>): FormRenderer<T> = FormRenderer<V>(module, this, selector as FormSelector<V>) { field, writable ->
             generate(this, writable)
         } as FormRenderer<T>
     })
 }
 
-inline fun <reified V> ViewRenderer.Companion.forTypeWithField(
+inline fun <reified V> FormModule.viewForTypeWithField(
     size: FormSize,
-    serializer: KSerializer<V> = FormRenderer.module.serializer<V>(),
+    serializer: KSerializer<V> = module.serializer<V>(),
     name: String = serializer.descriptor.serialName.substringAfterLast('.').titleCase(),
     annotation: String? = null,
     priority: Float = 1f,
@@ -104,17 +104,17 @@ inline fun <reified V> ViewRenderer.Companion.forTypeWithField(
         override val type: String? = serializer.descriptor.serialName
         override val name: String = name
         override val basePriority: Float = priority
-        override fun size(selector: FormSelector<*>): FormSize = size
+        override fun size(module: FormModule, selector: FormSelector<*>): FormSize = size
         @Suppress("UNCHECKED_CAST")
-        override fun <T> view(selector: FormSelector<T>): ViewRenderer<T> = ViewRenderer<V>(this, selector as FormSelector<V>) { field, readable ->
+        override fun <T> view(module: FormModule, selector: FormSelector<T>): ViewRenderer<T> = ViewRenderer<V>(module, this, selector as FormSelector<V>) { field, readable ->
             generate(this, field, readable)
         } as ViewRenderer<T>
         override val handlesField: Boolean = true
     })
 }
-inline fun <reified V> FormRenderer.Companion.forTypeWithField(
+inline fun <reified V> FormModule.formForTypeWithField(
     size: FormSize,
-    serializer: KSerializer<V> = FormRenderer.module.serializer<V>(),
+    serializer: KSerializer<V> = module.serializer<V>(),
     name: String = serializer.descriptor.serialName.substringAfterLast('.').titleCase(),
     annotation: String? = null,
     priority: Float = 1f,
@@ -125,9 +125,9 @@ inline fun <reified V> FormRenderer.Companion.forTypeWithField(
         override val type: String? = serializer.descriptor.serialName
         override val name: String = name
         override val basePriority: Float = priority
-        override fun size(selector: FormSelector<*>): FormSize = size
+        override fun size(module: FormModule, selector: FormSelector<*>): FormSize = size
         @Suppress("UNCHECKED_CAST")
-        override fun <T> form(selector: FormSelector<T>): FormRenderer<T> = FormRenderer<V>(this, selector as FormSelector<V>) { field, writable ->
+        override fun <T> form(module: FormModule, selector: FormSelector<T>): FormRenderer<T> = FormRenderer<V>(module, this, selector as FormSelector<V>) { field, writable ->
             generate(this, field, writable)
         } as FormRenderer<T>
         override val handlesField: Boolean = true

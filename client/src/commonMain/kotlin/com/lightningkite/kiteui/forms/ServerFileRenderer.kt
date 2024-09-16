@@ -28,8 +28,8 @@ object ServerFileRenderer  : FormRenderer.Generator, ViewRenderer.Generator {
     var fileUpload: suspend (FileReference) -> ServerFile = { TODO("No file uploader set!") }
 
     @Suppress("UNCHECKED_CAST")
-    override fun <T> form(selector: FormSelector<T>): FormRenderer<T> {
-        return FormRenderer<ServerFile?>(this, selector as FormSelector<ServerFile?>) { field, writable ->
+    override fun <T> form(module: FormModule, selector: FormSelector<T>): FormRenderer<T> {
+        return FormRenderer<ServerFile?>(module, this, selector as FormSelector<ServerFile?>) { field, writable ->
             row {
                 expanding - externalLink {
                     ::to { writable()?.location ?: "" }
@@ -55,8 +55,8 @@ object ServerFileRenderer  : FormRenderer.Generator, ViewRenderer.Generator {
     }
 
     @Suppress("UNCHECKED_CAST")
-    override fun <T> view(selector: FormSelector<T>): ViewRenderer<T> {
-        return ViewRenderer<ServerFile?>(this, selector as FormSelector<ServerFile?>) { field, readable ->
+    override fun <T> view(module: FormModule, selector: FormSelector<T>): ViewRenderer<T> {
+        return ViewRenderer<ServerFile?>(module, this, selector as FormSelector<ServerFile?>) { field, readable ->
             externalLink {
                 ::to { readable()?.location ?: "" }
                 row {

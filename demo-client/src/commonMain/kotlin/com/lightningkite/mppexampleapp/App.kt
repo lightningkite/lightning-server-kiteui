@@ -3,7 +3,7 @@ package com.lightningkite.mppexampleapp
 import com.lightningkite.*
 import com.lightningkite.kiteui.Routable
 import com.lightningkite.kiteui.fetch
-import com.lightningkite.kiteui.forms.FormContext
+import com.lightningkite.kiteui.forms.FormModule
 import com.lightningkite.kiteui.forms.form
 import com.lightningkite.kiteui.forms.view
 import com.lightningkite.kiteui.views.ViewWriter
@@ -55,8 +55,8 @@ class HomeScreen : Screen {
     override fun ViewWriter.render() {
         scrolls - col {
             val prop = Property(Post())
-            card - form(FormContext(), Post.serializer(), prop)
-            card - view(FormContext(), Post.serializer(), prop)
+            card - form(FormModule(), Post.serializer(), prop)
+            card - view(FormModule(), Post.serializer(), prop)
 //            val prop = Property<Condition<LargeTestModel>>(Condition.Never)
 //            card - form(serializer<Condition<LargeTestModel>>(), prop)
 //            text { ::content{ prop().toString() } }
@@ -119,7 +119,7 @@ class RealTestScreen : Screen {
                 registry.register(s)
                 val user = s.structures.values.find { it.serialName.contains("User") }!!
                 val userT = user.Concrete(registry, arrayOf())
-                form(FormContext(), userT, Property(userT()))
+                form(FormModule(), userT, Property(userT()))
             }
         }
     }
@@ -136,7 +136,7 @@ class RealTest2Screen : Screen {
                 val user = server.models["/test-model/rest"] as ClientModelRestEndpointsStandardImpl<VirtualInstance, Comparable<Comparable<*>>>
                 expanding - recyclerView {
                     children(asyncReadable { user.query(Query()) }) {
-                        card - view(FormContext(), user.serializer, it)
+                        card - view(FormModule(), user.serializer, it)
                     }
                 }
             }

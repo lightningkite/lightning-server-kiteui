@@ -15,9 +15,9 @@ object PathPartsRenderer : FormRenderer.Generator {
     override val type: String? = DataClassPathSerializer(Unit.serializer()).descriptor.serialName
 
     @Suppress("UNCHECKED_CAST")
-    override fun <T> form(selector: FormSelector<T>): FormRenderer<T> {
+    override fun <T> form(module: FormModule, selector: FormSelector<T>): FormRenderer<T> {
         val serializer = selector.serializer as DataClassPathSerializer<Any??>
-        return FormRenderer(this, selector as FormSelector<DataClassPathPartial<Any?>>){ field, writable ->
+        return FormRenderer(module, this, selector as FormSelector<DataClassPathPartial<Any?>>){ field, writable ->
             val properties = writable.lens(
                 get = { it.properties },
                 set = {

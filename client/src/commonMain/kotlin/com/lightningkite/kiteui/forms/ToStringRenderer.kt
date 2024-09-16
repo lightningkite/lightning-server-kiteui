@@ -7,11 +7,11 @@ import com.lightningkite.kiteui.views.direct.text
 import com.lightningkite.serialization.SerializableProperty
 
 object ToStringRenderer: ViewRenderer.Generator {
-    override fun <T> view(selector: FormSelector<T>): ViewRenderer<T> = ViewRenderer(this, selector) { _, readable ->
+    override fun <T> view(module: FormModule, selector: FormSelector<T>): ViewRenderer<T> = ViewRenderer(module, this, selector) { _, readable ->
         text { ::content { readable.invoke().toString() } }
     }
     override val name: String
         get() = "As Text"
-    override fun size(selector: FormSelector<*>): FormSize = FormSize.Inline
+    override fun size(module: FormModule, selector: FormSelector<*>): FormSize = FormSize.Inline
     override val basePriority: Float get() = 0.2f
 }

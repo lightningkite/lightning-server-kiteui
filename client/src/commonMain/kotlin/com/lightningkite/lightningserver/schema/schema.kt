@@ -1,7 +1,7 @@
 package com.lightningkite.lightningserver.schema
 
 import com.lightningkite.kiteui.*
-import com.lightningkite.kiteui.forms.FormContext
+import com.lightningkite.kiteui.forms.FormModule
 import com.lightningkite.kiteui.forms.FormTypeInfo
 import com.lightningkite.kiteui.navigation.DefaultJson
 import com.lightningkite.kiteui.navigation.Screen
@@ -18,8 +18,6 @@ import com.lightningkite.serialization.*
 import kotlinx.datetime.Clock.System.now
 import kotlinx.datetime.Instant
 import kotlinx.serialization.KSerializer
-import kotlinx.serialization.builtins.ListSerializer
-import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.properties.Properties
 import kotlin.time.Duration.Companion.minutes
@@ -199,7 +197,7 @@ class ExternalLightningServer(
         }.let { ModelCache(it, it.serializer) }
     }
 
-    val context = FormContext(
+    val context = FormModule().apply {
         fileUpload = file?.let {
             { file ->
                 val req = fetcher(schema.baseUrl).invoke(it.path, HttpMethod.GET, null, UploadInformation.serializer())
@@ -207,15 +205,15 @@ class ExternalLightningServer(
                 if(!r.ok) throw IllegalStateException("File upload to ${req.uploadUrl.substringBefore('?')} failed")
                 ServerFile(req.futureCallToken)
             }
-        },
-        typeInfo = { name ->
-            val m = models.values.find { it.serializer.descriptor.serialName == name } ?: return@FormContext null
+        }
+        typeInfo = label@{ name ->
+            val m = models.values.find { it.serializer.descriptor.serialName == name } ?: return@label null
             FormTypeInfo(
                 cache = m,
                 screen = { id -> screen(m, id) }
             )
         }
-    )
+    }
 
     var screen: (type: ModelCache<*, *>, id: Comparable<*>?) -> (() -> Screen)? = { _, _ -> null}
 }
