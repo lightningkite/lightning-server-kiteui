@@ -53,7 +53,7 @@ object ForeignKeyRenderer : FormRenderer.Generator, ViewRenderer.Generator {
         return FormRenderer(module, this, selector as FormSelector<Comparable<Comparable<*>>?>) { field, writable ->
             link {
                 ::to label@{
-                    val id = writable() ?: return@label { Screen.Empty }
+                    val id = writable() ?: return@label null
                     return@label typeInfo.screen(id)
                 }
                 text {

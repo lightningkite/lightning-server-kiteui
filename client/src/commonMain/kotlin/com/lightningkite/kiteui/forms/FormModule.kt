@@ -58,6 +58,7 @@ class FormModule {
         return ViewRenderer(this, null, key, size = options.first().size, handlesField = options.first().handlesField) { field, writable ->
             val selected = Property(options.first())
             row {
+                spacing = 0.px
                 expanding - stack {
                     reactive {
                         val sel = selected()
@@ -78,6 +79,7 @@ class FormModule {
         return FormRenderer(this, null, key, size = options.first().size, handlesField = options.first().handlesField) { field, writable ->
             val selected = Property(options.first())
             row {
+                spacing = 0.px
                 expanding - stack {
                     reactive {
                         val sel = selected()

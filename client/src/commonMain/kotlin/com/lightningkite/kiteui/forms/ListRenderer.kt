@@ -14,6 +14,7 @@ import com.lightningkite.kiteui.views.direct.text
 import com.lightningkite.kiteui.views.expanding
 import com.lightningkite.kiteui.views.forEachUpdating
 import com.lightningkite.kiteui.views.l2.icon
+import com.lightningkite.serialization.SerializableAnnotation
 import com.lightningkite.serialization.default
 import com.lightningkite.serialization.listElement
 import kotlinx.serialization.KSerializer
@@ -30,30 +31,42 @@ abstract class ListRenderer<C> : FormRenderer.Generator, ViewRenderer.Generator 
     abstract fun remove(collection: C, item: Any?, index: Int): C
     abstract fun add(collection: C, item: Any?): C
 
-    override val name: String get() = if(vertical) "Vertical $typeName" else "Horizontal $typeName"
+    override val name: String get() = if (vertical) "Vertical $typeName" else "Horizontal $typeName"
     abstract override val type: String
-    override fun size(module: FormModule, selector: FormSelector<*>): FormSize {
+
+    private fun inner(module: FormModule, selector: FormSelector<*>): FormSelector<out Any?> {
         val innerSer = inner(selector.serializer as KSerializer<C>)
-        val inner = module.form(selector.copy(innerSer, desiredSize = if(vertical) FormLayoutPreferences.Block else FormLayoutPreferences.Bound)) as FormRenderer<Any?>
-        return if(vertical)
+        val inner = selector.copy(
+            innerSer,
+            desiredSize = if (vertical) FormLayoutPreferences.Block else FormLayoutPreferences.Bound,
+            annotations = selector.annotations?.find { it.fqn == "com.lightningkite.lightningdb.MultipleReferences" }
+                ?.let { selector.annotations + SerializableAnnotation("com.lightningkite.lightningdb.References", it.values) }
+                ?: selector.annotations
+        )
+        return inner
+    }
+
+    override fun size(module: FormModule, selector: FormSelector<*>): FormSize {
+        val inner = module.form(inner(module, selector)) as FormRenderer<Any?>
+        return if (vertical)
             inner.size.copy(approximateHeight = (inner.size.approximateHeight) * 3 + 3)
         else
             inner.size.copy(approximateWidth = (inner.size.approximateWidth + 3) * 3 + 3)
     }
+
     @Suppress("UNCHECKED_CAST")
     override fun <T> form(module: FormModule, selector: FormSelector<T>): FormRenderer<T> {
-        val innerSer = selector.serializer.listElement()!!
-        val inner = module.form(selector.copy(innerSer, desiredSize = if(vertical) FormLayoutPreferences.Block else FormLayoutPreferences.Bound)) as FormRenderer<Any?>
+        val inner = module.form(inner(module, selector)) as FormRenderer<Any?>
         return FormRenderer(module, this, selector as FormSelector<C>) { _, writable ->
             row {
                 vertical = this@ListRenderer.vertical
-                if(!vertical) expanding - scrollsHorizontally
+                if (!vertical) expanding - scrollsHorizontally
                 row {
                     vertical = this@ListRenderer.vertical
                     forEachUpdating(lens(writable).lensByElementAssumingSetNeverManipulates()) {
                         card - row {
                             spacing = 0.px
-                            if(this@ListRenderer.vertical) expanding
+                            if (this@ListRenderer.vertical) expanding
                             inner.render(this, null, it.flatten())
                             centered - button {
                                 icon(Icon.close.copy(width = 1.rem, height = 1.rem), "Delete")
@@ -65,7 +78,7 @@ abstract class ListRenderer<C> : FormRenderer.Generator, ViewRenderer.Generator 
                     }
                 }
                 button {
-                    if(this@ListRenderer.vertical) {
+                    if (this@ListRenderer.vertical) {
                         centered - row {
                             centered - text("Add")
                             centered - icon(Icon.add.copy(width = 1.rem, height = 1.rem), "")
@@ -74,16 +87,16 @@ abstract class ListRenderer<C> : FormRenderer.Generator, ViewRenderer.Generator 
                         centered - icon(Icon.add.copy(width = 1.rem, height = 1.rem), "Add")
                     }
                     onClick {
-                        writable set (add(writable(), innerSer.default()))
+                        writable set (add(writable(), inner.selector.serializer.default()))
                     }
                 }
             }
         } as FormRenderer<T>
     }
+
     @Suppress("UNCHECKED_CAST")
     override fun <T> view(module: FormModule, selector: FormSelector<T>): ViewRenderer<T> {
-        val innerSer = inner(selector.serializer as KSerializer<C>)
-        val inner = module.view(selector.copy(innerSer, desiredSize = if(vertical) FormLayoutPreferences.Block else FormLayoutPreferences.Bound)) as ViewRenderer<Any?>
+        val inner = module.view(inner(module, selector)) as ViewRenderer<Any?>
         return ViewRenderer(module, this, selector as FormSelector<C>) { _, readable ->
             row {
                 vertical = this@ListRenderer.vertical
@@ -95,7 +108,7 @@ abstract class ListRenderer<C> : FormRenderer.Generator, ViewRenderer.Generator 
     }
 }
 
-object HorizontalListRenderer: ListRenderer<List<Any?>>() {
+object HorizontalListRenderer : ListRenderer<List<Any?>>() {
     override val vertical: Boolean = false
     override val typeName: String = "List"
     override val type: String = ListSerializer(Unit.serializer()).descriptor.serialName
@@ -105,7 +118,8 @@ object HorizontalListRenderer: ListRenderer<List<Any?>>() {
     override fun lens(writable: Writable<List<Any?>>): Writable<List<Any?>> = writable
     override fun inner(serializer: KSerializer<List<Any?>>): KSerializer<*> = serializer.listElement()!!
 }
-object VerticalListRenderer: ListRenderer<List<Any?>>() {
+
+object VerticalListRenderer : ListRenderer<List<Any?>>() {
     override val vertical: Boolean = true
     override val typeName: String = "List"
     override val type: String = ListSerializer(Unit.serializer()).descriptor.serialName
@@ -115,7 +129,8 @@ object VerticalListRenderer: ListRenderer<List<Any?>>() {
     override fun lens(writable: Writable<List<Any?>>): Writable<List<Any?>> = writable
     override fun inner(serializer: KSerializer<List<Any?>>): KSerializer<*> = serializer.listElement()!!
 }
-object HorizontalSetRenderer: ListRenderer<Set<Any?>>() {
+
+object HorizontalSetRenderer : ListRenderer<Set<Any?>>() {
     override val vertical: Boolean = false
     override val typeName: String = "Set"
     override val type: String = SetSerializer(Unit.serializer()).descriptor.serialName
@@ -125,7 +140,8 @@ object HorizontalSetRenderer: ListRenderer<Set<Any?>>() {
     override fun lens(writable: Writable<Set<Any?>>): Writable<List<Any?>> = writable.lens(get = { it.toList() }, set = { it.toSet() })
     override fun inner(serializer: KSerializer<Set<Any?>>): KSerializer<*> = serializer.listElement()!!
 }
-object VerticalSetRenderer: ListRenderer<Set<Any?>>() {
+
+object VerticalSetRenderer : ListRenderer<Set<Any?>>() {
     override val vertical: Boolean = true
     override val typeName: String = "Set"
     override val type: String = SetSerializer(Unit.serializer()).descriptor.serialName
