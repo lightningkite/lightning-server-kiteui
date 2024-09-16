@@ -234,7 +234,7 @@ object BuiltinRendering {
                 }
             }
         )
-        FormRenderer.forType<UUID>(FormSize(12.0, 1.0), UUIDSerializer) {
+        FormRenderer.forType<UUID>(FormSize(24.0, 1.0), UUIDSerializer) {
             fieldTheme - textField {
                 content bind it.lens(get = { it.toString() }, modify = { o, it ->
                     try {
@@ -245,7 +245,7 @@ object BuiltinRendering {
                 })
             }
         }
-        FormRenderer.forType<UUID>(FormSize(12.0, 1.0)) {
+        FormRenderer.forType<UUID>(FormSize(24.0, 1.0)) {
             fieldTheme - textField {
                 content bind it.lens(get = { it.toString() }, modify = { o, it ->
                     try {
@@ -255,6 +255,12 @@ object BuiltinRendering {
                     }
                 })
             }
+        }
+        ViewRenderer.forType<UUID>(FormSize(24.0, 1.0), UUIDSerializer) {
+            text { ::content { it().toString() } }
+        }
+        ViewRenderer.forType<UUID>(FormSize(24.0, 1.0)) {
+            text { ::content { it().toString() } }
         }
         FormRenderer.forType<ServerFile>(FormSize.Inline) { it -> text("TODO") }
         FormRenderer.forType<Map<Unit, Unit>>(FormSize.Inline) { it -> text("TODO") }
@@ -325,6 +331,9 @@ object BuiltinRendering {
 
         ViewRenderer += TableRenderer
         FormRenderer += TableRenderer
+
+        ViewRenderer += ForeignKeyRenderer
+        FormRenderer += ForeignKeyRenderer
     }
 }
 

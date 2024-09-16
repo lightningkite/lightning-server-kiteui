@@ -45,7 +45,7 @@ object MySealedFormRenderer : FormRenderer.Generator {
                         val type = type()
                         clearChildren()
                         @Suppress("UNCHECKED_CAST")
-                        (form(type.serializer as KSerializer<Any>, writable.lens(
+                        (form(selector.context, type.serializer as KSerializer<Any>, writable.lens(
                             get = { if (type.isInstance(it)) it else type.serializer.default() },
                             set = { it }
                         )))

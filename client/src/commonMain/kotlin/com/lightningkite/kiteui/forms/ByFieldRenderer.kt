@@ -24,13 +24,19 @@ object ByFieldRenderer : FormRenderer.Generator, ViewRenderer.Generator {
     override val basePriority: Float
         get() = 0.7f
     override val kind = StructureKind.CLASS
-    override fun size(selector: FormSelector<*>): FormSize = FormSize.Block
+    override fun size(selector: FormSelector<*>): FormSize {
+        val info = TypeInfo(selector.context, selector.serializer, selector.desiredSize.approximateWidthBound ?: (AppState.windowInfo.value.width.px / 1.rem.px))
+        return FormSize(
+            selector.desiredSize.approximateWidthBound ?: (AppState.windowInfo.value.width.px / 1.rem.px),
+            info.viewApproximateHeight
+        )
+    }
     override fun <T> form(selector: FormSelector<T>): FormRenderer<T> {
-        val info = TypeInfo(selector.serializer, selector.desiredSize.approximateWidthBound ?: (AppState.windowInfo.value.width.px / 1.rem.px))
+        val info = TypeInfo(selector.context, selector.serializer, selector.desiredSize.approximateWidthBound ?: (AppState.windowInfo.value.width.px / 1.rem.px))
         return FormRenderer<T>(this, selector) { field, writable ->
             if (field != null) card
             col {
-                text("availableWidth: ${info.availableWidth}")
+//                text("Available width: ${info.availableWidth} ${info.formGroup.map { it.size }}")
                 info.formGroup.forEach {
                     if (it.size == 1) {
                         it[0].form(this, writable)
@@ -48,11 +54,11 @@ object ByFieldRenderer : FormRenderer.Generator, ViewRenderer.Generator {
     }
 
     override fun <T> view(selector: FormSelector<T>): ViewRenderer<T> {
-        val info = TypeInfo(selector.serializer, selector.desiredSize.approximateWidthBound ?: (AppState.windowInfo.value.width.px / 1.rem.px))
+        val info = TypeInfo(selector.context, selector.serializer, selector.desiredSize.approximateWidthBound ?: (AppState.windowInfo.value.width.px / 1.rem.px))
         return ViewRenderer<T>(this, selector) { field, readable ->
             if (field != null) card
             col {
-                text("availableWidth: ${info.availableWidth}")
+//                text("Available width: ${info.availableWidth} ${info.viewGroup.map { it.size }}")
                 info.viewGroup.forEach {
                     if (it.size == 1) {
                         it[0].view(this, readable)
@@ -69,7 +75,7 @@ object ByFieldRenderer : FormRenderer.Generator, ViewRenderer.Generator {
         }
     }
 
-    private class TypeInfo<T>(val serializer: KSerializer<T>, val availableWidth: Double = AppState.windowInfo.value.width.px / 1.rem.px) {
+    private class TypeInfo<T>(val context: FormContext, val serializer: KSerializer<T>, val availableWidth: Double = AppState.windowInfo.value.width.px / 1.rem.px) {
         inner class Sub<S>(
             val field: SerializableProperty<T, S>,
             val form: FormRenderer<S>,
@@ -158,7 +164,7 @@ object ByFieldRenderer : FormRenderer.Generator, ViewRenderer.Generator {
 
         @Suppress("UNCHECKED_CAST")
         val subs = (serializer.serializableProperties ?: bestPropertiesAttempt()).map {
-            val sel = FormSelector(it.serializer, it.serializableAnnotations, FormLayoutPreferences(availableWidth, 10.0)) as FormSelector<Any?>
+            val sel = FormSelector(it.serializer, it.serializableAnnotations, FormLayoutPreferences(availableWidth - 2.0, 10.0), context = context) as FormSelector<Any?>
             Sub(
                 it as SerializableProperty<T, Any?>,
                 FormRenderer[sel],
@@ -183,7 +189,6 @@ object ByFieldRenderer : FormRenderer.Generator, ViewRenderer.Generator {
                         m.add(listOf(item))
                     else  {
                         val w = item.formSize.approximateWidth
-                        println("Add ${item.field.name} to current? w: $w, currentTotal: $currentTotal, availableWidth: $availableWidth")
                         if (currentTotal != 0.0 && currentTotal + w >= availableWidth) {
                             m.add(current)
                             current = ArrayList()
@@ -215,7 +220,6 @@ object ByFieldRenderer : FormRenderer.Generator, ViewRenderer.Generator {
                         m.add(listOf(item))
                     else  {
                         val w = item.formSize.approximateWidth
-                        println("Add ${item.field.name} to current? w: $w, currentTotal: $currentTotal, availableWidth: $availableWidth")
                         if (currentTotal != 0.0 && currentTotal + w >= availableWidth) {
                             m.add(current)
                             current = ArrayList()
@@ -231,5 +235,8 @@ object ByFieldRenderer : FormRenderer.Generator, ViewRenderer.Generator {
                 m
             }.sortedBy { subs.indexOf(it[0]) }
         }
+
+        val formApproximateHeight = formGroup.sumOf { it.maxOfOrNull { it.formSize.approximateHeight } ?: 0.0 }
+        val viewApproximateHeight = viewGroup.sumOf { it.maxOfOrNull { it.viewSize.approximateHeight } ?: 0.0 }
     }
 }

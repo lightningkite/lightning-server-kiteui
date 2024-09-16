@@ -19,7 +19,7 @@ data class FormSize(
 ) {
     companion object {
         val Inline = FormSize(12.0, 1.0)
-        val Block = FormSize(100.0, 5.0)
+        val Block = FormSize(50.0, 5.0)
     }
 }
 data class FormLayoutPreferences(

@@ -1,14 +1,16 @@
 package com.lightningkite.lightningserver.schema
 
 import com.lightningkite.kiteui.*
+import com.lightningkite.kiteui.forms.FormContext
+import com.lightningkite.kiteui.forms.FormTypeInfo
 import com.lightningkite.kiteui.navigation.DefaultJson
+import com.lightningkite.kiteui.navigation.Screen
 import com.lightningkite.kiteui.navigation.UrlProperties
 import com.lightningkite.lightningdb.*
 import com.lightningkite.lightningserver.auth.*
-import com.lightningkite.lightningserver.db.ClientModelRestEndpoints
-import com.lightningkite.lightningserver.db.ClientModelRestEndpointsPlusUpdatesWebsocketStandardImpl
-import com.lightningkite.lightningserver.db.ClientModelRestEndpointsPlusWsStandardImpl
-import com.lightningkite.lightningserver.db.ClientModelRestEndpointsStandardImpl
+import com.lightningkite.lightningserver.db.*
+import com.lightningkite.lightningserver.files.ServerFile
+import com.lightningkite.lightningserver.files.UploadInformation
 import com.lightningkite.lightningserver.networking.BulkFetcher
 import com.lightningkite.lightningserver.networking.ConnectivityOnlyFetcher
 import com.lightningkite.lightningserver.networking.Fetcher
@@ -133,7 +135,7 @@ class ExternalLightningServer(
         return token!!.await()
     }
 
-    val models: Map<String, ClientModelRestEndpointsStandardImpl<*, *>> = schema.interfaces.filter {
+    val models: Map<String, ModelCache<*, *>> = schema.interfaces.filter {
         it.matches.serialName == "ClientModelRestEndpoints"
     }.associate { inter ->
         val vserializer = inter.matches.arguments[0].serializer(registry, mapOf()) as KSerializer<HasId<Comparable<Comparable<*>>>>
@@ -194,6 +196,27 @@ class ExternalLightningServer(
                 json = json,
                 properties = properties
             )
-        }
+        }.let { ModelCache(it, it.serializer) }
     }
+
+    val context = FormContext(
+        fileUpload = file?.let {
+            { file ->
+                val req = fetcher(schema.baseUrl).invoke(it.path, HttpMethod.GET, null, UploadInformation.serializer())
+                val r = connectivityFetch(req.uploadUrl, HttpMethod.PUT, body = RequestBodyFile(file))
+                if(!r.ok) throw IllegalStateException("File upload to ${req.uploadUrl.substringBefore('?')} failed")
+                ServerFile(req.futureCallToken)
+            }
+        },
+        typeInfo = { name ->
+            val m = models.values.find { it.serializer.descriptor.serialName == name } ?: return@FormContext null
+            FormTypeInfo(
+                cache = m,
+                screen = { id -> screen(m, id) }
+            )
+        }
+    )
+
+    var screen: (type: ModelCache<*, *>, id: Comparable<*>?) -> (() -> Screen)? = { _, _ -> null}
 }
+

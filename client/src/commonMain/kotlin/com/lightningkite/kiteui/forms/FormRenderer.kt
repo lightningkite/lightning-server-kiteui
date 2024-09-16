@@ -2,13 +2,19 @@
 
 package com.lightningkite.kiteui.forms
 
+import com.lightningkite.kiteui.FileReference
 import com.lightningkite.kiteui.forms.ViewRenderer.Companion
 import com.lightningkite.kiteui.models.*
+import com.lightningkite.kiteui.navigation.Screen
 import com.lightningkite.kiteui.reactive.*
 import com.lightningkite.kiteui.views.RView
 import com.lightningkite.kiteui.views.ViewWriter
 import com.lightningkite.kiteui.views.atTopEnd
 import com.lightningkite.kiteui.views.direct.*
+import com.lightningkite.kiteui.views.expanding
+import com.lightningkite.lightningdb.HasId
+import com.lightningkite.lightningserver.db.ModelCache
+import com.lightningkite.lightningserver.files.ServerFile
 import com.lightningkite.serialization.*
 import kotlinx.serialization.ContextualSerializer
 import kotlinx.serialization.ExperimentalSerializationApi
@@ -34,6 +40,7 @@ interface RendererGenerator {
         }
         return amount
     }
+
     fun matches(selector: FormSelector<*>): Boolean {
         if (type != null && selector.serializer.descriptor.serialName != type) return false
         if (kind != null && selector.serializer.descriptor.kind != kind) return false
@@ -55,8 +62,8 @@ data class ViewRenderer<T>(
     override val size: FormSize = generator!!.size(selector),
     override val handlesField: Boolean = generator!!.handlesField,
     val render: ViewWriter.(field: SerializableProperty<*, *>?, readable: Readable<T>) -> Unit
-): Renderer<T> {
-    interface Generator: RendererGenerator {
+) : Renderer<T> {
+    interface Generator : RendererGenerator {
         fun <T> view(selector: FormSelector<T>): ViewRenderer<T>
     }
 
@@ -68,18 +75,19 @@ data class ViewRenderer<T>(
         fun <T> candidates(key: FormSelector<T>): Sequence<Generator> = sequence {
             type[key.serializer.descriptor.serialName]?.let { yieldAll(it) }
             kind[key.serializer.descriptor.kind]?.let { yieldAll(it) }
-            key.annotations.forEach {  anno ->
+            key.annotations.forEach { anno ->
                 annotation[anno.fqn]?.let { yieldAll(it) }
             }
             yieldAll(others)
         }
+
         operator fun <T> get(key: FormSelector<T>): ViewRenderer<T> {
             val options = candidates(key).filter { it.matches(key) }.sortedByDescending { it.priority(key) }.map { it.view(key) }.toList()
-            if(!key.withPicker) return options.first()
+            if (!key.withPicker) return options.first()
             return ViewRenderer(null, key, size = options.first().size, handlesField = options.first().handlesField) { field, readable ->
                 val selected = Property(options.first())
-                stack {
-                    stack {
+                row {
+                    expanding - stack {
                         reactive {
                             val sel = selected()
                             clearChildren()
@@ -93,6 +101,7 @@ data class ViewRenderer<T>(
                 }
             }
         }
+
         operator fun plusAssign(generator: Generator) {
             generator.annotation?.let { annotation.getOrPut(it) { ArrayList() }.add(generator) }
                 ?: generator.type?.let { type.getOrPut(it) { ArrayList() }.add(generator) }
@@ -112,8 +121,8 @@ data class FormRenderer<T>(
     override val size: FormSize = generator!!.size(selector),
     override val handlesField: Boolean = generator!!.handlesField,
     val render: ViewWriter.(field: SerializableProperty<*, *>?, writable: Writable<T>) -> Unit
-): Renderer<T> {
-    interface Generator: RendererGenerator {
+) : Renderer<T> {
+    interface Generator : RendererGenerator {
         fun <T> form(selector: FormSelector<T>): FormRenderer<T>
     }
 
@@ -127,20 +136,21 @@ data class FormRenderer<T>(
         fun <T> candidates(key: FormSelector<T>): Sequence<Generator> = sequence {
             type[key.serializer.descriptor.serialName]?.let { yieldAll(it) }
             kind[key.serializer.descriptor.kind]?.let { yieldAll(it) }
-            key.annotations.forEach {  anno ->
+            key.annotations.forEach { anno ->
                 annotation[anno.fqn]?.let {
                     yieldAll(it)
                 }
             }
             yieldAll(others)
         }
+
         operator fun <T> get(key: FormSelector<T>): FormRenderer<T> {
             val options = candidates(key).filter { it.matches(key) }.sortedByDescending { it.priority(key) }.map { it.form(key) }.toList()
-            if(!key.withPicker) return options.first()
+            if (!key.withPicker) return options.first()
             return FormRenderer(null, key, size = options.first().size, handlesField = options.first().handlesField) { field, writable ->
                 val selected = Property(options.first())
-                stack {
-                    stack {
+                row {
+                    expanding - stack {
                         reactive {
                             val sel = selected()
                             clearChildren()
@@ -154,6 +164,7 @@ data class FormRenderer<T>(
                 }
             }
         }
+
         operator fun plusAssign(generator: Generator) {
             generator.annotation?.let { annotation.getOrPut(it) { ArrayList() }.add(generator) }
                 ?: generator.type?.let { type.getOrPut(it) { ArrayList() }.add(generator) }
@@ -173,6 +184,7 @@ class FormSelector<T>(
     val desiredSize: FormLayoutPreferences = FormLayoutPreferences.Block,
     val handlesField: Boolean = false,
     val withPicker: Boolean = true,
+    val context: FormContext,
 ) {
     @Suppress("UNCHECKED_CAST")
     val serializer = run {
@@ -192,28 +204,66 @@ class FormSelector<T>(
         annotations = annotations,
         desiredSize = desiredSize,
         handlesField = handlesField,
-        withPicker = withPicker
+        withPicker = withPicker,
+        context = context,
     )
 }
 
+class FormContext(
+    val fileUpload: (suspend (FileReference) -> ServerFile)? = null,
+    val typeInfo: (type: String) -> FormTypeInfo<*, *>? = { _ -> println("WARN: Empty form context"); null },
+)
+
+private fun <T : HasId<ID>, ID : Comparable<ID>> ModelCache<T, ID>.defaultRenderToString(cache: ModelCache<T, ID>): suspend (ID) -> String {
+    val it = serializer.serializableProperties!!
+    val dcps = DataClassPathSerializer(serializer)
+    val nameFields: List<DataClassPath<T, *>> = serializer.serializableAnnotations.find {
+        it.fqn == "com.lightningkite.lightningdb.AdminTitleFields"
+    }?.values?.get("fields")?.let { it as? SerializableAnnotationValue.ArrayValue }
+        ?.value
+        ?.mapNotNull { it as? SerializableAnnotationValue.StringValue }
+        ?.map { it.value }
+        ?.toSet()
+        ?.let { matching ->
+            matching.map { dcps.fromString(it) as DataClassPath<T, *> }
+        }
+        ?: it.find { it.name == "name" }?.let { DataClassPathAccess(DataClassPathSelf(serializer), it) }?.let(::listOf)
+        ?: it.find { it.name == "title" }?.let { DataClassPathAccess(DataClassPathSelf(serializer), it) }?.let(::listOf)
+        ?: it.find { it.name == "subject" }?.let { DataClassPathAccess(DataClassPathSelf(serializer), it) }?.let(::listOf)
+        ?: it.map { DataClassPathAccess(DataClassPathSelf(serializer), it) }.take(3)
+    // TODO: Suspend chain for better field names
+    return label@{ id: ID ->
+        val t = cache[id]() ?: return@label "?"
+        nameFields.joinToString(" ") { it.get(t)?.toString() ?: "" }
+    }
+}
+
+class FormTypeInfo<T : HasId<ID>, ID : Comparable<ID>>(
+    val cache: ModelCache<T, ID>,
+    val screen: (ID) -> (() -> Screen)?,
+    val renderToString: (suspend (ID) -> String) = cache.defaultRenderToString(cache)
+)
+
 fun <T> ViewWriter.form(
+    context: FormContext,
     serializer: KSerializer<T>,
     writable: Writable<T>,
     annotations: List<SerializableAnnotation> = serializer.serializableAnnotations,
     desiredSize: FormLayoutPreferences = FormLayoutPreferences.Unbound,
-    field: SerializableProperty<*, *>? = null
+    field: SerializableProperty<*, *>? = null,
 ) {
-    val sel = FormSelector<T>(serializer, annotations, desiredSize)
+    val sel = FormSelector<T>(serializer, annotations, desiredSize, context = context)
     FormRenderer[sel].render(this, field, writable)
 }
 
 fun <T> ViewWriter.view(
+    context: FormContext,
     serializer: KSerializer<T>,
     readable: Readable<T>,
     annotations: List<SerializableAnnotation> = serializer.serializableAnnotations,
     desiredSize: FormLayoutPreferences = FormLayoutPreferences.Unbound,
-    field: SerializableProperty<*, *>? = null
+    field: SerializableProperty<*, *>? = null,
 ) {
-    val sel = FormSelector<T>(serializer, annotations, desiredSize)
+    val sel = FormSelector<T>(serializer, annotations, desiredSize, context = context)
     ViewRenderer[sel].render(this, field, readable)
 }
