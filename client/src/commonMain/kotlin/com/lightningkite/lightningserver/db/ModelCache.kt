@@ -296,7 +296,7 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
                             Condition.And(q.orderBy.take(count).mapIndexed { index, it ->
                             val isLast = index == count - 1
                                 val f = it.field as DataClassPath<T, Comparable<Comparable<*>>>
-                                val v = f.get(last)!!
+                                val v = f.get(last) ?: throw Error("Should not be possible to get here; last is null somehow")
                                 f.mapCondition(
                                     if (it.ascending) {
                                         if (isLast) Condition.GreaterThan(v)
@@ -610,7 +610,7 @@ abstract class BaseReadable2<T>(start: ReadableState<T> = ReadableState.notReady
 
 class UpdatingQueryList<T : HasId<ID>, ID : Comparable<ID>>(val condition: Condition<T>, val orderBy: List<SortPart<T>>, limit: Int) {
     var limit: Int = limit
-    val comparator = orderBy.comparator!!
+    val comparator = orderBy.comparator ?: throw Error("No comparator for sort; should not be possible as we should have appended _id by the time we get here.")
     val queued = ArrayList<T>()
     var updatesMade: Boolean = false
     fun delete(id: ID) {
@@ -664,5 +664,5 @@ class UpdatingQueryList<T : HasId<ID>, ID : Comparable<ID>>(val condition: Condi
 fun <T> List<SortPart<T>>.ensureTotal(serializer: KSerializer<T>): List<SortPart<T>> {
     if(lastOrNull()?.field?.properties?.singleOrNull()?.name == "_id") return this
     @Suppress("UNCHECKED_CAST")
-    return this + SortPart(DataClassPathAccess(DataClassPathSelf<T>(serializer), serializer.serializableProperties!!.find { it.name == "_id" } as SerializableProperty<T, Comparable<*>>))
+    return this + SortPart(DataClassPathAccess(DataClassPathSelf<T>(serializer), (serializer.serializableProperties ?: throw Error("Serializer has no serializable properties; cannot ensure total sort")).find { it.name == "_id" } as SerializableProperty<T, Comparable<*>>))
 }
