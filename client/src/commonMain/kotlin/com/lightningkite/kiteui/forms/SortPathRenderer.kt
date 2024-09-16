@@ -48,14 +48,14 @@ object SortPathRenderer : FormRenderer.Generator, ViewRenderer.Generator {
         DurationMsSerializer.descriptor.serialName,
     ) + stringTypes
 
-    class TypeInfo<T>(val serializer: SortPartSerializer<Any?>) {
+    class TypeInfo<T>(val module: FormModule, val serializer: SortPartSerializer<Any?>) {
         val options = ArrayList<SortPart<Any?>>()
 
         init {
             fun traverse(serializer: KSerializer<Any?>, base: DataClassPath<Any?, Any?>) {
                 serializer.serializableProperties?.forEach {
                     val ser = it.serializer.let {
-                        if (it is ContextualSerializer<*>) FormRenderer.module.getContextual(it)
+                        if (it is ContextualSerializer<*>) module.module.getContextual(it)
                         else it
                     }
                     if (ser.descriptor.serialName in comparableTypes) {
@@ -99,10 +99,10 @@ object SortPathRenderer : FormRenderer.Generator, ViewRenderer.Generator {
     }
 
     @Suppress("UNCHECKED_CAST")
-    override fun <T> form(selector: FormSelector<T>): FormRenderer<T> {
+    override fun <T> form(module: FormModule, selector: FormSelector<T>): FormRenderer<T> {
         val serializer = selector.serializer as SortPartSerializer<Any?>
-        val info = TypeInfo<SortPart<Any?>>(serializer)
-        return FormRenderer<SortPart<Any?>>(this, selector as FormSelector<SortPart<Any?>>) { field, writable ->
+        val info = TypeInfo<SortPart<Any?>>(module, serializer)
+        return FormRenderer<SortPart<Any?>>(module, this, selector as FormSelector<SortPart<Any?>>) { field, writable ->
             fieldTheme - select {
                 bind(writable, Constant(info.options), info::toString)
             }
@@ -110,10 +110,10 @@ object SortPathRenderer : FormRenderer.Generator, ViewRenderer.Generator {
     }
 
     @Suppress("UNCHECKED_CAST")
-    override fun <T> view(selector: FormSelector<T>): ViewRenderer<T> {
+    override fun <T> view(module: FormModule, selector: FormSelector<T>): ViewRenderer<T> {
         val serializer = selector.serializer as SortPartSerializer<Any?>
-        val info = TypeInfo<SortPart<Any?>>(serializer)
-        return ViewRenderer<SortPart<Any?>>(this, selector as FormSelector<SortPart<Any?>>) { field, readable ->
+        val info = TypeInfo<SortPart<Any?>>(module, serializer)
+        return ViewRenderer<SortPart<Any?>>(module, this, selector as FormSelector<SortPart<Any?>>) { field, readable ->
             text { ::content { info.toString(readable()) } }
         } as ViewRenderer<T>
     }

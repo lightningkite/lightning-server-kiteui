@@ -3,6 +3,7 @@ package com.lightningkite.mppexampleapp
 import com.lightningkite.*
 import com.lightningkite.kiteui.Routable
 import com.lightningkite.kiteui.fetch
+import com.lightningkite.kiteui.forms.FormModule
 import com.lightningkite.kiteui.forms.form
 import com.lightningkite.kiteui.forms.view
 import com.lightningkite.kiteui.views.ViewWriter
@@ -13,27 +14,26 @@ import com.lightningkite.kiteui.views.*
 import com.lightningkite.kiteui.views.direct.col
 import com.lightningkite.kiteui.views.direct.recyclerView
 import com.lightningkite.kiteui.views.direct.scrolls
-import com.lightningkite.kiteui.views.direct.text
 import com.lightningkite.kiteui.views.l2.*
 import com.lightningkite.lightningdb.*
 import com.lightningkite.lightningserver.db.ClientModelRestEndpointsStandardImpl
 import com.lightningkite.lightningserver.schema.*
 import com.lightningkite.serialization.ClientModule
 import com.lightningkite.serialization.SerializationRegistry
+import com.lightningkite.serialization.VirtualInstance
 import com.lightningkite.serialization.serializableProperties
 import kotlinx.datetime.Instant
 import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
-import prepareModelsClient
 
 //val defaultTheme = brandBasedExperimental("bsa", normalBack = Color.white)
 val defaultTheme = Theme.flat("default", Angle(0.55f))// brandBasedExperimental("bsa", normalBack = Color.white)
 val appTheme = Property<Theme>(defaultTheme)
 
 fun ViewWriter.app(navigator: ScreenNavigator, dialog: ScreenNavigator) {
-    prepareModelsShared()
-    prepareModelsClient()
+    com.lightningkite.prepareModelsShared()
     prepareModelsDemoClient()
+    DefaultSerializersModule = ClientModule
     LargeTestModel.serializer().serializableProperties!!
 //    rootTheme = { appTheme() }
     appNav(navigator, dialog) {
@@ -55,8 +55,8 @@ class HomeScreen : Screen {
     override fun ViewWriter.render() {
         scrolls - col {
             val prop = Property(Post())
-            card - form(Post.serializer(), prop)
-            card - view(Post.serializer(), prop)
+            card - form(FormModule(), Post.serializer(), prop)
+            card - view(FormModule(), Post.serializer(), prop)
 //            val prop = Property<Condition<LargeTestModel>>(Condition.Never)
 //            card - form(serializer<Condition<LargeTestModel>>(), prop)
 //            text { ::content{ prop().toString() } }
@@ -119,7 +119,7 @@ class RealTestScreen : Screen {
                 registry.register(s)
                 val user = s.structures.values.find { it.serialName.contains("User") }!!
                 val userT = user.Concrete(registry, arrayOf())
-                form(userT, Property(userT()))
+                form(FormModule(), userT, Property(userT()))
             }
         }
     }
@@ -133,10 +133,10 @@ class RealTest2Screen : Screen {
             reactive {
                 clearChildren()
                 val server = ExternalLightningServer(schema())
-                val user = server.models["/test-model/rest"] as ClientModelRestEndpointsStandardImpl<VirtualInstanceWithId, Comparable<Comparable<*>>>
+                val user = server.models["/test-model/rest"] as ClientModelRestEndpointsStandardImpl<VirtualInstance, Comparable<Comparable<*>>>
                 expanding - recyclerView {
                     children(asyncReadable { user.query(Query()) }) {
-                        card - view((user.serializer as VirtualStructConcreteWithId).wraps, it.lens { it.virtualInstance })
+                        card - view(FormModule(), user.serializer, it)
                     }
                 }
             }

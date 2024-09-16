@@ -1,14 +1,16 @@
 package com.lightningkite.lightningserver.schema
 
 import com.lightningkite.kiteui.*
+import com.lightningkite.kiteui.forms.FormModule
+import com.lightningkite.kiteui.forms.FormTypeInfo
 import com.lightningkite.kiteui.navigation.DefaultJson
+import com.lightningkite.kiteui.navigation.Screen
 import com.lightningkite.kiteui.navigation.UrlProperties
 import com.lightningkite.lightningdb.*
 import com.lightningkite.lightningserver.auth.*
-import com.lightningkite.lightningserver.db.ClientModelRestEndpoints
-import com.lightningkite.lightningserver.db.ClientModelRestEndpointsPlusUpdatesWebsocketStandardImpl
-import com.lightningkite.lightningserver.db.ClientModelRestEndpointsPlusWsStandardImpl
-import com.lightningkite.lightningserver.db.ClientModelRestEndpointsStandardImpl
+import com.lightningkite.lightningserver.db.*
+import com.lightningkite.lightningserver.files.ServerFile
+import com.lightningkite.lightningserver.files.UploadInformation
 import com.lightningkite.lightningserver.networking.BulkFetcher
 import com.lightningkite.lightningserver.networking.ConnectivityOnlyFetcher
 import com.lightningkite.lightningserver.networking.Fetcher
@@ -16,8 +18,6 @@ import com.lightningkite.serialization.*
 import kotlinx.datetime.Clock.System.now
 import kotlinx.datetime.Instant
 import kotlinx.serialization.KSerializer
-import kotlinx.serialization.builtins.ListSerializer
-import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.properties.Properties
 import kotlin.time.Duration.Companion.minutes
@@ -37,20 +37,6 @@ private fun LightningServerKSchema.bulkEndpoint() = endpoints.find {
             it.output.serialName == "com.lightningkite.lightningserver.typed.BulkResponse"
 }
 
-class VirtualStructConcreteWithId(val wraps: VirtualStruct.Concrete): WrappingSerializer<VirtualInstanceWithId, VirtualInstance>(wraps.descriptor.serialName + "_ID") {
-    override fun getDeferred(): KSerializer<VirtualInstance> = wraps
-    override fun inner(it: VirtualInstanceWithId): VirtualInstance = it.virtualInstance
-    override fun outer(it: VirtualInstance): VirtualInstanceWithId = VirtualInstanceWithId(it)
-}
-
-class VirtualInstanceWithId(val virtualInstance: VirtualInstance): HasId<Comparable<Comparable<*>>> {
-    @Suppress("UNCHECKED_CAST")
-    override val _id: Comparable<Comparable<*>> get() = virtualInstance.values[0] as Comparable<Comparable<*>>
-    val type: VirtualStruct.Concrete get() = virtualInstance.type
-    val values: List<Any?> get() = virtualInstance.values
-    override fun toString(): String = "${type.struct.serialName}(${values.zip(type.struct.fields).joinToString { "${it.second.name}=${it.first}" }})"
-}
-
 class ExternalLightningServer(
     val schema: LightningServerKSchema,
     val registry: SerializationRegistry = SerializationRegistry.master.copy(),
@@ -60,23 +46,28 @@ class ExternalLightningServer(
     init {
         registry.register(schema)
     }
+
     val bulk = schema.bulkEndpoint()
     val file = schema.uploadEarlyEndpoint()
+
+    fun authlessFetcher(path: String): Fetcher = bulk?.let {
+        BulkFetcher(path, json, { null })
+    } ?: ConnectivityOnlyFetcher(path, json, { null })
 
     fun fetcher(path: String): Fetcher = bulk?.let {
         BulkFetcher(path, json, this::accessToken)
     } ?: ConnectivityOnlyFetcher(path, json, this::accessToken)
 
     val auth: AuthClientEndpoints = AuthClientEndpoints(
-        subjects = schema.interfaces.filter { it.matches.serialName == "UserAuthClientEndpoints" }.associate {
+        subjects = schema.interfaces.filter { it.matches.serialName == "AuthClientEndpoints" }.associate {
             it.path to UserAuthClientEndpoints.StandardImpl(
-                fetchImplementation = fetcher(schema.baseUrl + "/" + it.path),
+                fetchImplementation = authlessFetcher(schema.baseUrl + "/" + it.path),
                 idSerializer = it.matches.arguments[0].serializer(registry, mapOf()) as KSerializer<Comparable<Any>>,
                 json = json,
                 properties = properties,
             )
         },
-        authenticatedSubjects = schema.interfaces.filter { it.matches.serialName == "AuthenticatedUserAuthClientEndpoints" }.associate {
+        authenticatedSubjects = schema.interfaces.filter { it.matches.serialName == "AuthenticatedAuthClientEndpoints" }.associate {
             it.path to AuthenticatedUserAuthClientEndpoints.StandardImpl(
                 fetchImplementation = fetcher(schema.baseUrl + "/" + it.path),
                 idSerializer = it.matches.arguments[0].serializer(registry, mapOf()) as KSerializer<Comparable<Any>>,
@@ -118,32 +109,40 @@ class ExternalLightningServer(
             AuthenticatedKnownDeviceProofClientEndpoints.StandardImpl(fetchImplementation = fetcher(httpPath), json = json, properties = properties)
         },
     )
+    private var lastRefresh: Instant = Instant.DISTANT_PAST
     var subject: String? = null
+        set(value) {
+            lastRefresh = Instant.DISTANT_PAST
+            field = value
+        }
     var sessionToken: String? = null
-    private var lastRefresh: Instant = now()
-    private var token: Async<String> = asyncGlobal {
-        auth.subjects[subject!!]!!.getTokenSimple(sessionToken!!)
-    }
+        set(value) {
+            lastRefresh = Instant.DISTANT_PAST
+            field = value
+        }
+    private var token: Async<String?>? = null
     private suspend fun accessToken(): String? {
-        if (subject == null || sessionToken == null) return null
-        if (now() - lastRefresh > 4.minutes) {
+        val subject = subject ?: return null
+        val sessionToken = sessionToken ?: return null
+        if (now() - lastRefresh > 4.minutes || token == null) {
             lastRefresh = now()
             token = asyncGlobal {
-                auth.subjects[subject!!]!!.getTokenSimple(sessionToken!!)
+                (auth.subjects[subject] ?: throw IllegalArgumentException("No such subject; available subjects: ${auth.subjects.keys}")).getTokenSimple(sessionToken)
             }
         }
-        return token.await()
+        return token!!.await()
     }
-    val models: Map<String, ClientModelRestEndpointsStandardImpl<*, *>> = schema.interfaces.filter {
+
+    val models: Map<String, ModelCache<*, *>> = schema.interfaces.filter {
         it.matches.serialName == "ClientModelRestEndpoints"
     }.associate { inter ->
-        val vserializer = inter.matches.arguments[0].serializer(registry, mapOf()) as KSerializer<*>
-        val vserializer2: KSerializer<HasId<Comparable<Comparable<*>>>> = if(vserializer is VirtualStruct.Concrete) VirtualStructConcreteWithId(vserializer) as KSerializer<HasId<Comparable<Comparable<*>>>>
-        else vserializer as KSerializer<HasId<Comparable<Comparable<*>>>>
+        val vserializer = inter.matches.arguments[0].serializer(registry, mapOf()) as KSerializer<HasId<Comparable<Comparable<*>>>>
         val idserializer = vserializer.serializableProperties!!.find { it.name == "_id" }!!.serializer as KSerializer<Comparable<Comparable<*>>>
         val httpPath = schema.baseUrl + inter.path
-        val hasWs = schema.endpoints.any { it.path == inter.path && it.method == "WEBSOCKET" && it.input.serialName == "com.lightningkite.lightningdb.Query" && it.output.serialName == "com.lightningkite.lightningdb.ListChange" }
-        val hasUpdatesWs = schema.endpoints.any { it.path == inter.path && it.method == "WEBSOCKET" && it.input.serialName == "com.lightningkite.lightningdb.Condition" && it.output.serialName == "com.lightningkite.lightningdb.CollectionUpdates" }
+        val hasWs =
+            schema.endpoints.any { it.path == inter.path && it.method == "WEBSOCKET" && it.input.serialName == "com.lightningkite.lightningdb.Query" && it.output.serialName == "com.lightningkite.lightningdb.ListChange" }
+        val hasUpdatesWs =
+            schema.endpoints.any { it.path == inter.path && it.method == "WEBSOCKET" && it.input.serialName == "com.lightningkite.lightningdb.Condition" && it.output.serialName == "com.lightningkite.lightningdb.CollectionUpdates" }
         inter.path to when {
             hasUpdatesWs -> ClientModelRestEndpointsPlusUpdatesWebsocketStandardImpl(
                 fetchImplementation = fetcher(httpPath),
@@ -156,11 +155,12 @@ class ExternalLightningServer(
                         pingTime = 5_000
                     )
                 },
-                serializer = vserializer2,
+                serializer = vserializer,
                 idSerializer = idserializer,
                 json = json,
                 properties = properties
             )
+
             hasWs -> ClientModelRestEndpointsPlusWsStandardImpl(
                 fetchImplementation = fetcher(httpPath),
                 wsImplementation = {
@@ -172,11 +172,12 @@ class ExternalLightningServer(
                         pingTime = 5_000
                     )
                 },
-                serializer = vserializer2,
+                serializer = vserializer,
                 idSerializer = idserializer,
                 json = json,
                 properties = properties
             )
+
             else -> ClientModelRestEndpointsStandardImpl(
                 fetchImplementation = fetcher(httpPath),
                 wsImplementation = {
@@ -188,11 +189,32 @@ class ExternalLightningServer(
                         pingTime = 5_000
                     )
                 },
-                serializer = vserializer2,
+                serializer = vserializer,
                 idSerializer = idserializer,
                 json = json,
                 properties = properties
             )
+        }.let { ModelCache(it, it.serializer) }
+    }
+
+    val context = FormModule().apply {
+        fileUpload = file?.let {
+            { file ->
+                val req = fetcher(schema.baseUrl).invoke(it.path, HttpMethod.GET, null, UploadInformation.serializer())
+                val r = connectivityFetch(req.uploadUrl, HttpMethod.PUT, body = RequestBodyFile(file))
+                if(!r.ok) throw IllegalStateException("File upload to ${req.uploadUrl.substringBefore('?')} failed")
+                ServerFile(req.futureCallToken)
+            }
+        }
+        typeInfo = label@{ name ->
+            val m = models.values.find { it.serializer.descriptor.serialName == name } ?: return@label null
+            FormTypeInfo(
+                cache = m,
+                screen = { id -> screen(m, id) }
+            )
         }
     }
+
+    var screen: (type: ModelCache<*, *>, id: Comparable<*>?) -> (() -> Screen)? = { _, _ -> null}
 }
+

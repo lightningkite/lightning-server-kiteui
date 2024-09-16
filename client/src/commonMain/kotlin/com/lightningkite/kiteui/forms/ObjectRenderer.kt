@@ -12,6 +12,6 @@ object ObjectRenderer: FormRenderer.Generator, ViewRenderer.Generator {
     override val kind = StructureKind.OBJECT
     override val name: String = "Object"
 
-    override fun <T> view(selector: FormSelector<T>): ViewRenderer<T> = ViewRenderer<T>(this, selector) { _, _ -> stack {} }
-    override fun <T> form(selector: FormSelector<T>): FormRenderer<T> = FormRenderer<T>(this, selector) { _, _ -> stack {} }
+    override fun <T> view(module: FormModule, selector: FormSelector<T>): ViewRenderer<T> = ViewRenderer<T>(module, this, selector) { _, _ -> stack {} }
+    override fun <T> form(module: FormModule, selector: FormSelector<T>): FormRenderer<T> = FormRenderer<T>(module, this, selector) { _, _ -> stack {} }
 }

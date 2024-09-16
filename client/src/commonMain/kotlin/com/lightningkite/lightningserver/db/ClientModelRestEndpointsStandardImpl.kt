@@ -5,6 +5,7 @@ package com.lightningkite.lightningserver.db
 import com.lightningkite.kiteui.*
 import com.lightningkite.kiteui.navigation.DefaultJson
 import com.lightningkite.kiteui.navigation.UrlProperties
+import com.lightningkite.kiteui.navigation.encodeToString
 import com.lightningkite.lightningdb.*
 import com.lightningkite.lightningserver.networking.Fetcher
 import kotlinx.serialization.ExperimentalSerializationApi
@@ -91,12 +92,16 @@ open class ClientModelRestEndpointsStandardImpl<T: HasId<ID>, ID: Comparable<ID>
         json.encodeToString(Modification.serializer(serializer), input),
         EntryChange.serializer(serializer)
     )
-    override suspend fun modify(id: ID, input: Modification<T>, ): T = fetchImplementation(
-        "${id.urlify()}",
-        HttpMethod.PATCH,
-        json.encodeToString(Modification.serializer(serializer), input),
-        serializer
-    )
+    override suspend fun modify(id: ID, input: Modification<T>, ): T {
+        fun <T> T.p() = apply { println("$this (${this?.let { it::class }})") }
+        println("STDIMPL modify $id $input")
+        return fetchImplementation(
+            "${id.urlify()}".p(),
+            HttpMethod.PATCH.p(),
+            json.encodeToString(Modification.serializer(serializer), input).p(),
+            serializer.p()
+        )
+    }
     override suspend fun bulkDelete(input: Condition<T>, ): Int = fetchImplementation(
         "bulk-delete",
         HttpMethod.POST,
@@ -135,7 +140,9 @@ open class ClientModelRestEndpointsStandardImpl<T: HasId<ID>, ID: Comparable<ID>
     )
 
     suspend fun RequestResponse.discard() = Unit
-    fun ID.urlify(): String = properties.encodeToStringMap(MapSerializer(String.serializer(), idSerializer), mapOf("it" to this))["id"] as String
+    fun ID.urlify(): String {
+        return properties.encodeToString(idSerializer, this)
+    }
     suspend fun <T> RequestResponse.readJson(serializer: KSerializer<T>): T {
         return json.decodeFromString(serializer, text())
     }

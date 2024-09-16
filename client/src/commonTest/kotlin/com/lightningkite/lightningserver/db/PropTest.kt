@@ -5,7 +5,7 @@ import com.lightningkite.kiteui.reactive.Property
 import com.lightningkite.kiteui.reactive.invoke
 import com.lightningkite.kiteui.reactive.lensByElement
 import com.lightningkite.kiteui.reactive.reactiveScope
-import com.lightningkite.lightningdb.lensPath
+import com.lightningkite.serialization.lensPath
 import kotlin.test.Test
 import kotlin.test.assertEquals
 

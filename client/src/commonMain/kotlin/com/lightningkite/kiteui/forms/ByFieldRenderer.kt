@@ -4,6 +4,7 @@ import com.lightningkite.kiteui.models.HeaderSizeSemantic
 import com.lightningkite.kiteui.models.SubtextSemantic
 import com.lightningkite.kiteui.models.px
 import com.lightningkite.kiteui.models.rem
+import com.lightningkite.kiteui.reactive.AppState
 import com.lightningkite.kiteui.reactive.Readable
 import com.lightningkite.kiteui.reactive.Writable
 import com.lightningkite.kiteui.reactive.lens
@@ -23,19 +24,26 @@ object ByFieldRenderer : FormRenderer.Generator, ViewRenderer.Generator {
     override val basePriority: Float
         get() = 0.7f
     override val kind = StructureKind.CLASS
-    override val size: FormSize = FormSize.Block
-    override fun <T> form(selector: FormSelector<T>): FormRenderer<T> {
-        val info = TypeInfo(selector.serializer)
-        return FormRenderer<T>(this, selector) { field, writable ->
+    override fun size(module: FormModule, selector: FormSelector<*>): FormSize {
+        val info = TypeInfo(module, selector.serializer, selector.desiredSize.approximateWidthBound ?: (AppState.windowInfo.value.width.px / 1.rem.px))
+        return FormSize(
+            selector.desiredSize.approximateWidthBound ?: (AppState.windowInfo.value.width.px / 1.rem.px),
+            info.viewApproximateHeight
+        )
+    }
+    override fun <T> form(module: FormModule, selector: FormSelector<T>): FormRenderer<T> {
+        val info = TypeInfo(module, selector.serializer, selector.desiredSize.approximateWidthBound ?: (AppState.windowInfo.value.width.px / 1.rem.px))
+        return FormRenderer<T>(module, this, selector) { field, writable ->
             if (field != null) card
             col {
-                info.grouped.forEach {
+//                text("Available width: ${info.availableWidth} ${info.formGroup.map { it.size }}")
+                info.formGroup.forEach {
                     if (it.size == 1) {
                         it[0].form(this, writable)
                     } else {
-                        rowCollapsingToColumn(60.rem) {
+                        row {
                             it.forEach {
-                                expanding
+                                weight(it.formSize.approximateWidth.toFloat())
                                 it.form(this, writable)
                             }
                         }
@@ -45,18 +53,19 @@ object ByFieldRenderer : FormRenderer.Generator, ViewRenderer.Generator {
         }
     }
 
-    override fun <T> view(selector: FormSelector<T>): ViewRenderer<T> {
-        val info = TypeInfo(selector.serializer)
-        return ViewRenderer<T>(this, selector) { field, readable ->
+    override fun <T> view(module: FormModule, selector: FormSelector<T>): ViewRenderer<T> {
+        val info = TypeInfo(module, selector.serializer, selector.desiredSize.approximateWidthBound ?: (AppState.windowInfo.value.width.px / 1.rem.px))
+        return ViewRenderer<T>(module, this, selector) { field, readable ->
             if (field != null) card
             col {
-                info.grouped.forEach {
+//                text("Available width: ${info.availableWidth} ${info.viewGroup.map { it.size }}")
+                info.viewGroup.forEach {
                     if (it.size == 1) {
                         it[0].view(this, readable)
                     } else {
-                        rowCollapsingToColumn(60.rem) {
+                        row {
                             it.forEach {
-                                expanding
+                                weight(it.viewSize.approximateWidth.toFloat())
                                 it.view(this, readable)
                             }
                         }
@@ -66,17 +75,21 @@ object ByFieldRenderer : FormRenderer.Generator, ViewRenderer.Generator {
         }
     }
 
-    private class TypeInfo<T>(val serializer: KSerializer<T>) {
+    private class TypeInfo<T>(val module: FormModule, val serializer: KSerializer<T>, val availableWidth: Double = AppState.windowInfo.value.width.px / 1.rem.px) {
         inner class Sub<S>(
             val field: SerializableProperty<T, S>,
             val form: FormRenderer<S>,
             val view: ViewRenderer<S>,
         ) {
+            val formSize = field.sentence?.let {
+                form.size.copy(approximateWidth = (form.size.approximateWidth + it.length * 3 / 4) * (HeaderSizeSemantic.lookup.getOrNull(field.importance - 1) ?: 0.8))
+            } ?: form.size.copy(approximateWidth = (form.size.approximateWidth) * (HeaderSizeSemantic.lookup.getOrNull(field.importance - 1) ?: 0.75))
+            val viewSize = field.sentence?.let {
+                view.size.copy(approximateWidth = (view.size.approximateWidth + it.length * 3 / 4) * (HeaderSizeSemantic.lookup.getOrNull(field.importance - 1) ?: 0.8))
+            } ?: view.size.copy(approximateWidth = (view.size.approximateWidth) * (HeaderSizeSemantic.lookup.getOrNull(field.importance - 1) ?: 0.8))
 
             inline fun f(viewWriter: ViewWriter, render: Renderer<*>, inner: ViewWriter.()->Unit) = with(viewWriter) {
                 field.importance.let {
-                    println("${field.name} annos are ${field.serializableAnnotations}")
-                    println("${field.name} importance is $it")
                     when (it) {
                         in 1..6 -> HeaderSizeSemantic(it).onNext
                         7 -> {}
@@ -108,7 +121,6 @@ object ByFieldRenderer : FormRenderer.Generator, ViewRenderer.Generator {
                     }
                 }
             }
-            val selector = FormSelector(field.serializer, field.serializableAnnotations)
             fun form(writer: ViewWriter, writable: Writable<T>) {
                 val w = writable.lensPath(
                     DataClassPathAccess<T, T, S>(
@@ -152,16 +164,16 @@ object ByFieldRenderer : FormRenderer.Generator, ViewRenderer.Generator {
 
         @Suppress("UNCHECKED_CAST")
         val subs = (serializer.serializableProperties ?: bestPropertiesAttempt()).map {
-            val sel = FormSelector(it.serializer, it.serializableAnnotations) as FormSelector<Any?>
+            val sel = FormSelector(it.serializer, it.serializableAnnotations, FormLayoutPreferences(availableWidth - 2.0, 10.0)) as FormSelector<Any?>
             Sub(
                 it as SerializableProperty<T, Any?>,
-                FormRenderer[sel],
-                ViewRenderer[sel],
+                module.form(sel),
+                module.view(sel),
             )
         }.filter { it.field.visibility != FieldVisibility.HIDDEN }
 
 
-        val grouped: List<List<Sub<*>>> = run {
+        val formGroup: List<List<Sub<*>>> = run {
             val used = HashSet<Sub<*>>()
             val grouped = ArrayList<List<Sub<*>>>()
             subs.groupBy { it.field.group }.forEach { (group, fields) ->
@@ -171,22 +183,19 @@ object ByFieldRenderer : FormRenderer.Generator, ViewRenderer.Generator {
             grouped.flatMap {
                 val m = ArrayList<List<Sub<*>>>()
                 var current = ArrayList<Sub<*>>()
+                var currentTotal = 0.0
                 for (item in it) {
-                    if (current.size >= 3) {
-                        m.add(current)
-                        current = ArrayList()
-                    }
                     if(item.field.importance < 7)
                         m.add(listOf(item))
-                    else when (item.form.size) {
-                        FormSize.Inline -> current.add(item)
-                        FormSize.Block -> {
-//                        if(current.isNotEmpty()) {
-//                            m.add(current)
-//                            current = ArrayList()
-//                        }
-                            m.add(listOf(item))
+                    else  {
+                        val w = item.formSize.approximateWidth
+                        if (currentTotal != 0.0 && currentTotal + w >= availableWidth) {
+                            m.add(current)
+                            current = ArrayList()
+                            currentTotal = 0.0
                         }
+                        current.add(item)
+                        currentTotal += w
                     }
                 }
                 if (current.isNotEmpty()) {
@@ -195,6 +204,39 @@ object ByFieldRenderer : FormRenderer.Generator, ViewRenderer.Generator {
                 m
             }.sortedBy { subs.indexOf(it[0]) }
         }
+        val viewGroup: List<List<Sub<*>>> = run {
+            val used = HashSet<Sub<*>>()
+            val grouped = ArrayList<List<Sub<*>>>()
+            subs.groupBy { it.field.group }.forEach { (group, fields) ->
+                used += fields
+                grouped += fields
+            }
+            grouped.flatMap {
+                val m = ArrayList<List<Sub<*>>>()
+                var current = ArrayList<Sub<*>>()
+                var currentTotal = 0.0
+                for (item in it) {
+                    if(item.field.importance < 7)
+                        m.add(listOf(item))
+                    else  {
+                        val w = item.formSize.approximateWidth
+                        if (currentTotal != 0.0 && currentTotal + w >= availableWidth) {
+                            m.add(current)
+                            current = ArrayList()
+                            currentTotal = 0.0
+                        }
+                        current.add(item)
+                        currentTotal += w
+                    }
+                }
+                if (current.isNotEmpty()) {
+                    m.add(current)
+                }
+                m
+            }.sortedBy { subs.indexOf(it[0]) }
+        }
+
+        val formApproximateHeight = formGroup.sumOf { it.maxOfOrNull { it.formSize.approximateHeight } ?: 0.0 }
+        val viewApproximateHeight = viewGroup.sumOf { it.maxOfOrNull { it.viewSize.approximateHeight } ?: 0.0 }
     }
 }
-

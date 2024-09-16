@@ -6,6 +6,7 @@ import com.lightningkite.kiteui.RetryWebsocket
 import com.lightningkite.kiteui.fetch
 import com.lightningkite.kiteui.navigation.DefaultJson
 import com.lightningkite.kiteui.navigation.UrlProperties
+import com.lightningkite.kiteui.printStackTrace2
 import com.lightningkite.lightningdb.HasId
 import com.lightningkite.lightningserver.auth.oauth.OauthResponse
 import com.lightningkite.lightningserver.auth.oauth.OauthTokenRequest

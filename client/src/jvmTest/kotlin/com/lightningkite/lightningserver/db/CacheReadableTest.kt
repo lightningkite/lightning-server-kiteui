@@ -6,6 +6,7 @@ import com.lightningkite.kiteui.launchGlobal
 import com.lightningkite.kiteui.reactive.*
 import com.lightningkite.lightningdb.*
 import com.lightningkite.now
+import com.lightningkite.prepareModelsShared
 import kotlinx.datetime.Instant
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -16,8 +17,9 @@ import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
 class ModelCache3Test() {
-    init {
-        prepareModels()
+    init  {
+        prepareModelsShared()
+        prepareModelsClientTest()
     }
     @Test fun fromScratch() {
         val r = MockClientModelRestEndpoints<Item, Int>(::println)
@@ -793,8 +795,9 @@ class CacheReadableTest {
 
 class UpdatingQueryListTest {
     companion object {
-        init {
-            prepareModels()
+        init  {
+            prepareModelsShared()
+            prepareModelsClientTest()
         }
         var created: Int = 0
         fun item(index: Int) = Item(index, created++)

@@ -1,6 +1,7 @@
 package com.lightningkite.kiteui.forms
 
 import com.lightningkite.*
+import com.lightningkite.kiteui.navigation.DefaultSerializersModule
 import com.lightningkite.lightningdb.*
 import com.lightningkite.serialization.DefaultDecoder
 import kotlinx.datetime.*
@@ -103,7 +104,7 @@ private class DesWrap(val deserializer: DeserializationStrategy<*>): Exception()
 @OptIn(ExperimentalSerializationApi::class)
 private class MinEncoder() : AbstractEncoder() {
     var out: Any? = null
-    override val serializersModule: SerializersModule = FormRenderer.module
+    override val serializersModule: SerializersModule = DefaultSerializersModule
     var index = -1
     override fun encodeValue(value: Any) {
         if(index == -1) out = value
@@ -136,7 +137,7 @@ private class MinEncoder() : AbstractEncoder() {
 }
 @OptIn(ExperimentalSerializationApi::class)
 private class MinDecoder(var item: Any?) : AbstractDecoder() {
-    override val serializersModule: SerializersModule = FormRenderer.module
+    override val serializersModule: SerializersModule = DefaultSerializersModule
     var lastIndex: Int = -1
     var lastValue: Any? = item
     val indexIter by lazy { (item as Map<Int, Any?>).iterator() }
