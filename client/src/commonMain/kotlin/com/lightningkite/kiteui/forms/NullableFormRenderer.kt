@@ -18,6 +18,12 @@ object NullableFormRenderer : FormRenderer.Generator, ViewRenderer.Generator {
         return selector.serializer.descriptor.isNullable
     }
 
+    override fun size(selector: FormSelector<*>): FormSize {
+        val innerSerializer = selector.serializer.nullElement()!! as KSerializer<Any>
+        val innerSelector = selector.copy(innerSerializer)
+        val inner = FormRenderer[innerSelector]
+        return inner.size.copy(approximateWidth = inner.size.approximateWidth + 3.0)
+    }
 
     @Suppress("UNCHECKED_CAST")
     override fun <T> form(selector: FormSelector<T>): FormRenderer<T> {

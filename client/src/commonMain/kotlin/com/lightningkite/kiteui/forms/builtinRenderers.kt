@@ -207,7 +207,7 @@ object BuiltinRendering {
                 val averageSize = ((maxLengthAnno?.get("average") as? SerializableAnnotationValue.IntValue)?.value ?: maxSize)?.times(3 / 4.0) ?: 20.0
 
                 FormSize(
-                    approximateWidth = averageSize * 3.0 / 4.0,
+                    approximateWidth = averageSize * 3.0 / 4.0 + 2.0,
                     approximateHeight = 1.0
                 )
             },
