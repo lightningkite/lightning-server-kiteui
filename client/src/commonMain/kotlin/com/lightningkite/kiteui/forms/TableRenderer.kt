@@ -67,7 +67,8 @@ object TableRenderer : FormRenderer.Generator, ViewRenderer.Generator {
             checkDataClass(DataClassPathSelf(innerSer), innerSer.serializableProperties!! as Array<SerializableProperty<T, Any?>>)
             all
         }),
-        link: ((T) -> () -> Screen)? = null
+        link: ((T) -> () -> Screen)? = null,
+        action: (suspend (T) -> Unit)? = null,
     ) = with(writer) {
         val properties = innerSer.serializableProperties!! as Array<SerializableProperty<T, Any?>>
         val rendererCache = HashMap<DataClassPath<T, Any?>, ViewRenderer<Any?>>()
@@ -139,7 +140,7 @@ object TableRenderer : FormRenderer.Generator, ViewRenderer.Generator {
                                 @Suppress("UNCHECKED_CAST")
                                 padded - sizeConstraints(width = render.size.approximateWidth.rem) - render.render(
                                     this@row,
-                                    col.properties.lastOrNull(),
+                                    null,
                                     it.lensPath(col)
                                 )
                             }
@@ -148,6 +149,11 @@ object TableRenderer : FormRenderer.Generator, ViewRenderer.Generator {
                             card - link {
                                 content()
                                 ::to { link(it()) }
+                            }
+                        } else if (action != null) {
+                            card - button {
+                                content()
+                                onClick { action(it()) }
                             }
                         } else {
                             card - content()

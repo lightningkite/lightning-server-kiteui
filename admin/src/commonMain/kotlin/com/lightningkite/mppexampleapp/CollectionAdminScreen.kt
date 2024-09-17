@@ -2,11 +2,15 @@ package com.lightningkite.mppexampleapp
 
 import com.lightningkite.kiteui.*
 import com.lightningkite.kiteui.forms.*
+import com.lightningkite.kiteui.models.Icon
+import com.lightningkite.kiteui.models.SelectedSemantic
 import com.lightningkite.kiteui.models.rem
 import com.lightningkite.kiteui.navigation.*
 import com.lightningkite.kiteui.reactive.*
 import com.lightningkite.kiteui.views.*
 import com.lightningkite.kiteui.views.direct.*
+import com.lightningkite.kiteui.views.l2.icon
+import com.lightningkite.kiteui.views.l2.toast
 import com.lightningkite.lightningdb.*
 import com.lightningkite.lightningserver.db.ModelCache
 import com.lightningkite.lightningserver.schema.ExternalLightningServer
@@ -111,6 +115,40 @@ class DetailAdminScreen(val adminUrl: String, val collectionName: String, val it
                     ::enabled { item.changesMade() }
                     onClick {
                         item.publish()
+                        toast {
+                            row {
+                                centered - icon(Icon.done, "Done")
+                                centered - text("Your changes have been saved")
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Routable("admin/{adminUrl}/collections/{collectionName}/new-item")
+class NewItemAdminScreen(val adminUrl: String, val collectionName: String) : Screen {
+    override fun ViewWriter.render() {
+        val server = shared { externalLightningServer(adminUrl)() }
+        val mc = shared { externalLightningServer(adminUrl)().models[collectionName] as ModelCache<HasId<Comparable<Comparable<*>>>, Comparable<Comparable<*>>> }
+        val item = asyncReadable { Property(try {
+            mc().skipCache.default()
+        } catch(e: Exception) {
+            mc().serializer.default()
+        }) }.flatten()
+        scrolls - col {
+            reactive {
+                clearChildren()
+                card - form(server().context, mc().serializer, item)
+                atEnd - important - button {
+                    text("Save")
+                    onClick {
+                        val mc = mc()
+                        val newItemId = mc.insert(item())()!!._id
+                        val id = UrlProperties.encodeToString(mc.serializer._id().serializer, newItemId)
+                        screenNavigator.replace(DetailAdminScreen(adminUrl, collectionName, id))
                     }
                 }
             }
@@ -145,7 +183,6 @@ class CollectionAdminScreen(val adminUrl: String, val collectionName: String) : 
                     },
                     set = { DefaultJson.encodeToString(Condition.serializer(mc.serializer), it) }
                 )
-                form(server().context, Condition.serializer(mc.serializer), condition)
                 val sort = sortString.lens(
                     get = {
                         it?.let {
@@ -158,7 +195,29 @@ class CollectionAdminScreen(val adminUrl: String, val collectionName: String) : 
                     },
                     set = { DefaultJson.encodeToString(ListSerializer(SortPartSerializer(mc.serializer)), it) }
                 )
-                form(server().context, ListSerializer(SortPartSerializer(mc.serializer)), sort)
+                row {
+                    expanding - space()
+                    menuButton {
+                        dynamicTheme { if (condition() != Condition.Always) SelectedSemantic else null }
+                        icon(Icon.filterList, "Filter")
+                        requireClick = true
+                        opensMenu {
+                            form(server().context, Condition.serializer(mc.serializer), condition)
+                        }
+                    }
+                    menuButton {
+                        dynamicTheme { if (sort().isNotEmpty()) SelectedSemantic else null }
+                        icon(Icon.sort, "Sort")
+                        requireClick = true
+                        opensMenu {
+                            form(server().context, ListSerializer(SortPartSerializer(mc.serializer)), sort)
+                        }
+                    }
+                    link {
+                        icon(Icon.add, "Add New")
+                        to = { NewItemAdminScreen(adminUrl, collectionName) }
+                    }
+                }
                 expanding - TableRenderer.view(
                     formModule = server().context,
                     writer = this@col,

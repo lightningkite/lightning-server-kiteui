@@ -27,12 +27,12 @@ import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
 
 //val defaultTheme = brandBasedExperimental("bsa", normalBack = Color.white)
-val defaultTheme = Theme.flat("default", Angle(0.55f))// brandBasedExperimental("bsa", normalBack = Color.white)
+val defaultTheme = Theme.flat("default", Angle(0.55f))
 val appTheme = Property<Theme>(defaultTheme)
 
 fun ViewWriter.app(navigator: ScreenNavigator, dialog: ScreenNavigator) {
     com.lightningkite.prepareModelsShared()
-    prepareModelsDemoClient()
+    prepareModelsAdmin()
     DefaultSerializersModule = ClientModule
     LargeTestModel.serializer().serializableProperties!!
 //    rootTheme = { appTheme() }

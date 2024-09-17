@@ -122,11 +122,31 @@ private fun <T : HasId<ID>, ID : Comparable<ID>> ModelCache<T, ID>.defaultRender
         nameFields.joinToString(" ") { it.get(t)?.toString() ?: "" }
     }
 }
+private fun <T : HasId<ID>, ID : Comparable<ID>> ModelCache<T, ID>.defaultTitleFields(): List<DataClassPath<T, *>> {
+    val it = serializer.serializableProperties!!
+    val dcps = DataClassPathSerializer(serializer)
+    val nameFields: List<DataClassPath<T, *>> = serializer.serializableAnnotations.find {
+        it.fqn == "com.lightningkite.lightningdb.AdminTitleFields"
+    }?.values?.get("fields")?.let { it as? SerializableAnnotationValue.ArrayValue }
+        ?.value
+        ?.mapNotNull { it as? SerializableAnnotationValue.StringValue }
+        ?.map { it.value }
+        ?.toSet()
+        ?.let { matching ->
+            matching.map { dcps.fromString(it) as DataClassPath<T, *> }
+        }
+        ?: it.find { it.name == "name" }?.let { DataClassPathAccess(DataClassPathSelf(serializer), it) }?.let(::listOf)
+        ?: it.find { it.name == "title" }?.let { DataClassPathAccess(DataClassPathSelf(serializer), it) }?.let(::listOf)
+        ?: it.find { it.name == "subject" }?.let { DataClassPathAccess(DataClassPathSelf(serializer), it) }?.let(::listOf)
+        ?: it.map { DataClassPathAccess(DataClassPathSelf(serializer), it) }.take(3)
+    return nameFields
+}
 
 class FormTypeInfo<T : HasId<ID>, ID : Comparable<ID>>(
     val cache: ModelCache<T, ID>,
     val screen: (ID) -> (() -> Screen)?,
-    val renderToString: (suspend (ID) -> String) = cache.defaultRenderToString(cache)
+    val titleFields: List<DataClassPath<T, *>> = cache.defaultTitleFields(),
+    val renderToString: (suspend (ID) -> String) = cache.defaultRenderToString(cache),
 )
 
 fun <T> ViewWriter.form(
