@@ -1,0 +1,11 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Serve" type="JetRunConfigurationType">
+    <option name="MAIN_CLASS_NAME" value="com.lightningkite.lightningserver.demo.MainKt" />
+    <module name="lightning-server-kiteui.demo-server.main" />
+    <option name="PROGRAM_PARAMETERS" value="serve" />
+    <shortenClasspath name="ARGS_FILE" />
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>

@@ -9,6 +9,7 @@ import com.lightningkite.lightningserver.aws.terraformMigrate
 import com.lightningkite.lightningserver.aws.terraformAws
 import com.lightningkite.lightningserver.cache.*
 import com.lightningkite.lightningserver.db.*
+import com.lightningkite.lightningserver.files.ServerFile
 import com.lightningkite.lightningserver.ktor.runServer
 import com.lightningkite.lightningserver.pubsub.LocalPubSub
 import com.lightningkite.lightningserver.settings.loadSettings

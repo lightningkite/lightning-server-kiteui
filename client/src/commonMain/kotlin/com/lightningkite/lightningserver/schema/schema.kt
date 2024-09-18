@@ -77,35 +77,35 @@ class ExternalLightningServer(
             )
         },
         smsProof = schema.interfaces.find { it.matches.serialName == "SmsProofClientEndpoints" }?.let {
-            val httpPath = it.path.substringBeforeLast('/')
+            val httpPath = it.path.run { if (last() == '/') substringBeforeLast('/') else this }
             SmsProofClientEndpoints.StandardImpl(fetchImplementation = fetcher(httpPath), json = json, properties = properties)
         },
         emailProof = schema.interfaces.find { it.matches.serialName == "EmailProofClientEndpoints" }?.let {
-            val httpPath = it.path.substringBeforeLast('/')
+            val httpPath = it.path.run { if (last() == '/') substringBeforeLast('/') else this }
             EmailProofClientEndpoints.StandardImpl(fetchImplementation = fetcher(httpPath), json = json, properties = properties)
         },
         oneTimePasswordProof = schema.interfaces.find { it.matches.serialName == "OneTimePasswordProofClientEndpoints" }?.let {
-            val httpPath = it.path.substringBeforeLast('/')
+            val httpPath = it.path.run { if (last() == '/') substringBeforeLast('/') else this }
             OneTimePasswordProofClientEndpoints.StandardImpl(fetchImplementation = fetcher(httpPath), json = json, properties = properties)
         },
         passwordProof = schema.interfaces.find { it.matches.serialName == "PasswordProofClientEndpoints" }?.let {
-            val httpPath = it.path.substringBeforeLast('/')
+            val httpPath = it.path.run { if (last() == '/') substringBeforeLast('/') else this }
             PasswordProofClientEndpoints.StandardImpl(fetchImplementation = fetcher(httpPath), json = json, properties = properties)
         },
         knownDeviceProof = schema.interfaces.find { it.matches.serialName == "KnownDeviceProofClientEndpoints" }?.let {
-            val httpPath = it.path.substringBeforeLast('/')
+            val httpPath = it.path.run { if (last() == '/') substringBeforeLast('/') else this }
             KnownDeviceProofClientEndpoints.StandardImpl(fetchImplementation = fetcher(httpPath), json = json, properties = properties)
         },
         authenticatedOneTimePasswordProof = schema.interfaces.find { it.matches.serialName == "AuthenticatedOneTimePasswordProofClientEndpoints" }?.let {
-            val httpPath = it.path.substringBeforeLast('/')
+            val httpPath = it.path.run { if (last() == '/') substringBeforeLast('/') else this }
             AuthenticatedOneTimePasswordProofClientEndpoints.StandardImpl(fetchImplementation = fetcher(httpPath), json = json, properties = properties)
         },
         authenticatedPasswordProof = schema.interfaces.find { it.matches.serialName == "AuthenticatedPasswordProofClientEndpoints" }?.let {
-            val httpPath = it.path.substringBeforeLast('/')
+            val httpPath = it.path.run { if (last() == '/') substringBeforeLast('/') else this }
             AuthenticatedPasswordProofClientEndpoints.StandardImpl(fetchImplementation = fetcher(httpPath), json = json, properties = properties)
         },
         authenticatedKnownDeviceProof = schema.interfaces.find { it.matches.serialName == "AuthenticatedKnownDeviceProofClientEndpoints" }?.let {
-            val httpPath = it.path.substringBeforeLast('/')
+            val httpPath = it.path.run { if (last() == '/') substringBeforeLast('/') else this }
             AuthenticatedKnownDeviceProofClientEndpoints.StandardImpl(fetchImplementation = fetcher(httpPath), json = json, properties = properties)
         },
     )

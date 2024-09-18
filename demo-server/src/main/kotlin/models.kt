@@ -9,6 +9,7 @@ import kotlinx.serialization.UseContextualSerialization
 import kotlinx.datetime.Instant
 import java.util.*
 import com.lightningkite.UUID
+import com.lightningkite.lightningserver.files.ServerFile
 import com.lightningkite.uuid
 import kotlinx.serialization.Contextual
 
@@ -44,10 +45,3 @@ data class User(
     override val hashedPassword: String = "",
     val isSuperUser: Boolean = false,
 ) : HasId<UUID>, HasEmail, HasPassword
-
-@Serializable
-@GenerateDataClassPaths
-data class UserAlt(
-    override val _id: UUID = uuid(),
-    override val email: String
-) : HasId<UUID>, HasEmail
