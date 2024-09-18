@@ -63,6 +63,9 @@ tasks.create("rebuildTerraform", JavaExec::class.java) {
     args("terraform")
     workingDir(project.rootDir)
 }
+tasks.withType(Zip::class) {
+    isZip64 = true
+}
 
 fun env(name: String, profile: String) {
     val mongoProfile = file("${System.getProperty("user.home")}/.mongo/profiles/$profile.env")

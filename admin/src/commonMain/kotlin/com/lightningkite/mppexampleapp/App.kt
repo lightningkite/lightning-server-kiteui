@@ -5,6 +5,7 @@ import com.lightningkite.kiteui.Routable
 import com.lightningkite.kiteui.fetch
 import com.lightningkite.kiteui.forms.FormModule
 import com.lightningkite.kiteui.forms.form
+import com.lightningkite.kiteui.forms.login
 import com.lightningkite.kiteui.forms.view
 import com.lightningkite.kiteui.views.ViewWriter
 import com.lightningkite.kiteui.models.*
@@ -14,6 +15,7 @@ import com.lightningkite.kiteui.views.*
 import com.lightningkite.kiteui.views.direct.col
 import com.lightningkite.kiteui.views.direct.recyclerView
 import com.lightningkite.kiteui.views.direct.scrolls
+import com.lightningkite.kiteui.views.direct.stack
 import com.lightningkite.kiteui.views.l2.*
 import com.lightningkite.lightningdb.*
 import com.lightningkite.lightningserver.db.ClientModelRestEndpointsStandardImpl
@@ -41,12 +43,29 @@ fun ViewWriter.app(navigator: ScreenNavigator, dialog: ScreenNavigator) {
         ::navItems {
             listOf(
                 NavLink(title = { "Home" }, icon = { Icon.home }) { { HomeScreen() } },
+                NavLink("Auth", icon = Icon.person) { AuthTestScreen() }
             )
         }
 
 //        ::exists {
 //            navigator.currentScreen.await() !is UseFullScreen
 //        }
+    }
+}
+
+@Routable("/auth")
+class AuthTestScreen : Screen {
+    override fun ViewWriter.render() {
+        stack {
+            val schema = asyncReadable { fetch("http://localhost:8080/meta/kschema").text().let { DefaultJson.decodeFromString(LightningServerKSchema.serializer(), it) } }
+            reactive {
+                clearChildren()
+                val server = ExternalLightningServer(schema().also { println("SCHEMA: $it") })
+                centered - card - login(server.auth.also { println("AUTH: $it") }) {
+                    onLogin { println("Logged In! Info: $it") }
+                }
+            }
+        }
     }
 }
 
@@ -148,10 +167,10 @@ class RealTest2Screen : Screen {
 @Serializable
 data class Post(
     @AdminHidden override val _id: UUID = uuid(),
-    @DoesNotNeedLabel val title: String = "My Post",
+    val title: String = "My Post",
 
     @Hint("Content of your post goes here")
-    @DoesNotNeedLabel
+    @DisplayName("boody")
     @Multiline
     val body: String = "",
 
