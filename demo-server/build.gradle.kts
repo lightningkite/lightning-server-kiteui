@@ -63,6 +63,13 @@ tasks.create("rebuildTerraform", JavaExec::class.java) {
     args("terraform")
     workingDir(project.rootDir)
 }
+tasks.create("serve", JavaExec::class.java) {
+    group = "application"
+    classpath(sourceSets.main.get().runtimeClasspath)
+    mainClass.set("com.lightningkite.lightningserver.demo.MainKt")
+    args("serve")
+    workingDir(project.rootDir)
+}
 tasks.withType(Zip::class) {
     isZip64 = true
 }

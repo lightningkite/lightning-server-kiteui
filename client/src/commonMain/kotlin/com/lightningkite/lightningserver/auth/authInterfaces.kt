@@ -4,17 +4,25 @@ import com.lightningkite.kiteui.HttpMethod
 import com.lightningkite.kiteui.navigation.DefaultJson
 import com.lightningkite.kiteui.navigation.UrlProperties
 import com.lightningkite.lightningdb.HasId
+import com.lightningkite.lightningserver.LSError
+import com.lightningkite.lightningserver.LsErrorException
 import com.lightningkite.lightningserver.auth.oauth.OauthResponse
 import com.lightningkite.lightningserver.auth.oauth.OauthTokenRequest
 import com.lightningkite.lightningserver.auth.proof.*
 import com.lightningkite.lightningserver.auth.subject.IdAndAuthMethods
+import com.lightningkite.lightningserver.auth.subject.LogInRequest
+import com.lightningkite.lightningserver.auth.subject.ProofsCheckResult
 import com.lightningkite.lightningserver.auth.subject.SubSessionRequest
 import com.lightningkite.lightningserver.networking.Fetcher
+import com.lightningkite.now
+import kotlinx.coroutines.delay
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.properties.Properties
 import kotlinx.serialization.serializer
+import kotlin.math.max
+import kotlin.time.Duration.Companion.days
 
 
 data class AuthClientEndpoints(
@@ -36,6 +44,130 @@ data class AuthClientEndpoints(
         passwordProof,
         knownDeviceProof
     )
+
+    companion object {
+        val dummy = AuthClientEndpoints(
+            subjects = mapOf("User" to object: UserAuthClientEndpoints<String> {
+                override suspend fun getToken(input: OauthTokenRequest): OauthResponse = OauthResponse("")
+                override suspend fun getTokenSimple(input: String): String = ""
+                override suspend fun logIn(input: List<Proof>): IdAndAuthMethods<String> {
+                    delay(1000)
+                    return IdAndAuthMethods(
+                        id = "id",
+                        options = listOf(
+                            ProofOption(ProofMethodInfo("email", "email"), "test@test.com"),
+                            ProofOption(ProofMethodInfo("sms", "phone"), "801-000-0000"),
+                            ProofOption(ProofMethodInfo("password", null)),
+                            ProofOption(ProofMethodInfo("otp", null)),
+                        ).filter { it.method.via !in input.map { it.via } },
+                        strengthRequired = 3,
+                        session = if(input.sumOf { it.strength } >= 3) "" else null
+                    )
+                }
+                override suspend fun logInV2(input: LogInRequest): IdAndAuthMethods<String> {
+                    delay(1000)
+                    return IdAndAuthMethods(
+                        id = "id",
+                        options = listOf(
+                            ProofOption(ProofMethodInfo("email", "email"), "test@test.com"),
+                            ProofOption(ProofMethodInfo("sms", "phone"), "801-000-0000"),
+                            ProofOption(ProofMethodInfo("password", null)),
+                            ProofOption(ProofMethodInfo("otp", null)),
+                        ).filter { it.method.via !in input.proofs.map { it.via } },
+                        strengthRequired = 3,
+                        session = if(input.proofs.sumOf { it.strength } >= 3) "" else null
+                    )
+                }
+                override suspend fun proofsCheck(input: List<Proof>): ProofsCheckResult<String> {
+                    delay(1000)
+                    return ProofsCheckResult(
+                        id = "id",
+                        options = listOf(
+                            ProofOption(ProofMethodInfo("email", "email"), "test@test.com"),
+                            ProofOption(ProofMethodInfo("sms", "phone"), "801-000-0000"),
+                            ProofOption(ProofMethodInfo("password", null)),
+                            ProofOption(ProofMethodInfo("otp", null)),
+                        ).filter { it.method.via !in input.map { it.via } },
+                        strengthRequired = 3,
+                        maxExpiration = now() + 7.days,
+                        readyToLogIn = input.sumOf { it.strength } >= 3
+                    )
+                }
+                override suspend fun openSession(input: String): String = ""
+            }),
+            authenticatedSubjects = mapOf(),
+            smsProof = object: SmsProofClientEndpoints {
+                override suspend fun beginSmsOwnershipProof(input: String): String {
+                    delay(1000)
+                    return input
+                }
+                override suspend fun provePhoneOwnership(input: FinishProof): Proof {
+                    delay(1000)
+                    if(input.password == "wrong") throw LsErrorException(400, LSError(400, "", "", ""))
+                    return Proof("sms", property = "phone", value = input.key, at = now(), signature = "")
+                }
+            },
+            emailProof = object: EmailProofClientEndpoints {
+                override suspend fun beginEmailOwnershipProof(input: String): String {
+                    delay(1000)
+                    return input
+                }
+                override suspend fun proveEmailOwnership(input: FinishProof): Proof {
+                    delay(1000)
+                    if(input.password == "wrong") throw LsErrorException(400, LSError(400, "", "", ""))
+                    return Proof("email", property = "email", value = input.key, at = now(), signature = "")
+                }
+            },
+            passwordProof = object: PasswordProofClientEndpoints {
+                override suspend fun provePasswordOwnership(input: IdentificationAndPassword): Proof {
+                    delay(1000)
+                    if(input.password == "wrong") throw LsErrorException(400, LSError(400, "", "", ""))
+                    return Proof("password", property = "password", value = "id", at = now(), signature = "")
+                }
+            },
+            oneTimePasswordProof = object: OneTimePasswordProofClientEndpoints {
+                override suspend fun proveOTP(input: IdentificationAndPassword): Proof {
+                    delay(1000)
+                    if(input.password == "wrong") throw LsErrorException(400, LSError(400, "", "", ""))
+                    return Proof("otp", property = "otp", value = "id", at = now(), signature = "")
+                }
+            },
+            knownDeviceProof = object: KnownDeviceProofClientEndpoints {
+                override suspend fun proveKnownDevice(input: String): Proof {
+                    delay(1000)
+                    if(input == "wrong") throw LsErrorException(400, LSError(400, "", "", ""))
+                    return Proof("known-device", 1, "id", "value", now(), "")
+                }
+
+                override suspend fun knownDeviceOptions(): KnownDeviceOptions {
+                    delay(1000)
+                    return KnownDeviceOptions(30.days, 1)
+                }
+            },
+            authenticatedKnownDeviceProof = object: AuthenticatedKnownDeviceProofClientEndpoints {
+                override suspend fun establishKnownDevice(): String {
+                    delay(1000)
+                    return "ok"
+                }
+
+                override suspend fun establishKnownDeviceV2(): KnownDeviceSecretAndExpiration {
+                    delay(1000)
+                    return KnownDeviceSecretAndExpiration("ok", now() + 30.days)
+                }
+            },
+            authenticatedOneTimePasswordProof = object: AuthenticatedOneTimePasswordProofClientEndpoints {
+                override suspend fun establishOneTimePassword(input: EstablishOtp): String {
+                    delay(1000)
+                    return "URL for OTP"
+                }
+            },
+            authenticatedPasswordProof = object: AuthenticatedPasswordProofClientEndpoints {
+                override suspend fun establishPassword(input: EstablishPassword) {
+                    delay(1000)
+                }
+            }
+        )
+    }
 }
 
 data class Identification(
@@ -53,14 +185,6 @@ data class Identification(
 }
 
 sealed interface ProofEndpoints {
-    interface AuthComponent {
-        val name: String
-        val message: String
-        val hint: String
-        suspend fun start(identifier: Identification)
-        suspend fun submit(password: String): Proof
-    }
-    val authComponent: AuthComponent
 }
 
 interface SmsProofClientEndpoints: ProofEndpoints {
@@ -85,30 +209,6 @@ interface SmsProofClientEndpoints: ProofEndpoints {
             outSerializer = json.serializersModule.serializer()
         )
     }
-
-    class SmsComponent(val endpoints: SmsProofClientEndpoints): ProofEndpoints.AuthComponent {
-        var phoneNumber: String? = null
-
-        override val name: String = "SMS"
-        override val message: String = "Enter the PIN sent to $phoneNumber to log in"
-        override val hint: String = "PIN"
-
-        var token: String? = null
-        override suspend fun start(identifier: Identification) {
-            if (identifier.property != "phoneNumber") throw IllegalArgumentException("SMS start() must be given a phone number")
-            phoneNumber = identifier.value
-            token = endpoints.beginSmsOwnershipProof(identifier.value)
-        }
-        override suspend fun submit(password: String): Proof {
-            return endpoints.provePhoneOwnership(
-                FinishProof(
-                    key = token ?: throw IllegalStateException("SMS submit() called before start()"),
-                    password = password
-                )
-            )
-        }
-    }
-    override val authComponent: ProofEndpoints.AuthComponent get() = SmsComponent(this)
 }
 interface EmailProofClientEndpoints: ProofEndpoints {
     suspend fun beginEmailOwnershipProof(input: String): String
@@ -133,29 +233,6 @@ interface EmailProofClientEndpoints: ProofEndpoints {
         )
     }
 
-    class EmailComponent(val endpoints: EmailProofClientEndpoints): ProofEndpoints.AuthComponent {
-        var email: String? = null
-
-        override val name: String = "Email"
-        override val message: String = "Enter the PIN sent to $email to log in"
-        override val hint: String = "PIN"
-
-        var token: String? = null
-        override suspend fun start(identifier: Identification) {
-            if (identifier.property != "email") throw IllegalArgumentException("Email: start() must be given an email")
-            email = identifier.value
-            token = endpoints.beginEmailOwnershipProof(identifier.value)
-        }
-        override suspend fun submit(password: String): Proof {
-            return endpoints.proveEmailOwnership(
-                FinishProof(
-                    key = token ?: throw IllegalStateException("Email submit() called before start()"),
-                    password = password
-                )
-            )
-        }
-    }
-    override val authComponent: ProofEndpoints.AuthComponent get() = EmailComponent(this)
 }
 
 interface OneTimePasswordProofClientEndpoints: ProofEndpoints {
@@ -174,22 +251,6 @@ interface OneTimePasswordProofClientEndpoints: ProofEndpoints {
         )
     }
 
-    class OTPComponent(val endpoints: OneTimePasswordProofClientEndpoints): ProofEndpoints.AuthComponent {
-        override val name: String = "OTP"
-        override val message: String = "Enter your One-Time Password below to log in"
-        override val hint: String = "Password"
-
-        var identification: Identification? = null
-        override suspend fun start(identifier: Identification) {
-            identification = identifier
-        }
-        override suspend fun submit(password: String): Proof {
-            return endpoints.proveOTP(
-                identification?.withPassword(password) ?: throw IllegalStateException("OTP submit() called before start()")
-            )
-        }
-    }
-    override val authComponent: ProofEndpoints.AuthComponent get() = OTPComponent(this)
 }
 interface PasswordProofClientEndpoints: ProofEndpoints {
     suspend fun provePasswordOwnership(input: IdentificationAndPassword): Proof
@@ -205,26 +266,9 @@ interface PasswordProofClientEndpoints: ProofEndpoints {
             outSerializer = json.serializersModule.serializer()
         )
     }
-
-    class PasswordComponent(val endpoints: PasswordProofClientEndpoints): ProofEndpoints.AuthComponent {
-        override val name: String = "Password"
-        override val message: String = "Enter your password below to log in"
-        override val hint: String = "Password"
-
-        var identification: Identification? = null
-        override suspend fun start(identifier: Identification) {
-            identification = identifier
-        }
-        override suspend fun submit(password: String): Proof {
-            println("id + password: ${identification?.withPassword(password)}")
-            return endpoints.provePasswordOwnership(
-                identification?.withPassword(password) ?: throw IllegalStateException("Password submit() called before start()")
-            )
-        }
-    }
-    override val authComponent: ProofEndpoints.AuthComponent get() = PasswordComponent(this)
 }
 interface KnownDeviceProofClientEndpoints: ProofEndpoints {
+    suspend fun knownDeviceOptions(): KnownDeviceOptions
     suspend fun proveKnownDevice(input: String): Proof
     open class StandardImpl(
         val fetchImplementation: Fetcher,
@@ -237,21 +281,13 @@ interface KnownDeviceProofClientEndpoints: ProofEndpoints {
             jsonBody = json.encodeToString(input),
             outSerializer = json.serializersModule.serializer()
         )
+        override suspend fun knownDeviceOptions(): KnownDeviceOptions = fetchImplementation(
+            url = "options",
+            method = HttpMethod.GET,
+            jsonBody = null,
+            outSerializer = json.serializersModule.serializer()
+        )
     }
-
-    class KnownDeviceComponent(val endpoints: KnownDeviceProofClientEndpoints): ProofEndpoints.AuthComponent {
-        override val name: String = "Known Device"
-        override val message: String = "This should be done automatically"
-        override val hint: String = "Known Device"
-
-        override suspend fun start(identifier: Identification) {
-            /*Do Nothing*/
-        }
-        override suspend fun submit(password: String): Proof {
-            return endpoints.proveKnownDevice(password)
-        }
-    }
-    override val authComponent: ProofEndpoints.AuthComponent get() = KnownDeviceComponent(this)
 }
 
 interface AuthenticatedOneTimePasswordProofClientEndpoints {
@@ -286,6 +322,7 @@ interface AuthenticatedPasswordProofClientEndpoints {
 }
 interface AuthenticatedKnownDeviceProofClientEndpoints {
     suspend fun establishKnownDevice(): String
+    suspend fun establishKnownDeviceV2(): KnownDeviceSecretAndExpiration
     open class StandardImpl(
         val fetchImplementation: Fetcher,
         val json: Json = DefaultJson,
@@ -297,12 +334,20 @@ interface AuthenticatedKnownDeviceProofClientEndpoints {
             jsonBody = "{}",
             outSerializer = json.serializersModule.serializer()
         )
+        override suspend fun establishKnownDeviceV2(): KnownDeviceSecretAndExpiration = fetchImplementation(
+            url = "establish2",
+            method = HttpMethod.POST,
+            jsonBody = "{}",
+            outSerializer = json.serializersModule.serializer()
+        )
     }
 
 }
 
 interface UserAuthClientEndpoints<ID: Comparable<ID>> {
     suspend fun logIn(input: List<Proof>): IdAndAuthMethods<ID>
+    suspend fun logInV2(input: LogInRequest): IdAndAuthMethods<ID>
+    suspend fun proofsCheck(input: List<Proof>): ProofsCheckResult<ID>
     suspend fun openSession(input: String): String
     suspend fun getToken(input: OauthTokenRequest): OauthResponse
     suspend fun getTokenSimple(input: String): String
@@ -317,6 +362,18 @@ interface UserAuthClientEndpoints<ID: Comparable<ID>> {
             method = HttpMethod.POST,
             jsonBody = json.encodeToString(input),
             outSerializer = IdAndAuthMethods.serializer(idSerializer)
+        )
+        override suspend fun logInV2(input: LogInRequest): IdAndAuthMethods<ID> = fetchImplementation(
+            url = "login2",
+            method = HttpMethod.POST,
+            jsonBody = json.encodeToString(input),
+            outSerializer = IdAndAuthMethods.serializer(idSerializer)
+        )
+        override suspend fun proofsCheck(input: List<Proof>): ProofsCheckResult<ID> = fetchImplementation(
+            url = "proofs-check",
+            method = HttpMethod.POST,
+            jsonBody = json.encodeToString(input),
+            outSerializer = ProofsCheckResult.serializer(idSerializer)
         )
         override suspend fun openSession(input: String): String = fetchImplementation(
             url = "open-session",

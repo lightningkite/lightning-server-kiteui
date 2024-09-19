@@ -16,6 +16,8 @@ import kotlinx.serialization.encoding.*
 data class FormSize(
     val approximateWidth: Double,
     val approximateHeight: Double,
+    val widthGrowWillingness: Double = 0.5,
+    val heightGrowWillingness: Double = 0.5,
 ) {
     companion object {
         val Inline = FormSize(12.0, 1.0)

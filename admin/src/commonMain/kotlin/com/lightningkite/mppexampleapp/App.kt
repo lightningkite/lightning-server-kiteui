@@ -12,12 +12,10 @@ import com.lightningkite.kiteui.models.*
 import com.lightningkite.kiteui.navigation.*
 import com.lightningkite.kiteui.reactive.*
 import com.lightningkite.kiteui.views.*
-import com.lightningkite.kiteui.views.direct.col
-import com.lightningkite.kiteui.views.direct.recyclerView
-import com.lightningkite.kiteui.views.direct.scrolls
-import com.lightningkite.kiteui.views.direct.stack
+import com.lightningkite.kiteui.views.direct.*
 import com.lightningkite.kiteui.views.l2.*
 import com.lightningkite.lightningdb.*
+import com.lightningkite.lightningserver.auth.AuthClientEndpoints
 import com.lightningkite.lightningserver.db.ClientModelRestEndpointsStandardImpl
 import com.lightningkite.lightningserver.schema.*
 import com.lightningkite.serialization.ClientModule
@@ -57,12 +55,12 @@ fun ViewWriter.app(navigator: ScreenNavigator, dialog: ScreenNavigator) {
 class AuthTestScreen : Screen {
     override fun ViewWriter.render() {
         stack {
-            val schema = asyncReadable { fetch("http://localhost:8080/meta/kschema").text().let { DefaultJson.decodeFromString(LightningServerKSchema.serializer(), it) } }
+//            val schema = asyncReadable { fetch("https://jivie.lightningkite.com/meta/kschema").text().let { DefaultJson.decodeFromString(LightningServerKSchema.serializer(), it) } }
             reactive {
                 clearChildren()
-                val server = ExternalLightningServer(schema().also { println("SCHEMA: $it") })
-                centered - card - login(server.auth.also { println("AUTH: $it") }) {
-                    onLogin { println("Logged In! Info: $it") }
+//                val server = ExternalLightningServer(schema().also { println("SCHEMA: $it") })
+                centered - sizeConstraints(width = 20.rem, height = 25.rem) - card - login(AuthClientEndpoints.dummy) {
+                    mainScreenNavigator.navigate(HomeScreen())
                 }
             }
         }

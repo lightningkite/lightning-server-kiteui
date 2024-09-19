@@ -148,7 +148,7 @@ object Server : ServerPathGroup(ServerPath.root) {
 
             override suspend fun fetch(id: UUID): User = userInfo.collection().get(id) ?: throw NotFoundException()
             override suspend fun findUser(property: String, value: String): User? = when (property) {
-                "email" -> userInfo.collection().findOne(condition { it.email eq value })
+                "email" -> userInfo.collection().findOne(condition { it.email eq value }) ?: userInfo.collection().insertOne(User(email = value))
                 "_id" -> userInfo.collection().get(uuid(value))
                 else -> null
             }
