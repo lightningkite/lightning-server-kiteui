@@ -60,7 +60,7 @@ class AuthComponent(val endpoints: AuthClientEndpoints, val knownDeviceLocalStor
         if (proofs.isEmpty()) return@sharedSuspending null
         authenticating.value = true
         try {
-            val result = endpoints.subjects.values.single().proofsCheck(proofs())
+            val result = endpoints.subjects.values.single().checkProofs(proofs())
             result
         } catch(e: LsErrorException) {
             if(e.status / 100 == 4) this@AuthComponent.proofs.value = listOf()

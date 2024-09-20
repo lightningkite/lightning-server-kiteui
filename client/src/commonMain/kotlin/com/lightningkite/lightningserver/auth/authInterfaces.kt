@@ -78,7 +78,7 @@ data class AuthClientEndpoints(
                         session = if(input.proofs.sumOf { it.strength } >= 3) "" else null
                     )
                 }
-                override suspend fun proofsCheck(input: List<Proof>): ProofsCheckResult<String> {
+                override suspend fun checkProofs(input: List<Proof>): ProofsCheckResult<String> {
                     delay(1000)
                     return ProofsCheckResult(
                         id = "id",
@@ -347,7 +347,7 @@ interface AuthenticatedKnownDeviceProofClientEndpoints {
 interface UserAuthClientEndpoints<ID: Comparable<ID>> {
     suspend fun logIn(input: List<Proof>): IdAndAuthMethods<ID>
     suspend fun logInV2(input: LogInRequest): IdAndAuthMethods<ID>
-    suspend fun proofsCheck(input: List<Proof>): ProofsCheckResult<ID>
+    suspend fun checkProofs(input: List<Proof>): ProofsCheckResult<ID>
     suspend fun openSession(input: String): String
     suspend fun getToken(input: OauthTokenRequest): OauthResponse
     suspend fun getTokenSimple(input: String): String
@@ -369,7 +369,7 @@ interface UserAuthClientEndpoints<ID: Comparable<ID>> {
             jsonBody = json.encodeToString(input),
             outSerializer = IdAndAuthMethods.serializer(idSerializer)
         )
-        override suspend fun proofsCheck(input: List<Proof>): ProofsCheckResult<ID> = fetchImplementation(
+        override suspend fun checkProofs(input: List<Proof>): ProofsCheckResult<ID> = fetchImplementation(
             url = "proofs-check",
             method = HttpMethod.POST,
             jsonBody = json.encodeToString(input),
