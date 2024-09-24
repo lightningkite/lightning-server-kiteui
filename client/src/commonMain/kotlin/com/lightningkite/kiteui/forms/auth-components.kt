@@ -1,5 +1,6 @@
 package com.lightningkite.kiteui.forms
 
+import com.lightningkite.kiteui.AppScope
 import com.lightningkite.kiteui.launchManualCancel
 import com.lightningkite.kiteui.models.*
 import com.lightningkite.kiteui.printStackTrace2
@@ -30,7 +31,7 @@ private object Regexes {
 }
 
 @ViewDsl
-fun ViewWriter.login(endpoints: AuthClientEndpoints, knownDeviceLocalStorageName: String? = "known-device", onAuthentication: (String) -> Unit) {
+fun ViewWriter.login(endpoints: AuthClientEndpoints, knownDeviceLocalStorageName: String? = "known-device", onAuthentication: suspend (String) -> Unit) {
     AuthComponent(endpoints, knownDeviceLocalStorageName, onAuthentication).apply {
         render()
     }
@@ -42,7 +43,7 @@ data class KnownDeviceSecretInfoStuff(
     val primaryIdentifier: String
 )
 
-class AuthComponent(val endpoints: AuthClientEndpoints, val knownDeviceLocalStorageName: String? = "known-device", val onAuthentication: (String) -> Unit) {
+class AuthComponent(val endpoints: AuthClientEndpoints, val knownDeviceLocalStorageName: String? = "known-device", val onAuthentication: suspend (String) -> Unit) {
     val primaryIdentifier = Property("")
     val phone = shared {
         primaryIdentifier().takeIf { Regexes.phoneNumber.matches(it) }?.filter { it.isDigit() } ?: authResult()?.options?.find { it.method.property == "phone" }?.value
@@ -248,7 +249,8 @@ class AuthComponent(val endpoints: AuthClientEndpoints, val knownDeviceLocalStor
                 }
             }
 
-            onlyWhen { authResult() != null } - card - progressBar {
+            val ratio = shared { authResult()?.let { proofs().sumOf { it.strength } / it.strengthRequired.toFloat() } ?: 0f }
+            onlyWhen { ratio() in 0.001f..0.999f } - card - progressBar {
                 ::ratio { authResult()?.let { proofs().sumOf { it.strength } / it.strengthRequired.toFloat() } ?: 0.01f }
             }
 
@@ -264,7 +266,7 @@ class AuthComponent(val endpoints: AuthClientEndpoints, val knownDeviceLocalStor
                         } catch(e: Exception) {
                             authenticating.value = false
                             e.printStackTrace2()
-                            knownDevice?.value = null
+                            knownDevice.value = null
                         }
                     }
                 }
@@ -376,7 +378,7 @@ class AuthComponent(val endpoints: AuthClientEndpoints, val knownDeviceLocalStor
 //                        ::content { "Remember this device for ${knownDeviceOptions()?.duration?.inWholeDays} days" }
                     }
                 }
-                onlyWhen { rememberDevice() } - row {
+                onlyWhen { rememberDevice() || knownDeviceOptions() != null } - row {
                     centered - checkbox { checked bind desiredSessionLength.lens(
                         get = { it != 1.days },
                         set = { if(it) null else 1.days }
@@ -394,12 +396,14 @@ class AuthComponent(val endpoints: AuthClientEndpoints, val knownDeviceLocalStor
                         if(authResult()?.readyToLogIn == true) requestFocus()
                     }
                     onClick {
+                        println("Requesting full auth...")
                         val result = endpoints.subjects.values.single().logInV2(LogInRequest(
                             proofs = proofs(),
                             expires = desiredSessionLength()?.let { now() + it }
                         ))
+                        println("Result: $result")
                         result.session?.let {
-                            (GlobalScope + Dispatchers.Main).launch {
+                            (AppScope + Dispatchers.Main).launch {
                                 onAuthentication(it)
                                 if(rememberDevice()) {
                                     endpoints.authenticatedKnownDeviceProof?.establishKnownDeviceV2()?.let {

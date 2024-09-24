@@ -1,6 +1,8 @@
 package com.lightningkite.lightningserver.auth
 
+import com.lightningkite.UUID
 import com.lightningkite.kiteui.HttpMethod
+import com.lightningkite.kiteui.fetch
 import com.lightningkite.kiteui.navigation.DefaultJson
 import com.lightningkite.kiteui.navigation.UrlProperties
 import com.lightningkite.lightningdb.HasId
@@ -17,6 +19,7 @@ import com.lightningkite.lightningserver.networking.Fetcher
 import com.lightningkite.now
 import kotlinx.coroutines.delay
 import kotlinx.serialization.KSerializer
+import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.properties.Properties
@@ -398,6 +401,8 @@ interface UserAuthClientEndpoints<ID: Comparable<ID>> {
 interface AuthenticatedUserAuthClientEndpoints<User: HasId<ID>, ID: Comparable<ID>> {
     suspend fun createSubSession(input: SubSessionRequest, ): String
     suspend fun getSelf(): User
+    suspend fun terminateSession(): Unit
+    suspend fun terminateOtherSession(sessionId: UUID): Unit
     open class StandardImpl<USER: HasId<ID>, ID: Comparable<ID>>(
         val fetchImplementation: Fetcher,
         val userSerializer: KSerializer<USER>,
@@ -416,6 +421,18 @@ interface AuthenticatedUserAuthClientEndpoints<User: HasId<ID>, ID: Comparable<I
             method = HttpMethod.GET,
             jsonBody = "{}",
             outSerializer = userSerializer
+        )
+        override suspend fun terminateSession(): Unit = fetchImplementation(
+            url = "terminate",
+            method = HttpMethod.POST,
+            jsonBody = null,
+            outSerializer = Unit.serializer()
+        )
+        override suspend fun terminateOtherSession(sessionId: UUID): Unit = fetchImplementation(
+            url = "${sessionId}/terminate",
+            method = HttpMethod.POST,
+            jsonBody = null,
+            outSerializer = Unit.serializer()
         )
     }
 }

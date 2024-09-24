@@ -30,7 +30,7 @@ val admins = PersistentProperty("credentials", mapOf<String, AdminCredentials>()
 
 val schemaCache = HashMap<String, Readable<LightningServerKSchema>>()
 fun schema(url: String): Readable<LightningServerKSchema> = schemaCache.getOrPut(url) {
-    GlobalScope.asyncReadable {
+    AppScope.asyncReadable {
         fetch(url)
             .text()
             .let { DefaultJson.decodeFromString(LightningServerKSchema.serializer(), it) }
