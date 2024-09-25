@@ -59,7 +59,7 @@ class ExternalLightningServer(
     } ?: ConnectivityOnlyFetcher(path, json, this::accessToken)
 
     val auth: AuthClientEndpoints = AuthClientEndpoints(
-        subjects = schema.interfaces.filter { it.matches.serialName == "AuthClientEndpoints" }.associate {
+        subjects = schema.interfaces.filter { it.matches.serialName == "UserAuthClientEndpoints" }.associate {
             it.path to UserAuthClientEndpoints.StandardImpl(
                 fetchImplementation = authlessFetcher(schema.baseUrl + "/" + it.path),
                 idSerializer = it.matches.arguments[0].serializer(registry, mapOf()) as KSerializer<Comparable<Any>>,
@@ -67,7 +67,7 @@ class ExternalLightningServer(
                 properties = properties,
             )
         },
-        authenticatedSubjects = schema.interfaces.filter { it.matches.serialName == "AuthenticatedAuthClientEndpoints" }.associate {
+        authenticatedSubjects = schema.interfaces.filter { it.matches.serialName == "AuthenticatedUserAuthClientEndpoints" }.associate {
             it.path to AuthenticatedUserAuthClientEndpoints.StandardImpl(
                 fetchImplementation = fetcher(schema.baseUrl + "/" + it.path),
                 idSerializer = it.matches.arguments[0].serializer(registry, mapOf()) as KSerializer<Comparable<Any>>,

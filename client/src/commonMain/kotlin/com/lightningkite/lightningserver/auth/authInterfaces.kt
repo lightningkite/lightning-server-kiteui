@@ -106,7 +106,7 @@ data class AuthClientEndpoints(
                 }
                 override suspend fun provePhoneOwnership(input: FinishProof): Proof {
                     delay(1000)
-                    if(input.password == "wrong") throw LsErrorException(400, LSError(400, "", "", ""))
+                    if(input.password == "wrong") throw LsErrorException(400, LSError(400, "", "Code incorrect. 4 attempts remain", ""))
                     return Proof("sms", property = "phone", value = input.key, at = now(), signature = "")
                 }
             },
@@ -117,21 +117,21 @@ data class AuthClientEndpoints(
                 }
                 override suspend fun proveEmailOwnership(input: FinishProof): Proof {
                     delay(1000)
-                    if(input.password == "wrong") throw LsErrorException(400, LSError(400, "", "", ""))
+                    if(input.password == "wrong") throw LsErrorException(400, LSError(400, "", "Code incorrect. 4 attempts remain", ""))
                     return Proof("email", property = "email", value = input.key, at = now(), signature = "")
                 }
             },
             passwordProof = object: PasswordProofClientEndpoints {
                 override suspend fun provePasswordOwnership(input: IdentificationAndPassword): Proof {
                     delay(1000)
-                    if(input.password == "wrong") throw LsErrorException(400, LSError(400, "", "", ""))
+                    if(input.password == "wrong") throw LsErrorException(400, LSError(400, "", "Password and user do not match", ""))
                     return Proof("password", property = "password", value = "id", at = now(), signature = "")
                 }
             },
             oneTimePasswordProof = object: OneTimePasswordProofClientEndpoints {
                 override suspend fun proveOTP(input: IdentificationAndPassword): Proof {
                     delay(1000)
-                    if(input.password == "wrong") throw LsErrorException(400, LSError(400, "", "", ""))
+                    if(input.password == "wrong") throw LsErrorException(400, LSError(400, "", "OTP and user do not match", ""))
                     return Proof("otp", property = "otp", value = "id", at = now(), signature = "")
                 }
             },

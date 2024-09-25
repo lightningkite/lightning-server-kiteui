@@ -24,10 +24,13 @@ object ByFieldRenderer : FormRenderer.Generator, ViewRenderer.Generator {
     override val basePriority: Float
         get() = 0.7f
     override val kind = StructureKind.CLASS
+    override fun matches(module: FormModule, selector: FormSelector<*>): Boolean {
+        return super<FormRenderer.Generator>.matches(module, selector) && !selector.serializer.descriptor.isNullable
+    }
     override fun size(module: FormModule, selector: FormSelector<*>): FormSize {
         val info = TypeInfo(module, selector.serializer, selector.desiredSize.approximateWidthBound ?: (AppState.windowInfo.value.width.px / 1.rem.px))
         return FormSize(
-            selector.desiredSize.approximateWidthBound ?: (AppState.windowInfo.value.width.px / 1.rem.px),
+            selector.desiredSize.approximateWidthBound ?:  FormSize.Block.approximateWidth,
             info.viewApproximateHeight
         )
     }

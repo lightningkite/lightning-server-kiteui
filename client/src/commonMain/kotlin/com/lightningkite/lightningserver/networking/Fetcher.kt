@@ -42,11 +42,11 @@ class ConnectivityOnlyFetcher(val base: String, val json: Json, val token: (susp
         }, RequestBodyText(jsonBody ?: "{}", "application/json")).let {
             if (!it.ok) {
                 val text = it.text()
-                try {
+                throw try {
                     val e = json.decodeFromString(LSError.serializer(), text)
-                    throw LsErrorException(it.status, e)
+                    LsErrorException(it.status, e)
                 } catch (e: Exception) {
-                    throw LsErrorException(it.status, LSError(it.status.toInt(), "Unknown", message = text))
+                    LsErrorException(it.status, LSError(it.status.toInt(), "Unknown", message = text))
                 }
             } else {
                 @Suppress("UNCHECKED_CAST")

@@ -228,7 +228,7 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
     companion object {
         val universalLoop: ArrayList<() -> Unit> by lazy {
             val listeners = ArrayList<() -> Unit>()
-            CalculationContext.NeverEnds.reactiveSuspending {
+            AppScope.reactiveSuspending {
                 if (AppState.inForeground()) {
                     while (true) {
                         delay(100)

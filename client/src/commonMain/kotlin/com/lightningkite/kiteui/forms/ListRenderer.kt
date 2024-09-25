@@ -49,9 +49,9 @@ abstract class ListRenderer<C> : FormRenderer.Generator, ViewRenderer.Generator 
     override fun size(module: FormModule, selector: FormSelector<*>): FormSize {
         val inner = module.form(inner(module, selector)) as FormRenderer<Any?>
         return if (vertical)
-            inner.size.copy(approximateHeight = (inner.size.approximateHeight) * 3 + 3)
+            inner.size.copy(approximateHeight = (inner.size.approximateHeight) * 10 + 3)
         else
-            inner.size.copy(approximateWidth = (inner.size.approximateWidth + 3) * 3 + 3)
+            inner.size.copy(approximateWidth = (inner.size.approximateWidth + 3) * 10 + 3)
     }
 
     @Suppress("UNCHECKED_CAST")

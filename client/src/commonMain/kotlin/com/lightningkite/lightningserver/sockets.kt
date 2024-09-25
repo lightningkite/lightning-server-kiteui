@@ -4,6 +4,9 @@ import com.lightningkite.kiteui.*
 import com.lightningkite.kiteui.reactive.*
 import com.lightningkite.lightningserver.websocket.MultiplexMessage
 import com.lightningkite.uuid
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancel
 import kotlinx.serialization.json.Json
 
 private val shared = HashMap<String, TypedWebSocket<MultiplexMessage, MultiplexMessage>>()
@@ -56,7 +59,7 @@ fun multiplexSocket(
             }
         }
 
-        val lifecycle = CalculationContext.Standard().apply {
+        val lifecycle = CoroutineScope(Job()).apply {
             reactiveScope {
                 val shouldBeOn = shouldBeOn() > 0
                 val isOn = channelOpen()

@@ -7,6 +7,8 @@ import com.lightningkite.kiteui.printStackTrace2
 import com.lightningkite.kiteui.reactive.*
 import com.lightningkite.kiteui.views.*
 import com.lightningkite.kiteui.views.direct.*
+import com.lightningkite.kiteui.views.l2.errorText
+import com.lightningkite.kiteui.views.l2.field
 import com.lightningkite.kiteui.views.l2.icon
 import com.lightningkite.lightningserver.LsErrorException
 import com.lightningkite.lightningserver.auth.*
@@ -17,7 +19,6 @@ import com.lightningkite.lightningserver.auth.proof.Proof
 import com.lightningkite.lightningserver.auth.subject.LogInRequest
 import com.lightningkite.now
 import kotlinx.coroutines.*
-import kotlinx.datetime.Instant
 import kotlinx.serialization.Serializable
 import kotlin.math.roundToInt
 import kotlin.time.Duration
@@ -85,24 +86,26 @@ class AuthComponent(val endpoints: AuthClientEndpoints, val knownDeviceLocalStor
         val code = Property("")
         override fun ViewWriter.render(onProof: (Proof) -> Unit) {
             col {
-                text("We've emailed a login code to $id.  Enter it below.")
-                fieldTheme - row {
-                    val tf: TextField
-                    expanding - textField {
-                        tf = this
-                        ::hint { "Login code" }
-                        requestFocus()
-                        content bind code
-                        keyboardHints = KeyboardHints.id
-                    }
-                    button {
-                        spacing = 0.px
-                        centered - icon(Icon.send, "Submit")
-                        onClickAssociatedField(tf) {
-                            onProof(p.proveEmailOwnership(FinishProof(codeKey, code())))
+                field("Login code emailed to $id") {
+                    row {
+                        val tf: TextField
+                        expanding - textInput {
+                            tf = this
+                            ::hint { "ABCDEF" }
+                            requestFocus()
+                            content bind code
+                            keyboardHints = KeyboardHints.id
+                        }
+                        button {
+                            spacing = 0.px
+                            centered - icon(Icon.send, "Submit")
+                            onClickAssociatedField(tf) {
+                                onProof(p.proveEmailOwnership(FinishProof(codeKey, code())))
+                            }
                         }
                     }
                 }
+                errorText()
                 val newCodeSentAt = Property(now())
                 val nowBySecond = readable { while(true) { emit(now()); delay(1000) } }
                 button {
@@ -129,24 +132,26 @@ class AuthComponent(val endpoints: AuthClientEndpoints, val knownDeviceLocalStor
         val code = Property("")
         override fun ViewWriter.render(onProof: (Proof) -> Unit) {
             col {
-                text("We've texted a login code to $id.  Enter it below.")
-                fieldTheme - row {
-                    val tf: TextField
-                    expanding - textField {
-                        tf = this
-                        ::hint { "Login code" }
-                        requestFocus()
-                        content bind code
-                        keyboardHints = KeyboardHints.id
-                    }
-                    button {
-                        spacing = 0.px
-                        centered - icon(Icon.send, "Submit")
-                        onClickAssociatedField(tf) {
-                            onProof(p.provePhoneOwnership(FinishProof(codeKey, code())))
+                field("Login code texted to $id") {
+                    row {
+                        val tf: TextField
+                        expanding - textInput {
+                            tf = this
+                            ::hint { "ABCDEF" }
+                            requestFocus()
+                            content bind code
+                            keyboardHints = KeyboardHints.id
+                        }
+                        button {
+                            spacing = 0.px
+                            centered - icon(Icon.send, "Submit")
+                            onClickAssociatedField(tf) {
+                                onProof(p.provePhoneOwnership(FinishProof(codeKey, code())))
+                            }
                         }
                     }
                 }
+                errorText()
                 val newCodeSentAt = Property(now())
                 val nowBySecond = readable { while(true) { emit(now()); delay(1000) } }
                 button {
@@ -173,23 +178,26 @@ class AuthComponent(val endpoints: AuthClientEndpoints, val knownDeviceLocalStor
         val code = Property("")
         override fun ViewWriter.render(onProof: (Proof) -> Unit) {
             col {
-                fieldTheme - row {
-                    val tf: TextField
-                    expanding - textField {
-                        tf = this
-                        ::hint { "Password" }
-                        requestFocus()
-                        content bind code
-                        keyboardHints = KeyboardHints.password
-                    }
-                    button {
-                        spacing = 0.px
-                        centered - icon(Icon.send, "Submit")
-                        onClickAssociatedField(tf) {
-                            onProof(p.provePasswordOwnership(IdentificationAndPassword(type, key, value, code())))
+                field("Password") {
+                    row {
+                        val tf: TextField
+                        expanding - textInput {
+                            tf = this
+                            ::hint { "" }
+                            requestFocus()
+                            content bind code
+                            keyboardHints = KeyboardHints.password
+                        }
+                        button {
+                            spacing = 0.px
+                            centered - icon(Icon.send, "Submit")
+                            onClickAssociatedField(tf) {
+                                onProof(p.provePasswordOwnership(IdentificationAndPassword(type, key, value, code())))
+                            }
                         }
                     }
                 }
+                errorText()
             }
         }
     }
@@ -197,24 +205,26 @@ class AuthComponent(val endpoints: AuthClientEndpoints, val knownDeviceLocalStor
         val code = Property("")
         override fun ViewWriter.render(onProof: (Proof) -> Unit) {
             col {
-                text("Enter the code from your OTP App.")
-                fieldTheme - row {
-                    val tf: TextField
-                    expanding - textField {
-                        tf = this
-                        ::hint { "6 digit code" }
-                        requestFocus()
-                        content bind code
-                        keyboardHints = KeyboardHints.integer
-                    }
-                    button {
-                        spacing = 0.px
-                        centered - icon(Icon.send, "Submit")
-                        onClickAssociatedField(tf) {
-                            onProof(p.proveOTP(IdentificationAndPassword(type, key, value, code())))
+                field("One-time Password from App") {
+                    row {
+                        val tf: TextField
+                        expanding - textInput {
+                            tf = this
+                            ::hint { "000000" }
+                            requestFocus()
+                            content bind code
+                            keyboardHints = KeyboardHints.integer
+                        }
+                        button {
+                            spacing = 0.px
+                            centered - icon(Icon.send, "Submit")
+                            onClickAssociatedField(tf) {
+                                onProof(p.proveOTP(IdentificationAndPassword(type, key, value, code())))
+                            }
                         }
                     }
                 }
+                errorText()
             }
         }
     }
@@ -229,23 +239,30 @@ class AuthComponent(val endpoints: AuthClientEndpoints, val knownDeviceLocalStor
     fun ViewWriter.render() {
         col {
             val primaryIdentifierField: TextField
-            fieldTheme - textField {
-                primaryIdentifierField = this
-                hint = when {
-                    endpoints.emailProof != null && endpoints.smsProof != null  -> "Email or Phone Number"
-                    endpoints.emailProof != null -> "Email"
-                    endpoints.smsProof != null -> "Phone Number"
-                    else -> "Username"
-                }
-                keyboardHints = when {
-                    endpoints.emailProof != null && endpoints.smsProof != null  -> KeyboardHints.email
-                    endpoints.emailProof != null -> KeyboardHints.email
-                    endpoints.smsProof != null -> KeyboardHints.phone
-                    else -> KeyboardHints.id
-                }
-                content bind primaryIdentifier
-                reactive {
-                    if(currentProof() == null) requestFocus()
+            field(when {
+                endpoints.emailProof != null && endpoints.smsProof != null  -> "Email or Phone Number"
+                endpoints.emailProof != null -> "Email"
+                endpoints.smsProof != null -> "Phone Number"
+                else -> "Username"
+            }) {
+                textInput {
+                    primaryIdentifierField = this
+                    hint = when {
+                        endpoints.emailProof != null && endpoints.smsProof != null  -> "me@email.com OR 800-123-4567"
+                        endpoints.emailProof != null -> "me@email.com"
+                        endpoints.smsProof != null -> "800-123-4567"
+                        else -> "MyUsername"
+                    }
+                    keyboardHints = when {
+                        endpoints.emailProof != null && endpoints.smsProof != null  -> KeyboardHints.email
+                        endpoints.emailProof != null -> KeyboardHints.email
+                        endpoints.smsProof != null -> KeyboardHints.phone
+                        else -> KeyboardHints.id
+                    }
+                    content bind primaryIdentifier
+                    reactive {
+                        if(currentProof() == null) requestFocus()
+                    }
                 }
             }
 
@@ -378,7 +395,7 @@ class AuthComponent(val endpoints: AuthClientEndpoints, val knownDeviceLocalStor
 //                        ::content { "Remember this device for ${knownDeviceOptions()?.duration?.inWholeDays} days" }
                     }
                 }
-                onlyWhen { rememberDevice() || knownDeviceOptions() != null } - row {
+                onlyWhen { rememberDevice() || knownDeviceOptions() == null } - row {
                     centered - checkbox { checked bind desiredSessionLength.lens(
                         get = { it != 1.days },
                         set = { if(it) null else 1.days }
@@ -390,34 +407,37 @@ class AuthComponent(val endpoints: AuthClientEndpoints, val knownDeviceLocalStor
                         }
                     }
                 }
-                buttonTheme - important - buttonTheme - button {
-                    centered - text("Log In")
-                    reactive {
-                        if(authResult()?.readyToLogIn == true) requestFocus()
-                    }
-                    onClick {
-                        println("Requesting full auth...")
-                        val result = endpoints.subjects.values.single().logInV2(LogInRequest(
-                            proofs = proofs(),
-                            expires = desiredSessionLength()?.let { now() + it }
-                        ))
-                        println("Result: $result")
-                        result.session?.let {
-                            (AppScope + Dispatchers.Main).launch {
+                col {
+                    buttonTheme - important - button {
+                        centered - text("Log In")
+                        reactive {
+                            if (authResult()?.readyToLogIn == true) requestFocus()
+                        }
+                        onClick {
+                            println("Requesting full auth...")
+                            val result = endpoints.subjects.values.single().logInV2(LogInRequest(
+                                proofs = proofs(),
+                                expires = desiredSessionLength()?.let { now() + it }
+                            ))
+                            println("Result: $result")
+                            result.session?.let {
                                 onAuthentication(it)
-                                if(rememberDevice()) {
-                                    endpoints.authenticatedKnownDeviceProof?.establishKnownDeviceV2()?.let {
-                                        knownDevice?.value = KnownDeviceSecretInfoStuff(
-                                            info = it,
-                                            primaryIdentifier = primaryIdentifier.value
-                                        )
+                                (AppScope + Dispatchers.Main).launch {
+                                    if (rememberDevice()) {
+                                        endpoints.authenticatedKnownDeviceProof?.establishKnownDeviceV2()?.let {
+                                            knownDevice?.value = KnownDeviceSecretInfoStuff(
+                                                info = it,
+                                                primaryIdentifier = primaryIdentifier.value
+                                            )
+                                        }
+                                    } else {
+                                        knownDevice?.value = null
                                     }
-                                } else {
-                                    knownDevice?.value = null
                                 }
                             }
                         }
                     }
+                    errorText()
                 }
             }
 

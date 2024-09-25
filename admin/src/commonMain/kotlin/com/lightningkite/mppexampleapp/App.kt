@@ -2,6 +2,8 @@ package com.lightningkite.mppexampleapp
 
 import com.lightningkite.*
 import com.lightningkite.kiteui.Routable
+import com.lightningkite.kiteui.exceptions.ExceptionToMessages
+import com.lightningkite.kiteui.exceptions.installLsError
 import com.lightningkite.kiteui.fetch
 import com.lightningkite.kiteui.forms.FormModule
 import com.lightningkite.kiteui.forms.form
@@ -36,6 +38,7 @@ fun ViewWriter.app(navigator: ScreenNavigator, dialog: ScreenNavigator) {
     DefaultSerializersModule = ClientModule
     LargeTestModel.serializer().serializableProperties!!
 //    rootTheme = { appTheme() }
+    ExceptionToMessages.root.installLsError()
     appNav(navigator, dialog) {
         appName = "KiteUI Sample App"
         ::navItems {
@@ -168,7 +171,6 @@ data class Post(
     val title: String = "My Post",
 
     @Hint("Content of your post goes here")
-    @DisplayName("boody")
     @Multiline
     val body: String = "",
 

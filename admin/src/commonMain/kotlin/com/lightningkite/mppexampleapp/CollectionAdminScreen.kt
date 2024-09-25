@@ -4,11 +4,14 @@ import com.lightningkite.kiteui.*
 import com.lightningkite.kiteui.forms.*
 import com.lightningkite.kiteui.models.Icon
 import com.lightningkite.kiteui.models.SelectedSemantic
+import com.lightningkite.kiteui.models.px
 import com.lightningkite.kiteui.models.rem
 import com.lightningkite.kiteui.navigation.*
 import com.lightningkite.kiteui.reactive.*
 import com.lightningkite.kiteui.views.*
 import com.lightningkite.kiteui.views.direct.*
+import com.lightningkite.kiteui.views.l2.errorText
+import com.lightningkite.kiteui.views.l2.field
 import com.lightningkite.kiteui.views.l2.icon
 import com.lightningkite.kiteui.views.l2.toast
 import com.lightningkite.lightningdb.*
@@ -16,9 +19,11 @@ import com.lightningkite.lightningserver.db.ModelCache
 import com.lightningkite.lightningserver.schema.ExternalLightningServer
 import com.lightningkite.lightningserver.schema.LightningServerKSchema
 import com.lightningkite.serialization.default
-import kotlinx.coroutines.GlobalScope
+import com.lightningkite.serialization.nullable2
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.builtins.serializer
 
 @Serializable
 data class AdminCredentials(
@@ -60,8 +65,43 @@ fun ReactiveContext.externalLightningServer(url: String) = shared {
 @Routable("admin/{adminUrl}/collections")
 class AllCollectionsScreen(val adminUrl: String) : Screen {
     override fun ViewWriter.render() {
-        val endpoints = shared { externalLightningServer(adminUrl)().models.entries.toList() }
-        endpoints.addListener { println("Values: ${endpoints.state}") }
+        val models = shared { externalLightningServer(adminUrl)().models.entries.toList() }
+        col {
+            row {
+                text(adminUrl)
+                sizeConstraints(20.rem) - fieldTheme - select {
+                    bind(
+                        admins.lens(
+                            get = { it[adminUrl]?.userType },
+                            modify = { o, v -> o + (adminUrl to (o[adminUrl]?.copy(userType = v) ?: AdminCredentials(userType = v))) }
+                        ),
+                        shared { listOf(null) + externalLightningServer(adminUrl)().auth.subjects.keys.toList() },
+                        { it ?: "None" }
+                    )
+                }
+                expanding - fieldTheme - textField {
+                    content bind admins.lens(
+                        get = { it[adminUrl]?.session ?: "" },
+                        modify = { o, v -> o + (adminUrl to (o[adminUrl]?.copy(session = v) ?: AdminCredentials(session = v))) }
+                    )
+                }
+            }
+            expanding - recyclerView {
+                children(models) {
+                    link {
+                        text { ::content { it().value.serializer.displayName } }
+                        ::to { it().key.let { { CollectionAdminScreen(adminUrl, it) } } }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Routable("admin/{adminUrl}/endpoints")
+class EndpointsScreen(val adminUrl: String) : Screen {
+    override fun ViewWriter.render() {
+        val endpoints = shared { externalLightningServer(adminUrl)().schema.endpoints }
         col {
             row {
                 text(adminUrl)
@@ -85,8 +125,8 @@ class AllCollectionsScreen(val adminUrl: String) : Screen {
             expanding - recyclerView {
                 children(endpoints) {
                     link {
-                        text { ::content { it().value.serializer.displayName } }
-                        ::to { it().key.let { { CollectionAdminScreen(adminUrl, it) } } }
+                        text { ::content { it().method + " " + it().path } }
+                        ::to { it().let { { EndpointScreen(adminUrl, it.path, it.method) } } }
                     }
                 }
             }
@@ -133,11 +173,15 @@ class NewItemAdminScreen(val adminUrl: String, val collectionName: String) : Scr
     override fun ViewWriter.render() {
         val server = shared { externalLightningServer(adminUrl)() }
         val mc = shared { externalLightningServer(adminUrl)().models[collectionName] as ModelCache<HasId<Comparable<Comparable<*>>>, Comparable<Comparable<*>>> }
-        val item = asyncReadable { Property(try {
-            mc().skipCache.default()
-        } catch(e: Exception) {
-            mc().serializer.default()
-        }) }.flatten()
+        val item = asyncReadable {
+            Property(
+                try {
+                    mc().skipCache.default()
+                } catch (e: Exception) {
+                    mc().serializer.default()
+                }
+            )
+        }.flatten()
         scrolls - col {
             reactive {
                 clearChildren()
@@ -151,6 +195,78 @@ class NewItemAdminScreen(val adminUrl: String, val collectionName: String) : Scr
                         screenNavigator.replace(DetailAdminScreen(adminUrl, collectionName, id))
                     }
                 }
+            }
+        }
+    }
+}
+
+@Routable("admin/{adminUrl}/endpoints/{method}/{path}")
+class EndpointScreen(val adminUrl: String, val path: String, val method: String) : Screen {
+
+    class RouteScreen<T>(val formModule: FormModule, val name: String, val type: KSerializer<T>, val value: Property<T> = Property(type.default())) {
+        fun render(viewWriter: ViewWriter) = with(viewWriter) {
+            col {
+                spacing = 0.px
+                subtext(name)
+                form(formModule, type, value)
+            }
+        }
+        val stringValue = shared {
+            UrlProperties.encodeToString(type, value())
+        }
+    }
+
+    override fun ViewWriter.render() {
+        val server = shared { externalLightningServer(adminUrl)() }
+        val endpoint = shared { externalLightningServer(adminUrl)().schema.endpoints.find { it.path == path && it.method == method }!! }
+        scrolls - col {
+            reactive {
+                clearChildren()
+                val inputSerializer = endpoint().input.serializer(server().registry, mapOf())
+                val outputSerializer = endpoint().output.serializer(server().registry, mapOf())
+                val input = Property<Any?>(inputSerializer.default())
+                val output = RawReadable<Any?>(ReadableState(null))
+                val parameters = endpoint().routes.mapValues {
+                    val type = it.value.serializer(server().registry, mapOf())
+                    RouteScreen(server().context, it.key, type)
+                }
+                val path = shared {
+                    var s = endpoint().path
+                    for((name, value) in parameters) {
+                        s = s.replace("{$name}", encodeURIComponent(value.stringValue()))
+                    }
+                    s
+                }
+                h1 {
+                    ::content { "${endpoint().method} ${path()}" }
+                }
+                if(parameters.isNotEmpty()) {
+                    card - col {
+                        for ((key, value) in parameters) {
+                            value.render(this)
+                        }
+                    }
+                }
+                if(inputSerializer != Unit.serializer())
+                    card - form(server().context, inputSerializer, input)
+                atEnd - important - button {
+                    text("Submit")
+                    onClick {
+                        output.state = ReadableState.notReady
+                        output.state = readableState {
+                            server().fetcher(server().schema.baseUrl).invoke(
+                                url = path(),
+                                method = HttpMethod.valueOf(endpoint().method),
+                                jsonBody = DefaultJson.encodeToString(inputSerializer, input.value),
+                                outSerializer = outputSerializer,
+                            )
+                        }
+                    }
+                }
+                separator()
+                errorText()
+                reactive { output() }
+                card - view(server().context, outputSerializer.nullable2, output)
             }
         }
     }

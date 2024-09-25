@@ -59,7 +59,7 @@ object ForeignKeyRenderer : FormRenderer.Generator, ViewRenderer.Generator {
                     }
                     opensMenu {
                         if(selector.serializer.descriptor.isNullable) {
-                            launch { writable set null }
+                            launch(key = Unit) { writable set null }
                         }
                         preferredDirection = PopoverPreferredDirection.belowLeft
                         sizeConstraints(width = 25.rem, height = 25.rem) - col {

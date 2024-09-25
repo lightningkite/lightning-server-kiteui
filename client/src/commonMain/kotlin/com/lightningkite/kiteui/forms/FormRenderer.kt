@@ -2,7 +2,10 @@
 
 package com.lightningkite.kiteui.forms
 
+import com.lightningkite.kiteui.models.px
+import com.lightningkite.kiteui.models.rem
 import com.lightningkite.kiteui.navigation.Screen
+import com.lightningkite.kiteui.reactive.AppState
 import com.lightningkite.kiteui.reactive.Readable
 import com.lightningkite.kiteui.reactive.Writable
 import com.lightningkite.kiteui.reactive.invoke
@@ -154,7 +157,7 @@ fun <T> ViewWriter.form(
     serializer: KSerializer<T>,
     writable: Writable<T>,
     annotations: List<SerializableAnnotation> = serializer.serializableAnnotations,
-    desiredSize: FormLayoutPreferences = FormLayoutPreferences.Unbound,
+    desiredSize: FormLayoutPreferences = FormLayoutPreferences((AppState.windowInfo.value.width.px / 1.rem.px).coerceAtMost(50.0)),
     field: SerializableProperty<*, *>? = null,
 ) {
     val sel = FormSelector<T>(serializer, annotations, desiredSize)
@@ -166,7 +169,7 @@ fun <T> ViewWriter.view(
     serializer: KSerializer<T>,
     readable: Readable<T>,
     annotations: List<SerializableAnnotation> = serializer.serializableAnnotations,
-    desiredSize: FormLayoutPreferences = FormLayoutPreferences.Unbound,
+    desiredSize: FormLayoutPreferences = FormLayoutPreferences((AppState.windowInfo.value.width.px / 1.rem.px).coerceAtMost(50.0)),
     field: SerializableProperty<*, *>? = null,
 ) {
     val sel = FormSelector<T>(serializer, annotations, desiredSize)
