@@ -7,10 +7,7 @@ import com.lightningkite.kiteui.models.times
 import com.lightningkite.kiteui.reactive.*
 import com.lightningkite.kiteui.views.card
 import com.lightningkite.kiteui.views.centered
-import com.lightningkite.kiteui.views.direct.button
-import com.lightningkite.kiteui.views.direct.row
-import com.lightningkite.kiteui.views.direct.scrollsHorizontally
-import com.lightningkite.kiteui.views.direct.text
+import com.lightningkite.kiteui.views.direct.*
 import com.lightningkite.kiteui.views.expanding
 import com.lightningkite.kiteui.views.forEachUpdating
 import com.lightningkite.kiteui.views.l2.icon

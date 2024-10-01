@@ -9,7 +9,6 @@ import com.lightningkite.serialization.*
 
 inline fun <reified T> modification(old: T, new: T): Modification<T>? = modification(serializerOrContextual(), old, new)
 fun <T> modification(serializer: KSerializer<T>, old: T, new: T): Modification<T>? = run {
-    println("modification ${serializer.descriptor.serialName} $old $new")
     if(old == new) return@run null
     if(old == null || new == null) return@run Modification.Assign(new)
     return@run (serializer.nullElement() ?: serializer).serializableProperties?.let {
@@ -26,6 +25,4 @@ fun <T> modification(serializer: KSerializer<T>, old: T, new: T): Modification<T
             Modification.OnField(it, inner)
         })
     } ?: Modification.Assign<T>(new)
-}.also {
-    println("modification ${serializer.descriptor.serialName} $old $new -> $it")
 }

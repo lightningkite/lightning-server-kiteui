@@ -94,9 +94,7 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
                     onFreshData(skipCache.insert(value))
                 else
                     modification(serializer, existing, value)?.let {
-                        println("Will modify $id $it")
                         onFreshData(skipCache.modify(id, it))
-                        println("Did modify $id $it")
                     }
                 flushLists()
             }
@@ -374,7 +372,7 @@ class ChangeUpdateWrapper<T : HasId<ID>, ID : Comparable<ID>>(
                 messageList.clear()
             } else {
                 if (endUse == null) {
-                    endUse = sharedSocket.start()
+                    endUse = sharedSocket.beginUse()
                 }
                 if (sharedSocket.connected.state == ReadableState(true)) {
                     sharedSocket.send(value)

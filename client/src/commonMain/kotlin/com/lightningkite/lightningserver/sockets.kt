@@ -50,9 +50,9 @@ fun multiplexSocket(
             get() = channelOpen
         val shouldBeOn = Property(0)
 
-        override fun start(): () -> Unit {
+        override fun beginUse(): () -> Unit {
             shouldBeOn.value++
-            val parent = shared.start()
+            val parent = shared.beginUse()
             return {
                 parent()
                 shouldBeOn.value--

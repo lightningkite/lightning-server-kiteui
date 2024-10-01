@@ -1,7 +1,6 @@
 package com.lightningkite.kiteui.forms
 
 import com.lightningkite.kiteui.AppScope
-import com.lightningkite.kiteui.launchManualCancel
 import com.lightningkite.kiteui.models.*
 import com.lightningkite.kiteui.printStackTrace2
 import com.lightningkite.kiteui.reactive.*
@@ -295,75 +294,68 @@ class AuthComponent(val endpoints: AuthClientEndpoints, val knownDeviceLocalStor
                 val validId = shared { Regexes.email.matches(primaryIdentifier()) || Regexes.phoneNumber.matches(primaryIdentifier()) }
 
                 val emailStartAction = endpoints.emailProof?.let { p ->
-                    val btn: Button
-                    onlyWhen { proofs().none { it.property == "email" } && (authResult()?.options?.any { it.method.property == "email" } ?: true) && email() != null } - important - buttonTheme - button {
-                        btn = this
-                        centered - text("Email Code")
-                    }
-                    val sa = suspend label@{
-                        val id = email() ?: return@label
+                    val action = Action("Email Code", Icon.send) {
+                        val id = email() ?: return@Action
                         currentProof.value = EmailProof(p, id, p.beginEmailOwnershipProof(id))
                     }
-                    btn.onClick(sa)
-                    suspend { btn.launchManualCancel { sa() } }
+                    onlyWhen { proofs().none { it.property == "email" } && (authResult()?.options?.any { it.method.property == "email" } ?: true) && email() != null } - important - buttonTheme - button {
+                        this.action = action
+                        centered - text("Email Code")
+                    }
+                    action
                 }
 
                 val smsStartAction = endpoints.smsProof?.let { p ->
-                    val btn: Button
-                    onlyWhen { proofs().none { it.property == "phone" } && (authResult()?.options?.any { it.method.property == "phone" } ?: true) && phone() != null } - important - buttonTheme - button {
-                        btn = this
-                        centered - text("Text Code")
-                    }
-                    val sa = suspend label@{
-                        val id = phone() ?: return@label
+                    val action = Action("Text Code", Icon.send) {
+                        val id = phone() ?: return@Action
                         currentProof.value = SmsProof(p, id, p.beginSmsOwnershipProof(id))
                     }
-                    btn.onClick(sa)
-                    suspend { btn.launchManualCancel { sa() } }
+                    onlyWhen { proofs().none { it.property == "phone" } && (authResult()?.options?.any { it.method.property == "phone" } ?: true) && phone() != null } - important - buttonTheme - button {
+                        this.action = action
+                        centered - text("Text Code")
+                    }
+                    action
                 }
 
                 val passwordStartAction = endpoints.passwordProof?.let { p ->
-                    val btn: Button
-                    onlyWhen { proofs().none { it.via == "password" } && (authResult()?.options?.any { it.method.via == "password" } ?: true) && validId() } - important - buttonTheme - button {
-                        btn = this
-                        centered - text("Use Password")
-                    }
-                    val sa = suspend {
+                    val action = Action("Use Password", Icon.chevronRight) {
                         currentProof.value = PasswordProof(p, endpoints.subjects.keys.single(), when {
                             Regexes.email.matches(primaryIdentifier()) -> "email"
                             Regexes.phoneNumber.matches(primaryIdentifier()) -> "phone"
                             else -> "_id"
                         }, primaryIdentifier())
                     }
-                    btn.onClick(sa)
-                    suspend { btn.launchManualCancel { sa() } }
+                    onlyWhen { proofs().none { it.via == "password" } && (authResult()?.options?.any { it.method.via == "password" } ?: true) && validId() } - important - buttonTheme - button {
+                        centered - text("Use Password")
+                        this.action = action
+                    }
+                    action
                 }
 
                 val otpAction = endpoints.oneTimePasswordProof?.let { p ->
-                    val btn: Button
-                    onlyWhen { proofs().none { it.via == "otp" } && (authResult()?.options?.any { it.method.via == "otp" } ?: true) && validId() } - important - buttonTheme - button {
-                        btn = this
-                        centered - text("Use Authenticator App")
-                    }
-                    val sa = suspend {
+                    val action = Action("Use Authenticator App", Icon.chevronRight) {
                         currentProof.value = OtpProof(p, endpoints.subjects.keys.single(), when {
                             Regexes.email.matches(primaryIdentifier()) -> "email"
                             Regexes.phoneNumber.matches(primaryIdentifier()) -> "phone"
                             else -> "_id"
                         }, primaryIdentifier())
                     }
-                    btn.onClick(sa)
-                    suspend { btn.launchManualCancel { sa() } }
+                    onlyWhen { proofs().none { it.via == "otp" } && (authResult()?.options?.any { it.method.via == "otp" } ?: true) && validId() } - important - buttonTheme - button {
+                        this.action = action
+                        centered - text("Use Authenticator App")
+                    }
+                    action
                 }
 
-                primaryIdentifierField.action = Action("Send Code", Icon.send) {
+                primaryIdentifierField::action {
                     val id = primaryIdentifier()
                     val validId = Regexes.email.matches(id) || Regexes.phoneNumber.matches(id)
                     when {
-                        proofs().none { it.via == "email" } && email() != null && emailStartAction != null -> emailStartAction()
-                        proofs().none { it.via == "sms" } && phone() != null && smsStartAction != null -> smsStartAction()
-                        proofs().none { it.via == "password" } && validId && passwordStartAction != null -> passwordStartAction()
-                        proofs().none { it.via == "otp" } && validId && otpAction != null -> otpAction()
+                        proofs().none { it.via == "email" } && email() != null && emailStartAction != null -> emailStartAction
+                        proofs().none { it.via == "sms" } && phone() != null && smsStartAction != null -> smsStartAction
+                        proofs().none { it.via == "password" } && validId && passwordStartAction != null -> passwordStartAction
+                        proofs().none { it.via == "otp" } && validId && otpAction != null -> otpAction
+                        else -> null
                     }
                 }
             }

@@ -5,7 +5,7 @@ import com.lightningkite.TrimmedCaselessStringSerializer
 import com.lightningkite.TrimmedStringSerializer
 import com.lightningkite.kiteui.ExternalServices
 import com.lightningkite.kiteui.FileReference
-import com.lightningkite.kiteui.launch
+import com.lightningkite.kiteui.load
 import com.lightningkite.kiteui.models.*
 import com.lightningkite.kiteui.navigation.Screen
 import com.lightningkite.kiteui.navigation.UrlProperties
@@ -59,7 +59,7 @@ object ForeignKeyRenderer : FormRenderer.Generator, ViewRenderer.Generator {
                     }
                     opensMenu {
                         if(selector.serializer.descriptor.isNullable) {
-                            launch(key = Unit) { writable set null }
+                            load { writable set null }
                         }
                         preferredDirection = PopoverPreferredDirection.belowLeft
                         sizeConstraints(width = 25.rem, height = 25.rem) - col {
