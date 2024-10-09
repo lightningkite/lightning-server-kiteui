@@ -226,7 +226,7 @@ class MockClientModelRestEndpoints<T : HasId<ID>, ID : Comparable<ID>>(val log: 
                 Unit
             }
             var count = 0
-            override fun start(): () -> Unit {
+            override fun beginUse(): () -> Unit {
                 if (count++ == 0) {
                     log("updates START")
                     watchers.add(myListener)

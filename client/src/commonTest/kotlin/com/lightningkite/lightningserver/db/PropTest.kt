@@ -1,11 +1,11 @@
 package com.lightningkite.lightningserver.db
 
-import com.lightningkite.kiteui.launch
 import com.lightningkite.kiteui.reactive.Property
 import com.lightningkite.kiteui.reactive.invoke
 import com.lightningkite.kiteui.reactive.lensByElement
 import com.lightningkite.kiteui.reactive.reactiveScope
 import com.lightningkite.serialization.lensPath
+import kotlinx.coroutines.launch
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
