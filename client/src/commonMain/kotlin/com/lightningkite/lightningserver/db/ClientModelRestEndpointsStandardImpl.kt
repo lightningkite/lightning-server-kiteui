@@ -93,13 +93,11 @@ open class ClientModelRestEndpointsStandardImpl<T: HasId<ID>, ID: Comparable<ID>
         EntryChange.serializer(serializer)
     )
     override suspend fun modify(id: ID, input: Modification<T>, ): T {
-        fun <T> T.p() = apply { println("$this (${this?.let { it::class }})") }
-        println("STDIMPL modify $id $input")
         return fetchImplementation(
-            "${id.urlify()}".p(),
-            HttpMethod.PATCH.p(),
-            json.encodeToString(Modification.serializer(serializer), input).p(),
-            serializer.p()
+            "${id.urlify()}",
+            HttpMethod.PATCH,
+            json.encodeToString(Modification.serializer(serializer), input),
+            serializer
         )
     }
     override suspend fun bulkDelete(input: Condition<T>, ): Int = fetchImplementation(
