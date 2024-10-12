@@ -101,17 +101,10 @@ suspend fun <OUT> batchFetch(
         queuedRequests.getOrPut(domain) { DomainRequestHandler(domain) }.token(token).queue(id, bulk)
         return@suspendCoroutineCancellable {}
     }.let { it: BulkResponse ->
-        try {
-            if (it.error == null && type.descriptor.serialName == Unit.serializer().descriptor.serialName) Unit as OUT
-            else if (it.result != null) json.decodeFromString(type, it.result!!)
-            else {
-                throw LsErrorException(it.error?.http?.toShort() ?: 0.toShort(), it.error ?: LSError(0)).also { e ->
-                    Exception("HTTP Failure: $method ${url}", e).report("bulk")
-                }
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-            throw e
+        if (it.error == null && type.descriptor.serialName == Unit.serializer().descriptor.serialName) Unit as OUT
+        else if (it.result != null) json.decodeFromString(type, it.result!!)
+        else {
+            throw LsErrorException(it.error?.http?.toShort() ?: 0.toShort(), it.error ?: LSError(0))
         }
     }
 }
