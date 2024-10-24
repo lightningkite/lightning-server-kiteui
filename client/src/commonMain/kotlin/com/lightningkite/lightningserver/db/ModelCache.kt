@@ -41,7 +41,7 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
     //    private var desiredSocketCondition: Condition<T> = Condition.Never()
 //    private var activeSocketCondition: Condition<T> = Condition.Never()
     private val itemCache = HashMap<ID, ItemHolder>()
-    private val queryCache = HashMap<Pair<Condition<T>, List<SortPart<T>>>, ListHolder>()
+    private val queryCache = HashMap<Query<T>, ListHolder>()
     private val itemWatchCache = HashMap<ID, WritableModel<T>>()
     private val queryWatchCache = HashMap<Query<T>, WatchingWrapper<ListHolder, List<T>>>()
     internal val sockets =
@@ -125,7 +125,7 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
 
     private fun listHolder(query: Query<T>): ListHolder {
         val order = query.orderBy.ensureTotal(serializer)
-        return queryCache.getOrPut(query.condition to order) {
+        return queryCache.getOrPut(query) {
             ListHolder(
                 query.condition,
                 order,
