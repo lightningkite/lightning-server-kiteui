@@ -131,6 +131,9 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
                 order,
                 query.limit + query.skip
             )
+        }.apply {
+            val newLimit = query.limit + query.skip
+            if (limit < newLimit) limit = newLimit
         }
     }
 
