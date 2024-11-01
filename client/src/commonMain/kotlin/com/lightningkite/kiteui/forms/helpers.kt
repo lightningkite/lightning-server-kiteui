@@ -19,9 +19,12 @@ data class FormSize(
     val widthGrowWillingness: Double = 0.5,
     val heightGrowWillingness: Double = 0.5,
 ) {
+    init {
+        if(approximateWidth < 0.0) throw Exception("WAT")
+    }
     companion object {
         val Inline = FormSize(12.0, 1.0)
-        val Block = FormSize(50.0, 5.0)
+        val Block = FormSize(20.0, 5.0)
     }
 }
 data class FormLayoutPreferences(
@@ -76,7 +79,12 @@ val SerializableProperty<*, *>.importance get() = serializableAnnotations.find {
     it.fqn == "com.lightningkite.lightningdb.Importance"
 }?.values?.values?.first()?.let {
     it as? SerializableAnnotationValue.ByteValue
-}?.value?.toInt() ?: if(name == "title") 1 else 7
+}?.value?.toInt() ?: when (name) {
+    "_id" -> if(serializer.descriptor.serialName == "com.lightningkite.UUID") 8 else 1
+    "title", "subject" -> 1
+    "name", "email", "phone" -> 2
+    else -> 7
+}
 val SerializableProperty<*, *>.visibility get() = when {
     serializableAnnotations.any {
         it.fqn == "com.lightningkite.lightningdb.AdminHidden"
@@ -109,14 +117,14 @@ object GenericNotNullPlaceholderSerializer: KSerializer<Any> {
 
 @ViewDsl
 fun ViewWriter.defaultFieldWrapper(field: SerializableProperty<*, *>? = null, inner: ViewWriter.() -> Unit) {
-    field?.importance?.let {
-        when(it) {
-            in 1..6 -> HeaderSizeSemantic(it).onNext
-            7 -> {}
-            8 -> SubtextSemantic.onNext
-            else -> {}
-        }
-    }
+//    field?.importance?.let {
+//        when(it) {
+//            in 1..6 -> HeaderSizeSemantic(it).onNext
+//            7 -> {}
+//            8 -> SubtextSemantic.onNext
+//            else -> {}
+//        }
+//    }
     if (field == null || field.doesNotNeedLabel) inner()
     else field.sentence?.let {
         val before = it.substringBefore('_')

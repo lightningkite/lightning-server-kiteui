@@ -38,7 +38,7 @@ interface RendererGenerator {
     }
 
     fun matches(module: FormModule, selector: FormSelector<*>): Boolean {
-        if (type != null && selector.serializer.descriptor.serialName != type) return false
+        if (type != null && selector.serializer.descriptor.serialName.substringBefore('/') != type) return false
         if (kind != null && selector.serializer.descriptor.kind != kind) return false
         if (annotation != null && selector.annotations.none { it.fqn == annotation }) return false
         return true

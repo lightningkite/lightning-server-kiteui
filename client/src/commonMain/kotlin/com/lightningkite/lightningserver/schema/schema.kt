@@ -45,6 +45,7 @@ class ExternalLightningServer(
 ) {
     init {
         registry.register(schema)
+        println(registry.virtualTypes.keys.joinToString("\n"))
     }
 
     val bulk = schema.bulkEndpoint()

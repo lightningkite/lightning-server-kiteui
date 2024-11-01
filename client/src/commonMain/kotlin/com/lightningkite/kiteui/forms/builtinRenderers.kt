@@ -43,7 +43,7 @@ fun FormModule.defaults() {
         }
     }
     formForType<Boolean?>(FormSize.Inline) { it ->
-        fieldTheme - select {
+        select {
             bind(it, Constant(listOf(null, true, false))) {
                 when (it) {
                     true -> "Yes"
@@ -53,168 +53,199 @@ fun FormModule.defaults() {
             }
         }
     }
-    formForType<Byte?>(FormSize.Inline, name = "Number") { it -> fieldTheme - numberField { content bind it.lens(get = { it?.toDouble() }, set = { it?.toInt()?.toByte() }) } }
-    formForType<Short?>(FormSize.Inline, name = "Number") { it -> fieldTheme - numberField { content bind it.lens(get = { it?.toDouble() }, set = { it?.toInt()?.toShort() }) } }
-    formForType<Int?>(FormSize.Inline, name = "Number") { it -> fieldTheme - numberField { content bind it.lens(get = { it?.toDouble() }, set = { it?.toInt() }) } }
-    formForType<Long?>(FormSize.Inline, name = "Number") { it -> fieldTheme - numberField { content bind it.lens(get = { it?.toDouble() }, set = { it?.toLong() }) } }
+    formForType<Byte?>(FormSize.Inline, name = "Number") { it -> fieldTheme - numberInput { content bind it.lens(get = { it?.toDouble() }, set = { it?.toInt()?.toByte() }) } }
+    formForType<Short?>(FormSize.Inline, name = "Number") { it -> fieldTheme - numberInput { content bind it.lens(get = { it?.toDouble() }, set = { it?.toInt()?.toShort() }) } }
+    formForType<Int?>(FormSize.Inline, name = "Number") { it -> fieldTheme - numberInput { content bind it.lens(get = { it?.toDouble() }, set = { it?.toInt() }) } }
+    formForType<Long?>(FormSize.Inline, name = "Number") { it -> fieldTheme - numberInput { content bind it.lens(get = { it?.toDouble() }, set = { it?.toLong() }) } }
     formForType<Byte>(FormSize.Inline, name = "Number") { it ->
-        fieldTheme - numberField {
+        fieldTheme - numberInput {
             content bind it.lens(
                 get = { it.toDouble() },
                 modify = { o, it -> it?.toInt()?.toByte() ?: o })
         }
     }
     formForType<Short>(FormSize.Inline, name = "Number") { it ->
-        fieldTheme - numberField {
+        fieldTheme - numberInput {
             content bind it.lens(
                 get = { it.toDouble() },
                 modify = { o, it -> it?.toInt()?.toShort() ?: o })
         }
     }
-    formForType<Int>(FormSize.Inline, name = "Number") { it -> fieldTheme - numberField { content bind it.lens(get = { it.toDouble() }, modify = { o, it -> it?.toInt() ?: o }) } }
-    formForType<Long>(FormSize.Inline, name = "Number") { it -> fieldTheme - numberField { content bind it.lens(get = { it.toDouble() }, modify = { o, it -> it?.toLong() ?: o }) } }
+    formForType<Int>(FormSize.Inline, name = "Number") { it -> fieldTheme - numberInput { content bind it.lens(get = { it.toDouble() }, modify = { o, it -> it?.toInt() ?: o }) } }
+    formForType<Long>(FormSize.Inline, name = "Number") { it -> fieldTheme - numberInput { content bind it.lens(get = { it.toDouble() }, modify = { o, it -> it?.toLong() ?: o }) } }
     formForType<Byte?>(FormSize.Inline, name = "Hexadecimal", priority = 0.9f) { it ->
-        fieldTheme - textField {
+        fieldTheme - textInput {
             content bind it.lens(
                 get = { it?.toString(16) ?: "" },
                 set = { it?.toByteOrNull(16) })
         }
     }
     formForType<Short?>(FormSize.Inline, name = "Hexadecimal", priority = 0.9f) { it ->
-        fieldTheme - textField {
+        fieldTheme - textInput {
             content bind it.lens(
                 get = { it?.toString(16) ?: "" },
                 set = { it?.toShortOrNull(16) })
         }
     }
     formForType<Int?>(FormSize.Inline, name = "Hexadecimal", priority = 0.9f) { it ->
-        fieldTheme - textField {
+        fieldTheme - textInput {
             content bind it.lens(
                 get = { it?.toString(16) ?: "" },
                 set = { it?.toIntOrNull(16) })
         }
     }
     formForType<Long?>(FormSize.Inline, name = "Hexadecimal", priority = 0.9f) { it ->
-        fieldTheme - textField {
+        fieldTheme - textInput {
             content bind it.lens(
                 get = { it?.toString(16) ?: "" },
                 set = { it?.toLongOrNull(16) })
         }
     }
     formForType<Byte>(FormSize.Inline, name = "Hexadecimal", priority = 0.9f) { it ->
-        fieldTheme - textField {
+        fieldTheme - textInput {
             content bind it.lens(
                 get = { it.toString(16) },
                 modify = { o, it -> it?.toByteOrNull(16) ?: o })
         }
     }
     formForType<Short>(FormSize.Inline, name = "Hexadecimal", priority = 0.9f) { it ->
-        fieldTheme - textField {
+        fieldTheme - textInput {
             content bind it.lens(
                 get = { it.toString(16) },
                 modify = { o, it -> it?.toShortOrNull(16) ?: o })
         }
     }
     formForType<Int>(FormSize.Inline, name = "Hexadecimal", priority = 0.9f) { it ->
-        fieldTheme - textField {
+        fieldTheme - textInput {
             content bind it.lens(
                 get = { it.toString(16) },
                 modify = { o, it -> it?.toIntOrNull(16) ?: o })
         }
     }
     formForType<Long>(FormSize.Inline, name = "Hexadecimal", priority = 0.9f) { it ->
-        fieldTheme - textField {
+        fieldTheme - textInput {
             content bind it.lens(
                 get = { it.toString(16) },
                 modify = { o, it -> it?.toLongOrNull(16) ?: o })
         }
     }
     formForType<Byte?>(FormSize.Inline, name = "Binary", priority = 0.8f) { it ->
-        fieldTheme - textField {
+        fieldTheme - textInput {
             content bind it.lens(
                 get = { it?.toString(2) ?: "" },
                 set = { it?.toByteOrNull(2) })
         }
     }
     formForType<Short?>(FormSize.Inline, name = "Binary", priority = 0.8f) { it ->
-        fieldTheme - textField {
+        fieldTheme - textInput {
             content bind it.lens(
                 get = { it?.toString(2) ?: "" },
                 set = { it?.toShortOrNull(2) })
         }
     }
     formForType<Int?>(FormSize.Inline, name = "Binary", priority = 0.8f) { it ->
-        fieldTheme - textField {
+        fieldTheme - textInput {
             content bind it.lens(
                 get = { it?.toString(2) ?: "" },
                 set = { it?.toIntOrNull(2) })
         }
     }
     formForType<Long?>(FormSize.Inline, name = "Binary", priority = 0.8f) { it ->
-        fieldTheme - textField {
+        fieldTheme - textInput {
             content bind it.lens(
                 get = { it?.toString(2) ?: "" },
                 set = { it?.toLongOrNull(2) })
         }
     }
     formForType<Byte>(FormSize.Inline, name = "Binary", priority = 0.8f) { it ->
-        fieldTheme - textField {
+        fieldTheme - textInput {
             content bind it.lens(
                 get = { it.toString(2) },
                 modify = { o, it -> it?.toByteOrNull(2) ?: o })
         }
     }
     formForType<Short>(FormSize.Inline, name = "Binary", priority = 0.8f) { it ->
-        fieldTheme - textField {
+        fieldTheme - textInput {
             content bind it.lens(
                 get = { it.toString(2) },
                 modify = { o, it -> it?.toShortOrNull(2) ?: o })
         }
     }
     formForType<Int>(FormSize.Inline, name = "Binary", priority = 0.8f) { it ->
-        fieldTheme - textField {
+        fieldTheme - textInput {
             content bind it.lens(
                 get = { it.toString(2) },
                 modify = { o, it -> it?.toIntOrNull(2) ?: o })
         }
     }
     formForType<Long>(FormSize.Inline, name = "Binary", priority = 0.8f) { it ->
-        fieldTheme - textField {
+        fieldTheme - textInput {
             content bind it.lens(
                 get = { it.toString(2) },
                 modify = { o, it -> it?.toLongOrNull(2) ?: o })
         }
     }
-    formForType<Float?>(FormSize.Inline, name = "Number") { it -> fieldTheme - numberField { content bind it.lens(get = { it?.toDouble() }, set = { it?.toFloat() }) } }
-    formForType<Double?>(FormSize.Inline, name = "Number") { it -> fieldTheme - numberField { content bind it } }
-    formForType<Float>(FormSize.Inline, name = "Number") { it -> fieldTheme - numberField { content bind it.lens(get = { it.toDouble() }, modify = { o, it -> it?.toFloat() ?: o }) } }
-    formForType<Double>(FormSize.Inline, name = "Number") { it -> fieldTheme - numberField { content bind it.nullable() } }
-    formForType<Char>(FormSize.Inline, name = "Character") { it -> fieldTheme - textField { content bind it.lens(get = { it.toString() }, modify = { o, it -> it.firstOrNull() ?: o }) } }
-    formForType<Char?>(FormSize.Inline, name = "Character") { it -> fieldTheme - textField { content bind it.lens(get = { it.toString() }, modify = { o, it -> it.firstOrNull() }) } }
+    formForType<Float?>(FormSize.Inline, name = "Number") { it -> fieldTheme - numberInput { content bind it.lens(get = { it?.toDouble() }, set = { it?.toFloat() }) } }
+    formForType<Double?>(FormSize.Inline, name = "Number") { it -> fieldTheme - numberInput { content bind it } }
+    formForType<Float>(FormSize.Inline, name = "Number") { it -> fieldTheme - numberInput { content bind it.lens(get = { it.toDouble() }, modify = { o, it -> it?.toFloat() ?: o }) } }
+    formForType<Double>(FormSize.Inline, name = "Number") { it -> fieldTheme - numberInput { content bind it.nullable() } }
+    formForType<Char>(FormSize.Inline, name = "Character") { it -> fieldTheme - textInput { content bind it.lens(get = { it.toString() }, modify = { o, it -> it.firstOrNull() ?: o }) } }
+    formForType<Char?>(FormSize.Inline, name = "Character") { it -> fieldTheme - textInput { content bind it.lens(get = { it.toString() }, modify = { o, it -> it.firstOrNull() }) } }
     formForType<String>(
         size = { selector ->
             val maxLengthAnno = selector.annotations.find { it.fqn == "com.lightningkite.lightningdb.MaxLength" }?.values
-            val maxSize = (maxLengthAnno?.get("size") as? SerializableAnnotationValue.IntValue)?.value
-            val averageSize = ((maxLengthAnno?.get("average") as? SerializableAnnotationValue.IntValue)?.value ?: maxSize)?.times(3 / 4.0) ?: 20.0
+            val maxSize = (maxLengthAnno?.get("size") as? SerializableAnnotationValue.IntValue)?.value?.takeUnless { it == -1 }
+            val averageSize = (maxLengthAnno?.get("average") as? SerializableAnnotationValue.IntValue)?.value?.takeUnless { it == -1 }?.toDouble()
+                ?: maxSize?.div(8.0)
+                ?: 20.0
 
             FormSize(
-                approximateWidth = averageSize * 3.0 / 4.0 + 2.0,
+                approximateWidth = averageSize,
                 approximateHeight = 1.0
             )
         },
         name = "Text",
-        generate = { it -> fieldTheme - textField { content bind it } }
+        generate = { it -> fieldTheme - textInput { content bind it } }
+    )
+    viewForType<String>(
+        size = { selector ->
+            val maxLengthAnno = selector.annotations.find { it.fqn == "com.lightningkite.lightningdb.MaxLength" }?.values
+            val maxSize = (maxLengthAnno?.get("size") as? SerializableAnnotationValue.IntValue)?.value?.takeUnless { it == -1 }
+            val averageSize = (maxLengthAnno?.get("average") as? SerializableAnnotationValue.IntValue)?.value?.takeUnless { it == -1 }?.toDouble()
+                ?: maxSize?.div(8.0)
+                ?: 20.0
+
+            FormSize(
+                approximateWidth = averageSize,
+                approximateHeight = 1.0
+            )
+        },
+        name = "Text",
+        generate = { it -> text { ::content { it() }} }
     )
     formForType<String>(
         size = FormSize(40.0, 10.0),
         name = "Large Text",
         annotation = "com.lightningkite.lightningdb.Multiline",
         priority = 2f,
-        generate = { it -> fieldTheme - sizeConstraints(minHeight = 10.rem) - textArea { content bind it } }
+        generate = { it -> sizeConstraints(minHeight = 10.rem) - fieldTheme - textArea { content bind it } }
+    )
+    viewForType<String>(
+        size = FormSize(40.0, 3.0),
+        name = "Large Text Summary",
+        annotation = "com.lightningkite.lightningdb.Multiline",
+        priority = 0.8f,
+        generate = { it ->
+            sizeConstraints(maxHeight = 3.rem) - text {
+                ::content { it().substringBefore('\n') }
+                wraps = false
+                ellipsis = true
+            }
+        }
     )
     viewForType<String>(
         size = FormSize(40.0, 10.0),
-        name = "Large Text Summary",
+        name = "Large Text",
         annotation = "com.lightningkite.lightningdb.Multiline",
         priority = 0.8f,
         generate = { it ->
@@ -226,7 +257,7 @@ fun FormModule.defaults() {
         }
     )
     formForType<UUID>(FormSize(24.0, 1.0), UUIDSerializer) {
-        fieldTheme - textField {
+        fieldTheme - textInput {
             content bind it.lens(get = { it.toString() }, modify = { o, it ->
                 try {
                     UUID.parse(it)
@@ -237,7 +268,7 @@ fun FormModule.defaults() {
         }
     }
     formForType<UUID>(FormSize(24.0, 1.0)) {
-        fieldTheme - textField {
+        fieldTheme - textInput {
             content bind it.lens(get = { it.toString() }, modify = { o, it ->
                 try {
                     UUID.parse(it)
@@ -253,9 +284,8 @@ fun FormModule.defaults() {
     viewForType<UUID>(FormSize(24.0, 1.0)) {
         text { ::content { it().toString() } }
     }
-    formForType<ServerFile>(FormSize.Inline) { it -> text("TODO") }
     formForType<Map<Unit, Unit>>(FormSize.Inline) { it -> text("TODO") }
-    formForType<Instant>(FormSize(approximateWidth = 16.0, approximateHeight = 1.0)) { prop ->
+    formForType<Instant>(FormSize(approximateWidth = 17.0, approximateHeight = 1.0)) { prop ->
         fieldTheme - localDateTimeField {
             content bind prop.lens(
                 get = { it.toLocalDateTime(TimeZone.currentSystemDefault()) },
@@ -263,7 +293,7 @@ fun FormModule.defaults() {
             )
         }
     }
-    formForType<Instant?>(FormSize(approximateWidth = 16.0, approximateHeight = 1.0)) { prop ->
+    formForType<Instant?>(FormSize(approximateWidth = 17.0, approximateHeight = 1.0)) { prop ->
         fieldTheme - localDateTimeField {
             content bind prop.lens(
                 get = { it?.toLocalDateTime(TimeZone.currentSystemDefault()) },
@@ -271,14 +301,14 @@ fun FormModule.defaults() {
             )
         }
     }
-    formForType<LocalDateTime>(FormSize(approximateWidth = 16.0, approximateHeight = 1.0)) { prop ->
+    formForType<LocalDateTime>(FormSize(approximateWidth = 17.0, approximateHeight = 1.0)) { prop ->
         fieldTheme - localDateTimeField {
             content bind prop.lens(
                 get = { it },
                 modify = { old, it -> it ?: old })
         }
     }
-    formForType<LocalDateTime?>(FormSize(approximateWidth = 16.0, approximateHeight = 1.0)) { prop -> fieldTheme - localDateTimeField { content bind prop } }
+    formForType<LocalDateTime?>(FormSize(approximateWidth = 17.0, approximateHeight = 1.0)) { prop -> fieldTheme - localDateTimeField { content bind prop } }
     formForType<LocalDate>(FormSize(approximateWidth = 11.0, approximateHeight = 1.0)) { prop ->
         fieldTheme - localDateField {
             content bind prop.lens(
@@ -286,9 +316,9 @@ fun FormModule.defaults() {
                 modify = { old, it -> it ?: old })
         }
     }
-    formForType<LocalDate?>(FormSize(approximateWidth = 11.0, approximateHeight = 1.0)) { prop -> fieldTheme - localDateField { content bind prop } }
+    formForType<LocalDate?>(FormSize(approximateWidth = 12.0, approximateHeight = 1.0)) { prop -> localDateField { content bind prop } }
     formForType<LocalTime>(FormSize(approximateWidth = 5.0, approximateHeight = 1.0)) { prop ->
-        fieldTheme - localTimeField {
+        localTimeField {
             content bind prop.lens(
                 get = { it },
                 modify = { old, it -> it ?: old })
@@ -296,9 +326,9 @@ fun FormModule.defaults() {
     }
     formForType<LocalTime?>(FormSize(approximateWidth = 5.0, approximateHeight = 1.0)) { prop -> fieldTheme - localTimeField { content bind prop } }
 
-    viewForType<Instant>(FormSize(approximateWidth = 16.0, approximateHeight = 1.0)) { prop -> text { ::content { prop().renderToString() } } }
-    viewForType<LocalDateTime>(FormSize(approximateWidth = 16.0, approximateHeight = 1.0)) { prop -> text { ::content { prop().renderToString() } } }
-    viewForType<LocalDate>(FormSize(approximateWidth = 11.0, approximateHeight = 1.0)) { prop -> text { ::content { prop().renderToString() } } }
+    viewForType<Instant>(FormSize(approximateWidth = 17.0, approximateHeight = 1.0)) { prop -> text { ::content { prop().renderToString() } } }
+    viewForType<LocalDateTime>(FormSize(approximateWidth = 17.0, approximateHeight = 1.0)) { prop -> text { ::content { prop().renderToString() } } }
+    viewForType<LocalDate>(FormSize(approximateWidth = 12.0, approximateHeight = 1.0)) { prop -> text { ::content { prop().renderToString() } } }
     viewForType<LocalTime>(FormSize(approximateWidth = 5.0, approximateHeight = 1.0)) { prop -> text { ::content { prop().renderToString() } } }
 
     this += HorizontalListRenderer as FormRenderer.Generator

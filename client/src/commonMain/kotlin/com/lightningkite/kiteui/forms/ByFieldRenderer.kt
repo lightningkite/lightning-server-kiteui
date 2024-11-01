@@ -10,6 +10,7 @@ import com.lightningkite.kiteui.reactive.Writable
 import com.lightningkite.kiteui.reactive.lens
 import com.lightningkite.kiteui.views.*
 import com.lightningkite.kiteui.views.direct.*
+import com.lightningkite.kiteui.views.l2.field
 import com.lightningkite.serialization.*
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.InternalSerializationApi
@@ -28,14 +29,14 @@ object ByFieldRenderer : FormRenderer.Generator, ViewRenderer.Generator {
         return super<FormRenderer.Generator>.matches(module, selector) && !selector.serializer.descriptor.isNullable
     }
     override fun size(module: FormModule, selector: FormSelector<*>): FormSize {
-        val info = TypeInfo(module, selector.serializer, selector.desiredSize.approximateWidthBound ?: (AppState.windowInfo.value.width.px / 1.rem.px))
+        val info = TypeInfo(module, selector.serializer)
         return FormSize(
-            selector.desiredSize.approximateWidthBound ?:  FormSize.Block.approximateWidth,
+            FormSize.Block.approximateWidth,
             info.viewApproximateHeight
         )
     }
     override fun <T> form(module: FormModule, selector: FormSelector<T>): FormRenderer<T> {
-        val info = TypeInfo(module, selector.serializer, selector.desiredSize.approximateWidthBound ?: (AppState.windowInfo.value.width.px / 1.rem.px))
+        val info = TypeInfo(module, selector.serializer)
         return FormRenderer<T>(module, this, selector) { field, writable ->
             if (field != null) card
             col {
@@ -57,7 +58,7 @@ object ByFieldRenderer : FormRenderer.Generator, ViewRenderer.Generator {
     }
 
     override fun <T> view(module: FormModule, selector: FormSelector<T>): ViewRenderer<T> {
-        val info = TypeInfo(module, selector.serializer, selector.desiredSize.approximateWidthBound ?: (AppState.windowInfo.value.width.px / 1.rem.px))
+        val info = TypeInfo(module, selector.serializer)
         return ViewRenderer<T>(module, this, selector) { field, readable ->
             if (field != null) card
             col {
@@ -85,21 +86,21 @@ object ByFieldRenderer : FormRenderer.Generator, ViewRenderer.Generator {
             val view: ViewRenderer<S>,
         ) {
             val formSize = field.sentence?.let {
-                form.size.copy(approximateWidth = (form.size.approximateWidth + it.length * 3 / 4) * (HeaderSizeSemantic.lookup.getOrNull(field.importance - 1) ?: 0.8))
-            } ?: form.size.copy(approximateWidth = (form.size.approximateWidth) * (HeaderSizeSemantic.lookup.getOrNull(field.importance - 1) ?: 0.75))
+                form.size.copy(approximateWidth = (form.size.approximateWidth + it.length * 3 / 4))
+            } ?: form.size.copy(approximateWidth = (form.size.approximateWidth))
             val viewSize = field.sentence?.let {
-                view.size.copy(approximateWidth = (view.size.approximateWidth + it.length * 3 / 4) * (HeaderSizeSemantic.lookup.getOrNull(field.importance - 1) ?: 0.8))
-            } ?: view.size.copy(approximateWidth = (view.size.approximateWidth) * (HeaderSizeSemantic.lookup.getOrNull(field.importance - 1) ?: 0.8))
+                view.size.copy(approximateWidth = (view.size.approximateWidth + it.length * 3 / 4))
+            } ?: view.size.copy(approximateWidth = (view.size.approximateWidth))
 
             inline fun f(viewWriter: ViewWriter, render: Renderer<*>, inner: ViewWriter.()->Unit) = with(viewWriter) {
-                field.importance.let {
-                    when (it) {
-                        in 1..6 -> HeaderSizeSemantic(it).onNext
-                        7 -> {}
-                        8 -> SubtextSemantic.onNext
-                        else -> {}
-                    }
-                }
+//                field.importance.let {
+//                    when (it) {
+//                        in 1..6 -> HeaderSizeSemantic(it).onNext
+//                        7 -> {}
+//                        8 -> SubtextSemantic.onNext
+//                        else -> {}
+//                    }
+//                }
                 if(render.handlesField || field.doesNotNeedLabel) {
                     inner(this)
                 } else {
@@ -184,27 +185,7 @@ object ByFieldRenderer : FormRenderer.Generator, ViewRenderer.Generator {
                 grouped += fields
             }
             grouped.flatMap {
-                val m = ArrayList<List<Sub<*>>>()
-                var current = ArrayList<Sub<*>>()
-                var currentTotal = 0.0
-                for (item in it) {
-                    if(item.field.importance < 7)
-                        m.add(listOf(item))
-                    else  {
-                        val w = item.formSize.approximateWidth
-                        if (currentTotal != 0.0 && currentTotal + w >= availableWidth) {
-                            m.add(current)
-                            current = ArrayList()
-                            currentTotal = 0.0
-                        }
-                        current.add(item)
-                        currentTotal += w
-                    }
-                }
-                if (current.isNotEmpty()) {
-                    m.add(current)
-                }
-                m
+                it.map { listOf(it) }
             }.sortedBy { subs.indexOf(it[0]) }
         }
         val viewGroup: List<List<Sub<*>>> = run {
@@ -215,27 +196,7 @@ object ByFieldRenderer : FormRenderer.Generator, ViewRenderer.Generator {
                 grouped += fields
             }
             grouped.flatMap {
-                val m = ArrayList<List<Sub<*>>>()
-                var current = ArrayList<Sub<*>>()
-                var currentTotal = 0.0
-                for (item in it) {
-                    if(item.field.importance < 7)
-                        m.add(listOf(item))
-                    else  {
-                        val w = item.formSize.approximateWidth
-                        if (currentTotal != 0.0 && currentTotal + w >= availableWidth) {
-                            m.add(current)
-                            current = ArrayList()
-                            currentTotal = 0.0
-                        }
-                        current.add(item)
-                        currentTotal += w
-                    }
-                }
-                if (current.isNotEmpty()) {
-                    m.add(current)
-                }
-                m
+                it.map { listOf(it) }
             }.sortedBy { subs.indexOf(it[0]) }
         }
 

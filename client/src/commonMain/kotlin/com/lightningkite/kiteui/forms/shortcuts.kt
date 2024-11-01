@@ -12,14 +12,14 @@ import kotlinx.serialization.serializer
 inline fun <reified V> FormModule.viewForType(
     size: FormSize,
     serializer: KSerializer<V> = module.serializer<V>(),
-    name: String = serializer.descriptor.serialName.substringAfterLast('.').titleCase(),
+    name: String = serializer.descriptor.serialName.substringBefore('/').substringAfterLast('.').titleCase(),
     annotation: String? = null,
     priority: Float = 1f,
     crossinline generate: ViewWriter.(prop: Readable<V>)->Unit
 ) {
     plusAssign(object: ViewRenderer.Generator {
         override val annotation: String? = annotation
-        override val type: String? = serializer.descriptor.serialName
+        override val type: String? = serializer.descriptor.serialName.substringBefore('/')
         override val name: String = name
         override val basePriority: Float = priority
         override fun size(module: FormModule, selector: FormSelector<*>): FormSize = size
@@ -32,14 +32,14 @@ inline fun <reified V> FormModule.viewForType(
 inline fun <reified V> FormModule.formForType(
     size: FormSize,
     serializer: KSerializer<V> = module.serializer<V>(),
-    name: String = serializer.descriptor.serialName.substringAfterLast('.').titleCase(),
+    name: String = serializer.descriptor.serialName.substringBefore('/').substringAfterLast('.').titleCase(),
     annotation: String? = null,
     priority: Float = 1f,
     crossinline generate: ViewWriter.(prop: Writable<V>)->Unit
 ) {
     plusAssign(object: FormRenderer.Generator {
         override val annotation: String? = annotation
-        override val type: String? = serializer.descriptor.serialName
+        override val type: String? = serializer.descriptor.serialName.substringBefore('/')
         override val name: String = name
         override val basePriority: Float = priority
         override fun size(module: FormModule, selector: FormSelector<*>): FormSize = size
@@ -53,14 +53,14 @@ inline fun <reified V> FormModule.formForType(
 inline fun <reified V> FormModule.viewForType(
     crossinline size: (FormSelector<*>) -> FormSize,
     serializer: KSerializer<V> = module.serializer<V>(),
-    name: String = serializer.descriptor.serialName.substringAfterLast('.').titleCase(),
+    name: String = serializer.descriptor.serialName.substringBefore('/').substringAfterLast('.').titleCase(),
     annotation: String? = null,
     priority: Float = 1f,
     crossinline generate: ViewWriter.(prop: Readable<V>)->Unit
 ) {
     plusAssign(object: ViewRenderer.Generator {
         override val annotation: String? = annotation
-        override val type: String? = serializer.descriptor.serialName
+        override val type: String? = serializer.descriptor.serialName.substringBefore('/')
         override val name: String = name
         override val basePriority: Float = priority
         override fun size(module: FormModule, selector: FormSelector<*>): FormSize = size(selector)
@@ -73,14 +73,14 @@ inline fun <reified V> FormModule.viewForType(
 inline fun <reified V> FormModule.formForType(
     crossinline size: (FormSelector<*>) -> FormSize,
     serializer: KSerializer<V> = module.serializer<V>(),
-    name: String = serializer.descriptor.serialName.substringAfterLast('.').titleCase(),
+    name: String = serializer.descriptor.serialName.substringBefore('/').substringAfterLast('.').titleCase(),
     annotation: String? = null,
     priority: Float = 1f,
     crossinline generate: ViewWriter.(prop: Writable<V>)->Unit
 ) {
     plusAssign(object: FormRenderer.Generator {
         override val annotation: String? = annotation
-        override val type: String? = serializer.descriptor.serialName
+        override val type: String? = serializer.descriptor.serialName.substringBefore('/')
         override val name: String = name
         override val basePriority: Float = priority
         override fun size(module: FormModule, selector: FormSelector<*>): FormSize = size(selector)
@@ -94,14 +94,14 @@ inline fun <reified V> FormModule.formForType(
 inline fun <reified V> FormModule.viewForTypeWithField(
     size: FormSize,
     serializer: KSerializer<V> = module.serializer<V>(),
-    name: String = serializer.descriptor.serialName.substringAfterLast('.').titleCase(),
+    name: String = serializer.descriptor.serialName.substringBefore('/').substringAfterLast('.').titleCase(),
     annotation: String? = null,
     priority: Float = 1f,
     crossinline generate: ViewWriter.(field: SerializableProperty<*, *>?, prop: Readable<V>)->Unit
 ) {
     plusAssign(object: ViewRenderer.Generator {
         override val annotation: String? = annotation
-        override val type: String? = serializer.descriptor.serialName
+        override val type: String? = serializer.descriptor.serialName.substringBefore('/')
         override val name: String = name
         override val basePriority: Float = priority
         override fun size(module: FormModule, selector: FormSelector<*>): FormSize = size
@@ -115,14 +115,14 @@ inline fun <reified V> FormModule.viewForTypeWithField(
 inline fun <reified V> FormModule.formForTypeWithField(
     size: FormSize,
     serializer: KSerializer<V> = module.serializer<V>(),
-    name: String = serializer.descriptor.serialName.substringAfterLast('.').titleCase(),
+    name: String = serializer.descriptor.serialName.substringBefore('/').substringAfterLast('.').titleCase(),
     annotation: String? = null,
     priority: Float = 1f,
     crossinline generate: ViewWriter.(field: SerializableProperty<*, *>?, prop: Writable<V>)->Unit
 ) {
     plusAssign(object: FormRenderer.Generator {
         override val annotation: String? = annotation
-        override val type: String? = serializer.descriptor.serialName
+        override val type: String? = serializer.descriptor.serialName.substringBefore('/')
         override val name: String = name
         override val basePriority: Float = priority
         override fun size(module: FormModule, selector: FormSelector<*>): FormSize = size

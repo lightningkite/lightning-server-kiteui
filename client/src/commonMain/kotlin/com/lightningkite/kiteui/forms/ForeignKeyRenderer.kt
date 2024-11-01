@@ -1,8 +1,6 @@
 package com.lightningkite.kiteui.forms
 
-import com.lightningkite.CaselessStringSerializer
-import com.lightningkite.TrimmedCaselessStringSerializer
-import com.lightningkite.TrimmedStringSerializer
+import com.lightningkite.*
 import com.lightningkite.kiteui.ExternalServices
 import com.lightningkite.kiteui.FileReference
 import com.lightningkite.kiteui.load
@@ -49,7 +47,8 @@ object ForeignKeyRenderer : FormRenderer.Generator, ViewRenderer.Generator {
         val typeName = anno.get("references")!!.let { it as SerializableAnnotationValue.ClassValue }.fqn
         val typeInfo = module.typeInfo(typeName)!! as FormTypeInfo<HasId<Comparable<Comparable<*>>>, Comparable<Comparable<*>>>
         return FormRenderer(module, this, selector as FormSelector<Comparable<Comparable<*>>?>) { field, writable ->
-            row {
+            fieldTheme - row {
+                spacing = 0.px
                 expanding - menuButton {
                     requireClick = true
                     gravity(Align.Start, Align.Center) - text {
@@ -63,16 +62,70 @@ object ForeignKeyRenderer : FormRenderer.Generator, ViewRenderer.Generator {
                         }
                         preferredDirection = PopoverPreferredDirection.belowLeft
                         sizeConstraints(width = 25.rem, height = 25.rem) - col {
-                            centered - h2("Select")
+                            val textSearch = Property("")
                             val condition = Property<Condition<HasId<Comparable<Comparable<*>>>>>(Condition.Always)
                             val sort = Property<List<SortPart<HasId<Comparable<Comparable<*>>>>>>(listOf())
-                            form(module, Condition.serializer(typeInfo.cache.serializer), condition)
-                            form(module, ListSerializer(SortPartSerializer(typeInfo.cache.serializer)), sort)
-                            expanding - TableRenderer.view(
+                            row {
+                                expanding - fieldTheme - textInput {
+                                    content bind textSearch
+                                }
+                                menuButton {
+                                    dynamicTheme { if (condition() != Condition.Always) SelectedSemantic else null }
+                                    icon(Icon.filterList, "Filter")
+                                    requireClick = true
+                                    opensMenu {
+                                        form(module, Condition.serializer(typeInfo.cache.serializer), condition)
+                                    }
+                                }
+                                menuButton {
+                                    dynamicTheme { if (sort().isNotEmpty()) SelectedSemantic else null }
+                                    icon(Icon.sort, "Sort")
+                                    requireClick = true
+                                    opensMenu {
+                                        form(module, ListSerializer(SortPartSerializer(typeInfo.cache.serializer)), sort)
+                                    }
+                                }
+                            }
+                            val hasTextIndex = typeInfo.cache.serializer.serializableAnnotations.any { it.fqn.endsWith("TextIndex") }
+                            val columns: ImmediateWritable<List<DataClassPath<HasId<Comparable<Comparable<*>>>, *>>> = Property(run {
+                                typeInfo.cache.serializer.serializableProperties!!.sortedBy {
+                                    it.importance
+                                }.take(5).map {
+                                    DataClassPathAccess(DataClassPathSelf(typeInfo.cache.serializer), it)
+                                }
+                            })
+                            expanding - TableRenderer.view<HasId<Comparable<Comparable<*>>>>(
                                 formModule = module,
                                 writer = this@col,
                                 innerSer = typeInfo.cache.serializer,
-                                readable = shared { typeInfo.cache.watch(Query(condition.debounce(500)(), sort.debounce(500)())) },
+                                readable = shared {
+                                    typeInfo.cache.watch(
+                                        Query(
+                                            Condition.And<HasId<Comparable<Comparable<*>>>>(
+                                                listOfNotNull(
+                                                    textSearch.debounce(500)().takeUnless { it.isBlank() }?.let {
+                                                        if (hasTextIndex) Condition.FullTextSearch(it)
+                                                        else {
+                                                            it.split(' ').map { term ->
+                                                                columns().mapNotNull {
+                                                                    val s = it.serializer.let { it.nullElement() ?: it }.descriptor.serialName.substringBefore('/')
+                                                                    val p = if (it.serializer.descriptor.isNullable) DataClassPathNotNull(it as DataClassPath<HasId<Comparable<Comparable<*>>>, Any?>) else it
+                                                                    if (s == "kotlin.String") {
+                                                                        p.mapCondition(Condition.StringContains(term, true) as Condition<Any?>)
+                                                                    } else if (s in IsRawString.serialNames) {
+                                                                        p.mapCondition(Condition.RawStringContains<TrimmedString>(term, true) as Condition<Any?>)
+                                                                    } else null
+                                                                }.takeUnless { it.isEmpty() }?.let { Condition.Or(it) } ?: Condition.Always
+                                                            }.let { Condition.And(it) }
+                                                        }
+                                                    },
+                                                    condition.debounce(500)()
+                                                )
+                                            ), sort.debounce(500)()
+                                        )
+                                    )
+                                },
+                                link = null,
                                 action = {
                                     writable.set(it._id)
                                     closePopovers()

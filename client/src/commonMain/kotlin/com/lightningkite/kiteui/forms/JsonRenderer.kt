@@ -14,7 +14,7 @@ object JsonRenderer : ViewRenderer.Generator, FormRenderer.Generator {
     val json = Json(DefaultJson) { prettyPrint = true }
     override val name: String = "JSON"
     override val basePriority: Float
-        get() = 0.1f
+        get() = 0.01f
 
     override fun <T> view(module: FormModule, selector: FormSelector<T>): ViewRenderer<T> {
         return ViewRenderer(module, this, selector) { _, it ->

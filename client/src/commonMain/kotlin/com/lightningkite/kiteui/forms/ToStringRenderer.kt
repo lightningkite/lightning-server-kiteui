@@ -13,5 +13,5 @@ object ToStringRenderer: ViewRenderer.Generator {
     override val name: String
         get() = "As Text"
     override fun size(module: FormModule, selector: FormSelector<*>): FormSize = FormSize.Inline
-    override val basePriority: Float get() = 0.2f
+    override val basePriority: Float get() = 0.02f
 }

@@ -13,6 +13,7 @@ plugins {
     alias(serverlibs.plugins.serialization)
     alias(serverlibs.plugins.dokka)
     alias(serverlibs.plugins.kiteui)
+    alias(serverlibs.plugins.vite)
 }
 apply<KiteUiPlugin>()
 
@@ -60,6 +61,7 @@ kotlin {
             }
             kotlin {
                 srcDir(file("build/generated/ksp/common/commonMain/kotlin"))
+                srcDir(file("build/generated/kiteui"))
             }
         }
 //        val commonJvmMain by creating {
@@ -79,13 +81,12 @@ ksp {
 
 dependencies {
     configurations.filter { it.name.startsWith("ksp") && it.name != "ksp" }.forEach {
-        add(it.name, serverlibs.kiteUIProcessor)
         add(it.name, serverlibs.lightningServerProcessor)
     }
 }
 
 configure<KiteUiPluginExtension> {
-    this.packageName = "com.lightningkite.mppexampleapp"
+    this.packageName = "com.lightningkite.lightningserver.admin"
     this.iosProjectRoot = project.file("../example-app-ios/KiteUI Example App")
 }
 

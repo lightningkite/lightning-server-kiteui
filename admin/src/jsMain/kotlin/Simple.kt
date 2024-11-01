@@ -1,16 +1,12 @@
-package com.lightningkite.mppexampleapp
+package com.lightningkite.admin
 
 import com.lightningkite.kiteui.*
-import com.lightningkite.kiteui.models.Theme
-import com.lightningkite.kiteui.models.ThemeDerivation
 import com.lightningkite.kiteui.navigation.ScreenNavigator
-import com.lightningkite.kiteui.reactive.invoke
 import com.lightningkite.kiteui.views.*
-import com.lightningkite.kiteui.views.direct.KeyCodes
-import kotlinx.browser.document
+import com.lightningkite.lightningserver.admin.AutoRoutes
+import com.lightningkite.lightningserver.admin.app
+import com.lightningkite.lightningserver.admin.appTheme
 import kotlinx.browser.window
-import org.w3c.dom.events.KeyboardEvent
-import org.w3c.files.BlobPropertyBag
 
 fun main() {
     var created: RView? = null

@@ -2,6 +2,7 @@ import com.lightningkite.deployhelpers.developer
 import com.lightningkite.deployhelpers.github
 import com.lightningkite.deployhelpers.mit
 import com.lightningkite.deployhelpers.standardPublishing
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 group = "com.lightningkite.lightningserver"
 
@@ -19,10 +20,8 @@ kotlin {
     targetHierarchy.default()
     androidTarget {
         publishLibraryVariants("release", "debug")
-        compilations.all {
-            kotlinOptions {
-                jvmTarget = "17"
-            }
+        compilerOptions {
+            this.jvmTarget.set(JvmTarget.JVM_1_8)
         }
     }
 
@@ -101,8 +100,8 @@ android {
     }
     compileOptions {
         isCoreLibraryDesugaringEnabled = true
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
+        sourceCompatibility = JavaVersion.VERSION_1_8
+        targetCompatibility = JavaVersion.VERSION_1_8
     }
     dependencies {
         coreLibraryDesugaring(serverlibs.androidDesugaring)

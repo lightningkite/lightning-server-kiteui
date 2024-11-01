@@ -2,6 +2,7 @@ package com.lightningkite.kiteui.forms
 
 import com.lightningkite.kiteui.reactive.*
 import com.lightningkite.kiteui.views.ViewWriter
+import com.lightningkite.kiteui.views.atTopStart
 import com.lightningkite.kiteui.views.direct.*
 import com.lightningkite.kiteui.views.expanding
 import com.lightningkite.serialization.SerializableProperty
@@ -12,7 +13,7 @@ import kotlinx.serialization.KSerializer
 object NullableFormRenderer : FormRenderer.Generator, ViewRenderer.Generator {
     override val name: String get() = "Null Wrapper"
     override val basePriority: Float
-        get() = 0.3f
+        get() = 0.4f
 
     override fun matches(module: FormModule, selector: FormSelector<*>): Boolean {
         return selector.serializer.descriptor.isNullable
@@ -33,13 +34,15 @@ object NullableFormRenderer : FormRenderer.Generator, ViewRenderer.Generator {
         return FormRenderer(module, this, selector as FormSelector<Any?>) { field, writable ->
             row {
                 var ifNotNull: Any = writable.state.getOrNull() ?: innerSerializer.default()
-                checkbox {
-                    checked bind writable.lens(
-                        get = { v -> v != null },
-                        modify = { e, v ->
-                            if (v) ifNotNull else null
-                        },
-                    )
+                padded - stack {
+                    atTopStart - checkbox {
+                        checked bind writable.lens(
+                            get = { v -> v != null },
+                            modify = { e, v ->
+                                if (v) ifNotNull else null
+                            },
+                        )
+                    }
                 }
                 expanding - onlyWhen { writable() != null } - inner.render(
                     this,

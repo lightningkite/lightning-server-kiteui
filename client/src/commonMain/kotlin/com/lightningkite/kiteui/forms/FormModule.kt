@@ -27,7 +27,7 @@ class FormModule {
     private val form_kind: HashMap<SerialKind, ArrayList<FormRenderer.Generator>> = HashMap()
     private val form_annotation: HashMap<String, ArrayList<FormRenderer.Generator>> = HashMap()
     fun <T> formCandidates(key: FormSelector<T>): Sequence<FormRenderer.Generator> = sequence {
-        form_type[key.serializer.descriptor.serialName]?.let { yieldAll(it) }
+        form_type[key.serializer.descriptor.serialName.substringBefore('/')]?.let { yieldAll(it) }
         form_kind[key.serializer.descriptor.kind]?.let { yieldAll(it) }
         key.annotations.forEach { anno ->
             form_annotation[anno.fqn]?.let {
@@ -42,7 +42,7 @@ class FormModule {
     private val view_kind: HashMap<SerialKind, ArrayList<ViewRenderer.Generator>> = HashMap()
     private val view_annotation: HashMap<String, ArrayList<ViewRenderer.Generator>> = HashMap()
     fun <T> viewCandidates(key: FormSelector<T>): Sequence<ViewRenderer.Generator> = sequence {
-        view_type[key.serializer.descriptor.serialName]?.let { yieldAll(it) }
+        view_type[key.serializer.descriptor.serialName.substringBefore('/')]?.let { yieldAll(it) }
         view_kind[key.serializer.descriptor.kind]?.let { yieldAll(it) }
         key.annotations.forEach { anno ->
             view_annotation[anno.fqn]?.let {

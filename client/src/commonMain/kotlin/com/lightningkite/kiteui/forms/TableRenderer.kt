@@ -54,18 +54,11 @@ object TableRenderer : FormRenderer.Generator, ViewRenderer.Generator {
         innerSer: KSerializer<T>,
         readable: Readable<Readable<List<T>>>,
         columns: ImmediateWritable<List<DataClassPath<T, *>>> = Property(run {
-            val all = ArrayList<DataClassPath<T, *>>()
-            fun <K> checkDataClass(around: DataClassPath<T, K>, properties: Array<SerializableProperty<K, Any?>>) {
-                for(prop in properties) {
-                    prop.serializer.serializableProperties?.let { subs ->
-                        @Suppress("UNCHECKED_CAST")
-                        checkDataClass<Any?>(DataClassPathAccess(around, prop), subs as Array<SerializableProperty<Any?, Any?>>)
-                    } ?: all.add(DataClassPathAccess(around, prop))
-                }
+            innerSer.serializableProperties!!.sortedBy {
+                it.importance
+            }.take(5).map {
+                DataClassPathAccess(DataClassPathSelf(innerSer), it)
             }
-            @Suppress("UNCHECKED_CAST")
-            checkDataClass(DataClassPathSelf(innerSer), innerSer.serializableProperties!! as Array<SerializableProperty<T, Any?>>)
-            all
         }),
         link: ((T) -> () -> Screen)? = null,
         action: (suspend (T) -> Unit)? = null,
@@ -83,12 +76,12 @@ object TableRenderer : FormRenderer.Generator, ViewRenderer.Generator {
         }
         scrollsHorizontally - col {
             expanding - changingSizeConstraints {
-                SizeConstraints(width = anyCols().sumOf { renderer(it).size.approximateWidth + 2.0 }.rem)
+                SizeConstraints(width = anyCols().sumOf { renderer(it).size.approximateWidth.coerceAtLeast(5.0) + 2.0 }.plus(5.0).rem)
             } - col {
                 padded - row {
                     row {
                         forEach(anyCols) {
-                            sizeConstraints(width = renderer(it).size.approximateWidth.rem) - important - row {
+                            sizeConstraints(width = renderer(it).size.approximateWidth.coerceAtLeast(5.0).rem) - important - row {
                                 centered - expanding - text(it.properties.joinToString(" ") { it.displayName })
                                 button {
                                     spacing = 0.px
@@ -138,7 +131,7 @@ object TableRenderer : FormRenderer.Generator, ViewRenderer.Generator {
 //                                ::content { col.getAny(it()).toString() }
 //                            }
                                 @Suppress("UNCHECKED_CAST")
-                                padded - sizeConstraints(width = render.size.approximateWidth.rem) - render.render(
+                                padded - sizeConstraints(width = render.size.approximateWidth.coerceAtLeast(5.0).rem) - render.render(
                                     this@row,
                                     null,
                                     it.lensPath(col)
