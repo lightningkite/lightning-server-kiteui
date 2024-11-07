@@ -44,6 +44,10 @@ object SortPathRenderer : FormRenderer.Generator, ViewRenderer.Generator {
         LocalDateIso8601Serializer.descriptor.serialName,
         LocalDateTimeIso8601Serializer.descriptor.serialName,
         LocalTimeIso8601Serializer.descriptor.serialName,
+        kotlinx.datetime.serializers.InstantIso8601Serializer.descriptor.serialName,
+        kotlinx.datetime.serializers.LocalDateIso8601Serializer.descriptor.serialName,
+        kotlinx.datetime.serializers.LocalDateTimeIso8601Serializer.descriptor.serialName,
+        kotlinx.datetime.serializers.LocalTimeIso8601Serializer.descriptor.serialName,
         DurationSerializer.descriptor.serialName,
         DurationMsSerializer.descriptor.serialName,
     ) + stringTypes

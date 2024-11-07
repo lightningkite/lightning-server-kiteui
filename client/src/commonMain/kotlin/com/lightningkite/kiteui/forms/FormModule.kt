@@ -52,10 +52,15 @@ class FormModule {
         yieldAll(view_others)
     }
 
-    fun <T> view(key: FormSelector<T>): ViewRenderer<T> {
+    private val viewCache = HashMap<FormSelector<*>, ViewRenderer<*>>()
+    private fun <T> viewCache(key: FormSelector<T>, generate: ()->ViewRenderer<T>): ViewRenderer<T> {
+        @Suppress("UNCHECKED_CAST")
+        return viewCache.getOrPut(key, generate) as ViewRenderer<T>
+    }
+    fun <T> view(key: FormSelector<T>): ViewRenderer<T> = viewCache(key) {
         val options = viewCandidates(key).filter { it.matches(this, key) }.sortedByDescending { it.priority(this, key) }.map { it.view(this, key) }.toList()
-        if (!key.withPicker) return options.first()
-        return ViewRenderer(this, null, key, size = options.first().size, handlesField = options.first().handlesField) { field, writable ->
+        if (!key.withPicker) options.first()
+        else ViewRenderer(this, null, key, size = options.first().size, handlesField = options.first().handlesField) { field, writable ->
             val selected = Property(options.first())
             row {
 //                spacing = 0.px
@@ -73,10 +78,15 @@ class FormModule {
             }
         }
     }
-    fun <T> form(key: FormSelector<T>): FormRenderer<T> {
+    private val formCache = HashMap<FormSelector<*>, FormRenderer<*>>()
+    private fun <T> formCache(key: FormSelector<T>, generate: ()->FormRenderer<T>): FormRenderer<T> {
+        @Suppress("UNCHECKED_CAST")
+        return formCache.getOrPut(key, generate) as FormRenderer<T>
+    }
+    fun <T> form(key: FormSelector<T>): FormRenderer<T> = formCache(key) {
         val options = formCandidates(key).filter { it.matches(this, key) }.sortedByDescending { it.priority(this, key) }.map { it.form(this, key) }.toList()
-        if (!key.withPicker) return options.first()
-        return FormRenderer(this, null, key, size = options.first().size, handlesField = options.first().handlesField) { field, writable ->
+        if (!key.withPicker) options.first()
+        else FormRenderer(this, null, key, size = options.first().size, handlesField = options.first().handlesField) { field, writable ->
             val selected = Property(options.first())
             row {
 //                spacing = 0.px

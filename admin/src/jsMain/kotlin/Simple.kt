@@ -1,12 +1,14 @@
 package com.lightningkite.admin
 
 import com.lightningkite.kiteui.*
+import com.lightningkite.kiteui.navigation.DefaultJson
 import com.lightningkite.kiteui.navigation.ScreenNavigator
 import com.lightningkite.kiteui.views.*
-import com.lightningkite.lightningserver.admin.AutoRoutes
-import com.lightningkite.lightningserver.admin.app
-import com.lightningkite.lightningserver.admin.appTheme
+import com.lightningkite.lightningserver.admin.*
+import kotlinx.browser.document
 import kotlinx.browser.window
+import kotlinx.serialization.Serializable
+import org.w3c.dom.HTMLScriptElement
 
 fun main() {
     var created: RView? = null
@@ -14,7 +16,14 @@ fun main() {
         println("ON ERROR HANDLER $a $b $c $d $e")
         if (e is Exception) e.printStackTrace2()
     }
+    (document.getElementById("injectedBackendInformation") as? HTMLScriptElement)?.innerText?.let {
+        val info = DefaultJson.decodeFromString<InjectedBackendInformation>(it)
+        serverUrl.value = info.url
+    }
     root(appTheme.value) {
         app(ScreenNavigator { AutoRoutes }, ScreenNavigator { AutoRoutes })
     }
 }
+
+@Serializable
+data class InjectedBackendInformation(val url: String)

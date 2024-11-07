@@ -27,16 +27,14 @@ data class FormSize(
         val Block = FormSize(20.0, 5.0)
     }
 }
-data class FormLayoutPreferences(
+enum class FormLayoutPreferences(
     val approximateWidthBound: Double? = null,
     val approximateHeightBound: Double? = null,
 ) {
-    companion object {
-        val Inline = FormLayoutPreferences(approximateWidthBound = 12.0, approximateHeightBound = null)
-        val Block = FormLayoutPreferences(approximateWidthBound = null, approximateHeightBound = 12.0)
-        val Bound = FormLayoutPreferences(approximateWidthBound = 12.0, approximateHeightBound = 2.0)
-        val Unbound = FormLayoutPreferences(approximateWidthBound = null, approximateHeightBound = null)
-    }
+    Inline(approximateWidthBound = 12.0, approximateHeightBound = null),
+    Block(approximateWidthBound = null, approximateHeightBound = 12.0),
+    Field(approximateWidthBound = 12.0, approximateHeightBound = 2.0),
+    Unbound(approximateWidthBound = null, approximateHeightBound = null),
 }
 
 val SerializableProperty<*, *>.displayName: String

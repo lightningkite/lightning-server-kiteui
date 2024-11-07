@@ -12,6 +12,7 @@ import com.lightningkite.kiteui.reactive.invoke
 import com.lightningkite.kiteui.views.ViewWriter
 import com.lightningkite.lightningdb.HasId
 import com.lightningkite.lightningserver.db.ModelCache
+import com.lightningkite.lightningserver.schema.ExternalLightningServer
 import com.lightningkite.serialization.*
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
@@ -21,6 +22,7 @@ interface RendererGenerator {
     val name: String
     val kind: SerialKind? get() = null
     val type: String? get() = null
+    val nullable: Boolean get() = false
     val annotation: String? get() = null
     val handlesField: Boolean get() = false
     fun size(module: FormModule, selector: FormSelector<*>): FormSize = FormSize.Inline
@@ -38,6 +40,7 @@ interface RendererGenerator {
     }
 
     fun matches(module: FormModule, selector: FormSelector<*>): Boolean {
+        if (nullable != selector.serializer.descriptor.isNullable) return false
         if (type != null && selector.serializer.descriptor.serialName.substringBefore('/') != type) return false
         if (kind != null && selector.serializer.descriptor.kind != kind) return false
         if (annotation != null && selector.annotations.none { it.fqn == annotation }) return false
@@ -78,13 +81,14 @@ data class FormRenderer<T>(
     }
 }
 
-class FormSelector<T>(
+data class FormSelector<T>(
     val serializer: KSerializer<T>,
     val annotations: List<SerializableAnnotation>,
     val desiredSize: FormLayoutPreferences = FormLayoutPreferences.Block,
     val handlesField: Boolean = false,
     val withPicker: Boolean = true,
 ) {
+    override fun toString(): String = serializer.descriptor.serialName
 
     @Suppress("UNCHECKED_CAST")
     fun <O> copy(
@@ -102,30 +106,8 @@ class FormSelector<T>(
     )
 }
 
-private fun <T : HasId<ID>, ID : Comparable<ID>> ModelCache<T, ID>.defaultRenderToString(cache: ModelCache<T, ID>): suspend (ID) -> String {
-    val it = serializer.serializableProperties!!
-    val dcps = DataClassPathSerializer(serializer)
-    val nameFields: List<DataClassPath<T, *>> = serializer.serializableAnnotations.find {
-        it.fqn == "com.lightningkite.lightningdb.AdminTitleFields"
-    }?.values?.get("fields")?.let { it as? SerializableAnnotationValue.ArrayValue }
-        ?.value
-        ?.mapNotNull { it as? SerializableAnnotationValue.StringValue }
-        ?.map { it.value }
-        ?.toSet()
-        ?.let { matching ->
-            matching.map { dcps.fromString(it) as DataClassPath<T, *> }
-        }
-        ?: it.find { it.name == "name" }?.let { DataClassPathAccess(DataClassPathSelf(serializer), it) }?.let(::listOf)
-        ?: it.find { it.name == "title" }?.let { DataClassPathAccess(DataClassPathSelf(serializer), it) }?.let(::listOf)
-        ?: it.find { it.name == "subject" }?.let { DataClassPathAccess(DataClassPathSelf(serializer), it) }?.let(::listOf)
-        ?: it.map { DataClassPathAccess(DataClassPathSelf(serializer), it) }.take(3)
-    // TODO: Suspend chain for better field names
-    return label@{ id: ID ->
-        val t = cache[id]() ?: return@label "?"
-        nameFields.joinToString(" ") { it.get(t)?.toString() ?: "" }
-    }
-}
-private fun <T : HasId<ID>, ID : Comparable<ID>> ModelCache<T, ID>.defaultTitleFields(): List<DataClassPath<T, *>> {
+fun <T : HasId<ID>, ID : Comparable<ID>> KSerializer<T>.defaultTitleFields(): List<DataClassPath<T, *>> {
+    val serializer = this
     val it = serializer.serializableProperties!!
     val dcps = DataClassPathSerializer(serializer)
     val nameFields: List<DataClassPath<T, *>> = serializer.serializableAnnotations.find {
@@ -146,10 +128,10 @@ private fun <T : HasId<ID>, ID : Comparable<ID>> ModelCache<T, ID>.defaultTitleF
 }
 
 class FormTypeInfo<T : HasId<ID>, ID : Comparable<ID>>(
-    val cache: ModelCache<T, ID>,
+    val cache: ExternalLightningServer.ModelInfo<T, ID>,
     val screen: (ID) -> (() -> Screen)?,
-    val titleFields: List<DataClassPath<T, *>> = cache.defaultTitleFields(),
-    val renderToString: (suspend (ID) -> String) = cache.defaultRenderToString(cache),
+    val titleFields: List<DataClassPath<T, *>> = cache.serializer.defaultTitleFields(),
+    val renderToString: (suspend (ID) -> String)
 )
 
 fun <T> ViewWriter.form(
@@ -157,7 +139,7 @@ fun <T> ViewWriter.form(
     serializer: KSerializer<T>,
     writable: Writable<T>,
     annotations: List<SerializableAnnotation> = serializer.serializableAnnotations,
-    desiredSize: FormLayoutPreferences = FormLayoutPreferences((AppState.windowInfo.value.width.px / 1.rem.px).coerceAtMost(50.0)),
+    desiredSize: FormLayoutPreferences = FormLayoutPreferences.Unbound,
     field: SerializableProperty<*, *>? = null,
 ) {
     val sel = FormSelector<T>(serializer, annotations, desiredSize)
@@ -169,7 +151,7 @@ fun <T> ViewWriter.view(
     serializer: KSerializer<T>,
     readable: Readable<T>,
     annotations: List<SerializableAnnotation> = serializer.serializableAnnotations,
-    desiredSize: FormLayoutPreferences = FormLayoutPreferences((AppState.windowInfo.value.width.px / 1.rem.px).coerceAtMost(50.0)),
+    desiredSize: FormLayoutPreferences = FormLayoutPreferences.Unbound,
     field: SerializableProperty<*, *>? = null,
 ) {
     val sel = FormSelector<T>(serializer, annotations, desiredSize)

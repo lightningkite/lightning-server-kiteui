@@ -8,6 +8,7 @@ import com.lightningkite.lightningserver.LSError
 import com.lightningkite.lightningserver.LsErrorException
 import com.lightningkite.lightningserver.batchFetch
 import kotlinx.serialization.KSerializer
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 
 
@@ -51,7 +52,11 @@ class ConnectivityOnlyFetcher(val base: String, val json: Json, val token: (susp
             } else {
                 @Suppress("UNCHECKED_CAST")
                 if (outSerializer.descriptor.serialName == "kotlin.Unit") return Unit as T
-                json.decodeFromString(outSerializer, it.text())
+                try {
+                    json.decodeFromString(outSerializer, it.text())
+                } catch(e: SerializationException) {
+                    throw SerializationException("Failed to parse ${outSerializer.descriptor.serialName} from response", e)
+                }
             }
         }
     }

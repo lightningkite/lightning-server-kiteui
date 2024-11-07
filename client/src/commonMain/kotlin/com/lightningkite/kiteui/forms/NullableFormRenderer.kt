@@ -14,6 +14,7 @@ object NullableFormRenderer : FormRenderer.Generator, ViewRenderer.Generator {
     override val name: String get() = "Null Wrapper"
     override val basePriority: Float
         get() = 0.4f
+    override val nullable: Boolean get() = true
 
     override fun matches(module: FormModule, selector: FormSelector<*>): Boolean {
         return selector.serializer.descriptor.isNullable

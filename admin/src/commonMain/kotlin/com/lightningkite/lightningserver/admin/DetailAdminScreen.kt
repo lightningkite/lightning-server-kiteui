@@ -30,7 +30,7 @@ import kotlinx.serialization.encodeToString
 @Routable("collections/{collectionName}/{itemId}")
 class DetailAdminScreen(val collectionName: String, val itemId: String) : Screen {
     override fun ViewWriter.render() {
-        val mc = shared { adminServer().models[collectionName] as ModelCache<HasId<Comparable<Comparable<*>>>, Comparable<Comparable<*>>> }
+        val mc = shared { adminServer().models[collectionName]?.cache(adminAuthentication()) as ModelCache<HasId<Comparable<Comparable<*>>>, Comparable<Comparable<*>>> }
         val item = Draft(shared {
             val mc = mc()
             val actualId = UrlProperties.decodeFromString(mc.serializer._id().serializer, itemId)
@@ -38,11 +38,13 @@ class DetailAdminScreen(val collectionName: String, val itemId: String) : Screen
                 mc.serializer._id().setCopy(it, actualId)
             })
         }.flatten())
-        rowCollapsingToColumn(100.rem) {
-            weight(2f) - scrolls - col {
+        scrolls - rowCollapsingToColumn(100.rem) {
+            space { reactive { item() } }
+            weight(2f) - col {
                 reactive {
                     clearChildren()
-                    card - form(adminServer().context, mc().serializer, item)
+                    val forms = adminServer().formModule(adminAuthentication())
+                    form(forms, mc().serializer, item)
                     atEnd - important - button {
                         text("Save")
                         ::enabled { item.changesMade() }
@@ -58,18 +60,20 @@ class DetailAdminScreen(val collectionName: String, val itemId: String) : Screen
                     }
                 }
             }
-            weight(1f) - scrolls - col {
+            weight(1f) - col {
                 val itemId = shared { item()._id }
                 reactive {
                     clearChildren()
                     val mc = mc()
                     val itemId = itemId()
+                    val myTypeName = mc.serializer.descriptor.serialName.substringBefore('/')
                     adminServer().models.entries.forEach { model ->
                         model.value.serializer.serializableProperties?.forEach {
                             val anno = it.serializableAnnotations.find { it.fqn == "com.lightningkite.lightningdb.References" } ?: return@forEach
                             val typeName = anno.values.get("references")?.let { it as? SerializableAnnotationValue.ClassValue }?.fqn ?: return@forEach
+                            println("Checking for type name $myTypeName, comparing with ${typeName} from ${model.key}.${it.name}")
+                            if (typeName != myTypeName) return@forEach
                             val reverseName = anno.values.get("reverseName")?.let { it as? SerializableAnnotationValue.StringValue }?.value?.takeUnless { it.isEmpty() }
-                            if (typeName != mc.serializer.descriptor.serialName.substringBefore('/')) return@forEach
                             val label = reverseName ?: "${model.value.serializer.displayName}'s ${it.displayName}"
                             link {
                                 text(label)

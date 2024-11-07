@@ -24,7 +24,7 @@ class NewItemAdminScreen(val collectionName: String) : Screen {
     val conditionString: Property<String?> = Property(null)
 
     override fun ViewWriter.render() {
-        val mc = shared { adminServer().models[collectionName] as ModelCache<HasId<Comparable<Comparable<*>>>, Comparable<Comparable<*>>> }
+        val mc = shared { adminServer().models[collectionName]?.cache(adminAuthentication()) as ModelCache<HasId<Comparable<Comparable<*>>>, Comparable<Comparable<*>>> }
         val item = asyncReadable {
             val coerceCondition = conditionString.value?.let {
                 try {
@@ -44,7 +44,8 @@ class NewItemAdminScreen(val collectionName: String) : Screen {
         scrolls - col {
             reactive {
                 clearChildren()
-                card - form(adminServer().context, mc().serializer, item)
+                val forms = adminServer().formModule(adminAuthentication())
+                form(forms, mc().serializer, item)
                 atEnd - important - button {
                     text("Save")
                     onClick {
@@ -69,32 +70,4 @@ fun <T> T.coerce(condition: Condition<T>): T = when(condition) {
         key.setCopy(this, sub)
     }
     else -> this
-//    is Condition.Exists<*> -> TODO()
-//    is Condition.FullTextSearch<*> -> TODO()
-//    is Condition.GeoDistance -> TODO()
-//    is Condition.GreaterThan<*> -> TODO()
-//    is Condition.GreaterThanOrEqual<*> -> TODO()
-//    is Condition.IfNotNull<*> -> TODO()
-//    is Condition.Inside<*> -> TODO()
-//    is Condition.IntBitsAnyClear -> TODO()
-//    is Condition.IntBitsAnySet -> TODO()
-//    is Condition.IntBitsClear -> TODO()
-//    is Condition.IntBitsSet -> TODO()
-//    is Condition.LessThan<*> -> TODO()
-//    is Condition.LessThanOrEqual<*> -> TODO()
-//    is Condition.ListAllElements<*> -> TODO()
-//    is Condition.ListAnyElements<*> -> TODO()
-//    is Condition.ListSizesEquals<*> -> TODO()
-//    Condition.Never -> TODO()
-//    is Condition.Not<*> -> TODO()
-//    is Condition.NotEqual<*> -> TODO()
-//    is Condition.NotInside<*> -> TODO()
-//    is Condition.OnField<*, *> -> TODO()
-//    is Condition.OnKey<*> -> TODO()
-//    is Condition.RawStringContains<*> -> TODO()
-//    is Condition.RegexMatches -> TODO()
-//    is Condition.SetAllElements<*> -> TODO()
-//    is Condition.SetAnyElements<*> -> TODO()
-//    is Condition.SetSizesEquals<*> -> TODO()
-//    is Condition.StringContains -> TODO()
 }

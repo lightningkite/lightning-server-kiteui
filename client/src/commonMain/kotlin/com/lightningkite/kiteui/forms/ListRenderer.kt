@@ -3,7 +3,6 @@ package com.lightningkite.kiteui.forms
 import com.lightningkite.kiteui.models.Icon
 import com.lightningkite.kiteui.models.px
 import com.lightningkite.kiteui.models.rem
-import com.lightningkite.kiteui.models.times
 import com.lightningkite.kiteui.reactive.*
 import com.lightningkite.kiteui.views.card
 import com.lightningkite.kiteui.views.centered
@@ -35,7 +34,7 @@ abstract class ListRenderer<C> : FormRenderer.Generator, ViewRenderer.Generator 
         val innerSer = inner(selector.serializer as KSerializer<C>)
         val inner = selector.copy(
             innerSer,
-            desiredSize = if (vertical) FormLayoutPreferences.Block else FormLayoutPreferences.Bound,
+            desiredSize = if (vertical) FormLayoutPreferences.Block else FormLayoutPreferences.Field,
             annotations = selector.annotations?.find { it.fqn == "com.lightningkite.lightningdb.MultipleReferences" }
                 ?.let { selector.annotations + SerializableAnnotation("com.lightningkite.lightningdb.References", it.values) }
                 ?: selector.annotations

@@ -31,8 +31,14 @@ private object Regexes {
 }
 
 @ViewDsl
-fun ViewWriter.login(endpoints: AuthClientEndpoints, knownDeviceLocalStorageName: String? = "known-device", onAuthentication: suspend (String) -> Unit) {
-    AuthComponent(endpoints, knownDeviceLocalStorageName, onAuthentication).apply {
+fun ViewWriter.login(
+    endpoints: AuthClientEndpoints,
+    subjectPath: String = endpoints.subjects.keys.single(),
+    subject: UserAuthClientEndpoints<*> = endpoints.subjects[subjectPath]!!,
+    knownDeviceLocalStorageName: String? = "known-device",
+    onAuthentication: suspend (String) -> Unit,
+) {
+    AuthComponent(endpoints, subjectPath, subject, knownDeviceLocalStorageName, onAuthentication).apply {
         render()
     }
 }
@@ -40,10 +46,16 @@ fun ViewWriter.login(endpoints: AuthClientEndpoints, knownDeviceLocalStorageName
 @Serializable
 data class KnownDeviceSecretInfoStuff(
     val info: KnownDeviceSecretAndExpiration,
-    val primaryIdentifier: String
+    val primaryIdentifier: String,
 )
 
-class AuthComponent(val endpoints: AuthClientEndpoints, val knownDeviceLocalStorageName: String? = "known-device", val onAuthentication: suspend (String) -> Unit) {
+class AuthComponent(
+    val endpoints: AuthClientEndpoints,
+    val subjectPath: String,
+    val subject: UserAuthClientEndpoints<*>,
+    val knownDeviceLocalStorageName: String? = "known-device",
+    val onAuthentication: suspend (String) -> Unit,
+) {
     val primaryIdentifier = Property("")
     val phone = shared {
         primaryIdentifier().takeIf { Regexes.phoneNumber.matches(it) }?.filter { it.isDigit() } ?: authResult()?.options?.find { it.method.property == "phone" }?.value
@@ -61,10 +73,10 @@ class AuthComponent(val endpoints: AuthClientEndpoints, val knownDeviceLocalStor
         if (proofs.isEmpty()) return@sharedSuspending null
         authenticating.value = true
         try {
-            val result = endpoints.subjects.values.single().checkProofs(proofs())
+            val result = subject.checkProofs(proofs())
             result
-        } catch(e: LsErrorException) {
-            if(e.status / 100 == 4) this@AuthComponent.proofs.value = listOf()
+        } catch (e: LsErrorException) {
+            if (e.status / 100 == 4) this@AuthComponent.proofs.value = listOf()
             null
         } finally {
             authenticating.value = false
@@ -106,19 +118,23 @@ class AuthComponent(val endpoints: AuthClientEndpoints, val knownDeviceLocalStor
                 }
                 errorText()
                 val newCodeSentAt = Property(now())
-                val nowBySecond = readable { while(true) { emit(now()); delay(1000) } }
+                val nowBySecond = readable {
+                    while (true) {
+                        emit(now()); delay(1000)
+                    }
+                }
                 button {
-                    ::enabled { nowBySecond() !in newCodeSentAt() + 3.seconds .. newCodeSentAt() + resendTime }
+                    ::enabled { nowBySecond() !in newCodeSentAt() + 3.seconds..newCodeSentAt() + resendTime }
                     centered - onlyWhen { nowBySecond() > newCodeSentAt() + resendTime } - text("Send new code")
                     centered - onlyWhen { nowBySecond() < newCodeSentAt() + 3.seconds } - row {
                         centered - icon(Icon.done.copy(1.rem, 1.rem), "")
                         centered - text("Sent!")
                     }
-                    centered - onlyWhen { nowBySecond() in newCodeSentAt() + 3.seconds .. newCodeSentAt() + resendTime } - text{
+                    centered - onlyWhen { nowBySecond() in newCodeSentAt() + 3.seconds..newCodeSentAt() + resendTime } - text {
                         ::content { "Can send new code in ${(newCodeSentAt() + resendTime - nowBySecond()).inWholeSeconds}" }
                     }
                     onClick {
-                        if(nowBySecond() > newCodeSentAt() + resendTime) {
+                        if (nowBySecond() > newCodeSentAt() + resendTime) {
                             codeKey = p.beginEmailOwnershipProof(id)
                             newCodeSentAt.value = now()
                         }
@@ -127,6 +143,7 @@ class AuthComponent(val endpoints: AuthClientEndpoints, val knownDeviceLocalStor
             }
         }
     }
+
     inner class SmsProof(val p: SmsProofClientEndpoints, val id: String, var codeKey: String) : CurrentProof {
         val code = Property("")
         override fun ViewWriter.render(onProof: (Proof) -> Unit) {
@@ -152,19 +169,23 @@ class AuthComponent(val endpoints: AuthClientEndpoints, val knownDeviceLocalStor
                 }
                 errorText()
                 val newCodeSentAt = Property(now())
-                val nowBySecond = readable { while(true) { emit(now()); delay(1000) } }
+                val nowBySecond = readable {
+                    while (true) {
+                        emit(now()); delay(1000)
+                    }
+                }
                 button {
-                    ::enabled { nowBySecond() !in newCodeSentAt() + 3.seconds .. newCodeSentAt() + resendTime }
+                    ::enabled { nowBySecond() !in newCodeSentAt() + 3.seconds..newCodeSentAt() + resendTime }
                     centered - onlyWhen { nowBySecond() > newCodeSentAt() + resendTime } - text("Send new code")
                     centered - onlyWhen { nowBySecond() < newCodeSentAt() + 3.seconds } - row {
                         centered - icon(Icon.done.copy(1.rem, 1.rem), "")
                         centered - text("Sent!")
                     }
-                    centered - onlyWhen { nowBySecond() in newCodeSentAt() + 3.seconds .. newCodeSentAt() + resendTime } - text{
+                    centered - onlyWhen { nowBySecond() in newCodeSentAt() + 3.seconds..newCodeSentAt() + resendTime } - text {
                         ::content { "Can send new code in ${(newCodeSentAt() + resendTime - nowBySecond()).inWholeSeconds}" }
                     }
                     onClick {
-                        if(nowBySecond() > newCodeSentAt() + resendTime) {
+                        if (nowBySecond() > newCodeSentAt() + resendTime) {
                             codeKey = p.beginSmsOwnershipProof(id)
                             newCodeSentAt.value = now()
                         }
@@ -173,6 +194,7 @@ class AuthComponent(val endpoints: AuthClientEndpoints, val knownDeviceLocalStor
             }
         }
     }
+
     inner class PasswordProof(val p: PasswordProofClientEndpoints, val type: String, val key: String, val value: String) : CurrentProof {
         val code = Property("")
         override fun ViewWriter.render(onProof: (Proof) -> Unit) {
@@ -200,6 +222,7 @@ class AuthComponent(val endpoints: AuthClientEndpoints, val knownDeviceLocalStor
             }
         }
     }
+
     inner class OtpProof(val p: OneTimePasswordProofClientEndpoints, val type: String, val key: String, val value: String) : CurrentProof {
         val code = Property("")
         override fun ViewWriter.render(onProof: (Proof) -> Unit) {
@@ -238,29 +261,31 @@ class AuthComponent(val endpoints: AuthClientEndpoints, val knownDeviceLocalStor
     fun ViewWriter.render() {
         col {
             val primaryIdentifierField: TextField
-            field(when {
-                endpoints.emailProof != null && endpoints.smsProof != null  -> "Email or Phone Number"
-                endpoints.emailProof != null -> "Email"
-                endpoints.smsProof != null -> "Phone Number"
-                else -> "Username"
-            }) {
+            field(
+                when {
+                    endpoints.emailProof != null && endpoints.smsProof != null -> "Email or Phone Number"
+                    endpoints.emailProof != null -> "Email"
+                    endpoints.smsProof != null -> "Phone Number"
+                    else -> "Username"
+                }
+            ) {
                 textInput {
                     primaryIdentifierField = this
                     hint = when {
-                        endpoints.emailProof != null && endpoints.smsProof != null  -> "me@email.com OR 800-123-4567"
+                        endpoints.emailProof != null && endpoints.smsProof != null -> "me@email.com OR 800-123-4567"
                         endpoints.emailProof != null -> "me@email.com"
                         endpoints.smsProof != null -> "800-123-4567"
                         else -> "MyUsername"
                     }
                     keyboardHints = when {
-                        endpoints.emailProof != null && endpoints.smsProof != null  -> KeyboardHints.email
+                        endpoints.emailProof != null && endpoints.smsProof != null -> KeyboardHints.email
                         endpoints.emailProof != null -> KeyboardHints.email
                         endpoints.smsProof != null -> KeyboardHints.phone
                         else -> KeyboardHints.id
                     }
                     content bind primaryIdentifier
                     reactive {
-                        if(currentProof() == null) requestFocus()
+                        if (currentProof() == null) requestFocus()
                     }
                 }
             }
@@ -279,7 +304,7 @@ class AuthComponent(val endpoints: AuthClientEndpoints, val knownDeviceLocalStor
                             authenticating.value = true
                             primaryIdentifier.value = kd.primaryIdentifier
                             proofs.value += endpoints.proveKnownDevice(kd.info.secret)
-                        } catch(e: Exception) {
+                        } catch (e: Exception) {
                             authenticating.value = false
                             e.printStackTrace2()
                             knownDevice.value = null
@@ -298,7 +323,9 @@ class AuthComponent(val endpoints: AuthClientEndpoints, val knownDeviceLocalStor
                         val id = email() ?: return@Action
                         currentProof.value = EmailProof(p, id, p.beginEmailOwnershipProof(id))
                     }
-                    onlyWhen { proofs().none { it.property == "email" } && (authResult()?.options?.any { it.method.property == "email" } ?: true) && email() != null } - important - buttonTheme - button {
+                    onlyWhen {
+                        proofs().none { it.property == "email" } && (authResult()?.options?.any { it.method.property == "email" } ?: true) && email() != null
+                    } - important - buttonTheme - button {
                         this.action = action
                         centered - text("Email Code")
                     }
@@ -310,7 +337,9 @@ class AuthComponent(val endpoints: AuthClientEndpoints, val knownDeviceLocalStor
                         val id = phone() ?: return@Action
                         currentProof.value = SmsProof(p, id, p.beginSmsOwnershipProof(id))
                     }
-                    onlyWhen { proofs().none { it.property == "phone" } && (authResult()?.options?.any { it.method.property == "phone" } ?: true) && phone() != null } - important - buttonTheme - button {
+                    onlyWhen {
+                        proofs().none { it.property == "phone" } && (authResult()?.options?.any { it.method.property == "phone" } ?: true) && phone() != null
+                    } - important - buttonTheme - button {
                         this.action = action
                         centered - text("Text Code")
                     }
@@ -319,11 +348,13 @@ class AuthComponent(val endpoints: AuthClientEndpoints, val knownDeviceLocalStor
 
                 val passwordStartAction = endpoints.passwordProof?.let { p ->
                     val action = Action("Use Password", Icon.chevronRight) {
-                        currentProof.value = PasswordProof(p, endpoints.subjects.keys.single(), when {
-                            Regexes.email.matches(primaryIdentifier()) -> "email"
-                            Regexes.phoneNumber.matches(primaryIdentifier()) -> "phone"
-                            else -> "_id"
-                        }, primaryIdentifier())
+                        currentProof.value = PasswordProof(
+                            p, endpoints.subjects.keys.single(), when {
+                                Regexes.email.matches(primaryIdentifier()) -> "email"
+                                Regexes.phoneNumber.matches(primaryIdentifier()) -> "phone"
+                                else -> "_id"
+                            }, primaryIdentifier()
+                        )
                     }
                     onlyWhen { proofs().none { it.via == "password" } && (authResult()?.options?.any { it.method.via == "password" } ?: true) && validId() } - important - buttonTheme - button {
                         centered - text("Use Password")
@@ -334,11 +365,13 @@ class AuthComponent(val endpoints: AuthClientEndpoints, val knownDeviceLocalStor
 
                 val otpAction = endpoints.oneTimePasswordProof?.let { p ->
                     val action = Action("Use Authenticator App", Icon.chevronRight) {
-                        currentProof.value = OtpProof(p, endpoints.subjects.keys.single(), when {
-                            Regexes.email.matches(primaryIdentifier()) -> "email"
-                            Regexes.phoneNumber.matches(primaryIdentifier()) -> "phone"
-                            else -> "_id"
-                        }, primaryIdentifier())
+                        currentProof.value = OtpProof(
+                            p, endpoints.subjects.keys.single(), when {
+                                Regexes.email.matches(primaryIdentifier()) -> "email"
+                                Regexes.phoneNumber.matches(primaryIdentifier()) -> "phone"
+                                else -> "_id"
+                            }, primaryIdentifier()
+                        )
                     }
                     onlyWhen { proofs().none { it.via == "otp" } && (authResult()?.options?.any { it.method.via == "otp" } ?: true) && validId() } - important - buttonTheme - button {
                         this.action = action
@@ -388,10 +421,12 @@ class AuthComponent(val endpoints: AuthClientEndpoints, val knownDeviceLocalStor
                     }
                 }
                 onlyWhen { rememberDevice() || knownDeviceOptions() == null } - row {
-                    centered - checkbox { checked bind desiredSessionLength.lens(
-                        get = { it != 1.days },
-                        set = { if(it) null else 1.days }
-                    ) }
+                    centered - checkbox {
+                        checked bind desiredSessionLength.lens(
+                            get = { it != 1.days },
+                            set = { if (it) null else 1.days }
+                        )
+                    }
                     centered - text {
                         ::content {
                             val days = authResult()?.maxExpiration?.let { it - now() }?.toDouble(DurationUnit.DAYS)?.roundToInt()
@@ -407,7 +442,8 @@ class AuthComponent(val endpoints: AuthClientEndpoints, val knownDeviceLocalStor
                         }
                         onClick {
                             println("Requesting full auth...")
-                            val result = endpoints.subjects.values.single().logInV2(LogInRequest(
+                            val result = subject.logInV2(
+                                LogInRequest(
                                 proofs = proofs(),
                                 expires = desiredSessionLength()?.let { now() + it }
                             ))
@@ -416,7 +452,7 @@ class AuthComponent(val endpoints: AuthClientEndpoints, val knownDeviceLocalStor
                                 onAuthentication(it)
                                 (AppScope + Dispatchers.Main).launch {
                                     if (rememberDevice()) {
-                                        endpoints.authenticatedKnownDeviceProof?.establishKnownDeviceV2()?.let {
+                                        endpoints.authenticatedKnownDeviceProof?.invoke(LightningServerAuthentication(subject, subjectPath, it))?.establishKnownDeviceV2()?.let {
                                             knownDevice?.value = KnownDeviceSecretInfoStuff(
                                                 info = it,
                                                 primaryIdentifier = primaryIdentifier.value

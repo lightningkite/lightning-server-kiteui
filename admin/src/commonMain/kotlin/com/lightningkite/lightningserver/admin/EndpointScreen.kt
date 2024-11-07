@@ -45,13 +45,14 @@ class EndpointScreen(val path: String, val method: String) : Screen {
         scrolls - col {
             reactive {
                 clearChildren()
+                val forms = adminServer().formModule(adminAuthentication())
                 val inputSerializer = endpoint().input.serializer(server().registry, mapOf())
                 val outputSerializer = endpoint().output.serializer(server().registry, mapOf())
                 val input = Property<Any?>(inputSerializer.default())
                 val output = RawReadable<Any?>(ReadableState(null))
                 val parameters = endpoint().routes.mapValues {
                     val type = it.value.serializer(server().registry, mapOf())
-                    RouteScreen(server().context, it.key, type)
+                    RouteScreen(forms, it.key, type)
                 }
                 val path = shared {
                     var s = endpoint().path
@@ -71,13 +72,13 @@ class EndpointScreen(val path: String, val method: String) : Screen {
                     }
                 }
                 if(inputSerializer != Unit.serializer())
-                    card - form(server().context, inputSerializer, input)
+                    card - form(forms, inputSerializer, input)
                 atEnd - important - button {
                     text("Submit")
                     onClick {
                         output.state = ReadableState.notReady
                         output.state = readableState {
-                            server().fetcher(server().schema.baseUrl).invoke(
+                            server().fetcher(server().schema.baseUrl, adminAuthentication()).invoke(
                                 url = path(),
                                 method = HttpMethod.valueOf(endpoint().method),
                                 jsonBody = DefaultJson.encodeToString(inputSerializer, input.value),
@@ -89,7 +90,7 @@ class EndpointScreen(val path: String, val method: String) : Screen {
                 separator()
                 errorText()
                 reactive { output() }
-                card - view(server().context, outputSerializer.nullable2, output)
+                card - view(forms, outputSerializer.nullable2, output)
             }
         }
     }

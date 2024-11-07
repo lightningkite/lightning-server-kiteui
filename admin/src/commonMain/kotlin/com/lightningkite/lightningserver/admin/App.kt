@@ -12,8 +12,11 @@ import com.lightningkite.kiteui.views.*
 import com.lightningkite.kiteui.views.direct.*
 import com.lightningkite.kiteui.views.l2.*
 import com.lightningkite.lightningdb.*
+import com.lightningkite.lightningserver.auth.AuthenticatedUserAuthClientEndpoints
 import com.lightningkite.lightningserver.schema.*
 import com.lightningkite.serialization.ClientModule
+import com.lightningkite.serialization.SerializableProperty
+import com.lightningkite.serialization.serializableProperties
 import kotlin.time.Duration.Companion.milliseconds
 
 //val defaultTheme = brandBasedExperimental("bsa", normalBack = Color.white)
@@ -37,7 +40,7 @@ fun ViewWriter.app(navigator: ScreenNavigator, dialog: ScreenNavigator) {
             }
         }
 
-        ::actions {
+        actions = run {
             listOf(
                 NavCustom(
                     title = { "Profile" },
@@ -46,29 +49,50 @@ fun ViewWriter.app(navigator: ScreenNavigator, dialog: ScreenNavigator) {
                     hidden = { false },
                     square = {
                         compact - menuButton {
+                            val me = sharedSuspending label@{
+                                try {
+                                    val creds = adminAuthentication() ?: return@label "Anonymous"
+                                    val sub = adminServer().auth.authenticatedSubjects[adminCredentials()?.userType ?: return@label "Anonymous"]?.invoke(creds)
+                                        ?: return@label "Anonymous"
+                                    val serializer = (sub as AuthenticatedUserAuthClientEndpoints.StandardImpl<*, *>).userSerializer
+                                    val self = sub.getSelf()
+                                    serializer.serializableProperties
+                                        ?.find { it.name == "email" || it.name == "phone" || it.name == "username" }
+                                        ?.let { it as SerializableProperty<Any, Any?> }
+                                        ?.get(self)
+                                        ?.toString()
+                                        ?: self.toString().take(40)
+                                } catch(e: Exception) {
+                                    "No Server"
+                                }
+                            }
                             col {
                                 centered - icon(Icon.person, "Login")
                                 centered - subtext {
-                                    ::content { "My Dude" }
+                                    ::content { me().take(10) }
                                 }
                             }
                             preferredDirection = PopoverPreferredDirection.belowLeft
                             requireClick = true
                             opensMenu {
                                 col {
+                                    centered - subtext {
+                                        ::content { me() }
+                                    }
                                     sizeConstraints(20.rem) - field("Server") {
                                         textInput {
                                             content bind serverUrl.debounceWrite(500.milliseconds)
                                         }
                                         reactive { serverSchema() }
                                     }
+                                    val userType = adminCredentials.lens(
+                                        get = { it?.userType },
+                                        modify = { o, v -> o?.copy(userType = v) ?: AdminCredentials(userType = v) }
+                                    )
                                     sizeConstraints(20.rem) - field("User Type") {
                                         select {
                                             bind(
-                                                adminCredentials.lens(
-                                                    get = { it?.userType },
-                                                    modify = { o, v -> o?.copy(userType = v) ?: AdminCredentials(userType = v) }
-                                                ),
+                                                userType,
                                                 shared { listOf(null) + adminServer().auth.subjects.keys.toList() },
                                                 { it ?: "None" }
                                             )
@@ -78,14 +102,14 @@ fun ViewWriter.app(navigator: ScreenNavigator, dialog: ScreenNavigator) {
                                         textInput {
                                             content bind adminCredentials.lens(
                                                 get = { it?.session ?: "" },
-                                                modify = { o, v -> o?.copy(session = v) ?: AdminCredentials(session = v) }
+                                                modify = { o, v -> o?.copy(session = v.takeUnless { it.isBlank() }) ?: AdminCredentials(session = v.takeUnless { it.isBlank() }) }
                                             )
                                         }
                                     }
                                     sizeConstraints(20.rem) - stack {
                                         reactive {
                                             clearChildren()
-                                            login(adminServer().auth) { v ->
+                                            login(adminServer().auth, userType() ?: return@reactive) { v ->
                                                 adminCredentials.value = adminCredentials.value?.copy(session = v) ?: AdminCredentials(session = v)
                                             }
                                         }
@@ -94,7 +118,8 @@ fun ViewWriter.app(navigator: ScreenNavigator, dialog: ScreenNavigator) {
                             }
                         }
                     }
-                ))
+                )
+            )
         }
 
 //        ::exists {

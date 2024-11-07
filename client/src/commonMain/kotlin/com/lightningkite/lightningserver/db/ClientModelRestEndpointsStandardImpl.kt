@@ -162,6 +162,7 @@ open class ClientModelRestEndpointsPlusWsStandardImpl<T: HasId<ID>, ID: Comparab
     properties,
 ), ClientModelRestEndpointsPlusWs<T, ID> {
     override fun watch(): TypedWebSocket<Query<T>, ListChange<T>> {
+        Exception("We got watch").printStackTrace2()
         return wsImplementation("").typed(json, Query.serializer(serializer), ListChange.serializer(serializer))
     }
 }

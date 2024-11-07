@@ -42,11 +42,12 @@ class CollectionAdminScreen(val collectionName: String) : Screen {
     val columnsString: Property<String?> = Property(null)
 
     override fun ViewWriter.render() {
-        val mc = shared { adminServer().models[collectionName]!! }
+        val mc = shared { adminServer().models[collectionName]?.cache(adminAuthentication())!! }
         col {
             reactive {
                 clearChildren()
                 val mc = mc() as ModelCache<HasId<Comparable<Comparable<*>>>, Comparable<Comparable<*>>>
+                val forms = adminFormModule()
                 val condition = conditionString.lens(
                     get = {
                         it?.let {
@@ -96,7 +97,7 @@ class CollectionAdminScreen(val collectionName: String) : Screen {
                         icon(Icon.filterList, "Filter")
                         requireClick = true
                         opensMenu {
-                            form(adminServer().context, Condition.serializer(mc.serializer), condition)
+                            form(forms, Condition.serializer(mc.serializer), condition)
                         }
                     }
                     menuButton {
@@ -104,7 +105,7 @@ class CollectionAdminScreen(val collectionName: String) : Screen {
                         icon(Icon.sort, "Sort")
                         requireClick = true
                         opensMenu {
-                            form(adminServer().context, ListSerializer(SortPartSerializer(mc.serializer)), sort)
+                            form(forms, ListSerializer(SortPartSerializer(mc.serializer)), sort)
                         }
                     }
                     link {
@@ -114,7 +115,7 @@ class CollectionAdminScreen(val collectionName: String) : Screen {
                 }
                 val hasTextIndex = mc.serializer.serializableAnnotations.any { it.fqn.endsWith("TextIndex") }
                 expanding - TableRenderer.view<HasId<Comparable<Comparable<*>>>>(
-                    formModule = adminServer().context,
+                    formModule = forms,
                     writer = this@col,
                     innerSer = mc.serializer,
                     columns = columns,

@@ -23,7 +23,7 @@ object TableRenderer : FormRenderer.Generator, ViewRenderer.Generator {
         return super<FormRenderer.Generator>.matches(module, selector) && inner(selector.serializer).serializableProperties != null
     }
 
-    val flp = FormLayoutPreferences(25.0, 10.0)
+    val flp = FormLayoutPreferences.Field
 
     override fun priority(module: FormModule, selector: FormSelector<*>): Float {
         val innerSer = inner(selector.serializer)

@@ -97,9 +97,9 @@ object ForeignKeyRenderer : FormRenderer.Generator, ViewRenderer.Generator {
                             expanding - TableRenderer.view<HasId<Comparable<Comparable<*>>>>(
                                 formModule = module,
                                 writer = this@col,
-                                innerSer = typeInfo.cache.serializer,
+                                innerSer = typeInfo.cache.cache(null).serializer,
                                 readable = shared {
-                                    typeInfo.cache.watch(
+                                    typeInfo.cache.cache(null).watch(
                                         Query(
                                             Condition.And<HasId<Comparable<Comparable<*>>>>(
                                                 listOfNotNull(
