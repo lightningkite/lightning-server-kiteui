@@ -24,6 +24,7 @@ import kotlinx.serialization.properties.Properties
 fun SerializationRegistry.register(schema: LightningServerKSchema) {
     schema.structures.values.forEach { register(it) }
     schema.enums.values.forEach { register(it) }
+    schema.aliases.values.forEach { register(it) }
 }
 
 private fun LightningServerKSchema.uploadEarlyEndpoint() = endpoints.find {

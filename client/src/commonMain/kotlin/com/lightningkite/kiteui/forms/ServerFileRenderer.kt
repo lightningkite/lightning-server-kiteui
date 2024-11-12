@@ -44,10 +44,11 @@ object ServerFileRenderer  : FormRenderer.Generator, ViewRenderer.Generator {
                     }
                 }
                 centered - button {
+                    ::exists { module.fileUpload != null }
                     icon(Icon.send, "Upload")
                     onClick {
                         ExternalServices.requestFile()?.let {
-                            writable set module.fileUpload?.invoke(it)
+                            writable set module.fileUpload!!.invoke(it)
                         }
                     }
                 }

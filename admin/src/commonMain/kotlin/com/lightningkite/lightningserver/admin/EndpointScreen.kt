@@ -41,7 +41,7 @@ class EndpointScreen(val path: String, val method: String) : Screen {
 
     override fun ViewWriter.render() {
         val server = adminServer
-        val endpoint = shared { adminServer().schema.endpoints.find { it.path == path && it.method == method }!! }
+        val endpoint = shared { adminServer().schema.endpoints.find { it.path == this@EndpointScreen.path && it.method == method }!! }
         scrolls - col {
             reactive {
                 clearChildren()

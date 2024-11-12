@@ -55,7 +55,7 @@ class ConnectivityOnlyFetcher(val base: String, val json: Json, val token: (susp
                 try {
                     json.decodeFromString(outSerializer, it.text())
                 } catch(e: SerializationException) {
-                    throw SerializationException("Failed to parse ${outSerializer.descriptor.serialName} from response", e)
+                    throw SerializationException("Failed to parse ${outSerializer.descriptor.serialName} from response", e).also { it.printStackTrace() }
                 }
             }
         }
