@@ -17,6 +17,8 @@ import com.lightningkite.serialization.*
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.descriptors.SerialKind
+import kotlin.js.JsName
+import kotlin.jvm.JvmName
 
 interface RendererGenerator {
     val name: String
@@ -91,6 +93,8 @@ data class FormSelector<T>(
     override fun toString(): String = serializer.descriptor.serialName
 
     @Suppress("UNCHECKED_CAST")
+    @JvmName("copyChangingType")
+    @JsName("copyChangingType")
     fun <O> copy(
         serializer: KSerializer<O>,
         annotations: List<SerializableAnnotation> = this.annotations,
