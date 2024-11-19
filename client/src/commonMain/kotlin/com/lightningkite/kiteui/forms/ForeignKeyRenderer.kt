@@ -74,7 +74,7 @@ object ForeignKeyRenderer : FormRenderer.Generator, ViewRenderer.Generator {
                                     icon(Icon.filterList, "Filter")
                                     requireClick = true
                                     opensMenu {
-                                        form(module, Condition.serializer(typeInfo.cache.serializer), condition)
+                                        form(module, Condition.serializer(typeInfo.serializer), condition)
                                     }
                                 }
                                 menuButton {
@@ -82,24 +82,24 @@ object ForeignKeyRenderer : FormRenderer.Generator, ViewRenderer.Generator {
                                     icon(Icon.sort, "Sort")
                                     requireClick = true
                                     opensMenu {
-                                        form(module, ListSerializer(SortPartSerializer(typeInfo.cache.serializer)), sort)
+                                        form(module, ListSerializer(SortPartSerializer(typeInfo.serializer)), sort)
                                     }
                                 }
                             }
-                            val hasTextIndex = typeInfo.cache.serializer.serializableAnnotations.any { it.fqn.endsWith("TextIndex") }
+                            val hasTextIndex = typeInfo.serializer.serializableAnnotations.any { it.fqn.endsWith("TextIndex") }
                             val columns: ImmediateWritable<List<DataClassPath<HasId<Comparable<Comparable<*>>>, *>>> = Property(run {
-                                typeInfo.cache.serializer.serializableProperties!!.sortedBy {
+                                typeInfo.serializer.serializableProperties!!.sortedBy {
                                     it.importance
                                 }.take(5).map {
-                                    DataClassPathAccess(DataClassPathSelf(typeInfo.cache.serializer), it)
+                                    DataClassPathAccess(DataClassPathSelf(typeInfo.serializer), it)
                                 }
                             })
                             expanding - TableRenderer.view<HasId<Comparable<Comparable<*>>>>(
                                 formModule = module,
                                 writer = this@col,
-                                innerSer = typeInfo.cache.cache(null).serializer,
+                                innerSer = typeInfo.cache().serializer,
                                 readable = shared {
-                                    typeInfo.cache.cache(null).watch(
+                                    typeInfo.cache().watch(
                                         Query(
                                             Condition.And<HasId<Comparable<Comparable<*>>>>(
                                                 listOfNotNull(

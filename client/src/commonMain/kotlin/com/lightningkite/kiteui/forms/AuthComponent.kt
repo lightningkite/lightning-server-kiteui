@@ -51,8 +51,8 @@ data class KnownDeviceSecretInfoStuff(
 
 class AuthComponent(
     val endpoints: AuthClientEndpoints,
-    val subjectPath: String,
-    val subject: UserAuthClientEndpoints<*>,
+    val subjectPath: String = endpoints.subjects.keys.single(),
+    val subject: UserAuthClientEndpoints<*> = endpoints.subjects[subjectPath]!!,
     val knownDeviceLocalStorageName: String? = "known-device",
     val onAuthentication: suspend (String) -> Unit,
 ) {

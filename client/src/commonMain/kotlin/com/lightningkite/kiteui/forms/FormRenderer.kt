@@ -88,7 +88,7 @@ data class FormSelector<T>(
     val annotations: List<SerializableAnnotation>,
     val desiredSize: FormLayoutPreferences = FormLayoutPreferences.Block,
     val handlesField: Boolean = false,
-    val withPicker: Boolean = true,
+    val withPicker: Boolean = false,
 ) {
     override fun toString(): String = serializer.descriptor.serialName
 
@@ -132,9 +132,10 @@ fun <T : HasId<ID>, ID : Comparable<ID>> KSerializer<T>.defaultTitleFields(): Li
 }
 
 class FormTypeInfo<T : HasId<ID>, ID : Comparable<ID>>(
-    val cache: ExternalLightningServer.ModelInfo<T, ID>,
+    val serializer: KSerializer<T>,
+    val cache: () -> ModelCache<T, ID>,
     val screen: (ID) -> (() -> Screen)?,
-    val titleFields: List<DataClassPath<T, *>> = cache.serializer.defaultTitleFields(),
+    val titleFields: List<DataClassPath<T, *>> = serializer.defaultTitleFields(),
     val renderToString: (suspend (ID) -> String)
 )
 

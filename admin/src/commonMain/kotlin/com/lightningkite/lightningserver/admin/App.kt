@@ -33,10 +33,14 @@ fun ViewWriter.app(navigator: ScreenNavigator, dialog: ScreenNavigator) {
     appNav(navigator, dialog) {
         appName = "KiteUI Sample App"
         ::navItems {
-            listOf(
-                NavLink("Endpoints", icon = Icon.menu) { EndpointsScreen() }
-            ) + adminServer().models.entries.sortedBy { it.value.serializer.displayName }.map {
-                NavLink(it.value.serializer.displayName, icon = Icon.list) { CollectionAdminScreen(it.key) }
+            try {
+                listOf(
+                    NavLink("Endpoints", icon = Icon.menu) { EndpointsScreen() }
+                ) + adminServer().models.entries.sortedBy { it.value.serializer.displayName }.map {
+                    NavLink(it.value.serializer.displayName, icon = Icon.list) { CollectionAdminScreen(it.key) }
+                }
+            } catch(e: Exception) {
+                listOf()
             }
         }
 
@@ -83,7 +87,6 @@ fun ViewWriter.app(navigator: ScreenNavigator, dialog: ScreenNavigator) {
                                         textInput {
                                             content bind serverUrl.debounceWrite(500.milliseconds)
                                         }
-                                        reactive { serverSchema() }
                                     }
                                     val userType = adminCredentials.lens(
                                         get = { it?.userType },
@@ -93,7 +96,9 @@ fun ViewWriter.app(navigator: ScreenNavigator, dialog: ScreenNavigator) {
                                         select {
                                             bind(
                                                 userType,
-                                                shared { listOf(null) + adminServer().auth.subjects.keys.toList() },
+                                                shared { listOf(null) + try {
+                                                    adminServer().auth.subjects.keys.toList()
+                                                } catch(e: Exception) { listOf() } },
                                                 { it ?: "None" }
                                             )
                                         }
@@ -109,8 +114,12 @@ fun ViewWriter.app(navigator: ScreenNavigator, dialog: ScreenNavigator) {
                                     sizeConstraints(20.rem) - stack {
                                         reactive {
                                             clearChildren()
-                                            login(adminServer().auth, userType() ?: return@reactive) { v ->
-                                                adminCredentials.value = adminCredentials.value?.copy(session = v) ?: AdminCredentials(session = v)
+                                            try {
+                                                login(adminServer().auth, userType() ?: return@reactive) { v ->
+                                                    adminCredentials.value = adminCredentials.value?.copy(session = v) ?: AdminCredentials(session = v)
+                                                }
+                                            } catch(e: Exception) {
+                                                text("Need valid URL")
                                             }
                                         }
                                     }

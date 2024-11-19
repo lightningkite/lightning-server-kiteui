@@ -202,7 +202,8 @@ class ExternalLightningServer(
         typeInfo = label@{ name ->
             val m = models.values.find { it.serializer.descriptor.serialName == name } as? ModelInfo<HasId<Comparable<Comparable<*>>>, Comparable<Comparable<*>>> ?: return@label null
             FormTypeInfo(
-                cache = m,
+                serializer = m.serializer,
+                cache = { m.cache(auth) },
                 screen = { id -> screen(m, id) },
                 renderToString = {
                     val c = m.cache(auth)
