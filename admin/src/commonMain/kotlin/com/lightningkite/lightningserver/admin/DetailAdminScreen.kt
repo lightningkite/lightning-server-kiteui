@@ -38,9 +38,9 @@ class DetailAdminScreen(val collectionName: String, val itemId: String) : Screen
                 mc.serializer._id().setCopy(it, actualId)
             })
         }.flatten())
-        scrolls - rowCollapsingToColumn(100.rem) {
+        rowCollapsingToColumn(100.rem) {
             space { reactive { item() } }
-            weight(2f) - col {
+            weight(2f) - scrolls - col {
                 reactive {
                     clearChildren()
                     val forms = adminServer().formModule(adminAuthentication())
@@ -60,7 +60,7 @@ class DetailAdminScreen(val collectionName: String, val itemId: String) : Screen
                     }
                 }
             }
-            weight(1f) - col {
+            weight(1f) - scrolls - col {
                 val itemId = shared { item()._id }
                 reactive {
                     clearChildren()
