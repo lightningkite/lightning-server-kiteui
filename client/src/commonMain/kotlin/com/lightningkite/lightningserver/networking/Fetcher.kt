@@ -23,7 +23,7 @@ class BulkFetcher(val base: String, val json: Json, val token: (suspend () -> St
         jsonBody: String?,
         outSerializer: KSerializer<T>
     ): T {
-        return batchFetch("$base/$url", method, token, jsonBody, outSerializer, json)
+        return batchFetch("$base$url", method, token, jsonBody, outSerializer, json)
     }
 }
 
@@ -35,7 +35,7 @@ class ConnectivityOnlyFetcher(val base: String, val json: Json, val token: (susp
         outSerializer: KSerializer<T>
     ): T {
         val token = token()
-        return connectivityFetch("$base/$url", method, {
+        return connectivityFetch("$base$url", method, {
             if (token != null) httpHeaders(
                 "Authorization" to token,
                 "Accept" to "application/json"

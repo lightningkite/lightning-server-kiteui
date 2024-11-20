@@ -140,7 +140,6 @@ object ForeignKeyRenderer : FormRenderer.Generator, ViewRenderer.Generator {
                         val id = writable() ?: return@label null
                         return@label typeInfo.screen(id)
                     }
-                    newTab = true
                 }
             }
         } as FormRenderer<T>

@@ -173,3 +173,9 @@ internal fun <T, V> KSerializer<T>.set(instance: T, index: Int, childSerializer:
     @Suppress("UNCHECKED_CAST") val d = MinDecoder(e.out)
     return deserialize(d)
 }
+internal fun <T, V> KSerializer<T>.serializationCast(instance: T, otherSerializer: KSerializer<V>): V {
+    val e = MinEncoder()
+    this.serialize(e, instance)
+    val d = MinDecoder(e.out)
+    return otherSerializer.deserialize(d)
+}
