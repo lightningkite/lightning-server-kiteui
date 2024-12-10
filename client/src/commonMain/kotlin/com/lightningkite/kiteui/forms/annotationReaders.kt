@@ -1,10 +1,13 @@
 package com.lightningkite.kiteui.forms
 
+import com.lightningkite.kiteui.ConsoleRoot
+import com.lightningkite.lightningdb.AdminHidden
 import com.lightningkite.serialization.SerializableAnnotationValue
 import com.lightningkite.serialization.SerializableProperty
 import com.lightningkite.serialization.serializableAnnotations
 import com.lightningkite.titleCase
 import kotlinx.serialization.KSerializer
+import kotlin.reflect.KClass
 
 val SerializableProperty<*, *>.displayName: String
     get() = this.serializableAnnotations.find { it.fqn == "com.lightningkite.lightningdb.DisplayName" }?.values?.get(
@@ -52,21 +55,12 @@ val SerializableProperty<*, *>.importance get() = serializableAnnotations.find {
     "name", "email", "phone" -> 2
     else -> 7
 }
-val SerializableProperty<*, *>.visibility get() = when {
-    serializableAnnotations.any {
-        it.fqn == "com.lightningkite.lightningdb.AdminHidden"
-    } -> FieldVisibility.HIDDEN
-    serializableAnnotations.any {
-        it.fqn == "com.lightningkite.lightningdb.Denormalized"
-    } -> FieldVisibility.READ
-    serializableAnnotations.any {
-        it.fqn == "com.lightningkite.lightningdb.AdminViewOnly"
-    } -> FieldVisibility.READ
-    else -> FieldVisibility.EDIT
-}
 val SerializableProperty<*, *>.doesNotNeedLabel get() = serializableAnnotations.any {
     it.fqn == "com.lightningkite.lightningdb.DoesNotNeedLabel"
 }
 val SerializableProperty<*, *>.indexed get() = serializableAnnotations.any {
     it.fqn == "com.lightningkite.lightningdb.Index"
 }
+
+fun SerializableProperty<*,*>.visibility(module: FormModule): FieldVisibility =
+    serializableAnnotations.mapNotNull { module.visibilitySettings[it.fqn] }.maxOrNull() ?: FieldVisibility.EDIT

@@ -132,7 +132,7 @@ object ByFieldRenderer : FormRenderer.Generator, ViewRenderer.Generator {
                         field
                     )
                 )
-                if (field.visibility == FieldVisibility.READ)
+                if (field.visibility(module) == FieldVisibility.READ)
                     f(writer, view) {
                         view.render(this, field, w)
                     }
@@ -174,7 +174,7 @@ object ByFieldRenderer : FormRenderer.Generator, ViewRenderer.Generator {
                 module.form(sel),
                 module.view(sel),
             )
-        }.filter { it.field.visibility != FieldVisibility.HIDDEN }
+        }.filter { it.field.visibility(module) != FieldVisibility.HIDDEN }
 
 
         val formGroup: List<List<Sub<*>>> = run {

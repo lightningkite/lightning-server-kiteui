@@ -22,6 +22,12 @@ class FormModule {
     var fileUpload: (suspend (FileReference) -> ServerFile)? = null
     var typeInfo: (type: String) -> FormTypeInfo<*, *>? = { _ -> println("WARN: Empty form context"); null }
 
+    val visibilitySettings: MutableMap<String, FieldVisibility> = mutableMapOf(
+        "com.lightningkite.lightningdb.AdminHidden" to FieldVisibility.HIDDEN,
+        "com.lightningkite.lightningdb.Denormalized" to FieldVisibility.READ,
+        "com.lightningkite.lightningdb.AdminViewOnly" to FieldVisibility.READ
+    )
+
     private val form_others: ArrayList<FormRenderer.Generator> = ArrayList()
     private val form_type: HashMap<String, ArrayList<FormRenderer.Generator>> = HashMap()
     private val form_kind: HashMap<SerialKind, ArrayList<FormRenderer.Generator>> = HashMap()
