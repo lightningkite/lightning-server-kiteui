@@ -26,6 +26,7 @@ object ByFieldRenderer : FormRenderer.Generator, ViewRenderer.Generator {
         get() = 0.7f
     override val kind = StructureKind.CLASS
     override fun matches(module: FormModule, selector: FormSelector<*>): Boolean {
+        if(selector.serializer.descriptor.isInline) return false
         return super<FormRenderer.Generator>.matches(module, selector) && !selector.serializer.descriptor.isNullable
     }
     override fun size(module: FormModule, selector: FormSelector<*>): FormSize {

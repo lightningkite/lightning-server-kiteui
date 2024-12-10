@@ -146,7 +146,7 @@ class ExternalLightningServer(
                     fetchImplementation = auth?.let { fetcher(httpPath, it) } ?: authlessFetcher(httpPath),
                     wsImplementation = {
                         multiplexSocket(
-                            url = schema.baseWsUrl + "?path=multiplex" + (auth?.sessionToken?.let { "?jwt=$it" } ?: ""),
+                            url = schema.baseWsUrl + "/multiplex" + (auth?.sessionToken?.let { "?jwt=$it" } ?: ""),
                             path = inter.path,
                             params = emptyMap(),
                             json = json,
@@ -163,7 +163,7 @@ class ExternalLightningServer(
                     fetchImplementation = auth?.let { fetcher(httpPath, it) } ?: authlessFetcher(httpPath),
                     wsImplementation = {
                         multiplexSocket(
-                            url = schema.baseWsUrl + "?path=multiplex" + (auth?.sessionToken?.let { "?jwt=$it" } ?: ""),
+                            url = schema.baseWsUrl + "/multiplex" + (auth?.sessionToken?.let { "?jwt=$it" } ?: ""),
                             path = inter.path,
                             params = emptyMap(),
                             json = json,
@@ -180,7 +180,7 @@ class ExternalLightningServer(
                     fetchImplementation = auth?.let { fetcher(httpPath, it) } ?: authlessFetcher(httpPath),
                     wsImplementation = {
                         multiplexSocket(
-                            url = schema.baseWsUrl + "?path=multiplex" + (auth?.sessionToken?.let { "?jwt=$it" } ?: ""),
+                            url = schema.baseWsUrl + "/multiplex" + (auth?.sessionToken?.let { "?jwt=$it" } ?: ""),
                             path = inter.path,
                             params = emptyMap(),
                             json = json,

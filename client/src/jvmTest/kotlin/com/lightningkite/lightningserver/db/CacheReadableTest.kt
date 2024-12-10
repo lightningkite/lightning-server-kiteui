@@ -1,12 +1,12 @@
 package com.lightningkite.lightningserver.db
 
 import com.lightningkite.kiteui.TypedWebSocket
-import com.lightningkite.kiteui.launch
 import com.lightningkite.kiteui.launchGlobal
 import com.lightningkite.kiteui.reactive.*
 import com.lightningkite.lightningdb.*
 import com.lightningkite.now
 import com.lightningkite.prepareModelsShared
+import kotlinx.coroutines.launch
 import kotlinx.datetime.Instant
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -988,7 +988,7 @@ class WatchingWrapperTests {
             delay.go()
             assertEquals(2, state)
             cache.onFreshData(Item(1))
-        }.cancel()
+        }
         assertEquals(3, state)
     }
 
@@ -1021,7 +1021,7 @@ class WatchingWrapperTests {
             delay.go()
             assertEquals(2, state)
             cache.onFreshData(Item(1))
-        }.cancel()
+        }
         assertEquals(3, state)
     }
 
@@ -1054,7 +1054,7 @@ class WatchingWrapperTests {
             reactiveScope { println("Got: ${wrapper.await()}") }
             assertEquals(1, state)
             cache.onFreshData(Item(1))
-        }.cancel()
+        }
         assertEquals(2, state)
     }
 }
@@ -1091,7 +1091,7 @@ class ChangeUpdateWrapperTest {
             }
 
             var uses = 0
-            override fun start(): () -> Unit {
+            override fun beginUse(): () -> Unit {
                 println("Start")
                 if(uses++ == 0) {
                     connected.value = true
@@ -1153,7 +1153,7 @@ class SharedChangeUpdateWrapperTest {
             }
 
             var uses = 0
-            override fun start(): () -> Unit {
+            override fun beginUse(): () -> Unit {
                 if(uses++ == 0) {
                     connected.value = true
                     onOpen.invokeAllSafe()

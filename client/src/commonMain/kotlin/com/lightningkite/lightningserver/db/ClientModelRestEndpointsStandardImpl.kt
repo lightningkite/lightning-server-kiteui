@@ -36,31 +36,31 @@ open class ClientModelRestEndpointsStandardImpl<T: HasId<ID>, ID: Comparable<ID>
     }
 
     override suspend fun default(): T = fetchImplementation(
-        "_default_",
+        "/_default_",
         HttpMethod.GET,
         null,
         serializer
     )
     override suspend fun query(input: Query<T>, ): List<T> = fetchImplementation(
-        "query",
+        "/query",
         HttpMethod.POST,
         enc(Query.serializer(serializer), input),
         ListSerializer(serializer)
     )
     override suspend fun queryPartial(input: QueryPartial<T>, ): List<Partial<T>> = fetchImplementation(
-        "query-partial",
+        "/query-partial",
         HttpMethod.POST,
         enc(QueryPartial.serializer(serializer), input),
         ListSerializer(PartialSerializer(serializer))
     )
     override suspend fun detail(id: ID, ): T = fetchImplementation(
-        "${id.urlify()}",
+        "/${id.urlify()}",
         HttpMethod.GET,
         null,
         serializer
     )
     override suspend fun insertBulk(input: List<T>, ): List<T> = fetchImplementation(
-        "bulk",
+        "/bulk",
         HttpMethod.POST,
         enc(ListSerializer(serializer), input),
         ListSerializer(serializer)
@@ -72,7 +72,7 @@ open class ClientModelRestEndpointsStandardImpl<T: HasId<ID>, ID: Comparable<ID>
         serializer
     )
     override suspend fun upsert(id: ID, input: T, ): T = fetchImplementation(
-        "${id.urlify()}",
+        "/${id.urlify()}",
         HttpMethod.POST,
         enc(serializer, input),
         serializer
@@ -84,63 +84,63 @@ open class ClientModelRestEndpointsStandardImpl<T: HasId<ID>, ID: Comparable<ID>
         ListSerializer(serializer)
     )
     override suspend fun replace(id: ID, input: T, ): T = fetchImplementation(
-        "${id.urlify()}",
+        "/${id.urlify()}",
         HttpMethod.PUT,
         enc(serializer, input),
         serializer
     )
     override suspend fun bulkModify(input: MassModification<T>, ): Int = fetchImplementation(
-        "bulk",
+        "/bulk",
         HttpMethod.PATCH,
         enc(MassModification.serializer(serializer), input),
         Int.serializer()
     )
     override suspend fun modifyWithDiff(id: ID, input: Modification<T>, ): EntryChange<T> = fetchImplementation(
-        "${id.urlify()}/delta",
+        "/${id.urlify()}/delta",
         HttpMethod.PATCH,
         enc(Modification.serializer(serializer), input),
         EntryChange.serializer(serializer)
     )
     override suspend fun modify(id: ID, input: Modification<T>, ): T {
         return fetchImplementation(
-            "${id.urlify()}",
+            "/${id.urlify()}",
             HttpMethod.PATCH,
             enc(Modification.serializer(serializer), input),
             serializer
         )
     }
     override suspend fun bulkDelete(input: Condition<T>, ): Int = fetchImplementation(
-        "bulk-delete",
+        "/bulk-delete",
         HttpMethod.POST,
         enc(Condition.serializer(serializer), input),
         Int.serializer()
     )
     override suspend fun delete(id: ID, ): Unit = fetchImplementation(
-        "${id.urlify()}",
+        "/${id.urlify()}",
         HttpMethod.DELETE,
         null,
         Unit.serializer(),
     )
     override suspend fun count(input: Condition<T>, ): Int = fetchImplementation(
-        "count",
+        "/count",
         HttpMethod.POST,
         enc(Condition.serializer(serializer), input),
         Int.serializer()
     )
     override suspend fun groupCount(input: GroupCountQuery<T>, ): Map<String, Int> = fetchImplementation(
-        "group-count",
+        "/group-count",
         HttpMethod.POST,
         enc(GroupCountQuery.serializer(serializer), input),
         MapSerializer(String.serializer(), Int.serializer())
     )
     override suspend fun aggregate(input: AggregateQuery<T>, ): Double? = fetchImplementation(
-        "aggregate",
+        "/aggregate",
         HttpMethod.POST,
         enc(AggregateQuery.serializer(serializer), input),
         Double.serializer().nullable
     )
     override suspend fun groupAggregate(input: GroupAggregateQuery<T>, ): Map<String, Double?> = fetchImplementation(
-        "group-aggregate",
+        "/group-aggregate",
         HttpMethod.POST,
         enc(GroupAggregateQuery.serializer(serializer), input),
         MapSerializer(String.serializer(), Double.serializer().nullable)
@@ -171,7 +171,6 @@ open class ClientModelRestEndpointsPlusWsStandardImpl<T: HasId<ID>, ID: Comparab
     properties,
 ), ClientModelRestEndpointsPlusWs<T, ID> {
     override fun watch(): TypedWebSocket<Query<T>, ListChange<T>> {
-        Exception("We got watch").printStackTrace2()
         return wsImplementation("").typed(json, Query.serializer(serializer), ListChange.serializer(serializer))
     }
 }

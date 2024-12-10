@@ -1,7 +1,9 @@
 package com.lightningkite.lightningserver.db
 
+import com.lightningkite.Temperature
 import com.lightningkite.UUID
 import com.lightningkite.kiteui.forms.get
+import com.lightningkite.kiteui.forms.serializationCast
 import com.lightningkite.kiteui.forms.set
 import com.lightningkite.lightningdb.Query
 import com.lightningkite.serialization.default
@@ -11,6 +13,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.serializer
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.time.Duration
 
 class HelpersKtTest {
@@ -37,5 +40,12 @@ class HelpersKtTest {
     @Test fun testAnonSet() {
         val q = Query<LargeTestModel>()
         kotlin.test.assertEquals(q.copy(limit = 20), serializer<Query<LargeTestModel>>().set(q, 3, Int.serializer(), 20))
+    }
+
+    @Test fun inlineGetCreate() {
+        val inner = Double.serializer()
+        val outer = Temperature.serializer()
+        assertEquals(50.0, outer.serializationCast(Temperature(50.0), inner))
+        assertEquals(Temperature(50.0), inner.serializationCast(50.0, outer))
     }
 }
