@@ -166,7 +166,7 @@ object ByFieldRenderer : FormRenderer.Generator, ViewRenderer.Generator {
             }
             return arrayOf()
         }
-
+ 
         @Suppress("UNCHECKED_CAST")
         val subs = (serializer.serializableProperties ?: bestPropertiesAttempt()).map {
             val sel = FormSelector(it.serializer, it.serializableAnnotations, FormLayoutPreferences.Inline) as FormSelector<Any?>

@@ -57,6 +57,10 @@ abstract class ListRenderer<C> : FormRenderer.Generator, ViewRenderer.Generator 
             row {
                 vertical = this@ListRenderer.vertical
                 if (!vertical) expanding - scrollsHorizontally
+                text {
+                    ::exists { (writable() as Collection<*>).isEmpty() }
+                    content = "Empty"
+                }
                 row {
                     vertical = this@ListRenderer.vertical
                     forEachUpdating(lens(writable).lensByElementAssumingSetNeverManipulates()) {
@@ -96,8 +100,15 @@ abstract class ListRenderer<C> : FormRenderer.Generator, ViewRenderer.Generator 
         return ViewRenderer(module, this, selector as FormSelector<C>) { _, readable ->
             row {
                 vertical = this@ListRenderer.vertical
-                forEachUpdating(lens(readable)) {
-                    card - inner.render(this, null, it)
+                text {
+                    ::exists { (readable() as Collection<*>).isEmpty() }
+                    content = "Empty"
+                }
+                row {
+                    vertical = this@ListRenderer.vertical
+                    forEachUpdating(lens(readable)) {
+                        card - inner.render(this, null, it)
+                    }
                 }
             }
         } as ViewRenderer<T>

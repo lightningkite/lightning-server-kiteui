@@ -88,7 +88,7 @@ data class FormSelector<T>(
     val annotations: List<SerializableAnnotation>,
     val desiredSize: FormLayoutPreferences = FormLayoutPreferences.Block,
     val handlesField: Boolean = false,
-    val withPicker: Boolean = false,
+    val withPicker: Boolean = true,
 ) {
     override fun toString(): String = serializer.descriptor.serialName
 

@@ -236,6 +236,7 @@ class ExternalLightningServer(
 
     init {
         println("Init Complete")
+        registry.registeredTypes.forEach { println(it)  }
     }
 }
 

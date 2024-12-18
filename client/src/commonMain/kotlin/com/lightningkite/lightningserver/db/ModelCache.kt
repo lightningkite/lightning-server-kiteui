@@ -55,6 +55,8 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
                 flushLists()
             }
         }
+    val health = sockets?.health ?: Constant(null)
+    val socketCondition = sockets?.condition ?: Constant(Condition.Never)
 
     private fun itemHolder(id: ID): ItemHolder = itemCache.getOrPut(id) { ItemHolder(id) }
 
@@ -85,7 +87,6 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
         }
 
         override suspend fun set(value: T?) {
-            println("set $value")
             if (value == null) delete()
             else {
                 apiCalls++
@@ -363,17 +364,29 @@ class ChangeUpdateWrapper<T : HasId<ID>, ID : Comparable<ID>>(
     val sharedSocket: TypedWebSocket<Condition<T>, CollectionUpdates<T, ID>>,
     val onMessage: (CollectionUpdates<T, ID>) -> Unit
 ) {
+    private val open = Property(false)
+    private val conditionMatches = Property(false)
+    val health = shared {
+        when {
+            !open() -> "Socket not open"
+            !conditionMatches() -> "Condition does not match"
+            else -> null
+        }
+    }
 
     private var endUse: (() -> Unit)? = null
-    var condition: Condition<T> = Condition.Never()
-        set(value) {
-            field = value
+    val condition: Property<Condition<T>> = Property(Condition.Never)
+    init {
+        condition.addListener {
+            val value = condition.value
             if (value is Condition.Never) {
                 endUse?.invoke()
                 endUse = null
                 messageList.forEach { it.resume(Unit) }
                 messageList.clear()
+                conditionMatches.value = true
             } else {
+                conditionMatches.value = false
                 if (endUse == null) {
                     endUse = sharedSocket.beginUse()
                 }
@@ -382,12 +395,13 @@ class ChangeUpdateWrapper<T : HasId<ID>, ID : Comparable<ID>>(
                 }
             }
         }
+    }
     private val messageList = ArrayList<Continuation<Unit>>()
 
     suspend fun update(condition: Condition<T>): Boolean {
         suspendCoroutineCancellable { cont ->
             messageList.add(cont)
-            this.condition = condition
+            this.condition.value = condition
             return@suspendCoroutineCancellable {
                 messageList.remove(cont)
             }
@@ -397,15 +411,22 @@ class ChangeUpdateWrapper<T : HasId<ID>, ID : Comparable<ID>>(
 
     init {
         sharedSocket.onOpen {
-            sharedSocket.send(condition)
+            conditionMatches.value = false
+            sharedSocket.send(condition.value)
+            open.value = true
         }
         sharedSocket.onClose {
+            open.value = false
         }
         sharedSocket.onMessage {
-            if (it.condition == this.condition) {
+            if (it.condition == this.condition.value) {
                 messageList.forEach { it.resume(Unit) }
                 messageList.clear()
-            } else if (it.condition != null) println("Ignoring condition update ${it.condition}; does not match ${this.condition}")
+                conditionMatches.value = true
+            } else if (it.condition != null) {
+                println("Ignoring condition update ${it.condition}; does not match ${this.condition.value}")
+                conditionMatches.value = false
+            }
             onMessage(it)
         }
     }
@@ -416,6 +437,8 @@ class SharedChangeUpdateWrapper<T : HasId<ID>, ID : Comparable<ID>>(
     onMessage: (CollectionUpdates<T, ID>) -> Unit
 ) {
     val wraps = ChangeUpdateWrapper(sharedSocket, onMessage)
+    val health = wraps.health
+    val condition = wraps.condition
 
     var queuedCondition: Condition<T>? = null
     fun refresh() {

@@ -19,18 +19,18 @@ import kotlinx.serialization.properties.Properties
 import com.lightningkite.serialization.*
 import kotlinx.serialization.SerializationException
 
-open class ClientModelRestEndpointsStandardImpl<T: HasId<ID>, ID: Comparable<ID>>(
+open class ClientModelRestEndpointsStandardImpl<T : HasId<ID>, ID : Comparable<ID>>(
     val fetchImplementation: Fetcher,
     val wsImplementation: (path: String) -> RetryWebsocket,
     val serializer: KSerializer<T>,
     val idSerializer: KSerializer<ID>,
     val json: Json = DefaultJson,
-    val properties: Properties = UrlProperties
-): ClientModelRestEndpoints<T, ID> {
+    val properties: Properties = UrlProperties,
+) : ClientModelRestEndpoints<T, ID> {
     private fun <T> enc(serializer: KSerializer<T>, input: T): String {
         try {
             return json.encodeToString((serializer), input)
-        } catch(e: Exception) {
+        } catch (e: Exception) {
             throw SerializationException("Failed to encode $input as a ${serializer.descriptor.serialName}", e)
         }
     }
@@ -41,67 +41,85 @@ open class ClientModelRestEndpointsStandardImpl<T: HasId<ID>, ID: Comparable<ID>
         null,
         serializer
     )
-    override suspend fun query(input: Query<T>, ): List<T> = fetchImplementation(
+
+    override suspend fun permissions(): ModelPermissions<T> = fetchImplementation(
+        "/_permissions_",
+        HttpMethod.GET,
+        null,
+        ModelPermissions.serializer(serializer)
+    )
+
+    override suspend fun query(input: Query<T>): List<T> = fetchImplementation(
         "/query",
         HttpMethod.POST,
         enc(Query.serializer(serializer), input),
         ListSerializer(serializer)
     )
-    override suspend fun queryPartial(input: QueryPartial<T>, ): List<Partial<T>> = fetchImplementation(
+
+    override suspend fun queryPartial(input: QueryPartial<T>): List<Partial<T>> = fetchImplementation(
         "/query-partial",
         HttpMethod.POST,
         enc(QueryPartial.serializer(serializer), input),
         ListSerializer(PartialSerializer(serializer))
     )
-    override suspend fun detail(id: ID, ): T = fetchImplementation(
+
+    override suspend fun detail(id: ID): T = fetchImplementation(
         "/${id.urlify()}",
         HttpMethod.GET,
         null,
         serializer
     )
-    override suspend fun insertBulk(input: List<T>, ): List<T> = fetchImplementation(
+
+    override suspend fun insertBulk(input: List<T>): List<T> = fetchImplementation(
         "/bulk",
         HttpMethod.POST,
         enc(ListSerializer(serializer), input),
         ListSerializer(serializer)
     )
-    override suspend fun insert(input: T, ): T = fetchImplementation(
+
+    override suspend fun insert(input: T): T = fetchImplementation(
         "",
         HttpMethod.POST,
         enc(serializer, input),
         serializer
     )
-    override suspend fun upsert(id: ID, input: T, ): T = fetchImplementation(
+
+    override suspend fun upsert(id: ID, input: T): T = fetchImplementation(
         "/${id.urlify()}",
         HttpMethod.POST,
         enc(serializer, input),
         serializer
     )
-    override suspend fun bulkReplace(input: List<T>, ): List<T> = fetchImplementation(
+
+    override suspend fun bulkReplace(input: List<T>): List<T> = fetchImplementation(
         "",
         HttpMethod.PUT,
         enc(ListSerializer(serializer), input),
         ListSerializer(serializer)
     )
-    override suspend fun replace(id: ID, input: T, ): T = fetchImplementation(
+
+    override suspend fun replace(id: ID, input: T): T = fetchImplementation(
         "/${id.urlify()}",
         HttpMethod.PUT,
         enc(serializer, input),
         serializer
     )
-    override suspend fun bulkModify(input: MassModification<T>, ): Int = fetchImplementation(
+
+    override suspend fun bulkModify(input: MassModification<T>): Int = fetchImplementation(
         "/bulk",
         HttpMethod.PATCH,
         enc(MassModification.serializer(serializer), input),
         Int.serializer()
     )
-    override suspend fun modifyWithDiff(id: ID, input: Modification<T>, ): EntryChange<T> = fetchImplementation(
+
+    override suspend fun modifyWithDiff(id: ID, input: Modification<T>): EntryChange<T> = fetchImplementation(
         "/${id.urlify()}/delta",
         HttpMethod.PATCH,
         enc(Modification.serializer(serializer), input),
         EntryChange.serializer(serializer)
     )
-    override suspend fun modify(id: ID, input: Modification<T>, ): T {
+
+    override suspend fun modify(id: ID, input: Modification<T>): T {
         return fetchImplementation(
             "/${id.urlify()}",
             HttpMethod.PATCH,
@@ -109,37 +127,43 @@ open class ClientModelRestEndpointsStandardImpl<T: HasId<ID>, ID: Comparable<ID>
             serializer
         )
     }
-    override suspend fun bulkDelete(input: Condition<T>, ): Int = fetchImplementation(
+
+    override suspend fun bulkDelete(input: Condition<T>): Int = fetchImplementation(
         "/bulk-delete",
         HttpMethod.POST,
         enc(Condition.serializer(serializer), input),
         Int.serializer()
     )
-    override suspend fun delete(id: ID, ): Unit = fetchImplementation(
+
+    override suspend fun delete(id: ID): Unit = fetchImplementation(
         "/${id.urlify()}",
         HttpMethod.DELETE,
         null,
         Unit.serializer(),
     )
-    override suspend fun count(input: Condition<T>, ): Int = fetchImplementation(
+
+    override suspend fun count(input: Condition<T>): Int = fetchImplementation(
         "/count",
         HttpMethod.POST,
         enc(Condition.serializer(serializer), input),
         Int.serializer()
     )
-    override suspend fun groupCount(input: GroupCountQuery<T>, ): Map<String, Int> = fetchImplementation(
+
+    override suspend fun groupCount(input: GroupCountQuery<T>): Map<String, Int> = fetchImplementation(
         "/group-count",
         HttpMethod.POST,
         enc(GroupCountQuery.serializer(serializer), input),
         MapSerializer(String.serializer(), Int.serializer())
     )
-    override suspend fun aggregate(input: AggregateQuery<T>, ): Double? = fetchImplementation(
+
+    override suspend fun aggregate(input: AggregateQuery<T>): Double? = fetchImplementation(
         "/aggregate",
         HttpMethod.POST,
         enc(AggregateQuery.serializer(serializer), input),
         Double.serializer().nullable
     )
-    override suspend fun groupAggregate(input: GroupAggregateQuery<T>, ): Map<String, Double?> = fetchImplementation(
+
+    override suspend fun groupAggregate(input: GroupAggregateQuery<T>): Map<String, Double?> = fetchImplementation(
         "/group-aggregate",
         HttpMethod.POST,
         enc(GroupAggregateQuery.serializer(serializer), input),
@@ -150,19 +174,20 @@ open class ClientModelRestEndpointsStandardImpl<T: HasId<ID>, ID: Comparable<ID>
     fun ID.urlify(): String {
         return properties.encodeToString(idSerializer, this)
     }
+
     suspend fun <T> RequestResponse.readJson(serializer: KSerializer<T>): T {
         return json.decodeFromString(serializer, text())
     }
 }
 
-open class ClientModelRestEndpointsPlusWsStandardImpl<T: HasId<ID>, ID: Comparable<ID>>(
+open class ClientModelRestEndpointsPlusWsStandardImpl<T : HasId<ID>, ID : Comparable<ID>>(
     fetchImplementation: Fetcher,
     wsImplementation: (path: String) -> RetryWebsocket,
     serializer: KSerializer<T>,
     idSerializer: KSerializer<ID>,
     json: Json = DefaultJson,
     properties: Properties = UrlProperties,
-): ClientModelRestEndpointsStandardImpl<T, ID>(
+) : ClientModelRestEndpointsStandardImpl<T, ID>(
     fetchImplementation,
     wsImplementation,
     serializer,
@@ -175,14 +200,14 @@ open class ClientModelRestEndpointsPlusWsStandardImpl<T: HasId<ID>, ID: Comparab
     }
 }
 
-open class ClientModelRestEndpointsPlusUpdatesWebsocketStandardImpl<T: HasId<ID>, ID: Comparable<ID>>(
+open class ClientModelRestEndpointsPlusUpdatesWebsocketStandardImpl<T : HasId<ID>, ID : Comparable<ID>>(
     fetchImplementation: Fetcher,
     wsImplementation: (path: String) -> RetryWebsocket,
     serializer: KSerializer<T>,
     idSerializer: KSerializer<ID>,
     json: Json = DefaultJson,
     properties: Properties = UrlProperties,
-): ClientModelRestEndpointsStandardImpl<T, ID>(
+) : ClientModelRestEndpointsStandardImpl<T, ID>(
     fetchImplementation,
     wsImplementation,
     serializer,

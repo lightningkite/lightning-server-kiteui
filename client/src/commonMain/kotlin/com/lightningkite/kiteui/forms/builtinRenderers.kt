@@ -14,6 +14,7 @@ import com.lightningkite.kiteui.views.centered
 import com.lightningkite.kiteui.views.direct.*
 import com.lightningkite.kiteui.views.expanding
 import com.lightningkite.kiteui.views.fieldTheme
+import com.lightningkite.lightningdb.Condition
 import com.lightningkite.lightningserver.files.ServerFile
 import com.lightningkite.serialization.SerializableAnnotationValue
 import com.lightningkite.serialization.UUIDSerializer
@@ -371,6 +372,10 @@ fun FormModule.defaults() {
     }
     formForType<Temperature?>(FormSize.Inline, name = "Temperature") { it -> fieldTheme - temperatureInput(it) }
     formForType<Temperature>(FormSize.Inline, name = "Temperature") { it -> fieldTheme - temperatureInput(it.nullable()) }
+
+    viewForType<Condition<Int>>(FormSize.Inline, name = "Programmer-y Text") { it ->
+        text { ::content { it().toString() } }
+    }
 
     this += HorizontalListRenderer as FormRenderer.Generator
     this += HorizontalListRenderer as ViewRenderer.Generator
