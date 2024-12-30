@@ -1,5 +1,6 @@
 package com.lightningkite.lightningserver
 
+import com.lightningkite.UUID
 import com.lightningkite.kiteui.navigation.DefaultJson
 import kotlinx.serialization.json.Json
 import com.lightningkite.kiteui.*
@@ -13,6 +14,7 @@ import kotlinx.serialization.serializer
 import kotlin.coroutines.Continuation
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
+import kotlin.coroutines.suspendCoroutine
 import kotlin.reflect.typeOf
 
 private class DomainRequestHandler(
@@ -41,30 +43,35 @@ private class DomainRequestHandler(
             val todo = byId
             byId = HashMap()
             scheduled = false
-            connectivityFetch(
-                url = "$domain/meta/bulk",
-                method = HttpMethod.POST,
-                headers = {
-                    httpHeaders(listOfNotNull(
-                        token?.invoke()?.let { "Authorization" to "Bearer ${it}" }
-                    ))
-                },
-                body = RequestBodyText(
-                    json.encodeToString(todo.mapValues { it.value.request }),
-                    "application/json"
-                )
-            ).let { it: RequestResponse ->
-                if (!it.ok) {
-                    val failed = Exception(it.status.toString() + ": " + it.text())
-                    todo.values.forEach { it.response.resumeWithException(failed) }
-                } else {
-                    val responses = json.decodeFromString<Map<String, BulkResponse>>(it.text())
-                    todo.forEach {
-                        responses[it.key]?.let { response ->
-                            it.value.response.resume(response)
-                        } ?: it.value.response.resumeWithException(Exception("Bulk key ${it.key} not found"))
+            try {
+                connectivityFetch(
+                    url = "$domain/meta/bulk",
+                    method = HttpMethod.POST,
+                    headers = {
+                        httpHeaders(
+                            listOfNotNull(
+                            token.invoke()?.let { "Authorization" to "Bearer ${it}" }
+                        ))
+                    },
+                    body = RequestBodyText(
+                        json.encodeToString(todo.mapValues { it.value.request }),
+                        "application/json"
+                    )
+                ).let { it: RequestResponse ->
+                    if (!it.ok) {
+                        val failed = Exception(it.status.toString() + ": " + it.text())
+                        todo.values.forEach { it.response.resumeWithException(failed) }
+                    } else {
+                        val responses = json.decodeFromString<Map<String, BulkResponse>>(it.text())
+                        todo.forEach {
+                            responses[it.key]?.let { response ->
+                                it.value.response.resume(response)
+                            } ?: it.value.response.resumeWithException(Exception("Bulk key ${it.key} not found"))
+                        }
                     }
                 }
+            } catch (e: Exception) {
+                todo.values.forEach { it.response.resumeWithException(e) }
             }
         }
     }
@@ -85,11 +92,11 @@ suspend fun <OUT> batchFetch(
     type: KSerializer<OUT>,
     json: Json = DefaultJson,
 ): OUT {
-    return suspendCoroutineCancellable<BulkResponse> {
+    return suspendCoroutine<BulkResponse> {
         val pathStartsAt = if (url.startsWith("http")) url.indexOf('/', 8) else 0
         val domain = url.substring(0, pathStartsAt)
         val path = url.substring(pathStartsAt)
-        val id = uuid().toString()
+        val id = UUID.random().toString()
         val bulk = BulkHandler(
             request = BulkRequest(
                 path,
@@ -99,7 +106,6 @@ suspend fun <OUT> batchFetch(
             response = it
         )
         queuedRequests.getOrPut(domain) { DomainRequestHandler(domain) }.token(token).queue(id, bulk)
-        return@suspendCoroutineCancellable {}
     }.let { it: BulkResponse ->
         if (it.error == null && type.descriptor.serialName == Unit.serializer().descriptor.serialName) Unit as OUT
         else if (it.result != null) json.decodeFromString(type, it.result!!)
