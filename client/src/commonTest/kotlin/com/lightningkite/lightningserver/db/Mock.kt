@@ -36,6 +36,8 @@ class MockClientModelRestEndpoints<T : HasId<ID>, ID : Comparable<ID>>(val log: 
             .toList()
     }
 
+    override suspend fun permissions(): ModelPermissions<T> = ModelPermissions.allowAll()
+
     override suspend fun queryPartial(input: QueryPartial<T>): List<Partial<T>> {
         log("queryPartial $input")
         hold.await()

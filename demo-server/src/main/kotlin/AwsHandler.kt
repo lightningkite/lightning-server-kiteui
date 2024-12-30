@@ -11,16 +11,11 @@ import kotlinx.serialization.json.decodeFromStream
 import software.amazon.awssdk.services.s3.S3Client
 
 class AwsHandler : AwsAdapter() {
-    companion object {
-        init {
-            CloudwatchMetrics
-            Server
-            preventLambdaTimeoutReuse = true
-            loadSettings()
-        }
-    }
 
     init {
-        Companion
+        CloudwatchMetrics
+        Server
+        preventLambdaTimeoutReuse = true
+        loadSettings()
     }
 }

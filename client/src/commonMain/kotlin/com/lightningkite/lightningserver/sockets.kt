@@ -16,10 +16,11 @@ fun multiplexSocket(
     params: Map<String, List<String>>,
     json: Json,
     pingTime: Long = 30_000L,
+    gate: ConnectivityGate = Connectivity.fetchGate,
     log: Console? = null
 ): RetryWebsocket {
     val shared = shared.getOrPut(url) {
-        val s = retryWebsocket({ websocket(url) }, pingTime, log = log)
+        val s = retryWebsocket({ websocket(url) }, pingTime, log = log, gate = gate)
         s.typed(json, MultiplexMessage.serializer(), MultiplexMessage.serializer())
     }
     val channelOpen = Property(false)
