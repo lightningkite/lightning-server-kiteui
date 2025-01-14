@@ -97,24 +97,23 @@ class AuthComponent(
         val code = Property("")
         override fun ViewWriter.render(onProof: (Proof) -> Unit) {
             col {
+                val proveEmailOwnership = Action("Submit",Icon.done){
+                    onProof(p.proveEmailOwnership(FinishProof(codeKey, code())))
+                }
                 field("Login code emailed to $id") {
-                    row {
-                        val tf: TextField
+                    col {
                         expanding - textInput {
-                            tf = this
                             ::hint { "ABCDEF" }
                             requestFocus()
                             content bind code
                             keyboardHints = KeyboardHints.id
-                        }
-                        button {
-                            spacing = 0.px
-                            centered - icon(Icon.send, "Submit")
-                            onClickAssociatedField(tf) {
-                                onProof(p.proveEmailOwnership(FinishProof(codeKey, code())))
-                            }
+                            action = proveEmailOwnership
                         }
                     }
+                }
+                 important -button {
+                    centered - text("Submit")
+                    action = proveEmailOwnership
                 }
                 errorText()
                 val newCodeSentAt = Property(now())
