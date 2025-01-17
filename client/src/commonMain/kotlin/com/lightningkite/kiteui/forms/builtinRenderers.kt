@@ -1,5 +1,6 @@
 package com.lightningkite.kiteui.forms
 
+import com.lightningkite.EmailAddress
 import com.lightningkite.Temperature
 import com.lightningkite.Temperature.Companion.celsius
 import com.lightningkite.Temperature.Companion.fahrenheit
@@ -14,10 +15,12 @@ import com.lightningkite.kiteui.views.centered
 import com.lightningkite.kiteui.views.direct.*
 import com.lightningkite.kiteui.views.expanding
 import com.lightningkite.kiteui.views.fieldTheme
+import com.lightningkite.kiteui.views.l2.errorText
 import com.lightningkite.lightningdb.Condition
 import com.lightningkite.lightningserver.files.ServerFile
 import com.lightningkite.serialization.SerializableAnnotationValue
 import com.lightningkite.serialization.UUIDSerializer
+import com.lightningkite.toEmailAddress
 import kotlinx.datetime.*
 
 fun FormModule.defaults() {
@@ -61,10 +64,26 @@ fun FormModule.defaults() {
             }
         }
     }
-    formForType<Byte?>(FormSize.Inline, name = "Number") { it -> fieldTheme - numberInput { align = Align.End; content bind it.lens(get = { it?.toDouble() }, set = { it?.toInt()?.toByte() }) } }
-    formForType<Short?>(FormSize.Inline, name = "Number") { it -> fieldTheme - numberInput { align = Align.End; content bind it.lens(get = { it?.toDouble() }, set = { it?.toInt()?.toShort() }) } }
-    formForType<Int?>(FormSize.Inline, name = "Number") { it -> fieldTheme - numberInput { align = Align.End; content bind it.lens(get = { it?.toDouble() }, set = { it?.toInt() }) } }
-    formForType<Long?>(FormSize.Inline, name = "Number") { it -> fieldTheme - numberInput { align = Align.End; content bind it.lens(get = { it?.toDouble() }, set = { it?.toLong() }) } }
+    formForType<Byte?>(FormSize.Inline, name = "Number") { it ->
+        fieldTheme - numberInput {
+            align = Align.End; content bind it.lens(get = { it?.toDouble() }, set = { it?.toInt()?.toByte() })
+        }
+    }
+    formForType<Short?>(FormSize.Inline, name = "Number") { it ->
+        fieldTheme - numberInput {
+            align = Align.End; content bind it.lens(get = { it?.toDouble() }, set = { it?.toInt()?.toShort() })
+        }
+    }
+    formForType<Int?>(FormSize.Inline, name = "Number") { it ->
+        fieldTheme - numberInput {
+            align = Align.End; content bind it.lens(get = { it?.toDouble() }, set = { it?.toInt() })
+        }
+    }
+    formForType<Long?>(FormSize.Inline, name = "Number") { it ->
+        fieldTheme - numberInput {
+            align = Align.End; content bind it.lens(get = { it?.toDouble() }, set = { it?.toLong() })
+        }
+    }
     formForType<Byte>(FormSize.Inline, name = "Number") { it ->
         fieldTheme - numberInput {
             align = Align.End
@@ -81,8 +100,16 @@ fun FormModule.defaults() {
                 modify = { o, it -> it?.toInt()?.toShort() ?: o })
         }
     }
-    formForType<Int>(FormSize.Inline, name = "Number") { it -> fieldTheme - numberInput { align = Align.End; content bind it.lens(get = { it.toDouble() }, modify = { o, it -> it?.toInt() ?: o }) } }
-    formForType<Long>(FormSize.Inline, name = "Number") { it -> fieldTheme - numberInput { align = Align.End; content bind it.lens(get = { it.toDouble() }, modify = { o, it -> it?.toLong() ?: o }) } }
+    formForType<Int>(FormSize.Inline, name = "Number") { it ->
+        fieldTheme - numberInput {
+            align = Align.End; content bind it.lens(get = { it.toDouble() }, modify = { o, it -> it?.toInt() ?: o })
+        }
+    }
+    formForType<Long>(FormSize.Inline, name = "Number") { it ->
+        fieldTheme - numberInput {
+            align = Align.End; content bind it.lens(get = { it.toDouble() }, modify = { o, it -> it?.toLong() ?: o })
+        }
+    }
     formForType<Byte?>(FormSize.Inline, name = "Hexadecimal", priority = 0.9f) { it ->
         fieldTheme - textInput {
             align = Align.End
@@ -211,19 +238,57 @@ fun FormModule.defaults() {
                 modify = { o, it -> it?.toLongOrNull(2) ?: o })
         }
     }
-    formForType<Float?>(FormSize.Inline, name = "Number") { it -> fieldTheme - numberInput { align = Align.End; content bind it.lens(get = { it?.toDouble() }, set = { it?.toFloat() }) } }
-    formForType<Double?>(FormSize.Inline, name = "Number") { it -> fieldTheme - numberInput { align = Align.End; content bind it } }
-    formForType<Float>(FormSize.Inline, name = "Number") { it -> fieldTheme - numberInput { align = Align.End; content bind it.lens(get = { it.toDouble() }, modify = { o, it -> it?.toFloat() ?: o }) } }
-    formForType<Double>(FormSize.Inline, name = "Number") { it -> fieldTheme - numberInput { align = Align.End; content bind it.nullable() } }
-    formForType<Char>(FormSize.Inline, name = "Character") { it -> fieldTheme - textInput { content bind it.lens(get = { it.toString() }, modify = { o, it -> it.firstOrNull() ?: o }) } }
-    formForType<Char?>(FormSize.Inline, name = "Character") { it -> fieldTheme - textInput { content bind it.lens(get = { it.toString() }, modify = { o, it -> it.firstOrNull() }) } }
+    formForType<Float?>(FormSize.Inline, name = "Number") { it ->
+        fieldTheme - numberInput {
+            align = Align.End; content bind it.lens(get = { it?.toDouble() }, set = { it?.toFloat() })
+        }
+    }
+    formForType<Double?>(FormSize.Inline, name = "Number") { it ->
+        fieldTheme - numberInput {
+            align = Align.End; content bind it
+        }
+    }
+    formForType<Float>(FormSize.Inline, name = "Number") { it ->
+        fieldTheme - numberInput {
+            align = Align.End; content bind it.lens(get = { it.toDouble() }, modify = { o, it -> it?.toFloat() ?: o })
+        }
+    }
+    formForType<Double>(FormSize.Inline, name = "Number") { it ->
+        fieldTheme - numberInput {
+            align = Align.End; content bind it.nullable()
+        }
+    }
+    formForType<Char>(
+        FormSize.Inline,
+        name = "Character"
+    ) { it ->
+        fieldTheme - textInput {
+            content bind it.lens(
+                get = { it.toString() },
+                modify = { o, it -> it.firstOrNull() ?: o })
+        }
+    }
+    formForType<Char?>(
+        FormSize.Inline,
+        name = "Character"
+    ) { it ->
+        fieldTheme - textInput {
+            content bind it.lens(
+                get = { it.toString() },
+                modify = { o, it -> it.firstOrNull() })
+        }
+    }
     formForType<String>(
         size = { selector ->
-            val maxLengthAnno = selector.annotations.find { it.fqn == "com.lightningkite.lightningdb.MaxLength" }?.values
-            val maxSize = (maxLengthAnno?.get("size") as? SerializableAnnotationValue.IntValue)?.value?.takeUnless { it == -1 }
-            val averageSize = (maxLengthAnno?.get("average") as? SerializableAnnotationValue.IntValue)?.value?.takeUnless { it == -1 }?.toDouble()
-                ?: maxSize?.div(8.0)
-                ?: 20.0
+            val maxLengthAnno =
+                selector.annotations.find { it.fqn == "com.lightningkite.lightningdb.MaxLength" }?.values
+            val maxSize =
+                (maxLengthAnno?.get("size") as? SerializableAnnotationValue.IntValue)?.value?.takeUnless { it == -1 }
+            val averageSize =
+                (maxLengthAnno?.get("average") as? SerializableAnnotationValue.IntValue)?.value?.takeUnless { it == -1 }
+                    ?.toDouble()
+                    ?: maxSize?.div(8.0)
+                    ?: 20.0
 
             FormSize(
                 approximateWidth = averageSize,
@@ -235,11 +300,15 @@ fun FormModule.defaults() {
     )
     viewForType<String>(
         size = { selector ->
-            val maxLengthAnno = selector.annotations.find { it.fqn == "com.lightningkite.lightningdb.MaxLength" }?.values
-            val maxSize = (maxLengthAnno?.get("size") as? SerializableAnnotationValue.IntValue)?.value?.takeUnless { it == -1 }
-            val averageSize = (maxLengthAnno?.get("average") as? SerializableAnnotationValue.IntValue)?.value?.takeUnless { it == -1 }?.toDouble()
-                ?: maxSize?.div(8.0)
-                ?: 20.0
+            val maxLengthAnno =
+                selector.annotations.find { it.fqn == "com.lightningkite.lightningdb.MaxLength" }?.values
+            val maxSize =
+                (maxLengthAnno?.get("size") as? SerializableAnnotationValue.IntValue)?.value?.takeUnless { it == -1 }
+            val averageSize =
+                (maxLengthAnno?.get("average") as? SerializableAnnotationValue.IntValue)?.value?.takeUnless { it == -1 }
+                    ?.toDouble()
+                    ?: maxSize?.div(8.0)
+                    ?: 20.0
 
             FormSize(
                 approximateWidth = averageSize,
@@ -279,6 +348,37 @@ fun FormModule.defaults() {
                 ::content { it().substringBefore('\n') }
                 wraps = false
                 ellipsis = true
+            }
+        }
+    )
+    formForType<EmailAddress>(
+        size = FormSize(20.0, 1.0),
+        name = "Email Address",
+        priority = 1f,
+        generate = { it ->
+            col {
+                fieldTheme - textInput {
+                    content bind it.lens(
+                        get = { it.raw },
+                        set = { it.toEmailAddress() }
+                    )
+                }
+                errorText()
+            }
+        }
+    )
+    viewForType<EmailAddress>(
+        size = FormSize(20.0, 1.0),
+        name = "Email Address",
+        priority = 1f,
+        generate = { it ->
+            externalLink {
+                text {
+                    ::content { it().raw }
+                    wraps = false
+                    ellipsis = true
+                }
+                ::to { it().url }
             }
         }
     )
@@ -335,7 +435,12 @@ fun FormModule.defaults() {
                 modify = { old, it -> it ?: old })
         }
     }
-    formForType<LocalDateTime?>(FormSize(approximateWidth = 17.0, approximateHeight = 1.0)) { prop -> fieldTheme - localDateTimeField { content bind prop } }
+    formForType<LocalDateTime?>(
+        FormSize(
+            approximateWidth = 17.0,
+            approximateHeight = 1.0
+        )
+    ) { prop -> fieldTheme - localDateTimeField { content bind prop } }
     formForType<LocalDate>(FormSize(approximateWidth = 11.0, approximateHeight = 1.0)) { prop ->
         fieldTheme - localDateField {
             content bind prop.lens(
@@ -343,7 +448,12 @@ fun FormModule.defaults() {
                 modify = { old, it -> it ?: old })
         }
     }
-    formForType<LocalDate?>(FormSize(approximateWidth = 12.0, approximateHeight = 1.0)) { prop -> localDateField { content bind prop } }
+    formForType<LocalDate?>(
+        FormSize(
+            approximateWidth = 12.0,
+            approximateHeight = 1.0
+        )
+    ) { prop -> localDateField { content bind prop } }
     formForType<LocalTime>(FormSize(approximateWidth = 5.0, approximateHeight = 1.0)) { prop ->
         localTimeField {
             content bind prop.lens(
@@ -351,12 +461,37 @@ fun FormModule.defaults() {
                 modify = { old, it -> it ?: old })
         }
     }
-    formForType<LocalTime?>(FormSize(approximateWidth = 5.0, approximateHeight = 1.0)) { prop -> fieldTheme - localTimeField { content bind prop } }
+    formForType<LocalTime?>(
+        FormSize(
+            approximateWidth = 5.0,
+            approximateHeight = 1.0
+        )
+    ) { prop -> fieldTheme - localTimeField { content bind prop } }
 
-    viewForType<Instant>(FormSize(approximateWidth = 17.0, approximateHeight = 1.0)) { prop -> text { ::content { prop().renderToString() } } }
-    viewForType<LocalDateTime>(FormSize(approximateWidth = 17.0, approximateHeight = 1.0)) { prop -> text { ::content { prop().renderToString() } } }
-    viewForType<LocalDate>(FormSize(approximateWidth = 12.0, approximateHeight = 1.0)) { prop -> text { ::content { prop().renderToString() } } }
-    viewForType<LocalTime>(FormSize(approximateWidth = 5.0, approximateHeight = 1.0)) { prop -> text { ::content { prop().renderToString() } } }
+    viewForType<Instant>(
+        FormSize(
+            approximateWidth = 17.0,
+            approximateHeight = 1.0
+        )
+    ) { prop -> text { ::content { prop().renderToString() } } }
+    viewForType<LocalDateTime>(
+        FormSize(
+            approximateWidth = 17.0,
+            approximateHeight = 1.0
+        )
+    ) { prop -> text { ::content { prop().renderToString() } } }
+    viewForType<LocalDate>(
+        FormSize(
+            approximateWidth = 12.0,
+            approximateHeight = 1.0
+        )
+    ) { prop -> text { ::content { prop().renderToString() } } }
+    viewForType<LocalTime>(
+        FormSize(
+            approximateWidth = 5.0,
+            approximateHeight = 1.0
+        )
+    ) { prop -> text { ::content { prop().renderToString() } } }
 
     fun ViewWriter.temperatureInput(writable: Writable<Temperature?>) = row {
         val celsius = Property(false)
@@ -367,11 +502,14 @@ fun FormModule.defaults() {
             }
         }
         select {
-            bind(celsius, Constant(listOf(true, false))) { if(it) "°C" else "°F" }
+            bind(celsius, Constant(listOf(true, false))) { if (it) "°C" else "°F" }
         }
     }
     formForType<Temperature?>(FormSize.Inline, name = "Temperature") { it -> fieldTheme - temperatureInput(it) }
-    formForType<Temperature>(FormSize.Inline, name = "Temperature") { it -> fieldTheme - temperatureInput(it.nullable()) }
+    formForType<Temperature>(
+        FormSize.Inline,
+        name = "Temperature"
+    ) { it -> fieldTheme - temperatureInput(it.nullable()) }
 
     viewForType<Condition<Int>>(FormSize.Inline, name = "Programmer-y Text") { it ->
         text { ::content { it().toString() } }
