@@ -97,23 +97,25 @@ class AuthComponent(
         val code = Property("")
         override fun ViewWriter.render(onProof: (Proof) -> Unit) {
             col {
-                val proveEmailOwnership = Action("Submit",Icon.done){
+                val proveEmailOwnership = Action("Submit", Icon.done) {
                     onProof(p.proveEmailOwnership(FinishProof(codeKey, code())))
                 }
-                field("Login code emailed to $id") {
                     col {
-                        expanding - textInput {
-                            ::hint { "ABCDEF" }
-                            requestFocus()
-                            content bind code
-                            keyboardHints = KeyboardHints.id
+                        col {
+                            subtext("Login code emailed to $id")
+                            spacing = 0.px
+                            fieldTheme - expanding - textInput {
+                                ::hint { "ABCDEF" }
+                                requestFocus()
+                                content bind code
+                                keyboardHints = KeyboardHints()
+                                action = proveEmailOwnership
+                            }
+                        }
+                        important - button {
+                            centered - text("Submit")
                             action = proveEmailOwnership
                         }
-                    }
-                }
-                 important -button {
-                    centered - text("Submit")
-                    action = proveEmailOwnership
                 }
                 errorText()
                 val newCodeSentAt = Property(now())
@@ -217,8 +219,8 @@ class AuthComponent(
                         }
                     }
                 }
-                errorText()
-            }
+                // prevent duplicate errorText when logging in
+                onlyWhen { authResult()?.readyToLogIn == false } - errorText()            }
         }
     }
 
