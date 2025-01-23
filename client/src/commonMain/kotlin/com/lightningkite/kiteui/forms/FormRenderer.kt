@@ -128,6 +128,8 @@ fun <T : HasId<ID>, ID : Comparable<ID>> KSerializer<T>.defaultTitleFields(): Li
         ?: it.find { it.name == "name" }?.let { DataClassPathAccess(DataClassPathSelf(serializer), it) }?.let(::listOf)
         ?: it.find { it.name == "title" }?.let { DataClassPathAccess(DataClassPathSelf(serializer), it) }?.let(::listOf)
         ?: it.find { it.name == "subject" }?.let { DataClassPathAccess(DataClassPathSelf(serializer), it) }?.let(::listOf)
+        ?: it.find { it.name == "label" }?.let { DataClassPathAccess(DataClassPathSelf(serializer), it) }?.let(::listOf)
+        ?: it.find { it.name == "_id" && !it.serializer.descriptor.serialName.contains("UUID") }?.let { DataClassPathAccess(DataClassPathSelf(serializer), it) }?.let(::listOf)
         ?: it.map { DataClassPathAccess(DataClassPathSelf(serializer), it) }.take(3)
     return nameFields
 }
