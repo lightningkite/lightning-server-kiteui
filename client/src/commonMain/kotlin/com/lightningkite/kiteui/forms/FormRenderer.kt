@@ -9,6 +9,7 @@ import com.lightningkite.kiteui.reactive.AppState
 import com.lightningkite.kiteui.reactive.Readable
 import com.lightningkite.kiteui.reactive.Writable
 import com.lightningkite.kiteui.reactive.invoke
+import com.lightningkite.kiteui.views.ViewModifiable
 import com.lightningkite.kiteui.views.ViewWriter
 import com.lightningkite.lightningdb.HasId
 import com.lightningkite.lightningserver.db.ModelCache
@@ -63,7 +64,7 @@ data class ViewRenderer<T>(
     override val selector: FormSelector<T>,
     override val size: FormSize = generator!!.size(module, selector),
     override val handlesField: Boolean = generator!!.handlesField,
-    val render: ViewWriter.(field: SerializableProperty<*, *>?, readable: Readable<T>) -> Unit
+    val render: ViewWriter.(field: SerializableProperty<*, *>?, readable: Readable<T>) -> ViewModifiable
 ) : Renderer<T> {
     interface Generator : RendererGenerator {
         fun <T> view(module: FormModule, selector: FormSelector<T>): ViewRenderer<T>
@@ -76,7 +77,7 @@ data class FormRenderer<T>(
     override val selector: FormSelector<T>,
     override val size: FormSize = generator!!.size(module, selector),
     override val handlesField: Boolean = generator!!.handlesField,
-    val render: ViewWriter.(field: SerializableProperty<*, *>?, writable: Writable<T>) -> Unit
+    val render: ViewWriter.(field: SerializableProperty<*, *>?, writable: Writable<T>) -> ViewModifiable
 ) : Renderer<T> {
     interface Generator : RendererGenerator {
         fun <T> form(module: FormModule, selector: FormSelector<T>): FormRenderer<T>

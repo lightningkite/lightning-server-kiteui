@@ -17,7 +17,7 @@ data class Item(override val _id: Int, val creation: Int = 0) : HasId<Int>
 @GenerateDataClassPaths
 @Serializable
 data class LargeTestModel(
-    override val _id: UUID = uuid(),
+    override val _id: UUID = UUID.random(),
     var boolean: Boolean = false,
     var byte: Byte = 0,
     var short: Short = 0,
@@ -27,7 +27,7 @@ data class LargeTestModel(
     var double: Double = 0.0,
     var char: Char = ' ',
     var string: String = "",
-    var uuid: UUID = uuid(),
+    var uuid: UUID = UUID.random(),
     @Contextual var instant: Instant = Instant.fromEpochMilliseconds(0L),
     var list: List<Int> = listOf(),
     var listEmbedded: List<ClassUsedForEmbedding> = listOf(),

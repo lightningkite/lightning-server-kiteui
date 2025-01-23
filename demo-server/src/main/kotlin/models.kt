@@ -18,7 +18,7 @@ import kotlinx.serialization.Contextual
 @AdminTableColumns(["name", "number", "status"])
 @Description("A model for testing Lightning Server.")
 data class TestModel(
-    override val _id: UUID = uuid(),
+    override val _id: UUID = UUID.random(),
     @Contextual val timestamp: Instant = now(),
     val name: String = "No Name",
     @Description("The number") val number: Int = 3123,
@@ -40,7 +40,7 @@ enum class Status {
 @Serializable
 @GenerateDataClassPaths
 data class User(
-    override val _id: UUID = uuid(),
+    override val _id: UUID = UUID.random(),
     override val email: String,
     override val hashedPassword: String = "",
     val isSuperUser: Boolean = false,

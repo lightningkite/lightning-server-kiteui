@@ -211,7 +211,7 @@ class MockClientModelRestEndpoints<T : HasId<ID>, ID : Comparable<ID>>(val log: 
                 onMessage.forEach { it(data) }
             }
 
-            var lastCondition: Condition<T> = Condition.Never()
+            var lastCondition: Condition<T> = Condition.Never
             val onMessage = ArrayList<(CollectionUpdates<T, ID>) -> Unit>()
             override fun onMessage(action: (CollectionUpdates<T, ID>) -> Unit) {
                 onMessage.add(action)

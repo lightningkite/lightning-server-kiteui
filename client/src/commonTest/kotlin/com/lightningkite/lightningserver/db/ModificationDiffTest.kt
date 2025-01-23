@@ -1,5 +1,6 @@
 package com.lightningkite.lightningserver.db
 
+import com.lightningkite.UUID
 import com.lightningkite.lightningdb.*
 import com.lightningkite.serialization.*
 import com.lightningkite.now
@@ -55,7 +56,7 @@ class ModificationDiffTest {
                     doubleNullable = 1.0,
                     charNullable = 'A',
                     stringNullable = "A",
-                    uuidNullable = uuid(),
+                    uuidNullable = UUID.random(),
                     instantNullable = now(),
                     listNullable = listOf(),
                     mapNullable = mapOf(),
@@ -79,7 +80,7 @@ class ModificationDiffTest {
             modification { it.double assign 1.0 },
             modification { it.char assign 'A' },
             modification { it.string assign "A" },
-            modification { it.uuid assign uuid() },
+            modification { it.uuid assign UUID.random() },
             modification { it.instant assign now() },
             modification { it.list assign listOf(1, 2, 3) },
             modification { it.listEmbedded assign listOf(ClassUsedForEmbedding("test", 42)) },
@@ -102,7 +103,7 @@ class ModificationDiffTest {
             modification { it.doubleNullable assign 1.0 },
             modification { it.charNullable assign 'A' },
             modification { it.stringNullable assign "A" },
-            modification { it.uuidNullable assign uuid() },
+            modification { it.uuidNullable assign UUID.random() },
             modification { it.instantNullable assign now() },
             modification { it.listNullable assign listOf(1, 2, 3) },
             modification { it.mapNullable assign mapOf("a" to 1) },

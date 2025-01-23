@@ -38,8 +38,8 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
 
     private val idProp = serializer._id()
 
-    //    private var desiredSocketCondition: Condition<T> = Condition.Never()
-//    private var activeSocketCondition: Condition<T> = Condition.Never()
+    //    private var desiredSocketCondition: Condition<T> = Condition.Never
+//    private var activeSocketCondition: Condition<T> = Condition.Never
     private val itemCache = HashMap<ID, ItemHolder>()
     private val queryCache = HashMap<Pair<Condition<T>, List<SortPart<T>>>, ListHolder>()
     private val itemWatchCache = HashMap<ID, WritableModel<T>>()
@@ -139,7 +139,7 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
     }
 
     private inner class ListHolder(
-        val condition: Condition<T> = Condition.Always<T>(),
+        val condition: Condition<T> = Condition.Always,
         val orderBy: List<SortPart<T>> = listOf(),
         limit: Int,
     ) : CacheReadable<List<T>>(), LimitReadable<T> {
@@ -442,12 +442,12 @@ class SharedChangeUpdateWrapper<T : HasId<ID>, ID : Comparable<ID>>(
 
     var queuedCondition: Condition<T>? = null
     fun refresh() {
-        queuedCondition = if (conditionSet.isEmpty()) Condition.Never<T>() else Condition.Or(conditionSet.toList())
+        queuedCondition = if (conditionSet.isEmpty()) Condition.Never else Condition.Or(conditionSet.toList())
     }
 
     var awaitingSuccessfulFlush = ArrayList<Continuation<Unit>>()
     suspend fun refreshAndWait() {
-        queuedCondition = if (conditionSet.isEmpty()) Condition.Never<T>() else Condition.Or(conditionSet.toList())
+        queuedCondition = if (conditionSet.isEmpty()) Condition.Never else Condition.Or(conditionSet.toList())
         suspendCoroutineCancellable<Unit> {
             awaitingSuccessfulFlush.add(it)
             return@suspendCoroutineCancellable { awaitingSuccessfulFlush.remove(it) }
