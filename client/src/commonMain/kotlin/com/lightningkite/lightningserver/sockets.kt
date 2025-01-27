@@ -1,5 +1,6 @@
 package com.lightningkite.lightningserver
 
+import com.lightningkite.UUID
 import com.lightningkite.kiteui.*
 import com.lightningkite.kiteui.reactive.*
 import com.lightningkite.lightningserver.websocket.MultiplexMessage
@@ -24,7 +25,7 @@ fun multiplexSocket(
         s.typed(json, MultiplexMessage.serializer(), MultiplexMessage.serializer())
     }
     val channelOpen = Property(false)
-    val channel = uuid().toString()
+    val channel = UUID.random().toString()
     return object : RetryWebsocket {
         init {
             shared.onMessage { message ->

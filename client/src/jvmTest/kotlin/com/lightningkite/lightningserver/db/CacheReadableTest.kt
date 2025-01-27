@@ -1107,7 +1107,7 @@ class ChangeUpdateWrapperTest {
         }
         val x = ChangeUpdateWrapper(artificialSocket) { println(it) }
         launchGlobal {
-            x.update(Condition.Always())
+            x.update(Condition.Always)
             assertEquals(true, artificialSocket.connected.value)
             x.update(condition { it._id eq 3 })
             assertEquals(true, artificialSocket.connected.value)
@@ -1175,7 +1175,7 @@ class SharedChangeUpdateWrapperTest {
             }
         }
         launchGlobal {
-//            x.update(Condition.Always())
+//            x.update(Condition.Always)
 //            assertEquals(true, artificialSocket.connected.value)
 //            x.update(condition { it._id eq 3 })
 //            assertEquals(true, artificialSocket.connected.value)

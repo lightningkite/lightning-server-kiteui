@@ -17,10 +17,15 @@ object TableRenderer : FormRenderer.Generator, ViewRenderer.Generator {
     override val type: String = ListSerializer(Unit.serializer()).descriptor.serialName
     override fun size(module: FormModule, selector: FormSelector<*>): FormSize = FormSize.Block
     fun add(collection: List<Any?>, item: Any?): List<Any?> = collection + item
-    fun remove(collection: List<Any?>, item: Any?, index: Int): List<Any?> = collection.toMutableList().apply { this.removeAt(index) }
+    fun remove(collection: List<Any?>, item: Any?, index: Int): List<Any?> =
+        collection.toMutableList().apply { this.removeAt(index) }
+
     fun inner(serializer: KSerializer<*>): KSerializer<Any?> = serializer.listElement()!! as KSerializer<Any?>
     override fun matches(module: FormModule, selector: FormSelector<*>): Boolean {
-        return super<FormRenderer.Generator>.matches(module, selector) && inner(selector.serializer).serializableProperties != null
+        return super<FormRenderer.Generator>.matches(
+            module,
+            selector
+        ) && inner(selector.serializer).serializableProperties != null
     }
 
     val flp = FormLayoutPreferences.Field
@@ -28,7 +33,10 @@ object TableRenderer : FormRenderer.Generator, ViewRenderer.Generator {
     override fun priority(module: FormModule, selector: FormSelector<*>): Float {
         val innerSer = inner(selector.serializer)
         val inner = module.form(selector.copy(innerSer, desiredSize = flp)) as FormRenderer<Any?>
-        return super<FormRenderer.Generator>.priority(module, selector) * (if (inner.size == FormSize.Block) 1.1f else 0.6f)
+        return super<FormRenderer.Generator>.priority(
+            module,
+            selector
+        ) * (if (inner.size == FormSize.Block) 1.1f else 0.6f)
     }
 
     @Suppress("UNCHECKED_CAST")
@@ -63,16 +71,19 @@ object TableRenderer : FormRenderer.Generator, ViewRenderer.Generator {
         val rendererCache = HashMap<DataClassPath<T, Any?>, ViewRenderer<Any?>>()
         val anyCols = columns as ImmediateWritable<List<DataClassPath<T, Any?>>>
         fun renderer(path: DataClassPath<T, Any?>) = rendererCache.getOrPut(path) {
-            formModule.view(FormSelector(
-                serializer = path.serializer,
-                annotations = path.properties.lastOrNull()?.serializableAnnotations ?: listOf(),
-                desiredSize = flp,
-                handlesField = true
-            ))
+            formModule.view(
+                FormSelector(
+                    serializer = path.serializer,
+                    annotations = path.properties.lastOrNull()?.serializableAnnotations ?: listOf(),
+                    desiredSize = flp,
+                    handlesField = true
+                )
+            )
         }
         scrollsHorizontally - col {
             expanding - changingSizeConstraints {
-                SizeConstraints(width = anyCols().sumOf { renderer(it).size.approximateWidth.coerceAtLeast(5.0) + 2.0 }.plus(5.0).rem)
+                SizeConstraints(width = anyCols().sumOf { renderer(it).size.approximateWidth.coerceAtLeast(5.0) + 2.0 }
+                    .plus(5.0).rem)
             } - col {
                 padded - row {
                     row {
@@ -126,12 +137,8 @@ object TableRenderer : FormRenderer.Generator, ViewRenderer.Generator {
 //                            sizeConstraints(width = 20.rem) - text {
 //                                ::content { col.getAny(it()).toString() }
 //                            }
-                                @Suppress("UNCHECKED_CAST")
-                                padded - sizeConstraints(width = render.size.approximateWidth.coerceAtLeast(5.0).rem) - render.render(
-                                    this@row,
-                                    null,
-                                    it.lensPath(col)
-                                )
+                                padded - sizeConstraints(width = render.size.approximateWidth.coerceAtLeast(5.0).rem) -
+                                        render.render(this@row, null, it.lensPath(col))
                             }
                         }
                         if (link != null) {

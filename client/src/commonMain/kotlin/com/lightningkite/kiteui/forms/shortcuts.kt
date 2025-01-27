@@ -1,10 +1,14 @@
+@file:OptIn(ExperimentalSerializationApi::class)
+
 package com.lightningkite.kiteui.forms
 
 import com.lightningkite.kiteui.reactive.Readable
 import com.lightningkite.kiteui.reactive.Writable
+import com.lightningkite.kiteui.views.ViewModifiable
 import com.lightningkite.kiteui.views.ViewWriter
 import com.lightningkite.serialization.SerializableProperty
 import com.lightningkite.titleCase
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.descriptors.SerialKind
 import kotlinx.serialization.descriptors.nonNullOriginal
@@ -16,7 +20,7 @@ inline fun <reified V> FormModule.viewForType(
     name: String = (if(serializer.descriptor.isNullable) "Optional " else "") + serializer.descriptor.serialName.substringBefore('/').substringAfterLast('.').titleCase(),
     annotation: String? = null,
     priority: Float = 1f,
-    crossinline generate: ViewWriter.(prop: Readable<V>)->Unit
+    crossinline generate: ViewWriter.(prop: Readable<V>)->ViewModifiable
 ) {
     plusAssign(object: ViewRenderer.Generator {
         override val annotation: String? = annotation
@@ -37,7 +41,7 @@ inline fun <reified V> FormModule.formForType(
     name: String = (if(serializer.descriptor.isNullable) "Optional " else "") + serializer.descriptor.serialName.substringBefore('/').substringAfterLast('.').titleCase(),
     annotation: String? = null,
     priority: Float = 1f,
-    crossinline generate: ViewWriter.(prop: Writable<V>)->Unit
+    crossinline generate: ViewWriter.(prop: Writable<V>)->ViewModifiable
 ) {
     plusAssign(object: FormRenderer.Generator {
         override val annotation: String? = annotation
@@ -59,7 +63,7 @@ inline fun <reified V> FormModule.viewForType(
     name: String = (if(serializer.descriptor.isNullable) "Optional " else "") + serializer.descriptor.serialName.substringBefore('/').substringAfterLast('.').titleCase(),
     annotation: String? = null,
     priority: Float = 1f,
-    crossinline generate: ViewWriter.(prop: Readable<V>)->Unit
+    crossinline generate: ViewWriter.(prop: Readable<V>)->ViewModifiable
 ) {
     plusAssign(object: ViewRenderer.Generator {
         override val annotation: String? = annotation
@@ -80,7 +84,7 @@ inline fun <reified V> FormModule.formForType(
     name: String = (if(serializer.descriptor.isNullable) "Optional " else "") + serializer.descriptor.serialName.substringBefore('/').substringAfterLast('.').titleCase(),
     annotation: String? = null,
     priority: Float = 1f,
-    crossinline generate: ViewWriter.(prop: Writable<V>)->Unit
+    crossinline generate: ViewWriter.(prop: Writable<V>)->ViewModifiable
 ) {
     plusAssign(object: FormRenderer.Generator {
         override val annotation: String? = annotation
@@ -102,7 +106,7 @@ inline fun <reified V> FormModule.viewForTypeWithField(
     name: String = (if(serializer.descriptor.isNullable) "Optional " else "") + serializer.descriptor.serialName.substringBefore('/').substringAfterLast('.').titleCase(),
     annotation: String? = null,
     priority: Float = 1f,
-    crossinline generate: ViewWriter.(field: SerializableProperty<*, *>?, prop: Readable<V>)->Unit
+    crossinline generate: ViewWriter.(field: SerializableProperty<*, *>?, prop: Readable<V>)->ViewModifiable
 ) {
     plusAssign(object: ViewRenderer.Generator {
         override val annotation: String? = annotation
@@ -124,7 +128,7 @@ inline fun <reified V> FormModule.formForTypeWithField(
     name: String = (if(serializer.descriptor.isNullable) "Optional " else "") + serializer.descriptor.serialName.substringBefore('/').substringAfterLast('.').titleCase(),
     annotation: String? = null,
     priority: Float = 1f,
-    crossinline generate: ViewWriter.(field: SerializableProperty<*, *>?, prop: Writable<V>)->Unit
+    crossinline generate: ViewWriter.(field: SerializableProperty<*, *>?, prop: Writable<V>)->ViewModifiable
 ) {
     plusAssign(object: FormRenderer.Generator {
         override val annotation: String? = annotation

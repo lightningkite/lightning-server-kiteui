@@ -19,7 +19,7 @@ import kotlin.time.Duration
 class HelpersKtTest {
     @Serializable
     data class TestModel(
-        val _id: UUID = uuid(),
+        val _id: UUID = UUID.random(),
         val x: Int = 0,
         val y: String,
         val z: Duration?,

@@ -11,7 +11,7 @@ lightningServer="version-4-SNAPSHOT"
 proguard="7.3.2"
 shadow="8.1.1"
 kotlinerCli="1.0.5"
-ktor="2.3.12"
+ktor="3.0.3"
 vite="0.4.0"
 
 [libraries]

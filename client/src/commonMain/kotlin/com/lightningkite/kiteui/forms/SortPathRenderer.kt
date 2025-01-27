@@ -15,9 +15,11 @@ import com.lightningkite.lightningdb.SortPart
 import com.lightningkite.lightningdb.SortPartSerializer
 import com.lightningkite.serialization.*
 import kotlinx.serialization.ContextualSerializer
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.builtins.serializer
 
+@OptIn(ExperimentalSerializationApi::class)
 object SortPathRenderer : FormRenderer.Generator, ViewRenderer.Generator {
     override val name: String = "Sort Part"
     override val type: String = "com.lightningkite.lightningdb.SortPart"

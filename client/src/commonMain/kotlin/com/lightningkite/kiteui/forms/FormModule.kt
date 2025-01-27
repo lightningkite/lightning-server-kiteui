@@ -15,8 +15,10 @@ import com.lightningkite.kiteui.views.direct.stack
 import com.lightningkite.kiteui.views.expanding
 import com.lightningkite.lightningserver.files.ServerFile
 import com.lightningkite.serialization.ClientModule
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.descriptors.SerialKind
 
+@OptIn(ExperimentalSerializationApi::class)
 class FormModule {
     var module = ClientModule
     var fileUpload: (suspend (FileReference) -> ServerFile)? = null

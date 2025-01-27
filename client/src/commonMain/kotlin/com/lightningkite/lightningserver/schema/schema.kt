@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalSerializationApi::class)
+
 package com.lightningkite.lightningserver.schema
 
 import com.lightningkite.kiteui.*
@@ -17,6 +19,7 @@ import com.lightningkite.lightningserver.networking.BulkFetcher
 import com.lightningkite.lightningserver.networking.ConnectivityOnlyFetcher
 import com.lightningkite.lightningserver.networking.Fetcher
 import com.lightningkite.serialization.*
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.properties.Properties

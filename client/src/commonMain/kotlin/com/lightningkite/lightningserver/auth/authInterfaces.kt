@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalSerializationApi::class)
+
 package com.lightningkite.lightningserver.auth
 
 import com.lightningkite.UUID
@@ -22,6 +24,7 @@ import com.lightningkite.now
 import kotlinx.coroutines.delay
 import kotlinx.datetime.Clock.System
 import kotlinx.datetime.Instant
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.encodeToString
