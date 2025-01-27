@@ -12,7 +12,7 @@ import kotlin.reflect.KClass
 val SerializableProperty<*, *>.displayName: String
     get() = this.serializableAnnotations.find { it.fqn == "com.lightningkite.lightningdb.DisplayName" }?.values?.get(
         "text"
-    )?.let { it as? SerializableAnnotationValue.StringValue }?.value ?: name.titleCase()
+    )?.let { it as? SerializableAnnotationValue.StringValue }?.value ?: if(name == "_id") "ID" else name.titleCase()
 val KSerializer<*>.displayName: String
     get() = serializableAnnotations.find { it.fqn == "com.lightningkite.lightningdb.DisplayName" }?.values?.get(
         "text"

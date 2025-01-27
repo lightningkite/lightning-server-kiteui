@@ -19,6 +19,9 @@ object EnumFormRenderer: FormRenderer.Generator, ViewRenderer.Generator {
         get() = 0.7f
     override val kind = SerialKind.ENUM
     class TypeInfo<T>(val serializer: KSerializer<T>) {
+        val options =  Constant((serializer.nullElement() ?: serializer).enumValues().let {
+            if (serializer.descriptor.isNullable) listOf(null) + it else it
+        } as List<T>)
         fun toDisplayName(it: T): String {
             return if (it == null) "N/A"
             else (it as? VirtualEnumValue)?.let {
@@ -42,9 +45,7 @@ object EnumFormRenderer: FormRenderer.Generator, ViewRenderer.Generator {
                 @Suppress("UNCHECKED_CAST")
                 bind(
                     edits = writable,
-                    data = Constant((info.serializer.nullElement() ?: info.serializer).enumValues().let {
-                        if (info.serializer.descriptor.isNullable) listOf(null) + it else it
-                    } as List<T>),
+                    data = info.options,
                     render = info::toDisplayName
                 )
             }

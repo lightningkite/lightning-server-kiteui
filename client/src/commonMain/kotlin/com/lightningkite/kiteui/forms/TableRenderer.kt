@@ -54,11 +54,7 @@ object TableRenderer : FormRenderer.Generator, ViewRenderer.Generator {
         innerSer: KSerializer<T>,
         readable: Readable<Readable<List<T>>>,
         columns: ImmediateWritable<List<DataClassPath<T, *>>> = Property(run {
-            innerSer.serializableProperties!!.sortedBy {
-                it.importance
-            }.take(5).map {
-                DataClassPathAccess(DataClassPathSelf(innerSer), it)
-            }
+            innerSer.defaultColumns()
         }),
         link: ((T) -> () -> Screen)? = null,
         action: (suspend (T) -> Unit)? = null,

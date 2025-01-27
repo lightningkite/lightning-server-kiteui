@@ -6,10 +6,7 @@ import com.lightningkite.kiteui.forms.displayName
 import com.lightningkite.kiteui.forms.form
 import com.lightningkite.kiteui.models.Icon
 import com.lightningkite.kiteui.models.rem
-import com.lightningkite.kiteui.navigation.DefaultJson
-import com.lightningkite.kiteui.navigation.Screen
-import com.lightningkite.kiteui.navigation.UrlProperties
-import com.lightningkite.kiteui.navigation.decodeFromString
+import com.lightningkite.kiteui.navigation.*
 import com.lightningkite.kiteui.reactive.*
 import com.lightningkite.kiteui.views.*
 import com.lightningkite.kiteui.views.direct.*
@@ -45,15 +42,35 @@ class DetailAdminScreen(val collectionName: String, val itemId: String) : Screen
                     clearChildren()
                     val forms = adminServer().formModule(adminAuthentication())
                     form(forms, mc().serializer, item)
-                    atEnd - important - button {
-                        text("Save")
-                        ::enabled { item.changesMade() }
-                        onClick {
-                            item.publish()
-                            toast {
-                                row {
-                                    centered - icon(Icon.done, "Done")
-                                    centered - text("Your changes have been saved")
+                    atEnd - row {
+                        danger - button {
+                            text("Delete")
+                            onClick {
+                                confirmDanger("Delete", "Are you sure?") {
+                                    val mc = mc()
+                                    val actualId =
+                                        UrlProperties.decodeFromString(mc.serializer._id().serializer, itemId)
+                                    mc[actualId].delete()
+                                    toast {
+                                        row {
+                                            centered - icon(Icon.deleteForever, "Deleted")
+                                            centered - text("Item has been deleted.")
+                                        }
+                                    }
+                                    screenNavigator.goBack()
+                                }
+                            }
+                        }
+                        important - button {
+                            text("Save")
+                            ::enabled { item.changesMade() }
+                            onClick {
+                                item.publish()
+                                toast {
+                                    row {
+                                        centered - icon(Icon.done, "Done")
+                                        centered - text("Your changes have been saved")
+                                    }
                                 }
                             }
                         }

@@ -16,10 +16,12 @@ import com.lightningkite.lightningdb.*
 import com.lightningkite.lightningserver.db.ModelCache
 import com.lightningkite.lightningserver.files.ServerFile
 import com.lightningkite.serialization.*
+import kotlinx.coroutines.delay
 import kotlinx.serialization.ContextualSerializer
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.serializer
+import kotlin.time.Duration.Companion.milliseconds
 
 object ForeignKeyRenderer : FormRenderer.Generator, ViewRenderer.Generator {
     override val name: String = "Foreign Key"
@@ -33,8 +35,11 @@ object ForeignKeyRenderer : FormRenderer.Generator, ViewRenderer.Generator {
             it.fqn == "com.lightningkite.lightningdb.References" ||
                     it.fqn == "com.lightningkite.lightningdb.MultipleReferences"
         }?.values ?: return false
-        val typeName = anno.get("references")?.let { it as? SerializableAnnotationValue.ClassValue }?.fqn ?: return false
-        val typeInfo = module.typeInfo(typeName) as? FormTypeInfo<HasId<Comparable<Comparable<*>>>, Comparable<Comparable<*>>> ?: return false
+        val typeName =
+            anno.get("references")?.let { it as? SerializableAnnotationValue.ClassValue }?.fqn ?: return false
+        val typeInfo =
+            module.typeInfo(typeName) as? FormTypeInfo<HasId<Comparable<Comparable<*>>>, Comparable<Comparable<*>>>
+                ?: return false
         return true
     }
 
@@ -45,7 +50,8 @@ object ForeignKeyRenderer : FormRenderer.Generator, ViewRenderer.Generator {
                     it.fqn == "com.lightningkite.lightningdb.MultipleReferences"
         }!!.values
         val typeName = anno.get("references")!!.let { it as SerializableAnnotationValue.ClassValue }.fqn
-        val typeInfo = module.typeInfo(typeName)!! as FormTypeInfo<HasId<Comparable<Comparable<*>>>, Comparable<Comparable<*>>>
+        val typeInfo =
+            module.typeInfo(typeName)!! as FormTypeInfo<HasId<Comparable<Comparable<*>>>, Comparable<Comparable<*>>>
         return FormRenderer(module, this, selector as FormSelector<Comparable<Comparable<*>>?>) { field, writable ->
             fieldTheme - row {
                 spacing = 0.px
@@ -57,19 +63,70 @@ object ForeignKeyRenderer : FormRenderer.Generator, ViewRenderer.Generator {
                         }
                     }
                     opensMenu {
-                        if(selector.serializer.descriptor.isNullable) {
+                        if (selector.serializer.descriptor.isNullable) {
                             load { writable set null }
                         }
                         preferredDirection = PopoverPreferredDirection.belowLeft
+                        val full = Property(false)
                         sizeConstraints(width = 25.rem, height = 25.rem) - col {
                             val textSearch = Property("")
                             val condition = Property<Condition<HasId<Comparable<Comparable<*>>>>>(Condition.Always)
                             val sort = Property<List<SortPart<HasId<Comparable<Comparable<*>>>>>>(listOf())
+                            val hasTextIndex =
+                                typeInfo.serializer.serializableAnnotations.any { it.fqn.endsWith("TextIndex") }
+                            val columns: ImmediateWritable<List<DataClassPath<HasId<Comparable<Comparable<*>>>, *>>> =
+                                Property(run {
+                                    typeInfo.serializer.defaultColumns()
+                                })
+                            val itemsMeta = shared {
+                                typeInfo.cache().watch(
+                                    Query(
+                                        Condition.And<HasId<Comparable<Comparable<*>>>>(
+                                            listOfNotNull(
+                                                textSearch.debounce(500)().takeUnless { it.isBlank() }?.let {
+                                                    if (hasTextIndex) Condition.FullTextSearch(it)
+                                                    else {
+                                                        it.split(' ').map { term ->
+                                                            columns().mapNotNull {
+                                                                val s = it.serializer.let {
+                                                                    it.nullElement() ?: it
+                                                                }.descriptor.serialName.substringBefore('/')
+                                                                val p =
+                                                                    if (it.serializer.descriptor.isNullable) DataClassPathNotNull(
+                                                                        it as DataClassPath<HasId<Comparable<Comparable<*>>>, Any?>
+                                                                    ) else it
+                                                                if (s == "kotlin.String") {
+                                                                    p.mapCondition(
+                                                                        Condition.StringContains(
+                                                                            term,
+                                                                            true
+                                                                        ) as Condition<Any?>
+                                                                    )
+                                                                } else if (s in IsRawString.serialNames) {
+                                                                    p.mapCondition(
+                                                                        Condition.RawStringContains<TrimmedString>(
+                                                                            term,
+                                                                            true
+                                                                        ) as Condition<Any?>
+                                                                    )
+                                                                } else null
+                                                            }.takeUnless { it.isEmpty() }
+                                                                ?.let { Condition.Or(it) } ?: Condition.Always
+                                                        }.let { Condition.And(it) }
+                                                    }
+                                                },
+                                                condition.debounce(500)()
+                                            )
+                                        ), sort.debounce(500)()
+                                    )
+                                )
+                            }
+                            val items = shared { itemsMeta()() }
                             row {
                                 expanding - fieldTheme - textInput {
                                     content bind textSearch
                                 }
-                                menuButton {
+                                onlyWhen { full() } - menuButton {
                                     dynamicTheme { if (condition() != Condition.Always) SelectedSemantic else null }
                                     icon(Icon.filterList, "Filter")
                                     requireClick = true
@@ -77,7 +134,7 @@ object ForeignKeyRenderer : FormRenderer.Generator, ViewRenderer.Generator {
                                         form(module, Condition.serializer(typeInfo.serializer), condition)
                                     }
                                 }
-                                menuButton {
+                                onlyWhen { full() } - menuButton {
                                     dynamicTheme { if (sort().isNotEmpty()) SelectedSemantic else null }
                                     icon(Icon.sort, "Sort")
                                     requireClick = true
@@ -85,52 +142,50 @@ object ForeignKeyRenderer : FormRenderer.Generator, ViewRenderer.Generator {
                                         form(module, ListSerializer(SortPartSerializer(typeInfo.serializer)), sort)
                                     }
                                 }
+                                toggleButton {
+                                    checked bind full
+                                    icon(Icon.moreVert, "Show More")
+                                }
                             }
-                            val hasTextIndex = typeInfo.serializer.serializableAnnotations.any { it.fqn.endsWith("TextIndex") }
-                            val columns: ImmediateWritable<List<DataClassPath<HasId<Comparable<Comparable<*>>>, *>>> = Property(run {
-                                typeInfo.serializer.serializableProperties!!.sortedBy {
-                                    it.importance
-                                }.take(5).map {
-                                    DataClassPathAccess(DataClassPathSelf(typeInfo.serializer), it)
-                                }
-                            })
-                            expanding - TableRenderer.view<HasId<Comparable<Comparable<*>>>>(
-                                formModule = module,
-                                writer = this@col,
-                                innerSer = typeInfo.cache().serializer,
-                                readable = shared {
-                                    typeInfo.cache().watch(
-                                        Query(
-                                            Condition.And<HasId<Comparable<Comparable<*>>>>(
-                                                listOfNotNull(
-                                                    textSearch.debounce(500)().takeUnless { it.isBlank() }?.let {
-                                                        if (hasTextIndex) Condition.FullTextSearch(it)
-                                                        else {
-                                                            it.split(' ').map { term ->
-                                                                columns().mapNotNull {
-                                                                    val s = it.serializer.let { it.nullElement() ?: it }.descriptor.serialName.substringBefore('/')
-                                                                    val p = if (it.serializer.descriptor.isNullable) DataClassPathNotNull(it as DataClassPath<HasId<Comparable<Comparable<*>>>, Any?>) else it
-                                                                    if (s == "kotlin.String") {
-                                                                        p.mapCondition(Condition.StringContains(term, true) as Condition<Any?>)
-                                                                    } else if (s in IsRawString.serialNames) {
-                                                                        p.mapCondition(Condition.RawStringContains<TrimmedString>(term, true) as Condition<Any?>)
-                                                                    } else null
-                                                                }.takeUnless { it.isEmpty() }?.let { Condition.Or(it) } ?: Condition.Always
-                                                            }.let { Condition.And(it) }
+                            expanding - swapView {
+                                swapping(
+                                    current = { full() },
+                                    views = { full->
+                                        if(full) {
+                                            TableRenderer.view<HasId<Comparable<Comparable<*>>>>(
+                                                formModule = module,
+                                                writer = this@swapping,
+                                                innerSer = typeInfo.cache().serializer,
+                                                readable = itemsMeta,
+                                                link = null,
+                                                action = {
+                                                    writable.set(it._id)
+                                                    closePopovers()
+                                                }
+                                            )
+                                        } else {
+                                            recyclerView {
+                                                children(items) {
+                                                    card - button {
+                                                        text {
+                                                            content = "..."
+                                                            reactiveSuspending {
+                                                                content = "..."
+                                                                delay(1.milliseconds)
+                                                                content = typeInfo.renderToString(it()._id)
+                                                            }
                                                         }
-                                                    },
-                                                    condition.debounce(500)()
-                                                )
-                                            ), sort.debounce(500)()
-                                        )
-                                    )
-                                },
-                                link = null,
-                                action = {
-                                    writable.set(it._id)
-                                    closePopovers()
-                                }
-                            )
+                                                        action = Action("Select", Icon.done) {
+                                                            writable.set(it()._id)
+                                                            closePopovers()
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                )
+                            }
                         }
                     }
                 }
@@ -152,7 +207,8 @@ object ForeignKeyRenderer : FormRenderer.Generator, ViewRenderer.Generator {
                     it.fqn == "com.lightningkite.lightningdb.MultipleReferences"
         }!!.values
         val typeName = anno.get("references")!!.let { it as SerializableAnnotationValue.ClassValue }.fqn
-        val typeInfo = module.typeInfo(typeName)!! as FormTypeInfo<HasId<Comparable<Comparable<*>>>, Comparable<Comparable<*>>>
+        val typeInfo =
+            module.typeInfo(typeName)!! as FormTypeInfo<HasId<Comparable<Comparable<*>>>, Comparable<Comparable<*>>>
         return ViewRenderer(module, this, selector as FormSelector<Comparable<Comparable<*>>?>) { field, readable ->
             link {
                 ::to label@{

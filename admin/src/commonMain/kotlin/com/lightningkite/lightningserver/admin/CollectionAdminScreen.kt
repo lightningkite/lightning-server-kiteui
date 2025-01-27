@@ -4,9 +4,7 @@ import com.lightningkite.IsRawString
 import com.lightningkite.TrimmedString
 import com.lightningkite.kiteui.QueryParameter
 import com.lightningkite.kiteui.Routable
-import com.lightningkite.kiteui.forms.TableRenderer
-import com.lightningkite.kiteui.forms.form
-import com.lightningkite.kiteui.forms.importance
+import com.lightningkite.kiteui.forms.*
 import com.lightningkite.kiteui.models.Icon
 import com.lightningkite.kiteui.models.SelectedSemantic
 import com.lightningkite.kiteui.navigation.DefaultJson
@@ -68,26 +66,49 @@ class CollectionAdminScreen(val collectionName: String) : Screen {
                             } catch (e: Exception) {
                                 null
                             }
-                        } ?: listOf()
+                        } ?: mc.serializer.naturalSort()
                     },
                     set = { DefaultJson.encodeToString(ListSerializer(SortPartSerializer(mc.serializer)), it) }
                 )
+                @Suppress("UNCHECKED_CAST")
                 val columns: ImmediateWritable<List<DataClassPath<HasId<Comparable<Comparable<*>>>, *>>> = columnsString.lens(
                     get = {
-                        (it?.let {
+                        it?.let {
                             try {
-                                DefaultJson.decodeFromString(ListSerializer(DataClassPathSerializer(mc.serializer)), it)
+                                DefaultJson.decodeFromString(ListSerializer(DataClassPathSerializer(mc.serializer)), it) as List<DataClassPath<HasId<Comparable<Comparable<*>>>, *>>
                             } catch (e: Exception) {
                                 null
                             }
-                        } ?: mc.serializer.serializableProperties!!.sortedBy {
-                            it.importance
-                        }.take(5).map {
-                            DataClassPathAccess(DataClassPathSelf(mc.serializer), it)
-                        }) as List<DataClassPath<HasId<Comparable<Comparable<*>>>, *>>
+                        } ?: mc.serializer.defaultColumns()
                     },
-                    set = { DefaultJson.encodeToString(ListSerializer(DataClassPathSerializer(mc.serializer)), it) }
+                    set = { DefaultJson.encodeToString(ListSerializer(DataClassPathSerializer(mc.serializer)), it as List<DataClassPathPartial<HasId<Comparable<Comparable<*>>>>>) }
                 )
+                val hasTextIndex = mc.serializer.serializableAnnotations.any { it.fqn.endsWith("TextIndex") }
+                val query = shared {
+                    Query(
+                        Condition.And<HasId<Comparable<Comparable<*>>>>(
+                            listOfNotNull(
+                                textSearch.debounce(500)().takeUnless { it.isBlank() }?.let {
+                                    if (hasTextIndex) Condition.FullTextSearch(it)
+                                    else {
+                                        it.split(' ').map { term ->
+                                            columns().mapNotNull {
+                                                val s = it.serializer.let { it.nullElement() ?: it }.descriptor.serialName.substringBefore('/')
+                                                val p = if (it.serializer.descriptor.isNullable) DataClassPathNotNull(it as DataClassPath<HasId<Comparable<Comparable<*>>>, Any?>) else it
+                                                if (s == "kotlin.String") {
+                                                    p.mapCondition(Condition.StringContains(term, true) as Condition<Any?>)
+                                                } else if (s in IsRawString.serialNames) {
+                                                    p.mapCondition(Condition.RawStringContains<TrimmedString>(term, true) as Condition<Any?>)
+                                                } else null
+                                            }.takeUnless { it.isEmpty() }?.let { Condition.Or(it) } ?: Condition.Always
+                                        }.let { Condition.And(it) }
+                                    }
+                                },
+                                condition.debounce(500)()
+                            )
+                        ), sort.debounce(500)()
+                    )
+                }
                 row {
                     expanding - fieldTheme - textInput {
                         content bind textSearch
@@ -113,38 +134,38 @@ class CollectionAdminScreen(val collectionName: String) : Screen {
                         to = { NewItemAdminScreen(collectionName).apply { conditionString.value = this@CollectionAdminScreen.conditionString.value } }
                     }
                 }
-                val hasTextIndex = mc.serializer.serializableAnnotations.any { it.fqn.endsWith("TextIndex") }
+                subtext {
+                    val itemCount = sharedSuspending {
+                        val c = condition()
+                        mc.skipCache.count(c)
+                    }
+                    ::content {
+                        buildString {
+                            val c = condition()
+                            when(c) {
+                                Condition.Always -> append("Showing all ${itemCount()} items ")
+                                Condition.Never -> append("Showing NO ITEMS ")
+                                else -> append("Showing ${itemCount()} items where $c ")
+                            }
+                            val s = sort()
+                            if(s.isNotEmpty()) {
+                                append("sorted by ")
+                                s.forEach {
+                                    append(it.field.properties.joinToString("'s ") { it.displayName })
+                                    if(it.ascending) append(" ascending")
+                                    else append(" descending")
+                                }
+                            }
+                        }
+                    }
+                }
                 expanding - TableRenderer.view<HasId<Comparable<Comparable<*>>>>(
                     formModule = forms,
                     writer = this@col,
                     innerSer = mc.serializer,
                     columns = columns,
                     readable = shared {
-                        mc.watch(
-                            Query(
-                                Condition.And<HasId<Comparable<Comparable<*>>>>(
-                                    listOfNotNull(
-                                        textSearch.debounce(500)().takeUnless { it.isBlank() }?.let {
-                                            if (hasTextIndex) Condition.FullTextSearch(it)
-                                            else {
-                                                it.split(' ').map { term ->
-                                                    columns().mapNotNull {
-                                                        val s = it.serializer.let { it.nullElement() ?: it }.descriptor.serialName.substringBefore('/')
-                                                        val p = if (it.serializer.descriptor.isNullable) DataClassPathNotNull(it as DataClassPath<HasId<Comparable<Comparable<*>>>, Any?>) else it
-                                                        if (s == "kotlin.String") {
-                                                            p.mapCondition(Condition.StringContains(term, true) as Condition<Any?>)
-                                                        } else if (s in IsRawString.serialNames) {
-                                                            p.mapCondition(Condition.RawStringContains<TrimmedString>(term, true) as Condition<Any?>)
-                                                        } else null
-                                                    }.takeUnless { it.isEmpty() }?.let { Condition.Or(it) } ?: Condition.Always
-                                                }.let { Condition.And(it) }
-                                            }
-                                        },
-                                        condition.debounce(500)()
-                                    )
-                                ), sort.debounce(500)()
-                            )
-                        )
+                        mc.watch(query())
                     },
                     link = {
                         val id = UrlProperties.encodeToString(mc.serializer._id().serializer, it._id)

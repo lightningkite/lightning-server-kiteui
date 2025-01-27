@@ -4,18 +4,24 @@ package com.lightningkite.kiteui.forms
 
 import com.lightningkite.kiteui.models.px
 import com.lightningkite.kiteui.models.rem
+import com.lightningkite.kiteui.navigation.DefaultJson
 import com.lightningkite.kiteui.navigation.Screen
+import com.lightningkite.kiteui.navigation.UrlProperties
+import com.lightningkite.kiteui.navigation.decodeFromString
 import com.lightningkite.kiteui.reactive.AppState
 import com.lightningkite.kiteui.reactive.Readable
 import com.lightningkite.kiteui.reactive.Writable
 import com.lightningkite.kiteui.reactive.invoke
 import com.lightningkite.kiteui.views.ViewWriter
 import com.lightningkite.lightningdb.HasId
+import com.lightningkite.lightningdb.SortPart
 import com.lightningkite.lightningserver.db.ModelCache
 import com.lightningkite.lightningserver.schema.ExternalLightningServer
 import com.lightningkite.serialization.*
+import kotlinx.datetime.Instant
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
+import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.descriptors.SerialKind
 import kotlin.js.JsName
 import kotlin.jvm.JvmName
@@ -110,7 +116,45 @@ data class FormSelector<T>(
     )
 }
 
-fun <T : HasId<ID>, ID : Comparable<ID>> KSerializer<T>.defaultTitleFields(): List<DataClassPath<T, *>> {
+fun <T> KSerializer<T>.naturalSort(): List<SortPart<T>> {
+    return serializableAnnotations.find {
+        it.fqn == "com.lightningkite.lightningdb.NaturalSort"
+    }?.values?.entries?.firstOrNull()?.let { it.value as? SerializableAnnotationValue.ArrayValue }?.value?.mapNotNull {
+        (it as? SerializableAnnotationValue.StringValue)?.value?.let {
+            UrlProperties.decodeFromString(SortPart.serializer(this@naturalSort), it)
+        }
+    } ?: serializableProperties?.find { it.name == "_id" && it.serializer == String.serializer() }?.let {
+        // named IDs
+        listOf(SortPart(DataClassPathAccess(DataClassPathSelf(this), it as SerializableProperty<T, String>), ignoreCase = true, ascending = true))
+    } ?: serializableProperties?.find { !it.serializer.descriptor.isNullable &&  it.serializer.descriptor.serialName.substringBefore('/') == "kotlinx.datetime.Instant" }?.let {
+        // Timestamps
+        listOf(SortPart(DataClassPathAccess(DataClassPathSelf(this), it as SerializableProperty<T, Instant>), ascending = false))
+    } ?: serializableProperties?.firstOrNull()?.let {
+        // Frick, I guess whatever the ID is
+        listOf(
+            SortPart(
+                DataClassPathAccess(
+                    DataClassPathSelf(this),
+                    it
+                ), ignoreCase = true, ascending = true
+            )
+        )
+    } ?: listOf()
+}
+fun <T> KSerializer<T>.defaultColumns(): List<DataClassPath<T, *>> {
+    return serializableAnnotations.find {
+        it.fqn == "com.lightningkite.lightningdb.AdminTableColumns"
+    }?.values?.entries?.firstOrNull()?.let { it.value as? SerializableAnnotationValue.ArrayValue }?.value?.mapNotNull {
+        (it as? SerializableAnnotationValue.StringValue)?.value?.let {
+            UrlProperties.decodeFromString(DataClassPathPartial.serializer(this), it) as DataClassPath<T, *>
+        }
+    } ?: serializableProperties!!.sortedBy {
+        it.importance
+    }.take(5).map {
+        DataClassPathAccess(DataClassPathSelf(this), it)
+    }
+}
+fun <T> KSerializer<T>.defaultTitleFields(): List<DataClassPath<T, *>> {
     val serializer = this
     val it = serializer.serializableProperties!!
     val dcps = DataClassPathSerializer(serializer)

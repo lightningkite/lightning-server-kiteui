@@ -58,10 +58,12 @@ class AuthComponent(
 ) {
     val primaryIdentifier = Property("")
     val phone = shared {
-        primaryIdentifier().takeIf { Regexes.phoneNumber.matches(it) }?.filter { it.isDigit() } ?: authResult()?.options?.find { it.method.property == "phone" }?.value
+        primaryIdentifier().takeIf { Regexes.phoneNumber.matches(it) }?.filter { it.isDigit() }
+            ?: authResult()?.options?.find { it.method.property == "phone" }?.value
     }
     val email = shared {
-        primaryIdentifier().takeIf { Regexes.email.matches(it) } ?: authResult()?.options?.find { it.method.property == "email" }?.value
+        primaryIdentifier().takeIf { Regexes.email.matches(it) }
+            ?: authResult()?.options?.find { it.method.property == "email" }?.value
     }
     val proofs = Property<List<Proof>>(listOf())
     val currentProof = Property<CurrentProof?>(null)
@@ -100,24 +102,22 @@ class AuthComponent(
                 val proveEmailOwnership = Action("Submit", Icon.done) {
                     onProof(p.proveEmailOwnership(FinishProof(codeKey, code())))
                 }
-                    col {
-                        col {
-                            subtext("Login code emailed to $id")
-                            spacing = 0.px
-                            fieldTheme - expanding - textInput {
-                                ::hint { "ABCDEF" }
-                                requestFocus()
-                                content bind code
-                                keyboardHints = KeyboardHints()
-                                action = proveEmailOwnership
-                            }
-                        }
-                        important - button {
-                            centered - text("Submit")
-                            action = proveEmailOwnership
-                        }
+
+                field("Login code emailed to $id") {
+                    val tf: TextField
+                    textInput {
+                        tf = this
+                        ::hint { "ABCDEF" }
+                        requestFocus()
+                        content bind code
+                        keyboardHints = KeyboardHints.id
+                    }
                 }
                 errorText()
+                important - button {
+                    centered - text("Submit")
+                    action = proveEmailOwnership
+                }
                 val newCodeSentAt = Property(now())
                 val nowBySecond = readable {
                     while (true) {
@@ -196,7 +196,12 @@ class AuthComponent(
         }
     }
 
-    inner class PasswordProof(val p: PasswordProofClientEndpoints, val type: String, val key: String, val value: String) : CurrentProof {
+    inner class PasswordProof(
+        val p: PasswordProofClientEndpoints,
+        val type: String,
+        val key: String,
+        val value: String
+    ) : CurrentProof {
         val code = Property("")
         override fun ViewWriter.render(onProof: (Proof) -> Unit) {
             col {
@@ -220,11 +225,17 @@ class AuthComponent(
                     }
                 }
                 // prevent duplicate errorText when logging in
-                onlyWhen { authResult()?.readyToLogIn == false } - errorText()            }
+                onlyWhen { authResult()?.readyToLogIn == false } - errorText()
+            }
         }
     }
 
-    inner class OtpProof(val p: OneTimePasswordProofClientEndpoints, val type: String, val key: String, val value: String) : CurrentProof {
+    inner class OtpProof(
+        val p: OneTimePasswordProofClientEndpoints,
+        val type: String,
+        val key: String,
+        val value: String
+    ) : CurrentProof {
         val code = Property("")
         override fun ViewWriter.render(onProof: (Proof) -> Unit) {
             col {
@@ -291,9 +302,12 @@ class AuthComponent(
                 }
             }
 
-            val ratio = shared { authResult()?.let { proofs().sumOf { it.strength } / it.strengthRequired.toFloat() } ?: 0f }
+            val ratio =
+                shared { authResult()?.let { proofs().sumOf { it.strength } / it.strengthRequired.toFloat() } ?: 0f }
             onlyWhen { ratio() in 0.001f..0.999f } - card - progressBar {
-                ::ratio { authResult()?.let { proofs().sumOf { it.strength } / it.strengthRequired.toFloat() } ?: 0.01f }
+                ::ratio {
+                    authResult()?.let { proofs().sumOf { it.strength } / it.strengthRequired.toFloat() } ?: 0.01f
+                }
             }
 
             knownDevice?.value?.takeIf {
@@ -317,7 +331,8 @@ class AuthComponent(
             onlyWhen { currentProof() == null && !authenticating() && authResult()?.readyToLogIn != true } - col {
 
                 onlyWhen { proofs().isNotEmpty() && authResult().let { it != null && !it.readyToLogIn } } - text("We need more information.")
-                val validId = shared { Regexes.email.matches(primaryIdentifier()) || Regexes.phoneNumber.matches(primaryIdentifier()) }
+                val validId =
+                    shared { Regexes.email.matches(primaryIdentifier()) || Regexes.phoneNumber.matches(primaryIdentifier()) }
 
                 val emailStartAction = endpoints.emailProof?.let { p ->
                     val action = Action("Email Code", Icon.send) {
@@ -325,7 +340,8 @@ class AuthComponent(
                         currentProof.value = EmailProof(p, id, p.beginEmailOwnershipProof(id))
                     }
                     onlyWhen {
-                        proofs().none { it.property == "email" } && (authResult()?.options?.any { it.method.property == "email" } ?: true) && email() != null
+                        proofs().none { it.property == "email" } && (authResult()?.options?.any { it.method.property == "email" }
+                            ?: true) && email() != null
                     } - important - buttonTheme - button {
                         this.action = action
                         centered - text("Email Code")
@@ -339,7 +355,8 @@ class AuthComponent(
                         currentProof.value = SmsProof(p, id, p.beginSmsOwnershipProof(id))
                     }
                     onlyWhen {
-                        proofs().none { it.property == "phone" } && (authResult()?.options?.any { it.method.property == "phone" } ?: true) && phone() != null
+                        proofs().none { it.property == "phone" } && (authResult()?.options?.any { it.method.property == "phone" }
+                            ?: true) && phone() != null
                     } - important - buttonTheme - button {
                         this.action = action
                         centered - text("Text Code")
@@ -357,7 +374,10 @@ class AuthComponent(
                             }, primaryIdentifier()
                         )
                     }
-                    onlyWhen { proofs().none { it.via == "password" } && (authResult()?.options?.any { it.method.via == "password" } ?: true) && validId() } - important - buttonTheme - button {
+                    onlyWhen {
+                        proofs().none { it.via == "password" } && (authResult()?.options?.any { it.method.via == "password" }
+                            ?: true) && validId()
+                    } - important - buttonTheme - button {
                         centered - text("Use Password")
                         this.action = action
                     }
@@ -374,7 +394,10 @@ class AuthComponent(
                             }, primaryIdentifier()
                         )
                     }
-                    onlyWhen { proofs().none { it.via == "otp" } && (authResult()?.options?.any { it.method.via == "otp" } ?: true) && validId() } - important - buttonTheme - button {
+                    onlyWhen {
+                        proofs().none { it.via == "otp" } && (authResult()?.options?.any { it.method.via == "otp" }
+                            ?: true) && validId()
+                    } - important - buttonTheme - button {
                         this.action = action
                         centered - text("Use Authenticator App")
                     }
@@ -430,7 +453,8 @@ class AuthComponent(
                     }
                     centered - text {
                         ::content {
-                            val days = authResult()?.maxExpiration?.let { it - now() }?.toDouble(DurationUnit.DAYS)?.roundToInt()
+                            val days = authResult()?.maxExpiration?.let { it - now() }?.toDouble(DurationUnit.DAYS)
+                                ?.roundToInt()
                             if (days != null) "Keep me logged in for $days days" else "Keep me logged in"
                         }
                     }
@@ -445,15 +469,21 @@ class AuthComponent(
                             println("Requesting full auth...")
                             val result = subject.logInV2(
                                 LogInRequest(
-                                proofs = proofs(),
-                                expires = desiredSessionLength()?.let { now() + it }
-                            ))
+                                    proofs = proofs(),
+                                    expires = desiredSessionLength()?.let { now() + it }
+                                ))
                             println("Result: $result")
                             result.session?.let {
                                 onAuthentication(it)
                                 (AppScope + Dispatchers.Main).launch {
                                     if (rememberDevice()) {
-                                        endpoints.authenticatedKnownDeviceProof?.invoke(LightningServerAuthentication(subject, subjectPath, it))?.establishKnownDeviceV2()?.let {
+                                        endpoints.authenticatedKnownDeviceProof?.invoke(
+                                            LightningServerAuthentication(
+                                                subject,
+                                                subjectPath,
+                                                it
+                                            )
+                                        )?.establishKnownDeviceV2()?.let {
                                             knownDevice?.value = KnownDeviceSecretInfoStuff(
                                                 info = it,
                                                 primaryIdentifier = primaryIdentifier.value
