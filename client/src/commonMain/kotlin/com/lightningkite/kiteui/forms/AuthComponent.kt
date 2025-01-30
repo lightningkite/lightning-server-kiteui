@@ -466,13 +466,11 @@ class AuthComponent(
                             if (authResult()?.readyToLogIn == true) requestFocus()
                         }
                         onClick {
-                            println("Requesting full auth...")
                             val result = subject.logInV2(
                                 LogInRequest(
                                     proofs = proofs(),
                                     expires = desiredSessionLength()?.let { now() + it }
                                 ))
-                            println("Result: $result")
                             result.session?.let {
                                 onAuthentication(it)
                                 (AppScope + Dispatchers.Main).launch {

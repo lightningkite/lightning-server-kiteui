@@ -45,7 +45,6 @@ private fun LightningServerKSchema.uploadEarlyVerifyEndpoint(): LightningServerK
 }
 
 private fun LightningServerKSchema.bulkEndpoint(): LightningServerKSchemaEndpoint? {
-    println("looking for bulk")
     return endpoints.find {
         it.path.contains("bulk") &&
                 it.input.serialName == "kotlin.collections.LinkedHashMap" &&
@@ -65,19 +64,19 @@ class ExternalLightningServer(
 ) {
     init {
         registry.register(schema)
-        println(registry.virtualTypes.keys.joinToString("\n"))
     }
 
-    val bulk = schema.bulkEndpoint()?.takeIf { false }
+    val bulk = schema.bulkEndpoint()
     val file = schema.uploadEarlyEndpoint()
     val fileVerify = schema.uploadEarlyVerifyEndpoint()
 
     fun authlessFetcher(path: String): Fetcher = fetcher(path, null)
 
+    private val nullToken: suspend () -> String? = { null }
     fun fetcher(path: String, auth: LightningServerAuthentication?): Fetcher {
         return bulk?.let {
-            BulkFetcher(path, json, auth?.let { it::accessToken } ?: { null })
-        } ?: ConnectivityOnlyFetcher(path, json, auth?.let { it::accessToken } ?: { null })
+            BulkFetcher(path, json, auth?.accessToken ?: nullToken)
+        } ?: ConnectivityOnlyFetcher(path, json, auth?.accessToken ?: nullToken)
     }
 
     val auth: AuthClientEndpoints = AuthClientEndpoints(
@@ -152,7 +151,6 @@ class ExternalLightningServer(
             schema.endpoints.any { it.path == inter.path && it.method == "WEBSOCKET" && it.input.serialName == "com.lightningkite.lightningdb.Condition" && it.output.serialName == "com.lightningkite.lightningdb.CollectionUpdates" }
 
         private var cacheCache = PerAuthCache { auth ->
-            println("Cache ${serializer.descriptor.serialName} created for ${auth?.sessionToken?.take(15)}")
             when {
                 hasUpdatesWs -> ClientModelRestEndpointsPlusUpdatesWebsocketStandardImpl(
                     fetchImplementation = auth?.let { fetcher(httpPath, it) } ?: authlessFetcher(httpPath),
@@ -254,14 +252,10 @@ class ExternalLightningServer(
 
     var screen: (type: ModelInfo<*, *>, id: Comparable<*>?) -> (() -> Screen)? = { _, _ -> null }
 
-    init {
-        println("Init Complete")
-        registry.registeredTypes.forEach { println(it)  }
-    }
 }
 
 class PerAuthCache<T>(val calculate: (LightningServerAuthentication?) -> T) {
-    val forNull = calculate(null)
+    val forNull by lazy { calculate(null) }
     var lastKnown: LightningServerAuthentication? = null
     var lastValue: T? = null
     operator fun invoke(auth: LightningServerAuthentication?): T {

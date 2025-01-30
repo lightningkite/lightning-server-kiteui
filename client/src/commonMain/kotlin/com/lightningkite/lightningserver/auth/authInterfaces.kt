@@ -43,14 +43,14 @@ data class LightningServerAuthentication(
 ) {
     var lastRefresh: Instant = Instant.DISTANT_PAST
     var token: Async<String?>? = null
-    suspend fun accessToken(): String? {
+    val accessToken = suspend {
         if (System.now() - lastRefresh > 4.minutes || token == null) {
             lastRefresh = System.now()
             token = asyncGlobal {
                 subject.getTokenSimple(sessionToken)
             }
         }
-        return token!!.await()
+        token!!.await()
     }
 }
 

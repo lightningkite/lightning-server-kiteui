@@ -41,7 +41,6 @@ val adminServer = shared {
     val s = ExternalLightningServer(serverSchema())
     s.screen = label@{ type, id ->
         type as ExternalLightningServer.ModelInfo<HasId<Comparable<Comparable<*>>>, Comparable<Comparable<*>>>
-        val cache = type.cache(null)
         val idAsString = UrlProperties.encodeToString(type.idserializer, id as Comparable<Comparable<*>>)
         return@label {
             DetailAdminScreen(

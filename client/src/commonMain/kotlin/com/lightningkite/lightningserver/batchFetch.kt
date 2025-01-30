@@ -26,6 +26,7 @@ private class DomainRequestHandler(
         val token: (suspend () -> String?),
         val delay: suspend (ms: Long) -> Unit = { ms -> kotlinx.coroutines.delay(ms) }
     ) {
+
         var byId = HashMap<String, BulkHandler>()
         var scheduled = false
         fun queue(id: String, bulk: BulkHandler) {
@@ -33,7 +34,7 @@ private class DomainRequestHandler(
             if (!scheduled) {
                 scheduled = true
                 launchGlobal {
-                    delay(50)
+                    delay(100)
                     fetch()
                 }
             }
@@ -50,8 +51,9 @@ private class DomainRequestHandler(
                     headers = {
                         httpHeaders(
                             listOfNotNull(
-                            token.invoke()?.let { "Authorization" to "Bearer ${it}" }
-                        ))
+                                token.invoke()?.let { "Authorization" to "Bearer ${it}" },
+                            )
+                        )
                     },
                     body = RequestBodyText(
                         json.encodeToString(todo.mapValues { it.value.request }),
@@ -77,22 +79,25 @@ private class DomainRequestHandler(
     }
 
     val byToken = HashMap<(suspend () -> String?), TokenHandler>()
-    fun token(token: (suspend () -> String?)) = byToken.getOrPut(token) { TokenHandler(token, delay) }
+    fun token(token: (suspend () -> String?)): TokenHandler {
+        return byToken.getOrPut(token) { TokenHandler(token, delay) }
+    }
 }
 
 private val queuedRequests = HashMap<String, DomainRequestHandler>()
 
 private class BulkHandler(val request: BulkRequest, val response: Continuation<BulkResponse>)
 
+private val noToken: (suspend () -> String?) = { null }
 suspend fun <OUT> batchFetch(
     url: String,
     method: HttpMethod = HttpMethod.GET,
-    token: (suspend () -> String?) = { null },
+    token: (suspend () -> String?) = noToken,
     bodyJson: String?,
     type: KSerializer<OUT>,
     json: Json = DefaultJson,
 ): OUT {
-    return suspendCoroutine<BulkResponse> {
+    return suspendCoroutine<BulkResponse> { cont ->
         val pathStartsAt = if (url.startsWith("http")) url.indexOf('/', 8) else 0
         val domain = url.substring(0, pathStartsAt)
         val path = url.substring(pathStartsAt)
@@ -103,7 +108,7 @@ suspend fun <OUT> batchFetch(
                 method = method.name,
                 body = bodyJson
             ),
-            response = it
+            response = cont
         )
         queuedRequests.getOrPut(domain) { DomainRequestHandler(domain) }.token(token).queue(id, bulk)
     }.let { it: BulkResponse ->
@@ -114,12 +119,14 @@ suspend fun <OUT> batchFetch(
         }
     }
 }
+
 suspend inline fun <reified OUT> batchFetch(
     url: String,
     method: HttpMethod = HttpMethod.GET,
     noinline token: (suspend () -> String?) = { null },
     bodyJson: String?,
     json: Json = DefaultJson,
-): OUT = batchFetch(url, method, token, bodyJson, json.serializersModule.serializer(typeOf<OUT>()) as KSerializer<OUT>, json)
+): OUT =
+    batchFetch(url, method, token, bodyJson, json.serializersModule.serializer(typeOf<OUT>()) as KSerializer<OUT>, json)
 
-class LsErrorException(val status: Short, val error: LSError): IllegalStateException("$status: ${error.message}")
+class LsErrorException(val status: Short, val error: LSError) : IllegalStateException("$status: ${error.message}")
