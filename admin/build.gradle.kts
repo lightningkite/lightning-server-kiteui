@@ -70,9 +70,11 @@ kotlin {
 //        val androidMain by getting {
 //            dependsOn(commonJvmMain)
 //        }
-//        val jvmMain by getting {
-//            dependsOn(commonJvmMain)
-//        }
+        val jsMain by getting {
+            dependencies {
+                implementation(npm("@js-joda/timezone", "2.3.0"))
+            }
+        }
     }
 }
 ksp {

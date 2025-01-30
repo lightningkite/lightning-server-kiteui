@@ -21,6 +21,8 @@ import com.lightningkite.lightningserver.networking.Fetcher
 import com.lightningkite.serialization.*
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
+import kotlinx.serialization.builtins.serializer
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.properties.Properties
 import kotlin.properties.ReadOnlyProperty
@@ -34,6 +36,12 @@ fun SerializationRegistry.register(schema: LightningServerKSchema) {
 
 private fun LightningServerKSchema.uploadEarlyEndpoint() = endpoints.find {
     it.output.serialName == "com.lightningkite.lightningserver.files.UploadInformation"
+}
+private fun LightningServerKSchema.uploadEarlyVerifyEndpoint(): LightningServerKSchemaEndpoint? {
+    val expected = uploadEarlyEndpoint()?.path?.plus("/verify") ?: return null
+    return endpoints.find {
+        it.path == expected
+    }
 }
 
 private fun LightningServerKSchema.bulkEndpoint(): LightningServerKSchemaEndpoint? {
@@ -60,8 +68,9 @@ class ExternalLightningServer(
         println(registry.virtualTypes.keys.joinToString("\n"))
     }
 
-    val bulk = schema.bulkEndpoint()
+    val bulk = schema.bulkEndpoint()?.takeIf { false }
     val file = schema.uploadEarlyEndpoint()
+    val fileVerify = schema.uploadEarlyVerifyEndpoint()
 
     fun authlessFetcher(path: String): Fetcher = fetcher(path, null)
 
@@ -211,9 +220,17 @@ class ExternalLightningServer(
     fun formModule(auth: LightningServerAuthentication?) = FormModule().apply {
         fileUpload = file?.let {
             { file ->
-                val req = authlessFetcher(schema.baseUrl).invoke(it.path, HttpMethod.GET, null, UploadInformation.serializer())
+                val req = fetcher(schema.baseUrl, auth).invoke(it.path, HttpMethod.GET, null, UploadInformation.serializer())
                 val r = connectivityFetch(req.uploadUrl, HttpMethod.PUT, body = RequestBodyFile(file))
                 if (!r.ok) throw IllegalStateException("File upload to ${req.uploadUrl.substringBefore('?')} failed")
+                val safe = fileVerify?.let { verify ->
+                    fetcher(schema.baseUrl, auth).invoke(
+                        verify.path,
+                        HttpMethod.POST,
+                        json.encodeToString(String.serializer(), req.futureCallToken),
+                        String.serializer()
+                    )
+                } ?: req.futureCallToken
                 ServerFile(req.futureCallToken)
             }
         }

@@ -17,13 +17,19 @@ import com.lightningkite.lightningserver.schema.*
 import com.lightningkite.serialization.ClientModule
 import com.lightningkite.serialization.SerializableProperty
 import com.lightningkite.serialization.serializableProperties
+import kotlinx.datetime.TimeZone
 import kotlin.time.Duration.Companion.milliseconds
 
 //val defaultTheme = brandBasedExperimental("bsa", normalBack = Color.white)
 val defaultTheme = Theme.flat("default", Angle(0.55f))
 val appTheme = Property<Theme>(defaultTheme)
 
+@JsModule("@js-joda/timezone")
+@JsNonModule
+external object JsJodaTimeZoneModule
+
 fun ViewWriter.app(navigator: ScreenNavigator, dialog: ScreenNavigator) {
+    val x = JsJodaTimeZoneModule
     com.lightningkite.prepareModelsShared()
     prepareModelsAdmin()
     DefaultSerializersModule = ClientModule

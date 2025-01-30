@@ -1,12 +1,11 @@
 package com.lightningkite.kiteui.forms
 
-import com.lightningkite.EmailAddress
-import com.lightningkite.Temperature
+import com.lightningkite.*
 import com.lightningkite.Temperature.Companion.celsius
 import com.lightningkite.Temperature.Companion.fahrenheit
-import com.lightningkite.UUID
 import com.lightningkite.kiteui.locale.renderToString
 import com.lightningkite.kiteui.models.Align
+import com.lightningkite.kiteui.models.Icon
 import com.lightningkite.kiteui.models.rem
 import com.lightningkite.kiteui.reactive.*
 import com.lightningkite.kiteui.views.ViewWriter
@@ -16,12 +15,13 @@ import com.lightningkite.kiteui.views.direct.*
 import com.lightningkite.kiteui.views.expanding
 import com.lightningkite.kiteui.views.fieldTheme
 import com.lightningkite.kiteui.views.l2.errorText
+import com.lightningkite.kiteui.views.l2.icon
 import com.lightningkite.lightningdb.Condition
 import com.lightningkite.lightningserver.files.ServerFile
 import com.lightningkite.serialization.SerializableAnnotationValue
 import com.lightningkite.serialization.UUIDSerializer
-import com.lightningkite.toEmailAddress
 import kotlinx.datetime.*
+import kotlin.time.Duration
 
 fun FormModule.defaults() {
     viewForTypeWithField<Boolean>(FormSize.Inline) { field, it ->
@@ -382,26 +382,114 @@ fun FormModule.defaults() {
             }
         }
     )
-    formForType<UUID>(FormSize(24.0, 1.0), UUIDSerializer) {
-        fieldTheme - textInput {
-            content bind it.lens(get = { it.toString() }, modify = { o, it ->
-                try {
-                    UUID.parse(it)
-                } catch (e: Exception) {
-                    o
+    formForType<PhoneNumber>(
+        size = FormSize(20.0, 1.0),
+        name = "Phone Number",
+        priority = 1f,
+        generate = { it ->
+            col {
+                fieldTheme - textInput {
+                    content bind it.lens(
+                        get = { it.raw },
+                        set = { it.toPhoneNumber() }
+                    )
                 }
-            })
+                errorText()
+            }
+        }
+    )
+    viewForType<PhoneNumber>(
+        size = FormSize(20.0, 1.0),
+        name = "Phone Number",
+        priority = 1f,
+        generate = { it ->
+            externalLink {
+                text {
+                    ::content { it().raw }
+                    wraps = false
+                    ellipsis = true
+                }
+                ::to { it().url }
+            }
+        }
+    )
+    formForType<TimeZone>(
+        size = FormSize(20.0, 1.0),
+        name = "Time Zone",
+        priority = 1f,
+        generate = { it ->
+            fieldTheme - select {
+                bind(it, Constant(TimeZone.availableZoneIds.map { TimeZone.of(it) }), { it.id })
+            }
+        }
+    )
+    formForType<TimeZone?>(
+        size = FormSize(20.0, 1.0),
+        name = "Time Zone",
+        priority = 1f,
+        generate = { it ->
+            fieldTheme - select {
+                bind(it, Constant(listOf(null) + TimeZone.availableZoneIds.map { TimeZone.of(it) }), { it?.id ?: "N/A" })
+            }
+        }
+    )
+    viewForType<GeoCoordinate>(
+        size = FormSize(20.0, 1.0),
+        name = "Geocoordinate - Direct Entry",
+        priority = 1f,
+        generate = { it ->
+            text { ::content { "${it().latitude}, ${it().longitude}" } }
+        }
+    )
+    formForType<GeoCoordinate>(
+        size = FormSize(20.0, 1.0),
+        name = "Geocoordinate - Direct Entry",
+        priority = 1f,
+        generate = { it ->
+            row {
+                expanding - fieldTheme - numberInput {
+                    hint = "Latitude"
+                    content bind it.lens(get = { it.latitude }, modify = { o, it -> o.copy(latitude = it ?: 0.0) })
+                }
+                expanding - fieldTheme - numberInput {
+                    hint = "Longitude"
+                    content bind it.lens(get = { it.longitude }, modify = { o, it -> o.copy(longitude = it ?: 0.0) })
+                }
+            }
+        }
+    )
+    formForType<UUID>(FormSize(24.0, 1.0), UUIDSerializer) {
+        fieldTheme - row {
+            expanding - textInput {
+                content bind it.lens(get = { it.toString() }, modify = { o, it ->
+                    try {
+                        UUID.parse(it)
+                    } catch (e: Exception) {
+                        o
+                    }
+                })
+            }
+            button {
+                icon(Icon.sync, "Regenerate")
+                onClick { it set UUID.random() }
+            }
         }
     }
     formForType<UUID>(FormSize(24.0, 1.0)) {
-        fieldTheme - textInput {
-            content bind it.lens(get = { it.toString() }, modify = { o, it ->
-                try {
-                    UUID.parse(it)
-                } catch (e: Exception) {
-                    o
-                }
-            })
+        fieldTheme - row {
+            expanding - textInput {
+                content bind it.lens(get = { it.toString() }, modify = { o, it ->
+                    try {
+                        UUID.parse(it)
+                    } catch (e: Exception) {
+                        o
+                    }
+                })
+            }
+            button {
+                icon(Icon.sync, "Regenerate")
+                onClick { it set UUID.random() }
+            }
         }
     }
     viewForType<UUID>(FormSize(24.0, 1.0), UUIDSerializer) {
@@ -453,9 +541,9 @@ fun FormModule.defaults() {
             approximateWidth = 12.0,
             approximateHeight = 1.0
         )
-    ) { prop -> localDateField { content bind prop } }
+    ) { prop -> fieldTheme - localDateField { content bind prop } }
     formForType<LocalTime>(FormSize(approximateWidth = 5.0, approximateHeight = 1.0)) { prop ->
-        localTimeField {
+        fieldTheme - localTimeField {
             content bind prop.lens(
                 get = { it },
                 modify = { old, it -> it ?: old })
@@ -492,6 +580,20 @@ fun FormModule.defaults() {
             approximateHeight = 1.0
         )
     ) { prop -> text { ::content { prop().renderToString() } } }
+
+
+//    formForType<Duration>(
+//        FormSize(
+//            approximateWidth = 20.0,
+//            approximateHeight = 1.0
+//        )
+//    ) { prop -> fieldTheme - localTimeField { content bind prop } }
+//    viewForType<Duration>(
+//        FormSize(
+//            approximateWidth = 17.0,
+//            approximateHeight = 1.0
+//        )
+//    ) { prop -> text { ::content { prop().renderToString() } } }
 
     fun ViewWriter.temperatureInput(writable: Writable<Temperature?>) = row {
         val celsius = Property(false)

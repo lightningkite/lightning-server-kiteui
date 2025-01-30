@@ -39,7 +39,7 @@ object ServerFileRenderer  : FormRenderer.Generator, ViewRenderer.Generator {
                         centered - expanding - text {
                             ellipsis = true
                             wraps = false
-                            ::content { writable()?.location?.substringAfterLast('/')?.substringBefore('?') ?: "None" }
+                            ::content { writable()?.location?.substringAfterLast('/')?.substringBefore('?')?.takeUnless { it.isBlank() } ?: "None" }
                         }
                     }
                 }

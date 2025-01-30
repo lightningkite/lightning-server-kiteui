@@ -126,7 +126,7 @@ fun <T> KSerializer<T>.naturalSort(): List<SortPart<T>> {
         }
     } ?: serializableProperties?.find { it.name == "_id" && it.serializer == String.serializer() }?.let {
         // named IDs
-        listOf(SortPart(DataClassPathAccess(DataClassPathSelf(this), it as SerializableProperty<T, String>), ignoreCase = true, ascending = true))
+        listOf(SortPart(DataClassPathAccess(DataClassPathSelf(this), it as SerializableProperty<T, String>), ascending = true))
     } ?: serializableProperties?.find { !it.serializer.descriptor.isNullable &&  it.serializer.descriptor.serialName.substringBefore('/') == "kotlinx.datetime.Instant" }?.let {
         // Timestamps
         listOf(SortPart(DataClassPathAccess(DataClassPathSelf(this), it as SerializableProperty<T, Instant>), ascending = false))
@@ -137,7 +137,7 @@ fun <T> KSerializer<T>.naturalSort(): List<SortPart<T>> {
                 DataClassPathAccess(
                     DataClassPathSelf(this),
                     it
-                ), ignoreCase = true, ascending = true
+                ), ascending = true
             )
         )
     } ?: listOf()
