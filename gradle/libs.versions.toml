@@ -16,21 +16,21 @@ vite = "0.4.0"
 
 [libraries]
 androidDesugaring = { module = "com.android.tools:desugar_jdk_libs", version = { ref = "androidDesugaring" } }
-comLightningkiteKiteuiLibrary = { module = "com.lightningkite.kiteui:library", version = "4.0.4" }
-comLightningkiteLightningserverProcessor = { module = "com.lightningkite.lightningserver:processor", version = "4.1.2" }
-comLightningkiteLightningserverServerAws = { module = "com.lightningkite.lightningserver:server-aws", version = "4.1.2" }
-comLightningkiteLightningserverServerAzure = { module = "com.lightningkite.lightningserver:server-azure", version = "4.1.2" }
-comLightningkiteLightningserverServerCore = { module = "com.lightningkite.lightningserver:server-core", version = "4.1.2" }
-comLightningkiteLightningserverServerDynamodb = { module = "com.lightningkite.lightningserver:server-dynamodb", version = "4.1.2" }
-comLightningkiteLightningserverServerFirebase = { module = "com.lightningkite.lightningserver:server-firebase", version = "4.1.2" }
-comLightningkiteLightningserverServerKtor = { module = "com.lightningkite.lightningserver:server-ktor", version = "4.1.2" }
-comLightningkiteLightningserverServerMemcached = { module = "com.lightningkite.lightningserver:server-memcached", version = "4.1.2" }
-comLightningkiteLightningserverServerMongo = { module = "com.lightningkite.lightningserver:server-mongo", version = "4.1.2" }
-comLightningkiteLightningserverServerRedis = { module = "com.lightningkite.lightningserver:server-redis", version = "4.1.2" }
-comLightningkiteLightningserverServerSentry = { module = "com.lightningkite.lightningserver:server-sentry", version = "4.1.2" }
-comLightningkiteLightningserverServerSftp = { module = "com.lightningkite.lightningserver:server-sftp", version = "4.1.2" }
-comLightningkiteLightningserverServerTesting = { module = "com.lightningkite.lightningserver:server-testing", version = "4.1.2" }
-comLightningkiteLightningserverShared = { module = "com.lightningkite.lightningserver:shared", version = "4.1.2" }
+comLightningkiteKiteuiLibrary = { module = "com.lightningkite.kiteui:library", version = "4.0.5" }
+comLightningkiteLightningserverProcessor = { module = "com.lightningkite.lightningserver:processor", version = "4.1.4" }
+comLightningkiteLightningserverServerAws = { module = "com.lightningkite.lightningserver:server-aws", version = "4.1.4" }
+comLightningkiteLightningserverServerAzure = { module = "com.lightningkite.lightningserver:server-azure", version = "4.1.4" }
+comLightningkiteLightningserverServerCore = { module = "com.lightningkite.lightningserver:server-core", version = "4.1.4" }
+comLightningkiteLightningserverServerDynamodb = { module = "com.lightningkite.lightningserver:server-dynamodb", version = "4.1.4" }
+comLightningkiteLightningserverServerFirebase = { module = "com.lightningkite.lightningserver:server-firebase", version = "4.1.4" }
+comLightningkiteLightningserverServerKtor = { module = "com.lightningkite.lightningserver:server-ktor", version = "4.1.4" }
+comLightningkiteLightningserverServerMemcached = { module = "com.lightningkite.lightningserver:server-memcached", version = "4.1.4" }
+comLightningkiteLightningserverServerMongo = { module = "com.lightningkite.lightningserver:server-mongo", version = "4.1.4" }
+comLightningkiteLightningserverServerRedis = { module = "com.lightningkite.lightningserver:server-redis", version = "4.1.4" }
+comLightningkiteLightningserverServerSentry = { module = "com.lightningkite.lightningserver:server-sentry", version = "4.1.4" }
+comLightningkiteLightningserverServerSftp = { module = "com.lightningkite.lightningserver:server-sftp", version = "4.1.4" }
+comLightningkiteLightningserverServerTesting = { module = "com.lightningkite.lightningserver:server-testing", version = "4.1.4" }
+comLightningkiteLightningserverShared = { module = "com.lightningkite.lightningserver:shared", version = "4.1.4" }
 kotlinerCli = { module = "com.lightningkite:kotliner-cli", version = { ref = "kotlinerCli" } }
 ktorCallLogging = { module = "io.ktor:ktor-server-call-logging", version = { ref = "ktor" } }
 proguard = { module = "com.guardsquare:proguard-gradle", version = { ref = "proguard" } }
