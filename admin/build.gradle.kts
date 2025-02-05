@@ -6,19 +6,24 @@ import org.jetbrains.kotlin.gradle.plugin.mpp.BitcodeEmbeddingMode
 import org.jetbrains.kotlin.gradle.plugin.mpp.NativeBuildType
 import org.jetbrains.kotlin.gradle.targets.js.webpack.KotlinWebpackConfig
 import java.util.*
+import com.lightningkite.deployhelpers.*
 
 plugins {
-    alias(serverlibs.plugins.kotlinMultiplatform)
-    alias(serverlibs.plugins.ksp)
-    alias(serverlibs.plugins.serialization)
-    alias(serverlibs.plugins.dokka)
-    alias(serverlibs.plugins.kiteui)
-    alias(serverlibs.plugins.vite)
+    signing
+    alias(libs.plugins.kotlinMultiplatform)
+    alias(libs.plugins.ksp)
+    alias(libs.plugins.serialization)
+    alias(libs.plugins.dokka)
+    alias(libs.plugins.vite)
+    id("com.lightningkite.kiteui") version "4.0.1"
 }
 apply<KiteUiPlugin>()
 
 group = "com.lightningkite"
 version = "1.0-SNAPSHOT"
+
+val lk = project.lk {
+}
 
 @OptIn(ExperimentalKotlinGradlePluginApi::class)
 kotlin {
@@ -83,7 +88,7 @@ ksp {
 
 dependencies {
     configurations.filter { it.name.startsWith("ksp") && it.name != "ksp" }.forEach {
-        add(it.name, serverlibs.lightningServerProcessor)
+        add(it.name, lk.lightningServer("processor", 4))
     }
 }
 

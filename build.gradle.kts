@@ -1,17 +1,21 @@
 plugins {
-    alias(serverlibs.plugins.dokka) apply false
-    alias(serverlibs.plugins.kotlinJvm) apply false
-    alias(serverlibs.plugins.kotlinMultiplatform) apply false
-    alias(serverlibs.plugins.androidApp) apply false
-    alias(serverlibs.plugins.androidLibrary) apply false
-    alias(serverlibs.plugins.graalVmNative) apply false
-    alias(serverlibs.plugins.shadow) apply false
+    alias(libs.plugins.dokka) apply false
+    alias(libs.plugins.kotlinJvm) apply false
+    alias(libs.plugins.kotlinMultiplatform) apply false
+    alias(libs.plugins.androidApp) apply false
+    alias(libs.plugins.androidLibrary) apply false
+    alias(libs.plugins.graalVmNative) apply false
+    alias(libs.plugins.shadow) apply false
 }
 
 buildscript {
+    repositories {
+        mavenLocal()
+        maven("https://lightningkite-maven.s3.us-west-2.amazonaws.com")
+    }
     dependencies {
-        classpath(serverlibs.deployHelpers)
-        classpath(serverlibs.proguard)
+        classpath("com.lightningkite:lk-gradle-helpers:1.0.0")
+        classpath(libs.proguard)
     }
 }
 

@@ -1,19 +1,19 @@
-import com.lightningkite.deployhelpers.developer
-import com.lightningkite.deployhelpers.github
-import com.lightningkite.deployhelpers.mit
-import com.lightningkite.deployhelpers.standardPublishing
+import com.lightningkite.deployhelpers.*
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 group = "com.lightningkite.lightningserver"
 
 plugins {
-    alias(serverlibs.plugins.kotlinMultiplatform)
-    alias(serverlibs.plugins.androidLibrary)
-    alias(serverlibs.plugins.ksp)
-    alias(serverlibs.plugins.serialization)
-    alias(serverlibs.plugins.dokka)
+    alias(libs.plugins.kotlinMultiplatform)
+    alias(libs.plugins.androidLibrary)
+    alias(libs.plugins.ksp)
+    alias(libs.plugins.serialization)
+    alias(libs.plugins.dokka)
+    alias(libs.plugins.vanniktechMavenPublish)
     id("signing")
-    `maven-publish`
+}
+
+val lk = project.lk {
 }
 
 kotlin {
@@ -36,8 +36,8 @@ kotlin {
     sourceSets {
         val commonMain by getting {
             dependencies {
-                api(serverlibs.lightningServerShared)
-                api(serverlibs.kiteUI)
+                api(lk.lightningServer("shared", 4))
+                api(lk.kiteUi(4))
             }
             kotlin {
                 srcDir(file("build/generated/ksp/common/commonMain/kotlin"))
@@ -64,33 +64,29 @@ android {
 
 dependencies {
     configurations.filter { it.name.startsWith("ksp") && it.name != "ksp" }.forEach {
-        add(it.name, serverlibs.lightningServerProcessor)
+        add(it.name, lk.lightningServer("processor", 4))
     }
 }
 
-standardPublishing {
-    name.set("Lightning-server-Client")
-    description.set("The client side of communication between server and client.")
-    github("lightningkite", "lightning-server")
+mavenPublishing {
+    // publishToMavenCentral(SonatypeHost.CENTRAL_PORTAL)
+    signAllPublications()
+    coordinates(group.toString(), name, version.toString())
+    pom {
+        name.set("Lightning-server-Client")
+        description.set("The client side of communication between server and client.")
+        github("lightningkite", "lightning-server")
 
-    licenses {
-        mit()
-    }
+        licenses {
+            mit()
+        }
 
-    developers {
-        developer(
-            id = "LightningKiteJoseph",
-            name = "Joseph Ivie",
-            email = "joseph@lightningkite.com",
-        )
-        developer(
-            id = "bjsvedin",
-            name = "Brady Svedin",
-            email = "brady@lightningkite.com",
-        )
+        developers {
+            joseph()
+            brady()
+        }
     }
 }
-
 android {
     namespace = "com.lightningkite.lightningserver.client"
     compileSdk = 34
@@ -104,6 +100,6 @@ android {
         targetCompatibility = JavaVersion.VERSION_1_8
     }
     dependencies {
-        coreLibraryDesugaring(serverlibs.androidDesugaring)
+        coreLibraryDesugaring(libs.androidDesugaring)
     }
 }

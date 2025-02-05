@@ -1,35 +1,37 @@
+import com.lightningkite.deployhelpers.*
 import org.gradle.api.internal.file.archive.ZipFileTree
 import proguard.gradle.ProGuardTask
 import java.util.*
 
 plugins {
-    alias(serverlibs.plugins.kotlinJvm)
-    alias(serverlibs.plugins.serialization)
-    alias(serverlibs.plugins.ksp)
+    alias(libs.plugins.kotlinJvm)
+    alias(libs.plugins.serialization)
+    alias(libs.plugins.ksp)
     application
-    alias(serverlibs.plugins.graalVmNative)
-    alias(serverlibs.plugins.shadow)
+    alias(libs.plugins.graalVmNative)
+    alias(libs.plugins.shadow)
 }
+
+val lk = project.lk {}
 
 group = "com.lightningkite.lightningserver"
 
 dependencies {
-    api(serverlibs.lightningServerShared)
-    api(serverlibs.lightningServerAws)
-    api(serverlibs.lightningServerAzure)
-    api(serverlibs.lightningServerCore)
-    api(serverlibs.lightningServerTesting)
-    api(serverlibs.lightningServerDynamodb)
-    api(serverlibs.lightningServerFirebase)
-    api(serverlibs.lightningServerKtor)
-    api(serverlibs.lightningServerMemcached)
-    api(serverlibs.lightningServerMongo)
-    api(serverlibs.lightningServerRedis)
-    api(serverlibs.lightningServerSentry)
-    api(serverlibs.lightningServerSftp)
-    ksp(serverlibs.lightningServerProcessor)
-    implementation(serverlibs.kotlinerCli)
-    implementation(serverlibs.ktorCallLogging)
+    api(lk.lightningServer("shared", 4))
+    api(lk.lightningServer("server-aws", 4))
+    api(lk.lightningServer("server-azure", 4))
+    api(lk.lightningServer("server-core", 4))
+    api(lk.lightningServer("server-testing", 4))
+    api(lk.lightningServer("server-dynamodb", 4))
+    api(lk.lightningServer("server-firebase", 4))
+    api(lk.lightningServer("server-ktor", 4))
+    api(lk.lightningServer("server-memcached", 4))
+    api(lk.lightningServer("server-mongo", 4))
+    api(lk.lightningServer("server-redis", 4))
+    api(lk.lightningServer("server-sentry", 4))
+    api(lk.lightningServer("server-sftp", 4))
+    implementation(libs.kotlinerCli)
+    implementation(libs.ktorCallLogging)
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit")
 }
 

@@ -16,3 +16,4 @@ bssoftware
 **/.DS_Store
 
 .kotlin
+local.version.txt
