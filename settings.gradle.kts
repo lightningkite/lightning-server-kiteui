@@ -11,8 +11,7 @@ pluginManagement {
         mavenCentral()
         maven { url = uri("https://maven.pkg.jetbrains.space/public/p/kotlinx-html/maven") }
         maven { url = uri("https://maven.pkg.jetbrains.space/public/p/ktor/eap") }
-        maven(url = "https://s01.oss.sonatype.org/content/repositories/snapshots/")
-        maven(url = "https://s01.oss.sonatype.org/content/repositories/releases/")
+        maven("https://lightningkite-maven.s3.us-west-2.amazonaws.com")
     }
 
     plugins {
@@ -23,8 +22,7 @@ pluginManagement {
     dependencyResolutionManagement {
         repositories {
             mavenLocal()
-            maven(url = "https://s01.oss.sonatype.org/content/repositories/snapshots/")
-            maven(url = "https://s01.oss.sonatype.org/content/repositories/releases/")
+            maven("https://lightningkite-maven.s3.us-west-2.amazonaws.com")
             google()
             gradlePluginPortal()
             mavenCentral()

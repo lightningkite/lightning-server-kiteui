@@ -15,7 +15,7 @@ plugins {
     alias(libs.plugins.serialization)
     alias(libs.plugins.dokka)
     alias(libs.plugins.vite)
-    id("com.lightningkite.kiteui") version "4.0.1"
+    alias(libs.plugins.comLightningkiteKiteui)
 }
 apply<KiteUiPlugin>()
 
@@ -23,6 +23,7 @@ group = "com.lightningkite"
 version = "1.0-SNAPSHOT"
 
 val lk = project.lk {
+    kiteUiPlugin(4)
 }
 
 @OptIn(ExperimentalKotlinGradlePluginApi::class)
