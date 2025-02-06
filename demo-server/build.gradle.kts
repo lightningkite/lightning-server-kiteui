@@ -30,6 +30,7 @@ dependencies {
     api(lk.lightningServer("server-redis", 4))
     api(lk.lightningServer("server-sentry", 4))
     api(lk.lightningServer("server-sftp", 4))
+    ksp(lk.lightningServer("processor", 4))
     implementation(libs.kotlinerCli)
     implementation(libs.ktorCallLogging)
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit")
