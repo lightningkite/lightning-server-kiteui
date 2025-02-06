@@ -8,7 +8,7 @@ plugins {
     alias(libs.plugins.androidLibrary)
     alias(libs.plugins.ksp)
     alias(libs.plugins.serialization)
-    alias(libs.plugins.dokka)
+//    alias(libs.plugins.dokka)
     alias(libs.plugins.vanniktechMavenPublish)
     id("signing")
 }
