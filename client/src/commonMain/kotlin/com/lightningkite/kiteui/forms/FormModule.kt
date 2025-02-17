@@ -21,6 +21,7 @@ import kotlinx.serialization.descriptors.SerialKind
 @OptIn(ExperimentalSerializationApi::class)
 class FormModule {
     var module = ClientModule
+    var showTypePicker = false
     var fileUpload: (suspend (FileReference) -> ServerFile)? = null
     var typeInfo: (type: String) -> FormTypeInfo<*, *>? = { _ -> println("WARN: Empty form context"); null }
 
@@ -67,7 +68,7 @@ class FormModule {
     }
     fun <T> view(key: FormSelector<T>): ViewRenderer<T> = viewCache(key) {
         val options = viewCandidates(key).filter { it.matches(this, key) }.sortedByDescending { it.priority(this, key) }.map { it.view(this, key) }.toList()
-        if (!key.withPicker) options.first()
+        if (!showTypePicker) options.first()
         else ViewRenderer(this, null, key, size = options.first().size, handlesField = options.first().handlesField) { field, writable ->
             val selected = Property(options.first())
             row {
@@ -93,7 +94,7 @@ class FormModule {
     }
     fun <T> form(key: FormSelector<T>): FormRenderer<T> = formCache(key) {
         val options = formCandidates(key).filter { it.matches(this, key) }.sortedByDescending { it.priority(this, key) }.map { it.form(this, key) }.toList()
-        if (!key.withPicker) options.first()
+        if (!showTypePicker) options.first()
         else FormRenderer(this, null, key, size = options.first().size, handlesField = options.first().handlesField) { field, writable ->
             val selected = Property(options.first())
             row {

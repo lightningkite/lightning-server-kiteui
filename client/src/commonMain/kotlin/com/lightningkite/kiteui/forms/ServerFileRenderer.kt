@@ -31,7 +31,8 @@ object ServerFileRenderer  : FormRenderer.Generator, ViewRenderer.Generator {
             row {
                 expanding - externalLink {
                     newTab = true
-                    ::to { writable()?.location ?: "" }
+                    ::enabled { writable() != null }
+                    ::to { writable()?.location }
                     row {
                         sizeConstraints(width = 3.rem, height = 3.rem) - image {
                             ::source { writable()?.location?.let(::ImageRemote) }
@@ -45,7 +46,7 @@ object ServerFileRenderer  : FormRenderer.Generator, ViewRenderer.Generator {
                 }
                 centered - button {
                     ::exists { module.fileUpload != null }
-                    icon(Icon.send, "Upload")
+                    icon(Icon.upload, "Upload")
                     onClick {
                         ExternalServices.requestFile()?.let {
                             writable set module.fileUpload!!.invoke(it)

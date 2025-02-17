@@ -45,7 +45,7 @@ class EndpointScreen(val path: String, val method: String) : Screen {
         scrolls - col {
             reactive {
                 clearChildren()
-                val forms = adminServer().formModule(adminAuthentication())
+                val forms = adminFormModule()
                 val inputSerializer = endpoint().input.serializer(server().registry, mapOf())
                 val outputSerializer = endpoint().output.serializer(server().registry, mapOf())
                 val input = Property<Any?>(inputSerializer.default())

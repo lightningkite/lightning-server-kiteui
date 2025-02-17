@@ -64,10 +64,16 @@ kotlin {
         val commonMain by getting {
             dependencies {
                 api(project(":client"))
+                api(lk.mavenOrLocal(
+                    gitUrl = "git@github.com:lightningkite/kotlinx-serialization-csv-durable.git",
+                    group = "com.lightningkite",
+                    artifact = "kotlinx-serialization-csv-durable",
+                    major = 0,
+                    minor = 2
+                ))
             }
             kotlin {
                 srcDir(file("build/generated/ksp/common/commonMain/kotlin"))
-                srcDir(file("build/generated/kiteui"))
             }
         }
 //        val commonJvmMain by creating {

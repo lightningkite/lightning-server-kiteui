@@ -18,7 +18,7 @@ import kotlinx.serialization.KSerializer
 import kotlinx.serialization.descriptors.StructureKind
 import kotlinx.serialization.internal.GeneratedSerializer
 
-enum class FieldVisibility { EDIT, READ, HIDDEN }
+enum class FieldVisibility { HIDDEN, READ, EDIT }
 
 object ByFieldRenderer : FormRenderer.Generator, ViewRenderer.Generator {
     override val name: String = "By Field"

@@ -44,7 +44,7 @@ class NewItemAdminScreen(val collectionName: String) : Screen {
         scrolls - col {
             reactive {
                 clearChildren()
-                val forms = adminServer().formModule(adminAuthentication())
+                val forms = adminFormModule()
                 form(forms, mc().serializer, item)
                 atEnd - important - button {
                     text("Save")

@@ -39,13 +39,25 @@ fun ViewWriter.app(navigator: ScreenNavigator, dialog: ScreenNavigator) {
     appNav(navigator, dialog) {
         appName = "KiteUI Sample App"
         ::navItems {
+            val permissions = loadedPermissions()
             try {
-                listOf(
-                    NavLink("Endpoints", icon = Icon.menu) { EndpointsScreen() }
-                ) + adminServer().models.entries.sortedBy { it.value.serializer.displayName }.map {
-                    NavLink(it.value.serializer.displayName, icon = Icon.list) { CollectionAdminScreen(it.key) }
+                buildList {
+                    add(NavLink("Home", icon = Icon.home) { HomeScreen() })
+                    if (adminSettings().showEndpoints) {
+                        add(NavLink("Endpoints", icon = Icon.menu) { EndpointsScreen() })
+                    }
+                    adminServer().models.entries.sortedBy { it.value.serializer.displayName }.forEach {
+                        if(permissions[it.key]?.read != Condition.Never) {
+                            add(
+                                NavLink(
+                                    it.value.serializer.displayName,
+                                    icon = Icon.list
+                                ) { CollectionAdminScreen(it.key) }
+                            )
+                        }
+                    }
                 }
-            } catch(e: Exception) {
+            } catch (e: Exception) {
                 listOf()
             }
         }
@@ -62,9 +74,11 @@ fun ViewWriter.app(navigator: ScreenNavigator, dialog: ScreenNavigator) {
                             val me = sharedSuspending label@{
                                 try {
                                     val creds = adminAuthentication() ?: return@label "Anonymous"
-                                    val sub = adminServer().auth.authenticatedSubjects[adminCredentials()?.userType ?: return@label "Anonymous"]?.invoke(creds)
+                                    val sub = adminServer().auth.authenticatedSubjects[adminCredentials()?.userType
+                                        ?: return@label "Anonymous"]?.invoke(creds)
                                         ?: return@label "Anonymous"
-                                    val serializer = (sub as AuthenticatedUserAuthClientEndpoints.StandardImpl<*, *>).userSerializer
+                                    val serializer =
+                                        (sub as AuthenticatedUserAuthClientEndpoints.StandardImpl<*, *>).userSerializer
                                     val self = sub.getSelf()
                                     serializer.serializableProperties
                                         ?.find { it.name == "email" || it.name == "phone" || it.name == "username" }
@@ -72,7 +86,7 @@ fun ViewWriter.app(navigator: ScreenNavigator, dialog: ScreenNavigator) {
                                         ?.get(self)
                                         ?.toString()
                                         ?: self.toString().take(40)
-                                } catch(e: Exception) {
+                                } catch (e: Exception) {
                                     "No Server"
                                 }
                             }
@@ -89,7 +103,7 @@ fun ViewWriter.app(navigator: ScreenNavigator, dialog: ScreenNavigator) {
                                     centered - subtext {
                                         ::content { me() }
                                     }
-                                    sizeConstraints(20.rem) - field("Server") {
+                                    sizeConstraints(width = 20.rem) - field("Server") {
                                         textInput {
                                             content bind serverUrl.debounceWrite(500.milliseconds)
                                         }
@@ -98,33 +112,43 @@ fun ViewWriter.app(navigator: ScreenNavigator, dialog: ScreenNavigator) {
                                         get = { it?.userType },
                                         modify = { o, v -> o?.copy(userType = v) ?: AdminCredentials(userType = v) }
                                     )
-                                    sizeConstraints(20.rem) - field("User Type") {
+                                    sizeConstraints(width = 20.rem) - field("User Type") {
                                         select {
                                             bind(
                                                 userType,
-                                                shared { listOf(null) + try {
-                                                    adminServer().auth.subjects.keys.toList()
-                                                } catch(e: Exception) { listOf() } },
+                                                shared {
+                                                    listOf(null) + try {
+                                                        adminServer().auth.subjects.keys.toList()
+                                                    } catch (e: Exception) {
+                                                        listOf()
+                                                    }
+                                                },
                                                 { it ?: "None" }
                                             )
                                         }
                                     }
-                                    sizeConstraints(20.rem) - field("Token") {
+                                    sizeConstraints(width = 20.rem) - field("Token") {
                                         textInput {
                                             content bind adminCredentials.lens(
                                                 get = { it?.session ?: "" },
-                                                modify = { o, v -> o?.copy(session = v.takeUnless { it.isBlank() }) ?: AdminCredentials(session = v.takeUnless { it.isBlank() }) }
+                                                modify = { o, v ->
+                                                    o?.copy(session = v.takeUnless { it.isBlank() })
+                                                        ?: AdminCredentials(session = v.takeUnless { it.isBlank() })
+                                                }
                                             )
                                         }
                                     }
-                                    sizeConstraints(20.rem) - stack {
+                                    sizeConstraints(width = 20.rem) - stack {
                                         reactive {
                                             clearChildren()
                                             try {
                                                 login(adminServer().auth, userType() ?: return@reactive) { v ->
-                                                    adminCredentials.value = adminCredentials.value?.copy(session = v) ?: AdminCredentials(session = v)
+                                                    adminCredentials.value =
+                                                        adminCredentials.value?.copy(session = v) ?: AdminCredentials(
+                                                            session = v
+                                                        )
                                                 }
-                                            } catch(e: Exception) {
+                                            } catch (e: Exception) {
                                                 text("Need valid URL")
                                             }
                                         }

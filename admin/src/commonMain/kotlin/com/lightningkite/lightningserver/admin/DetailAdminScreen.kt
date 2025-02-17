@@ -40,7 +40,7 @@ class DetailAdminScreen(val collectionName: String, val itemId: String) : Screen
             weight(2f) - scrolls - col {
                 reactive {
                     clearChildren()
-                    val forms = adminServer().formModule(adminAuthentication())
+                    val forms = adminFormModule()
                     form(forms, mc().serializer, item)
                     atEnd - row {
                         danger - button {

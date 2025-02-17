@@ -34,4 +34,5 @@ pluginManagement {
 include(":client")
 include(":demo-server")
 include(":admin")
+include(":monitoring")
 
