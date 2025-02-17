@@ -75,7 +75,7 @@ mavenPublishing {
     pom {
         name.set("Lightning-server-Client")
         description.set("The client side of communication between server and client.")
-        github("lightningkite", "lightning-server")
+        github("lightningkite", "lightning-server-kiteui")
 
         licenses {
             mit()
