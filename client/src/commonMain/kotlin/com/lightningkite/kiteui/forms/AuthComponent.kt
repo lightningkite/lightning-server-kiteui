@@ -110,6 +110,7 @@ class AuthComponent(
                         ::hint { "ABCDEF" }
                         requestFocus()
                         content bind code
+                        action = proveEmailOwnership
                         keyboardHints = KeyboardHints.id
                     }
                 }
@@ -149,6 +150,9 @@ class AuthComponent(
         val code = Property("")
         override fun ViewWriter.render(onProof: (Proof) -> Unit) {
             col {
+                val provePhoneOwnership = Action("Submit", Icon.done) {
+                    onProof(p.provePhoneOwnership(FinishProof(codeKey, code())))
+                }
                 field("Login code texted to $id") {
                     row {
                         val tf: TextField
@@ -156,19 +160,17 @@ class AuthComponent(
                             tf = this
                             ::hint { "ABCDEF" }
                             requestFocus()
+                            action = provePhoneOwnership
                             content bind code
                             keyboardHints = KeyboardHints.id
-                        }
-                        button {
-                            spacing = 0.px
-                            centered - icon(Icon.send, "Submit")
-                            onClickAssociatedField(tf) {
-                                onProof(p.provePhoneOwnership(FinishProof(codeKey, code())))
-                            }
                         }
                     }
                 }
                 errorText()
+                important - button {
+                    centered - text("Submit")
+                    action = provePhoneOwnership
+                }
                 val newCodeSentAt = Property(now())
                 val nowBySecond = readable {
                     while (true) {
@@ -352,7 +354,10 @@ class AuthComponent(
                 val smsStartAction = endpoints.smsProof?.let { p ->
                     val action = Action("Text Code", Icon.send) {
                         val id = phone() ?: return@Action
+                        println("Debug p ${p}")
+                        println("Debug id ${id}")
                         currentProof.value = SmsProof(p, id, p.beginSmsOwnershipProof(id))
+                        println("Debug CurrentProof.value ${currentProof.value}")
                     }
                     onlyWhen {
                         proofs().none { it.property == "phone" } && (authResult()?.options?.any { it.method.property == "phone" }
