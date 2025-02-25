@@ -50,7 +50,8 @@ fun ViewWriter.app(navigator: ScreenNavigator, dialog: ScreenNavigator) {
                         if(permissions[it.key]?.read != Condition.Never) {
                             add(
                                 NavLink(
-                                    it.value.serializer.displayName,
+                                    it.value.docGroup?.titleCase() ?: it.value.serializer.displayName,
+//                                    it.value.serializer.displayName,
                                     icon = Icon.list
                                 ) { CollectionAdminScreen(it.key) }
                             )

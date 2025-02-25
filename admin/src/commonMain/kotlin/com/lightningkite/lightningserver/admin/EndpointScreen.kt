@@ -78,7 +78,7 @@ class EndpointScreen(val path: String, val method: String) : Screen {
                     onClick {
                         output.state = ReadableState.notReady
                         output.state = readableState {
-                            server().fetcher(server().schema.baseUrl, adminAuthentication()).invoke(
+                            server().fetcher("", adminAuthentication()).invoke(
                                 url = path(),
                                 method = HttpMethod.valueOf(endpoint().method),
                                 jsonBody = DefaultJson.encodeToString(inputSerializer, input.value),

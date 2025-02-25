@@ -4,6 +4,7 @@ import com.lightningkite.kiteui.Routable
 import com.lightningkite.kiteui.monitoring.Funnels
 import com.lightningkite.kiteui.monitoring.funnel
 import com.lightningkite.kiteui.navigation.Screen
+import com.lightningkite.kiteui.reactive.reactive
 import com.lightningkite.kiteui.views.ViewWriter
 import com.lightningkite.kiteui.views.direct.button
 import com.lightningkite.kiteui.views.direct.col
@@ -13,10 +14,8 @@ import com.lightningkite.kiteui.views.direct.text
 @Routable("funnel")
 class FunnelTestScreen: Screen {
     override fun ViewWriter.render(): Any? = col {
-        run {
-            Funnels.namespace = "monitoring.cs.lightningkite.com"
-            Funnels.token = "4D6chhY7dpvhF64BNkUjV7gKFdarzPvNrfio7EHpvoXYjfJ8JKLjcKazjF4UDKZimdZxH2RLTI1sO3PR3Tu/jw=="
-            Funnels.user = "Sample"
+        reactive {
+            Funnels.fetcher = adminServer().fetcher("", adminAuthentication())
         }
         val funnel by lazy { funnel("test") }
         button {

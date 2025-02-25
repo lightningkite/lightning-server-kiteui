@@ -146,6 +146,7 @@ class ExternalLightningServer(
     )
 
     inner class ModelInfo<T : HasId<ID>, ID : Comparable<ID>>(val inter: LightningServerKSchemaInterface) {
+        val docGroup = inter.docGroup
         val serializer = inter.matches.arguments[0].serializer(registry, mapOf()) as KSerializer<T>
         val idserializer = serializer.serializableProperties!!.find { it.name == "_id" }!!.serializer as KSerializer<ID>
         val vserializer = inter.matches.arguments[0].serializer(registry, mapOf()) as KSerializer<HasId<Comparable<Comparable<*>>>>
@@ -155,6 +156,10 @@ class ExternalLightningServer(
             schema.endpoints.any { it.path == inter.path && it.method == "WEBSOCKET" && it.input.serialName == "com.lightningkite.lightningdb.Query" && it.output.serialName == "com.lightningkite.lightningdb.ListChange" }
         val hasUpdatesWs =
             schema.endpoints.any { it.path == inter.path && it.method == "WEBSOCKET" && it.input.serialName == "com.lightningkite.lightningdb.Condition" && it.output.serialName == "com.lightningkite.lightningdb.CollectionUpdates" }
+
+        init {
+            println("${inter.path} uses ${serializer::class}")
+        }
 
         private var cacheCache = PerAuthCache { auth ->
             when {

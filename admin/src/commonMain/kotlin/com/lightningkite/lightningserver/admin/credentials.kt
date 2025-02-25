@@ -69,10 +69,11 @@ val loadedPermissions: Readable<Map<String, ModelPermissions<out HasId<out Compa
             } catch(e: LsErrorException) {
                 if(e.status == 403.toShort()) ModelPermissions()
                 else if(e.status == 401.toShort()) ModelPermissions()
-                else throw e
+                else ModelPermissions.allowAll()
             }
         }
     }.awaitAll().associate { it }
+//    mapOf()
 }
 val adminServer = shared {
     println("Refetching ")
