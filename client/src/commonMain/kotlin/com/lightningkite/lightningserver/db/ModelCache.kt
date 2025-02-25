@@ -78,7 +78,7 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
             flushLists()
         }
 
-        override suspend fun modify(modification: Modification<T>): T? {
+        override suspend fun modify(modification: Modification<T>): T {
             apiCalls++
             val value = skipCache.modify(id, modification)
             onFreshData(value)
@@ -358,6 +358,8 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
             }
         flushLists()
     }
+
+    fun localInsert(item: T): T = itemHolder(item).lastKnownValue!!
 }
 
 class ChangeUpdateWrapper<T : HasId<ID>, ID : Comparable<ID>>(

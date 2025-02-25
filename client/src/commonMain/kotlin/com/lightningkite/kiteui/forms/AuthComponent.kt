@@ -13,9 +13,11 @@ import com.lightningkite.lightningserver.LsErrorException
 import com.lightningkite.lightningserver.auth.*
 import com.lightningkite.lightningserver.auth.proof.FinishProof
 import com.lightningkite.lightningserver.auth.proof.IdentificationAndPassword
+import com.lightningkite.lightningserver.auth.proof.KnownDeviceOptions
 import com.lightningkite.lightningserver.auth.proof.KnownDeviceSecretAndExpiration
 import com.lightningkite.lightningserver.auth.proof.Proof
 import com.lightningkite.lightningserver.auth.subject.LogInRequest
+import com.lightningkite.lightningserver.auth.subject.ProofsCheckResult
 import com.lightningkite.now
 import kotlinx.coroutines.*
 import kotlinx.serialization.Serializable
@@ -72,10 +74,39 @@ class AuthComponent(
     val desiredSessionLength = Property<Duration?>(1.days)
     val authResult = sharedSuspending {
         val proofs = proofs()
+
         if (proofs.isEmpty()) return@sharedSuspending null
         authenticating.value = true
         try {
             val result = subject.checkProofs(proofs())
+            if (result.readyToLogIn) {
+                val result = subject.logInV2(
+                    LogInRequest(
+                        proofs = proofs(),
+                        expires = desiredSessionLength()?.let { now() + it }
+                    ))
+                result.session?.let {
+                    onAuthentication(it)
+                    (AppScope + Dispatchers.Main).launch {
+                        if (rememberDevice()) {
+                            endpoints.authenticatedKnownDeviceProof?.invoke(
+                                LightningServerAuthentication(
+                                    subject,
+                                    subjectPath,
+                                    it
+                                )
+                            )?.establishKnownDeviceV2()?.let {
+                                knownDevice?.value = KnownDeviceSecretInfoStuff(
+                                    info = it,
+                                    primaryIdentifier = primaryIdentifier.value
+                                )
+                            }
+                        } else {
+                            knownDevice?.value = null
+                        }
+                    }
+                }
+            }
             result
         } catch (e: LsErrorException) {
             if (e.status / 100 == 4) this@AuthComponent.proofs.value = listOf()
@@ -110,9 +141,11 @@ class AuthComponent(
                         ::hint { "ABCDEF" }
                         requestFocus()
                         content bind code
+                        action = proveEmailOwnership
                         keyboardHints = KeyboardHints.id
                     }
                 }
+                sessionLengthComponent(knownDeviceOptions, rememberDevice, desiredSessionLength, authResult)
                 errorText()
                 important - button {
                     centered - text("Submit")
@@ -149,26 +182,26 @@ class AuthComponent(
         val code = Property("")
         override fun ViewWriter.render(onProof: (Proof) -> Unit) {
             col {
+                val provePhoneOwnership = Action("Submit", Icon.done) {
+                    onProof(p.provePhoneOwnership(FinishProof(codeKey, code())))
+                }
                 field("Login code texted to $id") {
-                    row {
-                        val tf: TextField
-                        expanding - textInput {
-                            tf = this
-                            ::hint { "ABCDEF" }
-                            requestFocus()
-                            content bind code
-                            keyboardHints = KeyboardHints.id
-                        }
-                        button {
-                            spacing = 0.px
-                            centered - icon(Icon.send, "Submit")
-                            onClickAssociatedField(tf) {
-                                onProof(p.provePhoneOwnership(FinishProof(codeKey, code())))
-                            }
-                        }
+                    val tf: TextField
+                    expanding - textInput {
+                        tf = this
+                        ::hint { "ABCDEF" }
+                        requestFocus()
+                        action = provePhoneOwnership
+                        content bind code
+                        keyboardHints = KeyboardHints.id
                     }
                 }
+                sessionLengthComponent(knownDeviceOptions, rememberDevice, desiredSessionLength, authResult)
                 errorText()
+                important - button {
+                    centered - text("Submit")
+                    action = provePhoneOwnership
+                }
                 val newCodeSentAt = Property(now())
                 val nowBySecond = readable {
                     while (true) {
@@ -204,28 +237,29 @@ class AuthComponent(
     ) : CurrentProof {
         val code = Property("")
         override fun ViewWriter.render(onProof: (Proof) -> Unit) {
+            val provePasswordOwnership = Action("Submit", Icon.done) {
+                onProof(p.provePasswordOwnership(IdentificationAndPassword(type, key, value, code())))
+            }
             col {
                 field("Password") {
-                    row {
-                        val tf: TextField
-                        expanding - textInput {
-                            tf = this
-                            ::hint { "" }
-                            requestFocus()
-                            content bind code
-                            keyboardHints = KeyboardHints.password
-                        }
-                        button {
-                            spacing = 0.px
-                            centered - icon(Icon.send, "Submit")
-                            onClickAssociatedField(tf) {
-                                onProof(p.provePasswordOwnership(IdentificationAndPassword(type, key, value, code())))
-                            }
-                        }
+                    val tf: TextField
+                    textInput {
+                        tf = this
+                        ::hint { "" }
+                        requestFocus()
+                        content bind code
+                        action = provePasswordOwnership
+                        keyboardHints = KeyboardHints.password
                     }
                 }
+                sessionLengthComponent(knownDeviceOptions, rememberDevice, desiredSessionLength, authResult)
                 // prevent duplicate errorText when logging in
                 onlyWhen { authResult()?.readyToLogIn == false } - errorText()
+                important - button {
+                    centered - text("Submit")
+                    action = provePasswordOwnership
+                }
+
             }
         }
     }
@@ -239,27 +273,27 @@ class AuthComponent(
         val code = Property("")
         override fun ViewWriter.render(onProof: (Proof) -> Unit) {
             col {
-                field("One-time Password from App") {
-                    row {
-                        val tf: TextField
-                        expanding - textInput {
-                            tf = this
-                            ::hint { "000000" }
-                            requestFocus()
-                            content bind code
-                            keyboardHints = KeyboardHints.integer
-                        }
-                        button {
-                            spacing = 0.px
-                            centered - icon(Icon.send, "Submit")
-                            onClickAssociatedField(tf) {
-                                onProof(p.proveOTP(IdentificationAndPassword(type, key, value, code())))
-                            }
-                        }
+                val proveOtpProofAction = Action("Submit", Icon.done) {
+                    onProof(p.proveOTP(IdentificationAndPassword(type, key, value, code())))
+                }
+                    field("One-time Password from App") {
+                    val tf: TextField
+                    textInput {
+                        tf = this
+                        ::hint { "000000" }
+                        requestFocus()
+                        content bind code
+                        keyboardHints = KeyboardHints.integer
+                        action = proveOtpProofAction
                     }
                 }
-                errorText()
-            }
+                        sessionLengthComponent(knownDeviceOptions, rememberDevice, desiredSessionLength, authResult)
+                        errorText()
+                        button {
+                            centered - text("Submit")
+                            action = proveOtpProofAction
+                        }
+                    }
         }
     }
 
@@ -352,7 +386,10 @@ class AuthComponent(
                 val smsStartAction = endpoints.smsProof?.let { p ->
                     val action = Action("Text Code", Icon.send) {
                         val id = phone() ?: return@Action
+                        println("Debug p ${p}")
+                        println("Debug id ${id}")
                         currentProof.value = SmsProof(p, id, p.beginSmsOwnershipProof(id))
+                        println("Debug CurrentProof.value ${currentProof.value}")
                     }
                     onlyWhen {
                         proofs().none { it.property == "phone" } && (authResult()?.options?.any { it.method.property == "phone" }
@@ -416,6 +453,8 @@ class AuthComponent(
                     }
                 }
             }
+//            sessionLengthComponent(knownDeviceOptions,rememberDevice,desiredSessionLength,authResult)
+
 
             stack {
                 reactive {
@@ -428,79 +467,40 @@ class AuthComponent(
                     }
                 }
             }
-
-            onlyWhen { authResult()?.readyToLogIn == true } - col {
-                centered - affirmative - stack {
-                    col {
-                        spacing = 0.px
-                        centered - icon(Icon.done, "")
-                        centered - text("You're ready to go!")
-                    }
-                }
-                onlyWhen { knownDeviceOptions() != null } - row {
-                    centered - checkbox { checked bind rememberDevice }
-                    centered - text {
-                        content = "This is my device"
-//                        ::content { "Remember this device for ${knownDeviceOptions()?.duration?.inWholeDays} days" }
-                    }
-                }
-                onlyWhen { rememberDevice() || knownDeviceOptions() == null } - row {
-                    centered - checkbox {
-                        checked bind desiredSessionLength.lens(
-                            get = { it != 1.days },
-                            set = { if (it) null else 1.days }
-                        )
-                    }
-                    centered - text {
-                        ::content {
-                            val days = authResult()?.maxExpiration?.let { it - now() }?.toDouble(DurationUnit.DAYS)
-                                ?.roundToInt()
-                            if (days != null) "Keep me logged in for $days days" else "Keep me logged in"
-                        }
-                    }
-                }
-                col {
-                    buttonTheme - important - button {
-                        centered - text("Log In")
-                        reactive {
-                            if (authResult()?.readyToLogIn == true) requestFocus()
-                        }
-                        onClick {
-                            val result = subject.logInV2(
-                                LogInRequest(
-                                    proofs = proofs(),
-                                    expires = desiredSessionLength()?.let { now() + it }
-                                ))
-                            result.session?.let {
-                                onAuthentication(it)
-                                (AppScope + Dispatchers.Main).launch {
-                                    if (rememberDevice()) {
-                                        endpoints.authenticatedKnownDeviceProof?.invoke(
-                                            LightningServerAuthentication(
-                                                subject,
-                                                subjectPath,
-                                                it
-                                            )
-                                        )?.establishKnownDeviceV2()?.let {
-                                            knownDevice?.value = KnownDeviceSecretInfoStuff(
-                                                info = it,
-                                                primaryIdentifier = primaryIdentifier.value
-                                            )
-                                        }
-                                    } else {
-                                        knownDevice?.value = null
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    errorText()
-                }
-            }
-
+            errorText()
             centered - onlyWhen { authenticating() } - row {
                 activityIndicator()
                 centered - text("Authenticating...")
+            }
+        }
+    }
+}
+
+fun ViewWriter.sessionLengthComponent(
+    knownDeviceOptions: Readable<KnownDeviceOptions?>,
+    rememberDevice: Property<Boolean>,
+    desiredSessionLength: Property<Duration?>,
+    authResult: Readable<ProofsCheckResult<out Comparable<*>>?>
+) {
+    onlyWhen { knownDeviceOptions() != null } - row {
+        centered - checkbox { checked bind rememberDevice }
+        centered - text {
+            content = "This is my device"
+//                        ::content { "Remember this device for ${knownDeviceOptions()?.duration?.inWholeDays} days" }
+        }
+    }
+    onlyWhen { rememberDevice() || knownDeviceOptions() == null } - row {
+        centered - checkbox {
+            checked bind desiredSessionLength.lens(
+                get = { it != 1.days },
+                set = { if (it) null else 1.days }
+            )
+        }
+        centered - text {
+            ::content {
+                val days = authResult()?.maxExpiration?.let { it - now() }?.toDouble(DurationUnit.DAYS)
+                    ?.roundToInt()
+                if (days != null) "Keep me logged in for $days days" else "Keep me logged in"
             }
         }
     }
