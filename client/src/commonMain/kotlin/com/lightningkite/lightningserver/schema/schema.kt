@@ -229,11 +229,11 @@ class ExternalLightningServer(
     fun formModule(auth: LightningServerAuthentication?) = FormModule().apply {
         fileUpload = file?.let {
             { file ->
-                val req = fetcher(schema.baseUrl, auth).invoke(it.path, HttpMethod.GET, null, UploadInformation.serializer())
+                val req = fetcher("", auth).invoke(it.path, HttpMethod.GET, null, UploadInformation.serializer())
                 val r = connectivityFetch(req.uploadUrl, HttpMethod.PUT, body = RequestBodyFile(file))
                 if (!r.ok) throw IllegalStateException("File upload to ${req.uploadUrl.substringBefore('?')} failed")
                 val safe = fileVerify?.let { verify ->
-                    fetcher(schema.baseUrl, auth).invoke(
+                    fetcher("", auth).invoke(
                         verify.path,
                         HttpMethod.POST,
                         json.encodeToString(String.serializer(), req.futureCallToken),
