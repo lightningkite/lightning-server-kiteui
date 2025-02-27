@@ -251,8 +251,6 @@ class AuthComponent(
                     }
                 }
                 sessionLengthComponent(knownDeviceOptions, rememberDevice, desiredSessionLength, authResult)
-                // prevent duplicate errorText when logging in
-                errorText()
                 important - button {
                     centered - text("Submit")
                     action = provePasswordOwnership
@@ -286,7 +284,6 @@ class AuthComponent(
                     }
                 }
                         sessionLengthComponent(knownDeviceOptions, rememberDevice, desiredSessionLength, authResult)
-                        errorText()
                         button {
                             centered - text("Submit")
                             action = proveOtpProofAction
@@ -465,7 +462,6 @@ class AuthComponent(
                     }
                 }
             }
-            errorText()
             centered - onlyWhen { authenticating() } - row {
                 activityIndicator()
                 centered - text("Authenticating...")
