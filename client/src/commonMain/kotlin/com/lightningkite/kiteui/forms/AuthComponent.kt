@@ -146,7 +146,6 @@ class AuthComponent(
                     }
                 }
                 sessionLengthComponent(knownDeviceOptions, rememberDevice, desiredSessionLength, authResult)
-                errorText()
                 important - button {
                     centered - text("Submit")
                     action = proveEmailOwnership
@@ -197,7 +196,6 @@ class AuthComponent(
                     }
                 }
                 sessionLengthComponent(knownDeviceOptions, rememberDevice, desiredSessionLength, authResult)
-                errorText()
                 important - button {
                     centered - text("Submit")
                     action = provePhoneOwnership
@@ -254,7 +252,7 @@ class AuthComponent(
                 }
                 sessionLengthComponent(knownDeviceOptions, rememberDevice, desiredSessionLength, authResult)
                 // prevent duplicate errorText when logging in
-                onlyWhen { authResult()?.readyToLogIn == false } - errorText()
+                errorText()
                 important - button {
                     centered - text("Submit")
                     action = provePasswordOwnership
