@@ -110,6 +110,7 @@ class AuthComponent(
             result
         } catch (e: LsErrorException) {
             if (e.status / 100 == 4) this@AuthComponent.proofs.value = listOf()
+            if(e.status / 100 == 5) throw e
             null
         } finally {
             authenticating.value = false
