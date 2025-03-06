@@ -1,6 +1,8 @@
 package com.lightningkite.lightningserver.admin
 
 import com.lightningkite.*
+import com.lightningkite.kiteui.exceptions.ExceptionMessage
+import com.lightningkite.kiteui.exceptions.ExceptionToMessage
 import com.lightningkite.kiteui.exceptions.ExceptionToMessages
 import com.lightningkite.kiteui.exceptions.installLsError
 import com.lightningkite.kiteui.forms.displayName
@@ -151,6 +153,18 @@ fun ViewWriter.app(navigator: ScreenNavigator, dialog: ScreenNavigator) {
                                                 }
                                             } catch (e: Exception) {
                                                 text("Need valid URL")
+                                            }
+                                        }
+                                    }
+                                    onlyWhen { adminCredentials() != null } - card - button {
+                                        centered - row {
+                                            centered - icon(Icon.logout, "Log Out")
+                                            centered - text("Log Out")
+                                        }
+                                        onClick("Log Out") {
+                                            confirmDanger("Log Out", "Are you sure you want to log out?", "Log Out") {
+                                                screenNavigator.reset(HomeScreen())
+                                                adminCredentials.value = null
                                             }
                                         }
                                     }

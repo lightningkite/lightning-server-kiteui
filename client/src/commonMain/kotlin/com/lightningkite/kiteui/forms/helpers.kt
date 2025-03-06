@@ -11,6 +11,7 @@ import com.lightningkite.serialization.*
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.descriptors.*
 import kotlinx.serialization.encoding.*
+import kotlin.properties.ReadWriteProperty
 
 
 data class FormSize(

@@ -14,6 +14,7 @@ import com.lightningkite.kiteui.views.direct.stack
 import com.lightningkite.kiteui.views.expanding
 import com.lightningkite.kiteui.views.fieldTheme
 import com.lightningkite.lightningdb.MySealedClassSerializerInterface
+import com.lightningkite.serialization.PartialSerializer
 import com.lightningkite.serialization.SerializableProperty
 import com.lightningkite.serialization.default
 import kotlinx.serialization.KSerializer

@@ -63,4 +63,4 @@ val SerializableProperty<*, *>.indexed get() = serializableAnnotations.any {
 }
 
 fun SerializableProperty<*,*>.visibility(module: FormModule): FieldVisibility =
-    serializableAnnotations.mapNotNull { module.visibilitySettings[it.fqn] }.maxOrNull() ?: FieldVisibility.EDIT
+    serializableAnnotations.mapNotNull { module.visibilitySettings[it.fqn] }.minOrNull() ?: FieldVisibility.EDIT

@@ -30,8 +30,8 @@ object NullableFormRenderer : FormRenderer.Generator, ViewRenderer.Generator {
     @Suppress("UNCHECKED_CAST")
     override fun <T> form(module: FormModule, selector: FormSelector<T>): FormRenderer<T> {
         val innerSerializer = selector.serializer.nullElement()!! as KSerializer<Any>
-        val innerSelector = selector.copy(innerSerializer)
-        val inner = module.form(innerSelector)
+        val innerSelector by lazy { selector.copy(innerSerializer) }
+        val inner by lazy { module.form(innerSelector) }
         return FormRenderer(module, this, selector as FormSelector<Any?>) { field, writable ->
             row {
                 var ifNotNull: Any = writable.state.getOrNull() ?: innerSerializer.default()
@@ -45,17 +45,22 @@ object NullableFormRenderer : FormRenderer.Generator, ViewRenderer.Generator {
                         )
                     }
                 }
-                expanding - onlyWhen { writable() != null } - inner.render(
-                    this,
-                    field,
-                    writable.lens(
-                        get = { v -> v ?: innerSerializer.default() },
-                        modify = { e, v ->
-                            ifNotNull = v
-                            if (e == null) null else v
-                        },
-                    ),
-                )
+                expanding - stack {
+                    reactive {
+                        clearChildren()
+                        if (writable() != null) inner.render(
+                            this@stack,
+                            field,
+                            writable.lens(
+                                get = { v -> v ?: innerSerializer.default() },
+                                modify = { e, v ->
+                                    ifNotNull = v
+                                    if (e == null) null else v
+                                },
+                            ),
+                        )
+                    }
+                }
             }
         } as FormRenderer<T>
     }
@@ -63,8 +68,8 @@ object NullableFormRenderer : FormRenderer.Generator, ViewRenderer.Generator {
     @Suppress("UNCHECKED_CAST")
     override fun <T> view(module: FormModule, selector: FormSelector<T>): ViewRenderer<T> {
         val innerSerializer = selector.serializer.nullElement()!! as KSerializer<Any>
-        val innerSelector = selector.copy(innerSerializer)
-        val inner = module.view(innerSelector)
+        val innerSelector by lazy { selector.copy(innerSerializer) }
+        val inner by lazy { module.view(innerSelector) }
         return ViewRenderer(module, this, selector as FormSelector<Any?>) { field, readable ->
             stack {
                 val isNull = shared { readable() == null }

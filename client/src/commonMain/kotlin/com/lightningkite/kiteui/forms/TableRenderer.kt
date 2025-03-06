@@ -61,9 +61,7 @@ object TableRenderer : FormRenderer.Generator, ViewRenderer.Generator {
         formModule: FormModule,
         innerSer: KSerializer<T>,
         readable: Readable<Readable<List<T>>>,
-        columns: ImmediateWritable<List<DataClassPath<T, *>>> = Property(run {
-            innerSer.defaultColumns()
-        }),
+        columns: ImmediateWritable<List<DataClassPath<T, *>>> = Property(innerSer.defaultColumns()),
         link: ((T) -> () -> Screen)? = null,
         action: (suspend (T) -> Unit)? = null,
     ) = with(writer) {
@@ -71,6 +69,7 @@ object TableRenderer : FormRenderer.Generator, ViewRenderer.Generator {
         val rendererCache = HashMap<DataClassPath<T, Any?>, ViewRenderer<Any?>>()
         val anyCols = columns as ImmediateWritable<List<DataClassPath<T, Any?>>>
         fun renderer(path: DataClassPath<T, Any?>) = rendererCache.getOrPut(path) {
+            println("GETTING RENDERER: $path")
             formModule.view(
                 FormSelector(
                     serializer = path.serializer,

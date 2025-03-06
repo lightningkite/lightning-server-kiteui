@@ -2,6 +2,7 @@
 
 package com.lightningkite.kiteui.forms
 
+import com.lightningkite.kiteui.models.ErrorSemantic
 import com.lightningkite.kiteui.models.px
 import com.lightningkite.kiteui.models.rem
 import com.lightningkite.kiteui.navigation.DefaultJson
@@ -14,6 +15,9 @@ import com.lightningkite.kiteui.reactive.Writable
 import com.lightningkite.kiteui.reactive.invoke
 import com.lightningkite.kiteui.views.ViewModifiable
 import com.lightningkite.kiteui.views.ViewWriter
+import com.lightningkite.kiteui.views.centered
+import com.lightningkite.kiteui.views.direct.stack
+import com.lightningkite.kiteui.views.direct.text
 import com.lightningkite.lightningdb.HasId
 import com.lightningkite.lightningdb.SortPart
 import com.lightningkite.lightningserver.db.ModelCache
@@ -64,29 +68,139 @@ interface Renderer<T> {
     val handlesField: Boolean
 }
 
-data class ViewRenderer<T>(
-    val module: FormModule,
-    override val generator: ViewRenderer.Generator?,
-    override val selector: FormSelector<T>,
-    override val size: FormSize = generator!!.size(module, selector),
-    override val handlesField: Boolean = generator!!.handlesField,
+interface ViewRenderer<T> : Renderer<T> {
+    val module: FormModule
     val render: ViewWriter.(field: SerializableProperty<*, *>?, readable: Readable<T>) -> ViewModifiable
-) : Renderer<T> {
+
     interface Generator : RendererGenerator {
         fun <T> view(module: FormModule, selector: FormSelector<T>): ViewRenderer<T>
     }
+
+    companion object {
+        operator fun <T> invoke(
+            module: FormModule,
+            generator: ViewRenderer.Generator?,
+            selector: FormSelector<T>,
+            size: FormSize = generator!!.size(module, selector),
+            handlesField: Boolean = generator!!.handlesField,
+            render: ViewWriter.(field: SerializableProperty<*, *>?, readable: Readable<T>) -> ViewModifiable
+        ) = Standard(module, generator, selector, size, handlesField, render)
+    }
+
+    data class Standard<T>(
+        override val module: FormModule,
+        override val generator: ViewRenderer.Generator?,
+        override val selector: FormSelector<T>,
+        override val size: FormSize = generator!!.size(module, selector),
+        override val handlesField: Boolean = generator!!.handlesField,
+        override val render: ViewWriter.(field: SerializableProperty<*, *>?, readable: Readable<T>) -> ViewModifiable
+    ) : ViewRenderer<T>
+
+    data class Blank<T>(
+        override val module: FormModule,
+        override val selector: FormSelector<T>
+    ) : ViewRenderer<T> {
+        override val generator: RendererGenerator? = null
+        override val handlesField: Boolean = false
+        override val size: FormSize = FormSize.Block
+        override val render: ViewWriter.(field: SerializableProperty<*, *>?, readable: Readable<T>) -> ViewModifiable = { _, _ ->
+            ErrorSemantic.onNext - stack {
+                centered - text("Blank for ${selector.serializer.displayName}")
+            }
+        }
+    }
+
+    class Placeholder<T>(
+        override val module: FormModule,
+        start: ViewRenderer<T>
+    ) : ViewRenderer<T> {
+        constructor(module: FormModule, selector: FormSelector<T>) : this(module, Blank(module, selector))
+
+        var used: Boolean = false
+
+        var overridden: Boolean = false
+            private set
+
+        var current: ViewRenderer<T> = start
+            set(value) {
+                overridden = true
+                field = value
+            }
+
+        override val generator: RendererGenerator? get() = current.generator
+        override val handlesField: Boolean get() = current.handlesField
+        override val selector: FormSelector<T> get() = current.selector
+        override val size: FormSize get() = current.size
+        override val render: ViewWriter.(field: SerializableProperty<*, *>?, readable: Readable<T>) -> ViewModifiable
+            get() = current.render
+    }
 }
 
-data class FormRenderer<T>(
-    val module: FormModule,
-    override val generator: FormRenderer.Generator?,
-    override val selector: FormSelector<T>,
-    override val size: FormSize = generator!!.size(module, selector),
-    override val handlesField: Boolean = generator!!.handlesField,
+interface FormRenderer<T> : Renderer<T> {
+    val module: FormModule
     val render: ViewWriter.(field: SerializableProperty<*, *>?, writable: Writable<T>) -> ViewModifiable
-) : Renderer<T> {
+
     interface Generator : RendererGenerator {
         fun <T> form(module: FormModule, selector: FormSelector<T>): FormRenderer<T>
+    }
+
+    companion object {
+        operator fun <T> invoke(
+            module: FormModule,
+            generator: FormRenderer.Generator?,
+            selector: FormSelector<T>,
+            size: FormSize = generator!!.size(module, selector),
+            handlesField: Boolean = generator!!.handlesField,
+            render: ViewWriter.(field: SerializableProperty<*, *>?, writable: Writable<T>) -> ViewModifiable
+        ) = Standard(module, generator, selector, size, handlesField, render)
+    }
+
+    data class Standard<T>(
+        override val module: FormModule,
+        override val generator: FormRenderer.Generator?,
+        override val selector: FormSelector<T>,
+        override val size: FormSize = generator!!.size(module, selector),
+        override val handlesField: Boolean = generator!!.handlesField,
+        override val render: ViewWriter.(field: SerializableProperty<*, *>?, writable: Writable<T>) -> ViewModifiable
+    ) : FormRenderer<T>
+
+    data class Blank<T>(
+        override val module: FormModule,
+        override val selector: FormSelector<T>
+    ) : FormRenderer<T> {
+        override val generator: RendererGenerator? = null
+        override val handlesField: Boolean = false
+        override val size: FormSize = FormSize.Block
+        override val render: ViewWriter.(field: SerializableProperty<*, *>?, writable: Writable<T>) -> ViewModifiable = { _, _ ->
+            ErrorSemantic.onNext - stack {
+                centered - text("Blank for ${selector.serializer.displayName}")
+            }
+        }
+    }
+
+    class Placeholder<T>(
+        override val module: FormModule,
+        start: FormRenderer<T>
+    ) : FormRenderer<T> {
+        constructor(module: FormModule, selector: FormSelector<T>) : this(module, Blank(module, selector))
+
+        var used: Boolean = false
+
+        var overridden: Boolean = false
+            private set
+
+        var current: FormRenderer<T> = start
+            set(value) {
+                overridden = true
+                field = value
+            }
+
+        override val generator: RendererGenerator? get() = current.generator
+        override val handlesField: Boolean get() = current.handlesField
+        override val selector: FormSelector<T> get() = current.selector
+        override val size: FormSize get() = current.size
+        override val render: ViewWriter.(field: SerializableProperty<*, *>?, writable: Writable<T>) -> ViewModifiable
+            get() = current.render
     }
 }
 

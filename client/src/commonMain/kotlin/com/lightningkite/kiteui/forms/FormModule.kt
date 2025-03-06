@@ -62,12 +62,30 @@ class FormModule {
     }
 
     private val viewCache = HashMap<FormSelector<*>, ViewRenderer<*>>()
+    private val currentlyMakingViews = HashMap<FormSelector<*>, ViewRenderer.Placeholder<*>>()
+    @Suppress("UNCHECKED_CAST")
     private fun <T> viewCache(key: FormSelector<T>, generate: ()->ViewRenderer<T>): ViewRenderer<T> {
-        @Suppress("UNCHECKED_CAST")
-        return viewCache.getOrPut(key, generate) as ViewRenderer<T>
+        // Keeping track of views being currently made is necessary for nested data types
+        return when (key) {
+            in viewCache.keys -> viewCache[key] as ViewRenderer<T>
+            in currentlyMakingViews.keys -> currentlyMakingViews[key]!!.also { it.used = true } as ViewRenderer<T>
+            else -> {
+                currentlyMakingViews[key] = ViewRenderer.Placeholder(this@FormModule, key)
+                val result = generate()
+                viewCache[key] = result
+                (currentlyMakingViews.remove(key) as? ViewRenderer.Placeholder<T>)?.let {
+                    if (it.used) {
+                        it.current = result
+                        it
+                    } else result
+                } ?: result
+            }
+        }
     }
     fun <T> view(key: FormSelector<T>): ViewRenderer<T> = viewCache(key) {
+        println("Getting view for ${key.serializer.displayName}")
         val options = viewCandidates(key).filter { it.matches(this, key) }.sortedByDescending { it.priority(this, key) }.map { it.view(this, key) }.toList()
+        println("Have options for ${key.serializer.displayName}")
         if (!showTypePicker) options.first()
         else ViewRenderer(this, null, key, size = options.first().size, handlesField = options.first().handlesField) { field, writable ->
             val selected = Property(options.first())
@@ -88,9 +106,24 @@ class FormModule {
         }
     }
     private val formCache = HashMap<FormSelector<*>, FormRenderer<*>>()
+    private val currentlyMakingForms = HashMap<FormSelector<*>, FormRenderer.Placeholder<*>>()
+    @Suppress("UNCHECKED_CAST")
     private fun <T> formCache(key: FormSelector<T>, generate: ()->FormRenderer<T>): FormRenderer<T> {
-        @Suppress("UNCHECKED_CAST")
-        return formCache.getOrPut(key, generate) as FormRenderer<T>
+        return when (key) {
+            in formCache.keys -> formCache[key] as FormRenderer<T>
+            in currentlyMakingForms.keys -> currentlyMakingForms[key]!!.also { it.used = true } as FormRenderer<T>
+            else -> {
+                currentlyMakingForms[key] = FormRenderer.Placeholder(this@FormModule, key)
+                val result = generate()
+                formCache[key] = result
+                (currentlyMakingForms.remove(key) as? FormRenderer.Placeholder<T>)?.let {
+                    if (it.used) {
+                        it.current = result
+                        it
+                    } else result
+                } ?: result
+            }
+        }
     }
     fun <T> form(key: FormSelector<T>): FormRenderer<T> = formCache(key) {
         val options = formCandidates(key).filter { it.matches(this, key) }.sortedByDescending { it.priority(this, key) }.map { it.form(this, key) }.toList()

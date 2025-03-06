@@ -77,31 +77,35 @@ val loadedPermissions: Readable<Map<String, ModelPermissions<out HasId<out Compa
 }
 val adminServer = shared {
     println("Refetching ")
-    val s = ExternalLightningServer(serverSchema())
-    s.screen = label@{ type, id ->
-        type as ExternalLightningServer.ModelInfo<HasId<Comparable<Comparable<*>>>, Comparable<Comparable<*>>>
-        val idAsString = UrlProperties.encodeToString(type.idserializer, id as Comparable<Comparable<*>>)
-        return@label {
-            DetailAdminScreen(
-                collectionName = s.models.entries.single { (_, it) -> it.serializer.descriptor.serialName == type.serializer.descriptor.serialName }.key,
-                itemId = idAsString
-            )
+    try {
+        val s = ExternalLightningServer(serverSchema())
+        s.screen = label@{ type, id ->
+            type as ExternalLightningServer.ModelInfo<HasId<Comparable<Comparable<*>>>, Comparable<Comparable<*>>>
+            val idAsString = UrlProperties.encodeToString(type.idserializer, id as Comparable<Comparable<*>>)
+            return@label {
+                DetailAdminScreen(
+                    collectionName = s.models.entries.single { (_, it) -> it.serializer.descriptor.serialName == type.serializer.descriptor.serialName }.key,
+                    itemId = idAsString
+                )
+            }
         }
+        s
+    }catch (e: Exception) {
+        println("Exception in admin server")
+        throw e
     }
-    s
 }
 val adminFormModule = shared {
     adminServer().formModule(adminAuthentication()).also {
         val settings = adminSettings()
         if(settings.showHiddenFields) {
-            it.visibilitySettings.keys.forEach { k ->
-                it.visibilitySettings[k] = it.visibilitySettings[k]!!.coerceAtLeast(FieldVisibility.READ)
+            it.visibilitySettings.forEach { (fqn, visibility) ->
+                it.visibilitySettings[fqn] = visibility.coerceAtLeast(FieldVisibility.READ)
             }
         }
         if(settings.editAllFields) {
-            it.visibilitySettings.keys.forEach { k ->
-                if(it.visibilitySettings[k]!! >= FieldVisibility.READ)
-                    it.visibilitySettings[k] = FieldVisibility.EDIT
+            it.visibilitySettings.keys.forEach { fqn ->
+                it.visibilitySettings[fqn] = FieldVisibility.EDIT
             }
         }
         if(settings.showAlternativeEditOptions) {
