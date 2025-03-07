@@ -69,7 +69,6 @@ object TableRenderer : FormRenderer.Generator, ViewRenderer.Generator {
         val rendererCache = HashMap<DataClassPath<T, Any?>, ViewRenderer<Any?>>()
         val anyCols = columns as ImmediateWritable<List<DataClassPath<T, Any?>>>
         fun renderer(path: DataClassPath<T, Any?>) = rendererCache.getOrPut(path) {
-            println("GETTING RENDERER: $path")
             formModule.view(
                 FormSelector(
                     serializer = path.serializer,

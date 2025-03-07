@@ -83,9 +83,7 @@ class FormModule {
         }
     }
     fun <T> view(key: FormSelector<T>): ViewRenderer<T> = viewCache(key) {
-        println("Getting view for ${key.serializer.displayName}")
         val options = viewCandidates(key).filter { it.matches(this, key) }.sortedByDescending { it.priority(this, key) }.map { it.view(this, key) }.toList()
-        println("Have options for ${key.serializer.displayName}")
         if (!showTypePicker) options.first()
         else ViewRenderer(this, null, key, size = options.first().size, handlesField = options.first().handlesField) { field, writable ->
             val selected = Property(options.first())
