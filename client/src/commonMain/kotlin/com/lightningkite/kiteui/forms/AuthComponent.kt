@@ -321,12 +321,18 @@ class AuthComponent(
                         endpoints.smsProof != null -> "800-123-4567"
                         else -> "MyUsername"
                     }
-                    keyboardHints = when {
-                        endpoints.emailProof != null && endpoints.smsProof != null -> KeyboardHints.email
-                        endpoints.emailProof != null -> KeyboardHints.email
-                        endpoints.smsProof != null -> KeyboardHints.phone
-                        else -> KeyboardHints.id
-                    }.let { if (endpoints.passkeyProof != null) it.copy(includePasskeys = true).also { println("Setting KeyboardHints to include passkeys") } else it }
+                    ::keyboardHints {
+                        when {
+                            endpoints.emailProof != null && endpoints.smsProof != null -> KeyboardHints.email
+                            endpoints.emailProof != null -> KeyboardHints.email
+                            endpoints.smsProof != null -> KeyboardHints.phone
+                            else -> KeyboardHints.id
+                        }.let {
+                            if (endpoints.passkeyProof != null && ClientAuthenticator.autofillAvailable())
+                                it.copy(includePasskeys = true)
+                            else it
+                        }
+                    }
                     content bind primaryIdentifier
                     reactive {
                         if (currentProof() == null) requestFocus()
@@ -334,7 +340,7 @@ class AuthComponent(
                 }
             }
 
-            endpoints.passkeyProof?.let { passkeyProof ->
+            val pendingWebauthnRequest = endpoints.passkeyProof?.let { passkeyProof ->
                 launch {
                     val request = passkeyProof.beginPasskeyChallenge()
                     val signedChallenge = ClientAuthenticator.getPasskey(request, PasskeyMediationType.Conditional)
@@ -427,6 +433,31 @@ class AuthComponent(
                     action
                 }
 
+                val passkeyAction = endpoints.passkeyProof?.let { passkeyProof ->
+                    val action = Action("Sign in with passkey", Icon.passkey) {
+                        try {
+                            pendingWebauthnRequest?.cancelAndJoin()
+                        } finally {
+                            val request = passkeyProof.beginPasskeyChallenge()
+                            val signedChallenge = ClientAuthenticator.getPasskey(request, PasskeyMediationType.Optional)
+                            proofs.value += passkeyProof.provePasskeyOwnership(signedChallenge)
+                        }
+                    }
+                    onlyWhen {
+                        proofs().none { it.via == "passkey" } && (authResult()?.options?.any { it.method.via == "passkey" }
+                            ?: true) && ClientAuthenticator.passkeyAvailable()
+                    } - buttonTheme - button {
+                        this.action = action
+                        row {
+                            expanding - space()
+                            centered - icon(Icon.passkey, "Passkey")
+                            centered - text("Use passkey")
+                            expanding - space()
+                        }
+                    }
+                    action
+                }
+
                 val otpAction = endpoints.oneTimePasswordProof?.let { p ->
                     val action = Action("Use Authenticator App", Icon.chevronRight) {
                         currentProof.value = OtpProof(
@@ -454,6 +485,7 @@ class AuthComponent(
                         proofs().none { it.via == "email" } && email() != null && emailStartAction != null -> emailStartAction
                         proofs().none { it.via == "sms" } && phone() != null && smsStartAction != null -> smsStartAction
                         proofs().none { it.via == "password" } && validId && passwordStartAction != null -> passwordStartAction
+                        proofs().none { it.via == "passkey" } && ClientAuthenticator.passkeyAvailable() && passkeyAction != null -> passkeyAction
                         proofs().none { it.via == "otp" } && validId && otpAction != null -> otpAction
                         else -> null
                     }
