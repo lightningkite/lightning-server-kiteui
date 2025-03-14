@@ -1,5 +1,6 @@
 package com.lightningkite.kiteui
 
+import com.lightningkite.kiteui.exceptions.PlainTextException
 import com.lightningkite.kiteui.reactive.Readable
 import com.lightningkite.kiteui.reactive.sharedProcess
 import com.lightningkite.lightningserver.auth.proof.AssertedPublicKeyCredential
@@ -53,7 +54,7 @@ actual object ClientAuthenticator {
                     cont.resume(Json.decodeFromDynamic(result.toJSON()))
                 },
                 onRejected = { error ->
-                    cont.resumeWithException(error)
+                    cont.resumeWithException(error.asKotlinException())
                 }
             )
             cont.invokeOnCancellation { controller.abort() }
@@ -75,11 +76,16 @@ actual object ClientAuthenticator {
                     cont.resume(Json.decodeFromDynamic(result.toJSON()))
                 },
                 onRejected = { error ->
-                    cont.resumeWithException(error)
+                    cont.resumeWithException(error.asKotlinException())
                 }
             )
             cont.invokeOnCancellation { controller.abort() }
         }
+
+    private fun Throwable.asKotlinException(): Exception {
+        val message: String = asDynamic().message
+        return PlainTextException(message)
+    }
 }
 
 val credentials: CredentialServices get() = js("(navigator.credentials)")
