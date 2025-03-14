@@ -1,6 +1,8 @@
 package com.lightningkite.kiteui.forms
 
 import com.lightningkite.kiteui.AppScope
+import com.lightningkite.kiteui.ClientAuthenticator
+import com.lightningkite.kiteui.PasskeyMediationType
 import com.lightningkite.kiteui.models.*
 import com.lightningkite.kiteui.printStackTrace2
 import com.lightningkite.kiteui.reactive.*
@@ -324,11 +326,19 @@ class AuthComponent(
                         endpoints.emailProof != null -> KeyboardHints.email
                         endpoints.smsProof != null -> KeyboardHints.phone
                         else -> KeyboardHints.id
-                    }
+                    }.let { if (endpoints.passkeyProof != null) it.copy(includePasskeys = true).also { println("Setting KeyboardHints to include passkeys") } else it }
                     content bind primaryIdentifier
                     reactive {
                         if (currentProof() == null) requestFocus()
                     }
+                }
+            }
+
+            endpoints.passkeyProof?.let { passkeyProof ->
+                launch {
+                    val request = passkeyProof.beginPasskeyChallenge()
+                    val signedChallenge = ClientAuthenticator.getPasskey(request, PasskeyMediationType.Conditional)
+                    proofs.value += passkeyProof.provePasskeyOwnership(signedChallenge)
                 }
             }
 

@@ -121,6 +121,10 @@ class ExternalLightningServer(
             val httpPath = it.path
             PasswordProofClientEndpoints.StandardImpl(fetchImplementation = authlessFetcher(httpPath), json = json, properties = properties)
         },
+        passkeyProof = schema.interfaces.find { it.matches.serialName == "PasskeyProofClientEndpoints" }?.let {
+            val httpPath = it.path
+            PasskeyProofClientEndpoints.StandardImpl(fetchImplementation = authlessFetcher(httpPath), json = json, properties = properties)
+        },
         knownDeviceProof = schema.interfaces.find { it.matches.serialName == "KnownDeviceProofClientEndpoints" }?.let {
             val httpPath = it.path
             KnownDeviceProofClientEndpoints.StandardImpl(fetchImplementation = authlessFetcher(httpPath), json = json, properties = properties)
@@ -135,6 +139,12 @@ class ExternalLightningServer(
             { auth ->
                 val httpPath = it.path
                 AuthenticatedPasswordProofClientEndpoints.StandardImpl(fetchImplementation = fetcher(httpPath, auth), json = json, properties = properties)
+            }
+        },
+        authenticatedPasskeyProof = schema.interfaces.find { it.matches.serialName == "AuthenticatedPasskeyProofClientEndpoints" }?.let {
+            { auth ->
+                val httpPath = it.path
+                AuthenticatedPasskeyProofClientEndpoints.StandardImpl(fetchImplementation = fetcher(httpPath, auth), json = json, properties = properties)
             }
         },
         authenticatedKnownDeviceProof = schema.interfaces.find { it.matches.serialName == "AuthenticatedKnownDeviceProofClientEndpoints" }?.let {

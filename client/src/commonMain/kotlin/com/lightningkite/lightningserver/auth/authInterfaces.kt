@@ -61,9 +61,11 @@ data class AuthClientEndpoints(
     val emailProof: EmailProofClientEndpoints? = null,
     val oneTimePasswordProof: OneTimePasswordProofClientEndpoints? = null,
     val passwordProof: PasswordProofClientEndpoints? = null,
+    val passkeyProof: PasskeyProofClientEndpoints? = null,
     val knownDeviceProof: KnownDeviceProofClientEndpoints? = null,
     val authenticatedOneTimePasswordProof: ((LightningServerAuthentication) -> AuthenticatedOneTimePasswordProofClientEndpoints)? = null,
     val authenticatedPasswordProof: ((LightningServerAuthentication) -> AuthenticatedPasswordProofClientEndpoints)? = null,
+    val authenticatedPasskeyProof: ((LightningServerAuthentication) -> AuthenticatedPasskeyProofClientEndpoints)? = null,
     val authenticatedKnownDeviceProof: ((LightningServerAuthentication) -> AuthenticatedKnownDeviceProofClientEndpoints)? = null,
 ) {
     val proofEndpoints
@@ -313,6 +315,29 @@ interface PasswordProofClientEndpoints : ProofEndpoints {
     }
 }
 
+interface PasskeyProofClientEndpoints : ProofEndpoints {
+    suspend fun beginPasskeyChallenge(): PublicKeyCredentialRequestOptions
+    suspend fun provePasskeyOwnership(input: AssertedPublicKeyCredential): Proof
+    open class StandardImpl(
+        val fetchImplementation: Fetcher,
+        val json: Json = DefaultJson,
+        val properties: Properties = UrlProperties,
+    ) : PasskeyProofClientEndpoints {
+        override suspend fun beginPasskeyChallenge(): PublicKeyCredentialRequestOptions = fetchImplementation(
+            url = "/start",
+            method = HttpMethod.POST,
+            jsonBody = null,
+            outSerializer = json.serializersModule.serializer()
+        )
+        override suspend fun provePasskeyOwnership(input: AssertedPublicKeyCredential): Proof = fetchImplementation(
+            url = "/prove",
+            method = HttpMethod.POST,
+            jsonBody = json.encodeToString(input),
+            outSerializer = json.serializersModule.serializer()
+        )
+    }
+}
+
 interface KnownDeviceProofClientEndpoints : ProofEndpoints {
     suspend fun knownDeviceOptions(): KnownDeviceOptions
     suspend fun proveKnownDevice(input: String): Proof
@@ -363,6 +388,29 @@ interface AuthenticatedPasswordProofClientEndpoints {
     ) : AuthenticatedPasswordProofClientEndpoints {
         override suspend fun establishPassword(input: EstablishPassword): Unit = fetchImplementation(
             url = "/establish",
+            method = HttpMethod.POST,
+            jsonBody = json.encodeToString(input),
+            outSerializer = json.serializersModule.serializer()
+        )
+    }
+}
+
+interface AuthenticatedPasskeyProofClientEndpoints {
+    suspend fun issuePasskeyRegisterChallenge(): PublicKeyCredentialCreationOptions
+    suspend fun establishPasskey(input: AttestedPublicKeyCredential): Unit
+    open class StandardImpl(
+        val fetchImplementation: Fetcher,
+        val json: Json = DefaultJson,
+        val properties: Properties = UrlProperties,
+    ) : AuthenticatedPasskeyProofClientEndpoints {
+        override suspend fun issuePasskeyRegisterChallenge(): PublicKeyCredentialCreationOptions = fetchImplementation(
+            url = "/registerStart",
+            method = HttpMethod.POST,
+            jsonBody = null,
+            outSerializer = json.serializersModule.serializer()
+        )
+        override suspend fun establishPasskey(input: AttestedPublicKeyCredential): Unit = fetchImplementation(
+            url = "/registerFinish",
             method = HttpMethod.POST,
             jsonBody = json.encodeToString(input),
             outSerializer = json.serializersModule.serializer()
