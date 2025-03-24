@@ -37,7 +37,7 @@ kotlin {
         val commonMain by getting {
             dependencies {
                 api(lk.lightningServer("shared", 4))
-                api(lk.kiteUi(4))
+                api(lk.kiteUi(5))
             }
             kotlin {
                 srcDir(file("build/generated/ksp/common/commonMain/kotlin"))

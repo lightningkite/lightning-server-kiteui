@@ -2,8 +2,8 @@
 
 package com.lightningkite.kiteui.forms
 
-import com.lightningkite.kiteui.reactive.Readable
-import com.lightningkite.kiteui.reactive.Writable
+import com.lightningkite.readable.Readable
+import com.lightningkite.readable.Writable
 import com.lightningkite.kiteui.views.ViewModifiable
 import com.lightningkite.kiteui.views.ViewWriter
 import com.lightningkite.serialization.SerializableProperty

@@ -2,7 +2,7 @@ package com.lightningkite.admin
 
 import com.lightningkite.kiteui.*
 import com.lightningkite.kiteui.navigation.DefaultJson
-import com.lightningkite.kiteui.navigation.ScreenNavigator
+import com.lightningkite.kiteui.navigation.PageNavigator
 import com.lightningkite.kiteui.views.*
 import com.lightningkite.lightningserver.admin.*
 import kotlinx.browser.document
@@ -21,7 +21,7 @@ fun main() {
         serverUrl.value = info.url
     }
     root(appTheme.value) {
-        app(ScreenNavigator { AutoRoutes }, ScreenNavigator { AutoRoutes })
+        app(PageNavigator { AutoRoutes }, PageNavigator { AutoRoutes })
     }
 }
 

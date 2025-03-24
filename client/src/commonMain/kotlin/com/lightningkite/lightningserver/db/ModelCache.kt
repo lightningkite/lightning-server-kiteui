@@ -3,12 +3,14 @@
 package com.lightningkite.lightningserver.db
 
 import com.lightningkite.kiteui.*
-import com.lightningkite.kiteui.reactive.*
+import com.lightningkite.readable.*
 import com.lightningkite.lightningdb.*
 import com.lightningkite.serialization.*
 import com.lightningkite.lightningserver.db.*
 import com.lightningkite.now
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.datetime.Instant
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
@@ -274,13 +276,13 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
     }
 
     internal fun regularly() {
-        launchGlobal {
+        AppScope.launch {
             sockets?.flush()
         }
         queryCache.values.asSequence()
             .filter { it.shouldPull }
             .forEach {
-                launchGlobal {
+                AppScope.launch {
                     it.onLoadStart()
                     try {
                         apiCalls++
@@ -296,11 +298,11 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
         queryCache.values.asSequence()
             .filter { it.shouldPullMore }
             .forEach { q ->
-                launchGlobal {
+                AppScope.launch {
                     q.onLoadStart()
                     try {
                         apiCalls++
-                        val last = q.lastKnownValue?.lastOrNull() ?: return@launchGlobal
+                        val last = q.lastKnownValue?.lastOrNull() ?: return@launch
                         val after = q.orderBy.after(last)
                         val limitDiff = q.limit - q.limitLoaded
                         val data = skipCache.query(Query(q.condition and after, q.orderBy, limit = limitDiff))
@@ -319,7 +321,7 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
             .toList()
             .filter { it.isNotEmpty() }
             .forEach {
-                launchGlobal {
+                AppScope.launch {
                     it.forEach { it.onLoadStart() }
                     try {
                         it.forEach { it.onLoadStart() }
@@ -401,10 +403,10 @@ class ChangeUpdateWrapper<T : HasId<ID>, ID : Comparable<ID>>(
     private val messageList = ArrayList<Continuation<Unit>>()
 
     suspend fun update(condition: Condition<T>): Boolean {
-        suspendCoroutineCancellable { cont ->
+        suspendCancellableCoroutine { cont ->
             messageList.add(cont)
             this.condition.value = condition
-            return@suspendCoroutineCancellable {
+            cont.invokeOnCancellation {
                 messageList.remove(cont)
             }
         }
@@ -450,9 +452,9 @@ class SharedChangeUpdateWrapper<T : HasId<ID>, ID : Comparable<ID>>(
     var awaitingSuccessfulFlush = ArrayList<Continuation<Unit>>()
     suspend fun refreshAndWait() {
         queuedCondition = if (conditionSet.isEmpty()) Condition.Never else Condition.Or(conditionSet.toList())
-        suspendCoroutineCancellable<Unit> {
+        suspendCancellableCoroutine<Unit> { it ->
             awaitingSuccessfulFlush.add(it)
-            return@suspendCoroutineCancellable { awaitingSuccessfulFlush.remove(it) }
+            it.invokeOnCancellation { _ -> awaitingSuccessfulFlush.remove(it) }
         }
     }
 
@@ -511,7 +513,7 @@ open class WatchingWrapper<R : CacheReadable<T>, T>(val base: R, val outsideReso
             starting = true
             base.establishingSocket = true
             val attempt = Random.nextInt()
-            launchGlobal {
+            AppScope.launch {
                 try {
                     started = outsideResource.start()
                     if (started) base.socketIsLive = true

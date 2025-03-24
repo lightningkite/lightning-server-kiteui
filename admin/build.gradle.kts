@@ -23,7 +23,7 @@ group = "com.lightningkite"
 version = "1.0-SNAPSHOT"
 
 val lk = project.lk {
-    kiteUiPlugin(4)
+    kiteUiPlugin(5)
 }
 
 @OptIn(ExperimentalKotlinGradlePluginApi::class)

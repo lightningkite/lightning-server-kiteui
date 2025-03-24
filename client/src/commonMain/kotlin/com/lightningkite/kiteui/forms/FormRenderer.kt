@@ -6,13 +6,13 @@ import com.lightningkite.kiteui.models.ErrorSemantic
 import com.lightningkite.kiteui.models.px
 import com.lightningkite.kiteui.models.rem
 import com.lightningkite.kiteui.navigation.DefaultJson
-import com.lightningkite.kiteui.navigation.Screen
+import com.lightningkite.kiteui.navigation.Page
 import com.lightningkite.kiteui.navigation.UrlProperties
 import com.lightningkite.kiteui.navigation.decodeFromString
-import com.lightningkite.kiteui.reactive.AppState
-import com.lightningkite.kiteui.reactive.Readable
-import com.lightningkite.kiteui.reactive.Writable
-import com.lightningkite.kiteui.reactive.invoke
+import com.lightningkite.readable.AppState
+import com.lightningkite.readable.Readable
+import com.lightningkite.readable.Writable
+import com.lightningkite.readable.invoke
 import com.lightningkite.kiteui.views.ViewModifiable
 import com.lightningkite.kiteui.views.ViewWriter
 import com.lightningkite.kiteui.views.centered
@@ -292,7 +292,7 @@ fun <T> KSerializer<T>.defaultTitleFields(): List<DataClassPath<T, *>> {
 class FormTypeInfo<T : HasId<ID>, ID : Comparable<ID>>(
     val serializer: KSerializer<T>,
     val cache: () -> ModelCache<T, ID>,
-    val screen: (ID) -> (() -> Screen)?,
+    val page: (ID) -> (() -> Page)?,
     val titleFields: List<DataClassPath<T, *>> = serializer.defaultTitleFields(),
     val renderToString: (suspend (ID) -> String)
 )

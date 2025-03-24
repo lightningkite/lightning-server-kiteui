@@ -9,7 +9,7 @@ import com.lightningkite.kiteui.forms.displayName
 import com.lightningkite.kiteui.forms.login
 import com.lightningkite.kiteui.models.*
 import com.lightningkite.kiteui.navigation.*
-import com.lightningkite.kiteui.reactive.*
+import com.lightningkite.readable.*
 import com.lightningkite.kiteui.views.*
 import com.lightningkite.kiteui.views.direct.*
 import com.lightningkite.kiteui.views.l2.*
@@ -30,7 +30,7 @@ val appTheme = Property<Theme>(defaultTheme)
 @JsNonModule
 external object JsJodaTimeZoneModule
 
-fun ViewWriter.app(navigator: ScreenNavigator, dialog: ScreenNavigator) {
+fun ViewWriter.app(navigator: PageNavigator, dialog: PageNavigator) {
     val x = JsJodaTimeZoneModule
     com.lightningkite.prepareModelsShared()
     prepareModelsAdmin()
@@ -44,9 +44,9 @@ fun ViewWriter.app(navigator: ScreenNavigator, dialog: ScreenNavigator) {
             val permissions = loadedPermissions()
             try {
                 buildList {
-                    add(NavLink("Home", icon = Icon.home) { HomeScreen() })
+                    add(NavLink("Home", icon = Icon.home) { HomePage() })
                     if (adminSettings().showEndpoints) {
-                        add(NavLink("Endpoints", icon = Icon.menu) { EndpointsScreen() })
+                        add(NavLink("Endpoints", icon = Icon.menu) { EndpointsPage() })
                     }
                     adminServer().models.entries.sortedBy { it.value.serializer.displayName }.forEach {
                         if(permissions[it.key]?.read != Condition.Never) {
@@ -55,7 +55,7 @@ fun ViewWriter.app(navigator: ScreenNavigator, dialog: ScreenNavigator) {
                                     it.value.docGroup?.titleCase() ?: it.value.serializer.displayName,
 //                                    it.value.serializer.displayName,
                                     icon = Icon.list
-                                ) { CollectionAdminScreen(it.key) }
+                                ) { CollectionAdminPage(it.key) }
                             )
                         }
                     }
@@ -163,7 +163,7 @@ fun ViewWriter.app(navigator: ScreenNavigator, dialog: ScreenNavigator) {
                                         }
                                         onClick("Log Out") {
                                             confirmDanger("Log Out", "Are you sure you want to log out?", "Log Out") {
-                                                screenNavigator.reset(HomeScreen())
+                                                pageNavigator.reset(HomePage())
                                                 adminCredentials.value = null
                                             }
                                         }
@@ -177,7 +177,7 @@ fun ViewWriter.app(navigator: ScreenNavigator, dialog: ScreenNavigator) {
         }
 
 //        ::exists {
-//            navigator.currentScreen.await() !is UseFullScreen
+//            navigator.currentPage.await() !is UseFullPage
 //        }
     }
 }

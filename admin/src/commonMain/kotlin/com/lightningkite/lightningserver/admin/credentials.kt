@@ -5,7 +5,7 @@ import com.lightningkite.kiteui.forms.FieldVisibility
 import com.lightningkite.kiteui.navigation.DefaultJson
 import com.lightningkite.kiteui.navigation.UrlProperties
 import com.lightningkite.kiteui.navigation.encodeToString
-import com.lightningkite.kiteui.reactive.*
+import com.lightningkite.readable.*
 import com.lightningkite.lightningdb.HasId
 import com.lightningkite.lightningdb.ModelPermissions
 import com.lightningkite.lightningserver.LsErrorException
@@ -79,11 +79,11 @@ val adminServer = shared {
     println("Refetching ")
     try {
         val s = ExternalLightningServer(serverSchema())
-        s.screen = label@{ type, id ->
+        s.page = label@{ type, id ->
             type as ExternalLightningServer.ModelInfo<HasId<Comparable<Comparable<*>>>, Comparable<Comparable<*>>>
             val idAsString = UrlProperties.encodeToString(type.idserializer, id as Comparable<Comparable<*>>)
             return@label {
-                DetailAdminScreen(
+                DetailAdminPage(
                     collectionName = s.models.entries.single { (_, it) -> it.serializer.descriptor.serialName == type.serializer.descriptor.serialName }.key,
                     itemId = idAsString
                 )

@@ -1,10 +1,10 @@
 package com.lightningkite.kiteui.forms
 
 import com.lightningkite.kiteui.models.rem
-import com.lightningkite.kiteui.reactive.Constant
-import com.lightningkite.kiteui.reactive.Writable
-import com.lightningkite.kiteui.reactive.lens
-import com.lightningkite.kiteui.reactive.reactive
+import com.lightningkite.readable.Constant
+import com.lightningkite.readable.Writable
+import com.lightningkite.readable.lens
+import com.lightningkite.readable.reactive
 import com.lightningkite.kiteui.views.ViewWriter
 import com.lightningkite.kiteui.views.atTop
 import com.lightningkite.kiteui.views.direct.row

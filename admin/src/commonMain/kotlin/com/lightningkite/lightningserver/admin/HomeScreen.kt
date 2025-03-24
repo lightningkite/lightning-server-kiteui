@@ -6,9 +6,9 @@ import com.lightningkite.kiteui.forms.FormModule
 import com.lightningkite.kiteui.forms.form
 import com.lightningkite.kiteui.forms.view
 import com.lightningkite.kiteui.models.*
-import com.lightningkite.kiteui.navigation.Screen
-import com.lightningkite.kiteui.reactive.Property
-import com.lightningkite.kiteui.reactive.*
+import com.lightningkite.kiteui.navigation.Page
+import com.lightningkite.readable.Property
+import com.lightningkite.readable.*
 import com.lightningkite.kiteui.views.ViewWriter
 import com.lightningkite.kiteui.views.*
 import com.lightningkite.kiteui.views.direct.*
@@ -19,7 +19,7 @@ import com.lightningkite.serialization.lensPath
 import kotlinx.serialization.builtins.nullable
 
 @Routable("/")
-class HomeScreen : Screen {
+class HomePage : Page {
     override fun ViewWriter.render() = stack {
         gravity(Align.Center, Align.Stretch) - sizeConstraints(width = 40.rem) - scrolls - col {
             h1 {

@@ -7,7 +7,7 @@ import com.lightningkite.kiteui.forms.form
 import com.lightningkite.kiteui.models.Icon
 import com.lightningkite.kiteui.models.rem
 import com.lightningkite.kiteui.navigation.*
-import com.lightningkite.kiteui.reactive.*
+import com.lightningkite.readable.*
 import com.lightningkite.kiteui.views.*
 import com.lightningkite.kiteui.views.direct.*
 import com.lightningkite.kiteui.views.direct.icon
@@ -25,8 +25,8 @@ import com.lightningkite.serialization.serializableProperties
 import kotlinx.serialization.encodeToString
 
 @Routable("collections/{collectionName}/{itemId}")
-class DetailAdminScreen(val collectionName: String, val itemId: String) : Screen {
-    override fun ViewWriter.render() {
+class DetailAdminPage(val collectionName: String, val itemId: String) : Page {
+    override fun ViewWriter.render(): ViewModifiable {
         val mc = shared { adminServer().models[collectionName]?.cache(adminAuthentication()) as ModelCache<HasId<Comparable<Comparable<*>>>, Comparable<Comparable<*>>> }
         val item = Draft(shared {
             val mc = mc()
@@ -35,7 +35,7 @@ class DetailAdminScreen(val collectionName: String, val itemId: String) : Screen
                 mc.serializer._id().setCopy(it, actualId)
             })
         }.flatten())
-        rowCollapsingToColumn(100.rem) {
+        return rowCollapsingToColumn(100.rem) {
             space { reactive { item() } }
             weight(2f) - scrolls - col {
                 reactive {
@@ -57,7 +57,7 @@ class DetailAdminScreen(val collectionName: String, val itemId: String) : Screen
                                             centered - text("Item has been deleted.")
                                         }
                                     }
-                                    screenNavigator.goBack()
+                                    pageNavigator.goBack()
                                 }
                             }
                         }
@@ -94,7 +94,7 @@ class DetailAdminScreen(val collectionName: String, val itemId: String) : Screen
                             val label = reverseName ?: "${model.value.serializer.displayName}'s ${it.displayName}"
                             link {
                                 text(label)
-                                to = { CollectionAdminScreen(model.key).apply { conditionString.value = DefaultJson.encodeToString(
+                                to = { CollectionAdminPage(model.key).apply { conditionString.value = DefaultJson.encodeToString(
                                     ConditionSerializer(model.value.serializer),
                                     Condition.OnField(it as SerializableProperty<HasId<*>, Comparable<Comparable<*>>>, Condition.Equal(itemId))
                                 ) } }

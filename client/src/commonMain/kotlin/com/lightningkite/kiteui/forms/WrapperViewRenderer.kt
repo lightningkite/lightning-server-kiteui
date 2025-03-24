@@ -1,7 +1,7 @@
 package com.lightningkite.kiteui.forms
 
-import com.lightningkite.kiteui.reactive.Readable
-import com.lightningkite.kiteui.reactive.lens
+import com.lightningkite.readable.Readable
+import com.lightningkite.readable.lens
 import com.lightningkite.kiteui.views.ViewWriter
 import com.lightningkite.serialization.SerializableProperty
 import com.lightningkite.serialization.WrappingSerializer

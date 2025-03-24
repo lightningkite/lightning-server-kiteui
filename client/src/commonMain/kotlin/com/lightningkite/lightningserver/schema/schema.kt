@@ -7,9 +7,9 @@ import com.lightningkite.kiteui.forms.FormModule
 import com.lightningkite.kiteui.forms.FormTypeInfo
 import com.lightningkite.kiteui.forms.defaultTitleFields
 import com.lightningkite.kiteui.navigation.DefaultJson
-import com.lightningkite.kiteui.navigation.Screen
+import com.lightningkite.kiteui.navigation.Page
 import com.lightningkite.kiteui.navigation.UrlProperties
-import com.lightningkite.kiteui.reactive.invoke
+import com.lightningkite.readable.invoke
 import com.lightningkite.lightningdb.*
 import com.lightningkite.lightningserver.auth.*
 import com.lightningkite.lightningserver.db.*
@@ -248,7 +248,7 @@ class ExternalLightningServer(
             FormTypeInfo(
                 serializer = m.serializer,
                 cache = { m.cache(auth) },
-                screen = { id -> screen(m, id) },
+                page = { id -> page(m, id) },
                 renderToString = {
                     val c = m.cache(auth)
                     c.get(it)()?.let {
@@ -261,7 +261,7 @@ class ExternalLightningServer(
         }
     }
 
-    var screen: (type: ModelInfo<*, *>, id: Comparable<*>?) -> (() -> Screen)? = { _, _ -> null }
+    var page: (type: ModelInfo<*, *>, id: Comparable<*>?) -> (() -> Page)? = { _, _ -> null }
 
 }
 

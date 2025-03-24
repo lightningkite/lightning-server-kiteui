@@ -4,7 +4,8 @@ import com.lightningkite.kiteui.QueryParameter
 import com.lightningkite.kiteui.Routable
 import com.lightningkite.kiteui.forms.form
 import com.lightningkite.kiteui.navigation.*
-import com.lightningkite.kiteui.reactive.*
+import com.lightningkite.kiteui.views.ViewModifiable
+import com.lightningkite.readable.*
 import com.lightningkite.kiteui.views.ViewWriter
 import com.lightningkite.kiteui.views.atEnd
 import com.lightningkite.kiteui.views.card
@@ -18,12 +19,12 @@ import com.lightningkite.serialization.SerializableProperty
 import com.lightningkite.serialization.default
 
 @Routable("collections/{collectionName}/new-item")
-class NewItemAdminScreen(val collectionName: String) : Screen {
+class NewItemAdminPage(val collectionName: String) : Page {
 
     @QueryParameter("condition")
     val conditionString: Property<String?> = Property(null)
 
-    override fun ViewWriter.render() {
+    override fun ViewWriter.render(): ViewModifiable {
         val mc = shared { adminServer().models[collectionName]?.cache(adminAuthentication()) as ModelCache<HasId<Comparable<Comparable<*>>>, Comparable<Comparable<*>>> }
         val item = asyncReadable {
             val coerceCondition = conditionString.value?.let {
@@ -41,7 +42,7 @@ class NewItemAdminScreen(val collectionName: String) : Screen {
                 }
             )
         }.flatten()
-        scrolls - col {
+        return scrolling - col {
             reactive {
                 clearChildren()
                 val forms = adminFormModule()
@@ -56,7 +57,7 @@ class NewItemAdminScreen(val collectionName: String) : Screen {
                         println("MC $newItemId")
                         val id = UrlProperties.encodeToString(mc.serializer._id().serializer, newItemId)
                         println("id $id")
-                        screenNavigator.replace(DetailAdminScreen(collectionName, id))
+                        pageNavigator.replace(DetailAdminPage(collectionName, id))
                     }
                 }
             }

@@ -4,9 +4,9 @@ import com.lightningkite.kiteui.FileReference
 import com.lightningkite.kiteui.models.SubtextSemantic
 import com.lightningkite.kiteui.models.px
 import com.lightningkite.kiteui.models.rem
-import com.lightningkite.kiteui.reactive.Constant
-import com.lightningkite.kiteui.reactive.Property
-import com.lightningkite.kiteui.reactive.reactive
+import com.lightningkite.readable.Constant
+import com.lightningkite.readable.Property
+import com.lightningkite.readable.reactive
 import com.lightningkite.kiteui.views.atTopEnd
 import com.lightningkite.kiteui.views.direct.row
 import com.lightningkite.kiteui.views.direct.select

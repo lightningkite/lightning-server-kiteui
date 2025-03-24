@@ -1,9 +1,9 @@
 package com.lightningkite.lightningserver.db
 
 import com.lightningkite.kiteui.*
-import com.lightningkite.kiteui.reactive.Constant
-import com.lightningkite.kiteui.reactive.Property
-import com.lightningkite.kiteui.reactive.Readable
+import com.lightningkite.readable.Constant
+import com.lightningkite.readable.Property
+import com.lightningkite.readable.Readable
 import com.lightningkite.lightningdb.*
 import com.lightningkite.now
 import com.lightningkite.serialization.Partial

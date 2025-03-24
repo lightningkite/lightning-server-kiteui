@@ -8,8 +8,8 @@ import com.lightningkite.kiteui.FileReference
 import com.lightningkite.kiteui.models.Icon
 import com.lightningkite.kiteui.models.ImageRemote
 import com.lightningkite.kiteui.models.rem
-import com.lightningkite.kiteui.reactive.Constant
-import com.lightningkite.kiteui.reactive.invoke
+import com.lightningkite.readable.Constant
+import com.lightningkite.readable.invoke
 import com.lightningkite.kiteui.views.direct.*
 import com.lightningkite.kiteui.views.*
 import com.lightningkite.kiteui.views.l2.icon

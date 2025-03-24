@@ -1,6 +1,6 @@
 package com.lightningkite.serialization
 
-import com.lightningkite.kiteui.reactive.*
+import com.lightningkite.readable.*
 import com.lightningkite.lightningdb.path
 
 fun <O, T> Writable<O>.lensPath(path: DataClassPath<O, T>): Writable<T> {

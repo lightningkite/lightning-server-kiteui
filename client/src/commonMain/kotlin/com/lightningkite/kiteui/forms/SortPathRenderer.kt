@@ -3,10 +3,10 @@ package com.lightningkite.kiteui.forms
 import com.lightningkite.CaselessStringSerializer
 import com.lightningkite.TrimmedCaselessStringSerializer
 import com.lightningkite.TrimmedStringSerializer
-import com.lightningkite.kiteui.reactive.Constant
-import com.lightningkite.kiteui.reactive.Readable
-import com.lightningkite.kiteui.reactive.Writable
-import com.lightningkite.kiteui.reactive.invoke
+import com.lightningkite.readable.Constant
+import com.lightningkite.readable.Readable
+import com.lightningkite.readable.Writable
+import com.lightningkite.readable.invoke
 import com.lightningkite.kiteui.views.ViewWriter
 import com.lightningkite.kiteui.views.direct.select
 import com.lightningkite.kiteui.views.direct.text

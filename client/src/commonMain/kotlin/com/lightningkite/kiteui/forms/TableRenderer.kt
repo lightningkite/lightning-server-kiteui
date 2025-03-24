@@ -1,11 +1,13 @@
 package com.lightningkite.kiteui.forms
 
 import com.lightningkite.kiteui.models.*
-import com.lightningkite.kiteui.navigation.Screen
-import com.lightningkite.kiteui.reactive.*
+import com.lightningkite.kiteui.navigation.Page
+import com.lightningkite.readable.*
 import com.lightningkite.kiteui.views.*
 import com.lightningkite.kiteui.views.direct.*
+import com.lightningkite.kiteui.views.l2.children
 import com.lightningkite.kiteui.views.l2.icon
+import com.lightningkite.lightningdb.HasId
 import com.lightningkite.lightningserver.db.LimitReadable
 import com.lightningkite.serialization.*
 import kotlinx.serialization.KSerializer
@@ -62,7 +64,7 @@ object TableRenderer : FormRenderer.Generator, ViewRenderer.Generator {
         innerSer: KSerializer<T>,
         readable: Readable<Readable<List<T>>>,
         columns: ImmediateWritable<List<DataClassPath<T, *>>> = Property(innerSer.defaultColumns()),
-        link: ((T) -> () -> Screen)? = null,
+        linkTo: ((T) -> () -> Page)? = null,
         action: (suspend (T) -> Unit)? = null,
     ) = with(writer) {
         val properties = innerSer.serializableProperties!! as Array<SerializableProperty<T, Any?>>
@@ -128,7 +130,7 @@ object TableRenderer : FormRenderer.Generator, ViewRenderer.Generator {
                             }
                         }
                     }
-                    children(shared { readable()() }) {
+                    children(shared { readable()() }, id = { (it as? HasId<*>)?._id ?: it }) {
                         fun ViewWriter.content() = row {
                             forEach(anyCols) { col ->
                                 val render = renderer(col)
@@ -139,10 +141,10 @@ object TableRenderer : FormRenderer.Generator, ViewRenderer.Generator {
                                         render.render(this@row, null, it.lensPath(col))
                             }
                         }
-                        if (link != null) {
+                        if (linkTo != null) {
                             card - link {
                                 content()
-                                ::to { link(it()) }
+                                ::to { linkTo(it()) }
                             }
                         } else if (action != null) {
                             card - button {

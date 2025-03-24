@@ -8,10 +8,11 @@ import com.lightningkite.kiteui.forms.form
 import com.lightningkite.kiteui.forms.view
 import com.lightningkite.kiteui.models.px
 import com.lightningkite.kiteui.navigation.DefaultJson
-import com.lightningkite.kiteui.navigation.Screen
+import com.lightningkite.kiteui.navigation.Page
 import com.lightningkite.kiteui.navigation.UrlProperties
 import com.lightningkite.kiteui.navigation.encodeToString
-import com.lightningkite.kiteui.reactive.*
+import com.lightningkite.kiteui.views.ViewModifiable
+import com.lightningkite.readable.*
 import com.lightningkite.kiteui.views.ViewWriter
 import com.lightningkite.kiteui.views.atEnd
 import com.lightningkite.kiteui.views.card
@@ -24,9 +25,9 @@ import kotlinx.serialization.KSerializer
 import kotlinx.serialization.builtins.serializer
 
 @Routable("endpoints/{method}/{path}")
-class EndpointScreen(val path: String, val method: String) : Screen {
+class EndpointPage(val path: String, val method: String) : Page {
 
-    class RouteScreen<T>(val formModule: FormModule, val name: String, val type: KSerializer<T>, val value: Property<T> = Property(type.default())) {
+    class RoutePage<T>(val formModule: FormModule, val name: String, val type: KSerializer<T>, val value: Property<T> = Property(type.default())) {
         fun render(viewWriter: ViewWriter) = with(viewWriter) {
             col {
                 spacing = 0.px
@@ -39,10 +40,10 @@ class EndpointScreen(val path: String, val method: String) : Screen {
         }
     }
 
-    override fun ViewWriter.render() {
+    override fun ViewWriter.render(): ViewModifiable {
         val server = adminServer
-        val endpoint = shared { adminServer().schema.endpoints.find { it.path == this@EndpointScreen.path && it.method == method }!! }
-        scrolls - col {
+        val endpoint = shared { adminServer().schema.endpoints.find { it.path == this@EndpointPage.path && it.method == method }!! }
+        return scrolling - col {
             reactive {
                 clearChildren()
                 val forms = adminFormModule()
@@ -52,7 +53,7 @@ class EndpointScreen(val path: String, val method: String) : Screen {
                 val output = RawReadable<Any?>(ReadableState(null))
                 val parameters = endpoint().routes.mapValues {
                     val type = it.value.serializer(server().registry, mapOf())
-                    RouteScreen(forms, it.key, type)
+                    RoutePage(forms, it.key, type)
                 }
                 val path = shared {
                     var s = endpoint().path

@@ -5,12 +5,13 @@ import com.lightningkite.kiteui.ExternalServices
 import com.lightningkite.kiteui.FileReference
 import com.lightningkite.kiteui.load
 import com.lightningkite.kiteui.models.*
-import com.lightningkite.kiteui.navigation.Screen
+import com.lightningkite.kiteui.navigation.Page
 import com.lightningkite.kiteui.navigation.UrlProperties
 import com.lightningkite.kiteui.navigation.encodeToString
-import com.lightningkite.kiteui.reactive.*
+import com.lightningkite.readable.*
 import com.lightningkite.kiteui.views.direct.*
 import com.lightningkite.kiteui.views.*
+import com.lightningkite.kiteui.views.l2.children
 import com.lightningkite.kiteui.views.l2.icon
 import com.lightningkite.lightningdb.*
 import com.lightningkite.lightningserver.db.ModelCache
@@ -157,7 +158,7 @@ object ForeignKeyRenderer : FormRenderer.Generator, ViewRenderer.Generator {
                                                 writer = this@swapping,
                                                 innerSer = typeInfo.cache().serializer,
                                                 readable = itemsMeta,
-                                                link = null,
+                                                linkTo = null,
                                                 action = {
                                                     writable.set(it._id)
                                                     closePopovers()
@@ -165,7 +166,7 @@ object ForeignKeyRenderer : FormRenderer.Generator, ViewRenderer.Generator {
                                             )
                                         } else {
                                             recyclerView {
-                                                children(items) {
+                                                children(items, id = { it._id }) {
                                                     card - button {
                                                         text {
                                                             content = "..."
@@ -193,7 +194,7 @@ object ForeignKeyRenderer : FormRenderer.Generator, ViewRenderer.Generator {
                     icon(Icon.externalLink.copy(width = 1.rem, height = 1.rem), "Open")
                     ::to label@{
                         val id = writable() ?: return@label null
-                        return@label typeInfo.screen(id)
+                        return@label typeInfo.page(id)
                     }
                 }
             }
@@ -213,7 +214,7 @@ object ForeignKeyRenderer : FormRenderer.Generator, ViewRenderer.Generator {
             link {
                 ::to label@{
                     val id = readable() ?: return@label null
-                    return@label typeInfo.screen(id)
+                    return@label typeInfo.page(id)
                 }
                 text {
                     reactiveSuspending {

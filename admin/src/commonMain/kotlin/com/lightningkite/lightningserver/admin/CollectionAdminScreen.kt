@@ -13,13 +13,14 @@ import com.lightningkite.kiteui.models.Icon
 import com.lightningkite.kiteui.models.SelectedSemantic
 import com.lightningkite.kiteui.models.rem
 import com.lightningkite.kiteui.navigation.DefaultJson
-import com.lightningkite.kiteui.navigation.Screen
+import com.lightningkite.kiteui.navigation.Page
 import com.lightningkite.kiteui.navigation.UrlProperties
 import com.lightningkite.kiteui.navigation.encodeToString
-import com.lightningkite.kiteui.reactive.*
+import com.lightningkite.readable.*
 import com.lightningkite.kiteui.requestFile
 import com.lightningkite.kiteui.text
 import com.lightningkite.kiteui.toBlob
+import com.lightningkite.kiteui.views.ViewModifiable
 import com.lightningkite.kiteui.views.ViewWriter
 import com.lightningkite.kiteui.views.card
 import com.lightningkite.kiteui.views.centered
@@ -44,7 +45,7 @@ import kotlinx.serialization.builtins.nullable
 
 
 @Routable("collections/{collectionName}")
-class CollectionAdminScreen(val collectionName: String) : Screen {
+class CollectionAdminPage(val collectionName: String) : Page {
 
     @QueryParameter("query")
     val textSearch: Property<String> = Property("")
@@ -120,9 +121,9 @@ class CollectionAdminScreen(val collectionName: String) : Screen {
         }
     }
 
-    override fun ViewWriter.render() {
-        col {
-            reactive {
+    override fun ViewWriter.render(): ViewModifiable {
+        return col {
+            reactive<Unit> {
                 clearChildren()
                 val mc = mc()
                 val forms = adminFormModule()
@@ -205,8 +206,8 @@ class CollectionAdminScreen(val collectionName: String) : Screen {
                     link {
                         icon(Icon.add, "Add New")
                         to = {
-                            NewItemAdminScreen(collectionName).apply {
-                                conditionString.value = this@CollectionAdminScreen.conditionString.value
+                            NewItemAdminPage(collectionName).apply {
+                                conditionString.value = this@CollectionAdminPage.conditionString.value
                             }
                         }
                     }
@@ -244,9 +245,9 @@ class CollectionAdminScreen(val collectionName: String) : Screen {
                     readable = shared {
                         mc.watch(query())
                     },
-                    link = {
+                    linkTo = {
                         val id = UrlProperties.encodeToString(mc.serializer._id().serializer, it._id)
-                        return@view { DetailAdminScreen(collectionName, id) }
+                        return@view { DetailAdminPage(collectionName, id) }
                     }
                 )
             }
@@ -372,7 +373,7 @@ fun Condition<*>.friendly(): String {
 }
 
 //@Routable("collections/{collectionName}/report")
-//class CollectionAdminReportScreen(val collectionName: String) : Screen {
+//class CollectionAdminReportPage(val collectionName: String) : Page {
 //
 //    @QueryParameter("condition")
 //    val conditionString: Property<String?> = Property(null)

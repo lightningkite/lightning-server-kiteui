@@ -1,9 +1,9 @@
 package com.lightningkite.lightningserver.db
 
 import com.lightningkite.lightningdb.*
-import com.lightningkite.kiteui.reactive.LateInitProperty
-import com.lightningkite.kiteui.reactive.Readable
-import com.lightningkite.kiteui.reactive.ReadableState
+import com.lightningkite.readable.LateInitProperty
+import com.lightningkite.readable.Readable
+import com.lightningkite.readable.ReadableState
 import kotlinx.serialization.KSerializer
 import com.lightningkite.serialization.*
 

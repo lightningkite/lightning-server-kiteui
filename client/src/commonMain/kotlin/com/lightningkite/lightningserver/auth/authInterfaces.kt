@@ -3,9 +3,7 @@
 package com.lightningkite.lightningserver.auth
 
 import com.lightningkite.UUID
-import com.lightningkite.kiteui.Async
 import com.lightningkite.kiteui.HttpMethod
-import com.lightningkite.kiteui.asyncGlobal
 import com.lightningkite.kiteui.fetch
 import com.lightningkite.kiteui.navigation.DefaultJson
 import com.lightningkite.kiteui.navigation.UrlProperties
@@ -21,6 +19,9 @@ import com.lightningkite.lightningserver.auth.subject.ProofsCheckResult
 import com.lightningkite.lightningserver.auth.subject.SubSessionRequest
 import com.lightningkite.lightningserver.networking.Fetcher
 import com.lightningkite.now
+import com.lightningkite.readable.AppScope
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.datetime.Clock.System
 import kotlinx.datetime.Instant
@@ -42,11 +43,11 @@ data class LightningServerAuthentication(
     val sessionToken: String,
 ) {
     var lastRefresh: Instant = Instant.DISTANT_PAST
-    var token: Async<String?>? = null
+    var token: Deferred<String?>? = null
     val accessToken = suspend {
         if (System.now() - lastRefresh > 4.minutes || token == null) {
             lastRefresh = System.now()
-            token = asyncGlobal {
+            token = AppScope.async {
                 subject.getTokenSimple(sessionToken)
             }
         }

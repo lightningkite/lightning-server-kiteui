@@ -7,7 +7,7 @@ import com.lightningkite.kiteui.locale.renderToString
 import com.lightningkite.kiteui.models.Align
 import com.lightningkite.kiteui.models.Icon
 import com.lightningkite.kiteui.models.rem
-import com.lightningkite.kiteui.reactive.*
+import com.lightningkite.readable.*
 import com.lightningkite.kiteui.views.ViewWriter
 import com.lightningkite.kiteui.views.canvas.TextAlign
 import com.lightningkite.kiteui.views.centered

@@ -6,7 +6,9 @@ import kotlinx.serialization.json.Json
 import com.lightningkite.kiteui.*
 import com.lightningkite.lightningserver.typed.BulkRequest
 import com.lightningkite.lightningserver.typed.BulkResponse
+import com.lightningkite.readable.AppScope
 import com.lightningkite.uuid
+import kotlinx.coroutines.launch
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.encodeToString
@@ -33,7 +35,7 @@ private class DomainRequestHandler(
             byId.put(id, bulk)
             if (!scheduled) {
                 scheduled = true
-                launchGlobal {
+                AppScope.launch {
                     delay(100)
                     fetch()
                 }

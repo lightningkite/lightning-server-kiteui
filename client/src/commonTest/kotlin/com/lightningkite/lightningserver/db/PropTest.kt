@@ -1,9 +1,9 @@
 package com.lightningkite.lightningserver.db
 
-import com.lightningkite.kiteui.reactive.Property
-import com.lightningkite.kiteui.reactive.invoke
-import com.lightningkite.kiteui.reactive.lensByElement
-import com.lightningkite.kiteui.reactive.reactiveScope
+import com.lightningkite.readable.Property
+import com.lightningkite.readable.invoke
+import com.lightningkite.readable.lensByElement
+import com.lightningkite.readable.reactiveScope
 import com.lightningkite.serialization.lensPath
 import kotlinx.coroutines.launch
 import kotlin.test.Test
