@@ -16,7 +16,7 @@ vite = "0.4.0"
 
 [libraries]
 androidDesugaring = { module = "com.android.tools:desugar_jdk_libs", version = { ref = "androidDesugaring" } }
-comLightningkiteKiteuiLibrary = { module = "com.lightningkite.kiteui:library", version = "5.1.15" }
+comLightningkiteKiteuiLibrary = { module = "com.lightningkite.kiteui:library", version = "5.1.16" }
 comLightningkiteKotlinxSerializationCsvDurable = { module = "com.lightningkite:kotlinx-serialization-csv-durable", version = "0.2.6" }
 comLightningkiteLightningserverProcessor = { module = "com.lightningkite.lightningserver:processor", version = "4.1.60" }
 comLightningkiteLightningserverServerAws = { module = "com.lightningkite.lightningserver:server-aws", version = "4.1.60" }
@@ -39,7 +39,7 @@ proguard = { module = "com.guardsquare:proguard-gradle", version = { ref = "prog
 [plugins]
 androidApp = { id = "com.android.application", version = { ref = "agp" } }
 androidLibrary = { id = "com.android.library", version = { ref = "agp" } }
-comLightningkiteKiteui = { id = "com.lightningkite.kiteui", version = "5.1.15" }
+comLightningkiteKiteui = { id = "com.lightningkite.kiteui", version = "5.1.16" }
 dokka = { id = "org.jetbrains.dokka", version = { ref = "dokka" } }
 graalVmNative = { id = "org.graalvm.buildtools.native", version = { ref = "graalVmNative" } }
 kotlinJvm = { id = "org.jetbrains.kotlin.jvm", version = { ref = "kotlin" } }
