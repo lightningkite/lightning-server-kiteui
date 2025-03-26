@@ -1,60 +1,20 @@
 package com.lightningkite.lightningserver.networking
 
 import com.lightningkite.kiteui.*
-import com.lightningkite.lightningserver.LSError
-import com.lightningkite.lightningserver.LsErrorException
-import com.lightningkite.lightningserver.batchFetch
 import kotlinx.serialization.KSerializer
-import kotlinx.serialization.SerializationException
-import kotlinx.serialization.json.Json
 
 
 interface Fetcher {
-    suspend operator fun <T> invoke(url: String, method: HttpMethod, jsonBody: String?, outSerializer: KSerializer<T>): T
-}
+    fun withHeaderCalculator(calculator: suspend () -> List<Pair<String, String>>): Fetcher
 
-class BulkFetcher(val base: String, val json: Json, val token: (suspend () -> String?)) : Fetcher {
-    override suspend fun <T> invoke(
+    suspend operator fun <I, O> invoke(
         url: String,
         method: HttpMethod,
-        jsonBody: String?,
-        outSerializer: KSerializer<T>
-    ): T {
-        return batchFetch("$base$url", method, token, jsonBody, outSerializer, json)
-    }
+        inSerializer: KSerializer<I>,
+        body: I,
+        outSerializer: KSerializer<O>
+    ): O
+
+    fun <I, O> websocket(url: String, inSerializer: KSerializer<I>, outSerializer: KSerializer<O>): TypedWebSocket<I, O>
 }
 
-class ConnectivityOnlyFetcher(val base: String, val json: Json, val token: (suspend () -> String?)) : Fetcher {
-    override suspend fun <T> invoke(
-        url: String,
-        method: HttpMethod,
-        jsonBody: String?,
-        outSerializer: KSerializer<T>
-    ): T {
-        val token = token()
-        return connectivityFetch("$base$url", method, {
-            if (token != null) httpHeaders(
-                "Authorization" to token,
-                "Accept" to "application/json"
-            ) else httpHeaders("Accept" to "application/json")
-        }, RequestBodyText(jsonBody ?: "{}", "application/json")).let {
-            if (!it.ok) {
-                val text = it.text()
-                throw try {
-                    val e = json.decodeFromString(LSError.serializer(), text)
-                    LsErrorException(it.status, e)
-                } catch (e: Exception) {
-                    LsErrorException(it.status, LSError(it.status.toInt(), "Unknown", message = text))
-                }
-            } else {
-                @Suppress("UNCHECKED_CAST")
-                if (outSerializer.descriptor.serialName == "kotlin.Unit") return Unit as T
-                try {
-                    json.decodeFromString(outSerializer, it.text())
-                } catch(e: SerializationException) {
-                    throw SerializationException("Failed to parse ${outSerializer.descriptor.serialName} from response", e).also { it.printStackTrace() }
-                }
-            }
-        }
-    }
-}

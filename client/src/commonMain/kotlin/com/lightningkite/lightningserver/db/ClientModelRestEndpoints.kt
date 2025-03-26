@@ -26,6 +26,7 @@ interface ClientModelRestEndpoints<T : HasId<ID>, ID : Comparable<ID>> {
     suspend fun aggregate(input: AggregateQuery<T>): Double?
     suspend fun groupAggregate(input: GroupAggregateQuery<T>): Map<String, Double?>
     suspend fun permissions(): ModelPermissions<T>
+
 }
 
 interface ClientModelRestEndpointsPlusWs<T : HasId<ID>, ID : Comparable<ID>> : ClientModelRestEndpoints<T, ID> {
@@ -62,4 +63,5 @@ interface CachingModelRestEndpoints<T : HasId<ID>, ID : Comparable<ID>> : ModelC
     val skipCache: ClientModelRestEndpoints<T, ID>
     fun totallyInvalidate()
 }
+
 

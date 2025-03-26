@@ -1,6 +1,6 @@
 @file:OptIn(ExperimentalSerializationApi::class)
 
-package com.lightningkite.lightningserver.schema
+package com.lightningkite.lightningserver.admin
 
 import com.lightningkite.kiteui.*
 import com.lightningkite.kiteui.forms.FormModule
@@ -16,17 +16,17 @@ import com.lightningkite.lightningserver.db.*
 import com.lightningkite.lightningserver.files.ServerFile
 import com.lightningkite.lightningserver.files.UploadInformation
 import com.lightningkite.lightningserver.networking.BulkFetcher
-import com.lightningkite.lightningserver.networking.ConnectivityOnlyFetcher
+import com.lightningkite.lightningserver.networking.ConnectivityFetcher
 import com.lightningkite.lightningserver.networking.Fetcher
+import com.lightningkite.lightningserver.schema.LightningServerKSchema
+import com.lightningkite.lightningserver.schema.LightningServerKSchemaEndpoint
+import com.lightningkite.lightningserver.schema.LightningServerKSchemaInterface
 import com.lightningkite.serialization.*
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.builtins.serializer
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.properties.Properties
-import kotlin.properties.ReadOnlyProperty
-import kotlin.reflect.KProperty
 
 fun SerializationRegistry.register(schema: LightningServerKSchema) {
     schema.structures.values.forEach { register(it) }
@@ -75,72 +75,69 @@ class ExternalLightningServer(
     val file = schema.uploadEarlyEndpoint()
     val fileVerify = schema.uploadEarlyVerifyEndpoint()
     val health = schema.healthEndpoint()
-
-    fun authlessFetcher(path: String): Fetcher = fetcher(path, null)
-
-    private val nullToken: suspend () -> String? = { null }
-    fun fetcher(path: String, auth: LightningServerAuthentication?): Fetcher {
+    
+    private val nullToken: suspend () -> List<Pair<String, String>> = { listOf() }
+    fun authlessFetcher(): Fetcher = fetcher(null)
+    fun fetcher(auth: LightningServerAuthentication?): Fetcher {
         return bulk?.let {
-            BulkFetcher(schema.baseUrl + "/" + path, json, auth?.accessToken ?: nullToken)
-        } ?: ConnectivityOnlyFetcher(path, json, auth?.accessToken ?: nullToken)
+            BulkFetcher(schema.baseUrl, schema.baseWsUrl + "/multiplex", json, calculator = auth?.accessToken ?: nullToken)
+        } ?: ConnectivityFetcher(schema.baseUrl, schema.baseWsUrl, json, calculator = auth?.accessToken ?: nullToken)
     }
 
     val auth: AuthClientEndpoints = AuthClientEndpoints(
         subjects = schema.interfaces.filter { it.matches.serialName == "UserAuthClientEndpoints" }.associate {
             it.path to UserAuthClientEndpoints.StandardImpl(
-                fetchImplementation = authlessFetcher(it.path),
+                fetcher = authlessFetcher(),
+                subpath = it.path,
                 idSerializer = it.matches.arguments[0].serializer(registry, mapOf()) as KSerializer<Comparable<Any>>,
-                json = json,
-                properties = properties,
             )
         },
         authenticatedSubjects = schema.interfaces.filter { it.matches.serialName == "AuthenticatedUserAuthClientEndpoints" }.associate {
             it.path to { auth ->
                 AuthenticatedUserAuthClientEndpoints.StandardImpl(
-                    fetchImplementation = fetcher(it.path, auth),
+                    fetcher = fetcher(auth),
+                    subpath = it.path,
                     idSerializer = it.matches.arguments[1].serializer(registry, mapOf()) as KSerializer<Comparable<Any>>,
                     userSerializer = it.matches.arguments[0].serializer(registry, mapOf()) as KSerializer<HasId<Comparable<Any>>>,
-                    json = json,
-                    properties = properties,
                 )
             }
         },
         smsProof = schema.interfaces.find { it.matches.serialName == "SmsProofClientEndpoints" }?.let {
             val httpPath = it.path
-            SmsProofClientEndpoints.StandardImpl(fetchImplementation = authlessFetcher(httpPath), json = json, properties = properties)
+            SmsProofClientEndpoints.StandardImpl(fetcher = authlessFetcher(), subpath = httpPath,)
         },
         emailProof = schema.interfaces.find { it.matches.serialName == "EmailProofClientEndpoints" }?.let {
             val httpPath = it.path
-            EmailProofClientEndpoints.StandardImpl(fetchImplementation = authlessFetcher(httpPath), json = json, properties = properties)
+            EmailProofClientEndpoints.StandardImpl(fetcher = authlessFetcher(), subpath = httpPath,)
         },
         oneTimePasswordProof = schema.interfaces.find { it.matches.serialName == "OneTimePasswordProofClientEndpoints" }?.let {
             val httpPath = it.path
-            OneTimePasswordProofClientEndpoints.StandardImpl(fetchImplementation = authlessFetcher(httpPath), json = json, properties = properties)
+            OneTimePasswordProofClientEndpoints.StandardImpl(fetcher = authlessFetcher(), subpath = httpPath,)
         },
         passwordProof = schema.interfaces.find { it.matches.serialName == "PasswordProofClientEndpoints" }?.let {
             val httpPath = it.path
-            PasswordProofClientEndpoints.StandardImpl(fetchImplementation = authlessFetcher(httpPath), json = json, properties = properties)
+            PasswordProofClientEndpoints.StandardImpl(fetcher = authlessFetcher(), subpath = httpPath,)
         },
         knownDeviceProof = schema.interfaces.find { it.matches.serialName == "KnownDeviceProofClientEndpoints" }?.let {
             val httpPath = it.path
-            KnownDeviceProofClientEndpoints.StandardImpl(fetchImplementation = authlessFetcher(httpPath), json = json, properties = properties)
+            KnownDeviceProofClientEndpoints.StandardImpl(fetcher = authlessFetcher(), subpath = httpPath,)
         },
         authenticatedOneTimePasswordProof = schema.interfaces.find { it.matches.serialName == "AuthenticatedOneTimePasswordProofClientEndpoints" }?.let {
             { auth ->
                 val httpPath = it.path
-                AuthenticatedOneTimePasswordProofClientEndpoints.StandardImpl(fetchImplementation = fetcher(httpPath, auth), json = json, properties = properties)
+                AuthenticatedOneTimePasswordProofClientEndpoints.StandardImpl(fetcher = fetcher(auth), subpath = httpPath,)
             }
         },
         authenticatedPasswordProof = schema.interfaces.find { it.matches.serialName == "AuthenticatedPasswordProofClientEndpoints" }?.let {
             { auth ->
                 val httpPath = it.path
-                AuthenticatedPasswordProofClientEndpoints.StandardImpl(fetchImplementation = fetcher(httpPath, auth), json = json, properties = properties)
+                AuthenticatedPasswordProofClientEndpoints.StandardImpl(fetcher = fetcher(auth), subpath = httpPath,)
             }
         },
         authenticatedKnownDeviceProof = schema.interfaces.find { it.matches.serialName == "AuthenticatedKnownDeviceProofClientEndpoints" }?.let {
             { auth ->
                 val httpPath = it.path
-                AuthenticatedKnownDeviceProofClientEndpoints.StandardImpl(fetchImplementation = fetcher(httpPath, auth), json = json, properties = properties)
+                AuthenticatedKnownDeviceProofClientEndpoints.StandardImpl(fetcher = fetcher(auth), subpath = httpPath,)
             }
         },
     )
@@ -163,55 +160,23 @@ class ExternalLightningServer(
 
         private var cacheCache = PerAuthCache { auth ->
             when {
-                hasUpdatesWs -> ClientModelRestEndpointsPlusUpdatesWebsocketStandardImpl(
-                    fetchImplementation = auth?.let { fetcher(httpPath, it) } ?: authlessFetcher(httpPath),
-                    wsImplementation = {
-                        multiplexSocket(
-                            url = schema.baseWsUrl + "/multiplex" + (auth?.sessionToken?.let { "?jwt=$it" } ?: ""),
-                            path = inter.path,
-                            params = emptyMap(),
-                            json = json,
-                            pingTime = 5_000
-                        )
-                    },
+                hasUpdatesWs -> ClientModelRestEndpointsPlusUpdatesWebsocketLive(
+                    fetcher = auth?.let { fetcher(it) } ?: authlessFetcher(),
+                    subpath = httpPath,
                     serializer = serializer,
                     idSerializer = idserializer,
-                    json = json,
-                    properties = properties
                 )
-
-                hasWs -> ClientModelRestEndpointsPlusWsStandardImpl(
-                    fetchImplementation = auth?.let { fetcher(httpPath, it) } ?: authlessFetcher(httpPath),
-                    wsImplementation = {
-                        multiplexSocket(
-                            url = schema.baseWsUrl + "/multiplex" + (auth?.sessionToken?.let { "?jwt=$it" } ?: ""),
-                            path = inter.path,
-                            params = emptyMap(),
-                            json = json,
-                            pingTime = 5_000
-                        )
-                    },
+                hasWs -> ClientModelRestEndpointsPlusWsLive(
+                    fetcher = auth?.let { fetcher(it) } ?: authlessFetcher(),
+                    subpath = httpPath,
                     serializer = serializer,
                     idSerializer = idserializer,
-                    json = json,
-                    properties = properties
                 )
-
-                else -> ClientModelRestEndpointsStandardImpl(
-                    fetchImplementation = auth?.let { fetcher(httpPath, it) } ?: authlessFetcher(httpPath),
-                    wsImplementation = {
-                        multiplexSocket(
-                            url = schema.baseWsUrl + "/multiplex" + (auth?.sessionToken?.let { "?jwt=$it" } ?: ""),
-                            path = inter.path,
-                            params = emptyMap(),
-                            json = json,
-                            pingTime = 5_000
-                        )
-                    },
+                else -> ClientModelRestEndpointsLive(
+                    fetcher = auth?.let { fetcher(it) } ?: authlessFetcher(),
+                    subpath = httpPath,
                     serializer = serializer,
                     idSerializer = idserializer,
-                    json = json,
-                    properties = properties
                 )
             }.let { ModelCache(it, it.serializer) } as ModelCache<T, ID>
         }
@@ -229,18 +194,19 @@ class ExternalLightningServer(
     fun formModule(auth: LightningServerAuthentication?) = FormModule().apply {
         fileUpload = file?.let {
             { file ->
-                val req = fetcher("", auth).invoke(it.path, HttpMethod.GET, null, UploadInformation.serializer())
+                val req = fetcher(auth).invoke(it.path, HttpMethod.GET, Unit.serializer(), Unit, UploadInformation.serializer())
                 val r = connectivityFetch(req.uploadUrl, HttpMethod.PUT, body = RequestBodyFile(file))
                 if (!r.ok) throw IllegalStateException("File upload to ${req.uploadUrl.substringBefore('?')} failed")
                 val safe = fileVerify?.let { verify ->
-                    fetcher("", auth).invoke(
+                    fetcher(auth).invoke(
                         verify.path,
                         HttpMethod.POST,
-                        json.encodeToString(String.serializer(), req.futureCallToken),
+                        String.serializer(),
+                        req.futureCallToken,
                         String.serializer()
                     )
                 } ?: req.futureCallToken
-                ServerFile(req.futureCallToken)
+                ServerFile(safe)
             }
         }
         typeInfo = label@{ name ->

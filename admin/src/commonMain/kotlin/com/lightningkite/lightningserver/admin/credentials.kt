@@ -10,7 +10,6 @@ import com.lightningkite.lightningdb.HasId
 import com.lightningkite.lightningdb.ModelPermissions
 import com.lightningkite.lightningserver.LsErrorException
 import com.lightningkite.lightningserver.auth.LightningServerAuthentication
-import com.lightningkite.lightningserver.schema.ExternalLightningServer
 import com.lightningkite.lightningserver.schema.LightningServerKSchema
 import com.lightningkite.now
 import kotlinx.coroutines.async

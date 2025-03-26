@@ -79,10 +79,11 @@ class EndpointPage(val path: String, val method: String) : Page {
                     onClick {
                         output.state = ReadableState.notReady
                         output.state = readableState {
-                            server().fetcher("", adminAuthentication()).invoke(
+                            server().fetcher(adminAuthentication()).invoke(
                                 url = path(),
                                 method = HttpMethod.valueOf(endpoint().method),
-                                jsonBody = DefaultJson.encodeToString(inputSerializer, input.value),
+                                inSerializer = inputSerializer,
+                                body = input.value,
                                 outSerializer = outputSerializer,
                             )
                         }

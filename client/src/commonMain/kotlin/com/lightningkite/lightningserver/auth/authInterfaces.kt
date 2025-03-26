@@ -4,7 +4,6 @@ package com.lightningkite.lightningserver.auth
 
 import com.lightningkite.UUID
 import com.lightningkite.kiteui.HttpMethod
-import com.lightningkite.kiteui.fetch
 import com.lightningkite.kiteui.navigation.DefaultJson
 import com.lightningkite.kiteui.navigation.UrlProperties
 import com.lightningkite.lightningdb.HasId
@@ -27,12 +26,12 @@ import kotlinx.datetime.Clock.System
 import kotlinx.datetime.Instant
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
+import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.properties.Properties
 import kotlinx.serialization.serializer
-import kotlin.math.max
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.minutes
 
@@ -43,16 +42,8 @@ data class LightningServerAuthentication(
     val sessionToken: String,
 ) {
     var lastRefresh: Instant = Instant.DISTANT_PAST
-    var token: Deferred<String?>? = null
-    val accessToken = suspend {
-        if (System.now() - lastRefresh > 4.minutes || token == null) {
-            lastRefresh = System.now()
-            token = AppScope.async {
-                subject.getTokenSimple(sessionToken)
-            }
-        }
-        token!!.await()
-    }
+    var token: Deferred<String>? = null
+    val accessToken = subject.accessToken(sessionToken)
 }
 
 data class AuthClientEndpoints(
@@ -234,22 +225,23 @@ interface SmsProofClientEndpoints : ProofEndpoints {
     suspend fun provePhoneOwnership(input: FinishProof): Proof
 
     open class StandardImpl(
-        val fetchImplementation: Fetcher,
-        val json: Json = DefaultJson,
-        val properties: Properties = UrlProperties,
+        val fetcher: Fetcher,
+        val subpath: String,
     ) : SmsProofClientEndpoints {
-        override suspend fun beginSmsOwnershipProof(input: String): String = fetchImplementation(
-            url = "/start",
+        override suspend fun beginSmsOwnershipProof(input: String): String = fetcher(
+            url = "$subpath/start",
             method = HttpMethod.POST,
-            jsonBody = json.encodeToString(input),
-            outSerializer = json.serializersModule.serializer()
+            inSerializer = String.serializer(),
+            body = input,
+            outSerializer = String.serializer(),
         )
 
-        override suspend fun provePhoneOwnership(input: FinishProof): Proof = fetchImplementation(
-            url = "/prove",
+        override suspend fun provePhoneOwnership(input: FinishProof): Proof = fetcher(
+            url = "$subpath/prove",
             method = HttpMethod.POST,
-            jsonBody = json.encodeToString(input),
-            outSerializer = json.serializersModule.serializer()
+            inSerializer = FinishProof.serializer(),
+            body = input,
+            outSerializer = Proof.serializer(),
         )
     }
 }
@@ -259,22 +251,23 @@ interface EmailProofClientEndpoints : ProofEndpoints {
     suspend fun proveEmailOwnership(input: FinishProof): Proof
 
     open class StandardImpl(
-        val fetchImplementation: Fetcher,
-        val json: Json = DefaultJson,
-        val properties: Properties = UrlProperties,
+        val fetcher: Fetcher,
+        val subpath: String,
     ) : EmailProofClientEndpoints {
-        override suspend fun beginEmailOwnershipProof(input: String): String = fetchImplementation(
-            url = "/start",
+        override suspend fun beginEmailOwnershipProof(input: String): String = fetcher(
+            url = "$subpath/start",
             method = HttpMethod.POST,
-            jsonBody = json.encodeToString(input),
-            outSerializer = json.serializersModule.serializer()
+            inSerializer = String.serializer(),
+            body = input,
+            outSerializer = String.serializer()
         )
 
-        override suspend fun proveEmailOwnership(input: FinishProof): Proof = fetchImplementation(
-            url = "/prove",
+        override suspend fun proveEmailOwnership(input: FinishProof): Proof = fetcher(
+            url = "$subpath/prove",
             method = HttpMethod.POST,
-            jsonBody = json.encodeToString(input),
-            outSerializer = json.serializersModule.serializer()
+            inSerializer = FinishProof.serializer(),
+            body = input,
+            outSerializer = Proof.serializer()
         )
     }
 
@@ -284,15 +277,15 @@ interface OneTimePasswordProofClientEndpoints : ProofEndpoints {
     suspend fun proveOTP(input: IdentificationAndPassword): Proof
 
     open class StandardImpl(
-        val fetchImplementation: Fetcher,
-        val json: Json = DefaultJson,
-        val properties: Properties = UrlProperties,
+        val fetcher: Fetcher,
+        val subpath: String,
     ) : OneTimePasswordProofClientEndpoints {
-        override suspend fun proveOTP(input: IdentificationAndPassword): Proof = fetchImplementation(
-            url = "/prove",
+        override suspend fun proveOTP(input: IdentificationAndPassword): Proof = fetcher(
+            url = "$subpath/prove",
             method = HttpMethod.POST,
-            jsonBody = json.encodeToString(input),
-            outSerializer = json.serializersModule.serializer()
+            inSerializer = IdentificationAndPassword.serializer(),
+            body = input,
+            outSerializer = Proof.serializer()
         )
     }
 
@@ -301,15 +294,15 @@ interface OneTimePasswordProofClientEndpoints : ProofEndpoints {
 interface PasswordProofClientEndpoints : ProofEndpoints {
     suspend fun provePasswordOwnership(input: IdentificationAndPassword): Proof
     open class StandardImpl(
-        val fetchImplementation: Fetcher,
-        val json: Json = DefaultJson,
-        val properties: Properties = UrlProperties,
+        val fetcher: Fetcher,
+        val subpath: String,
     ) : PasswordProofClientEndpoints {
-        override suspend fun provePasswordOwnership(input: IdentificationAndPassword): Proof = fetchImplementation(
-            url = "/prove",
+        override suspend fun provePasswordOwnership(input: IdentificationAndPassword): Proof = fetcher(
+            url = "$subpath/prove",
             method = HttpMethod.POST,
-            jsonBody = json.encodeToString(input),
-            outSerializer = json.serializersModule.serializer()
+            inSerializer = IdentificationAndPassword.serializer(),
+            body = input,
+            outSerializer = Proof.serializer()
         )
     }
 }
@@ -318,37 +311,38 @@ interface KnownDeviceProofClientEndpoints : ProofEndpoints {
     suspend fun knownDeviceOptions(): KnownDeviceOptions
     suspend fun proveKnownDevice(input: String): Proof
     open class StandardImpl(
-        val fetchImplementation: Fetcher,
-        val json: Json = DefaultJson,
-        val properties: Properties = UrlProperties,
+        val fetcher: Fetcher,
+        val subpath: String,
     ) : KnownDeviceProofClientEndpoints {
-        override suspend fun proveKnownDevice(input: String): Proof = fetchImplementation(
-            url = "/prove",
+        override suspend fun proveKnownDevice(input: String): Proof = fetcher(
+            url = "$subpath/prove",
             method = HttpMethod.POST,
-            jsonBody = json.encodeToString(input),
-            outSerializer = json.serializersModule.serializer()
+            inSerializer = String.serializer(),
+            body = input,
+            outSerializer = Proof.serializer()
         )
 
-        override suspend fun knownDeviceOptions(): KnownDeviceOptions = fetchImplementation(
-            url = "/options",
+        override suspend fun knownDeviceOptions(): KnownDeviceOptions = fetcher(
+            url = "$subpath/options",
             method = HttpMethod.GET,
-            jsonBody = null,
-            outSerializer = json.serializersModule.serializer()
+            inSerializer = Unit.serializer(),
+            body = Unit,
+            outSerializer = KnownDeviceOptions.serializer()
         )
     }
 }
 
 interface AuthenticatedOneTimePasswordProofClientEndpoints {
     open class StandardImpl(
-        val fetchImplementation: Fetcher,
-        val json: Json = DefaultJson,
-        val properties: Properties = UrlProperties,
+        val fetcher: Fetcher,
+        val subpath: String,
     ) : AuthenticatedOneTimePasswordProofClientEndpoints {
-        override suspend fun establishOneTimePassword(input: EstablishOtp): String = fetchImplementation(
-            url = "/establish",
+        override suspend fun establishOneTimePassword(input: EstablishOtp): String = fetcher(
+            url = "$subpath/establish",
             method = HttpMethod.POST,
-            jsonBody = json.encodeToString(input),
-            outSerializer = json.serializersModule.serializer()
+            inSerializer = EstablishOtp.serializer(),
+            body = input,
+            outSerializer = String.serializer()
         )
     }
 
@@ -358,15 +352,15 @@ interface AuthenticatedOneTimePasswordProofClientEndpoints {
 interface AuthenticatedPasswordProofClientEndpoints {
     suspend fun establishPassword(input: EstablishPassword): Unit
     open class StandardImpl(
-        val fetchImplementation: Fetcher,
-        val json: Json = DefaultJson,
-        val properties: Properties = UrlProperties,
+        val fetcher: Fetcher,
+        val subpath: String,
     ) : AuthenticatedPasswordProofClientEndpoints {
-        override suspend fun establishPassword(input: EstablishPassword): Unit = fetchImplementation(
-            url = "/establish",
+        override suspend fun establishPassword(input: EstablishPassword): Unit = fetcher(
+            url = "$subpath/establish",
             method = HttpMethod.POST,
-            jsonBody = json.encodeToString(input),
-            outSerializer = json.serializersModule.serializer()
+            inSerializer = EstablishPassword.serializer(),
+            body = input,
+            outSerializer = Unit.serializer()
         )
     }
 }
@@ -375,25 +369,40 @@ interface AuthenticatedKnownDeviceProofClientEndpoints {
     suspend fun establishKnownDevice(): String
     suspend fun establishKnownDeviceV2(): KnownDeviceSecretAndExpiration
     open class StandardImpl(
-        val fetchImplementation: Fetcher,
-        val json: Json = DefaultJson,
-        val properties: Properties = UrlProperties,
+        val fetcher: Fetcher,
+        val subpath: String,
     ) : AuthenticatedKnownDeviceProofClientEndpoints {
-        override suspend fun establishKnownDevice(): String = fetchImplementation(
-            url = "/establish",
+        override suspend fun establishKnownDevice(): String = fetcher(
+            url = "$subpath/establish",
             method = HttpMethod.POST,
-            jsonBody = "{}",
-            outSerializer = json.serializersModule.serializer()
+            inSerializer = Unit.serializer(),
+            body = Unit,
+            outSerializer = String.serializer()
         )
 
-        override suspend fun establishKnownDeviceV2(): KnownDeviceSecretAndExpiration = fetchImplementation(
-            url = "/establish2",
+        override suspend fun establishKnownDeviceV2(): KnownDeviceSecretAndExpiration = fetcher(
+            url = "$subpath/establish2",
             method = HttpMethod.POST,
-            jsonBody = "{}",
-            outSerializer = json.serializersModule.serializer()
+            inSerializer = Unit.serializer(),
+            body = Unit,
+            outSerializer = KnownDeviceSecretAndExpiration.serializer()
         )
     }
 
+}
+
+fun <ID : Comparable<ID>> UserAuthClientEndpoints<ID>.accessToken(sessionToken: String): suspend () -> List<Pair<String, String>> {
+    var lastRefresh: Instant = Instant.DISTANT_PAST
+    var token: Deferred<String>? = null
+    return {
+        if (System.now() - lastRefresh > 4.minutes || token == null) {
+            lastRefresh = System.now()
+            token = AppScope.async {
+                getTokenSimple(sessionToken)
+            }
+        }
+        listOf("Authorization" to token.await())
+    }
 }
 
 interface UserAuthClientEndpoints<ID : Comparable<ID>> {
@@ -403,52 +412,57 @@ interface UserAuthClientEndpoints<ID : Comparable<ID>> {
     suspend fun openSession(input: String): String
     suspend fun getToken(input: OauthTokenRequest): OauthResponse
     suspend fun getTokenSimple(input: String): String
-    open class StandardImpl<USER : HasId<ID>, ID : Comparable<ID>>(
-        val fetchImplementation: Fetcher,
+    open class StandardImpl<ID : Comparable<ID>>(
+        val fetcher: Fetcher,
+        val subpath: String,
         val idSerializer: KSerializer<ID>,
-        val json: Json = DefaultJson,
-        val properties: Properties = UrlProperties,
     ) : UserAuthClientEndpoints<ID> {
-        override suspend fun logIn(input: List<Proof>): IdAndAuthMethods<ID> = fetchImplementation(
-            url = "/login",
+        override suspend fun logIn(input: List<Proof>): IdAndAuthMethods<ID> = fetcher(
+            url = "$subpath/login",
             method = HttpMethod.POST,
-            jsonBody = json.encodeToString(input),
+            inSerializer = ListSerializer(Proof.serializer()),
+            body = input,
             outSerializer = IdAndAuthMethods.serializer(idSerializer)
         )
 
-        override suspend fun logInV2(input: LogInRequest): IdAndAuthMethods<ID> = fetchImplementation(
-            url = "/login2",
+        override suspend fun logInV2(input: LogInRequest): IdAndAuthMethods<ID> = fetcher(
+            url = "$subpath/login2",
             method = HttpMethod.POST,
-            jsonBody = json.encodeToString(input),
+            inSerializer = LogInRequest.serializer(),
+            body = input,
             outSerializer = IdAndAuthMethods.serializer(idSerializer)
         )
 
-        override suspend fun checkProofs(input: List<Proof>): ProofsCheckResult<ID> = fetchImplementation(
-            url = "/proofs-check",
+        override suspend fun checkProofs(input: List<Proof>): ProofsCheckResult<ID> = fetcher(
+            url = "$subpath/proofs-check",
             method = HttpMethod.POST,
-            jsonBody = json.encodeToString(input),
+            inSerializer = ListSerializer(Proof.serializer()),
+            body = input,
             outSerializer = ProofsCheckResult.serializer(idSerializer)
         )
 
-        override suspend fun openSession(input: String): String = fetchImplementation(
-            url = "/open-session",
+        override suspend fun openSession(input: String): String = fetcher(
+            url = "$subpath/open-session",
             method = HttpMethod.POST,
-            jsonBody = json.encodeToString(input),
-            outSerializer = json.serializersModule.serializer()
+            inSerializer = String.serializer(),
+            body = input,
+            outSerializer = String.serializer()
         )
 
-        override suspend fun getToken(input: OauthTokenRequest): OauthResponse = fetchImplementation(
-            url = "/token",
+        override suspend fun getToken(input: OauthTokenRequest): OauthResponse = fetcher(
+            url = "$subpath/token",
             method = HttpMethod.POST,
-            jsonBody = json.encodeToString(input),
-            outSerializer = json.serializersModule.serializer()
+            inSerializer = OauthTokenRequest.serializer(),
+            body = input,
+            outSerializer = OauthResponse.serializer()
         )
 
-        override suspend fun getTokenSimple(input: String): String = fetchImplementation(
-            url = "/token/simple",
+        override suspend fun getTokenSimple(input: String): String = fetcher(
+            url = "$subpath/token/simple",
             method = HttpMethod.POST,
-            jsonBody = json.encodeToString(input),
-            outSerializer = json.serializersModule.serializer()
+            inSerializer = String.serializer(),
+            body = input,
+            outSerializer = String.serializer()
         )
     }
 }
@@ -459,37 +473,40 @@ interface AuthenticatedUserAuthClientEndpoints<User : HasId<ID>, ID : Comparable
     suspend fun terminateSession(): Unit
     suspend fun terminateOtherSession(sessionId: UUID): Unit
     open class StandardImpl<USER : HasId<ID>, ID : Comparable<ID>>(
-        val fetchImplementation: Fetcher,
+        val fetcher: Fetcher,
+        val subpath: String,
         val userSerializer: KSerializer<USER>,
         val idSerializer: KSerializer<ID>,
-        val json: Json = DefaultJson,
-        val properties: Properties = UrlProperties,
     ) : AuthenticatedUserAuthClientEndpoints<USER, ID> {
-        override suspend fun createSubSession(input: SubSessionRequest): String = fetchImplementation(
-            url = "/sub-session",
+        override suspend fun createSubSession(input: SubSessionRequest): String = fetcher(
+            url = "$subpath/sub-session",
             method = HttpMethod.POST,
-            jsonBody = json.encodeToString(input),
-            outSerializer = json.serializersModule.serializer()
+            inSerializer = SubSessionRequest.serializer(),
+            body = input,
+            outSerializer = String.serializer()
         )
 
-        override suspend fun getSelf(): USER = fetchImplementation(
-            url = "/self",
+        override suspend fun getSelf(): USER = fetcher(
+            url = "$subpath/self",
             method = HttpMethod.GET,
-            jsonBody = "{}",
+            inSerializer = Unit.serializer(),
+            body = Unit,
             outSerializer = userSerializer
         )
 
-        override suspend fun terminateSession(): Unit = fetchImplementation(
-            url = "/terminate",
+        override suspend fun terminateSession(): Unit = fetcher(
+            url = "$subpath/terminate",
             method = HttpMethod.POST,
-            jsonBody = null,
+            inSerializer = Unit.serializer(),
+            body = Unit,
             outSerializer = Unit.serializer()
         )
 
-        override suspend fun terminateOtherSession(sessionId: UUID): Unit = fetchImplementation(
-            url = "/${sessionId}/terminate",
+        override suspend fun terminateOtherSession(sessionId: UUID): Unit = fetcher(
+            url = "$subpath/${sessionId}/terminate",
             method = HttpMethod.POST,
-            jsonBody = null,
+            inSerializer = Unit.serializer(),
+            body = Unit,
             outSerializer = Unit.serializer()
         )
     }

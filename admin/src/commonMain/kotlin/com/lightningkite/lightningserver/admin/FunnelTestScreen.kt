@@ -16,7 +16,7 @@ import com.lightningkite.kiteui.views.direct.text
 class FunnelTestPage: Page {
     override fun ViewWriter.render(): ViewModifiable = col {
         reactive {
-            Funnels.fetcher = adminServer().fetcher("", adminAuthentication())
+            Funnels.fetcher = adminServer().fetcher(adminAuthentication())
         }
         val funnel by lazy { funnel("test") }
         button {

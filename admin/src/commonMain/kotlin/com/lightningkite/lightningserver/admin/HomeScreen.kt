@@ -17,6 +17,7 @@ import com.lightningkite.lightningserver.serverhealth.ServerHealth
 import com.lightningkite.now
 import com.lightningkite.serialization.lensPath
 import kotlinx.serialization.builtins.nullable
+import kotlinx.serialization.builtins.serializer
 
 @Routable("/")
 class HomePage : Page {
@@ -77,8 +78,8 @@ class HomePage : Page {
                 h2("Server Status")
                 val status = asyncReadable {
                     val endpoint = adminServer().health ?: return@asyncReadable null
-                    val fetcher = adminServer().fetcher(endpoint.path, adminAuthentication() ?: return@asyncReadable null)
-                    val health = fetcher("", HttpMethod.GET, null, ServerHealth.serializer())
+                    val fetcher = adminServer().fetcher(adminAuthentication() ?: return@asyncReadable null)
+                    val health = fetcher(endpoint.path, HttpMethod.GET, Unit.serializer(), Unit, ServerHealth.serializer())
                     health
                 }
                 row {
