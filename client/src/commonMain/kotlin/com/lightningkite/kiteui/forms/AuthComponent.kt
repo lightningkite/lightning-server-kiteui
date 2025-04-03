@@ -143,7 +143,7 @@ class AuthComponent(
                         requestFocus()
                         content bind code
                         action = proveEmailOwnership
-                        keyboardHints = KeyboardHints.id
+                        keyboardHints = KeyboardHints.oneTimeCode
                     }
                 }
                 sessionLengthComponent(knownDeviceOptions, rememberDevice, desiredSessionLength, authResult)
@@ -193,7 +193,7 @@ class AuthComponent(
                         requestFocus()
                         action = provePhoneOwnership
                         content bind code
-                        keyboardHints = KeyboardHints.id
+                        keyboardHints = KeyboardHints.oneTimeCode
                     }
                 }
                 sessionLengthComponent(knownDeviceOptions, rememberDevice, desiredSessionLength, authResult)
