@@ -86,7 +86,7 @@ class ExternalLightningServer(
 
     val auth: AuthClientEndpoints = AuthClientEndpoints(
         subjects = schema.interfaces.filter { it.matches.serialName == "UserAuthClientEndpoints" }.associate {
-            it.path to UserAuthClientEndpoints.StandardImpl(
+            it.path to UserAuthClientEndpointsLive(
                 fetcher = authlessFetcher(),
                 subpath = it.path,
                 idSerializer = it.matches.arguments[0].serializer(registry, mapOf()) as KSerializer<Comparable<Any>>,
@@ -94,7 +94,7 @@ class ExternalLightningServer(
         },
         authenticatedSubjects = schema.interfaces.filter { it.matches.serialName == "AuthenticatedUserAuthClientEndpoints" }.associate {
             it.path to { auth ->
-                AuthenticatedUserAuthClientEndpoints.StandardImpl(
+                AuthenticatedUserAuthClientEndpointsLive(
                     fetcher = fetcher(auth),
                     subpath = it.path,
                     idSerializer = it.matches.arguments[1].serializer(registry, mapOf()) as KSerializer<Comparable<Any>>,
@@ -104,40 +104,40 @@ class ExternalLightningServer(
         },
         smsProof = schema.interfaces.find { it.matches.serialName == "SmsProofClientEndpoints" }?.let {
             val httpPath = it.path
-            SmsProofClientEndpoints.StandardImpl(fetcher = authlessFetcher(), subpath = httpPath,)
+            SmsProofClientEndpointsLive(fetcher = authlessFetcher(), subpath = httpPath,)
         },
         emailProof = schema.interfaces.find { it.matches.serialName == "EmailProofClientEndpoints" }?.let {
             val httpPath = it.path
-            EmailProofClientEndpoints.StandardImpl(fetcher = authlessFetcher(), subpath = httpPath,)
+            EmailProofClientEndpointsLive(fetcher = authlessFetcher(), subpath = httpPath,)
         },
         oneTimePasswordProof = schema.interfaces.find { it.matches.serialName == "OneTimePasswordProofClientEndpoints" }?.let {
             val httpPath = it.path
-            OneTimePasswordProofClientEndpoints.StandardImpl(fetcher = authlessFetcher(), subpath = httpPath,)
+            OneTimePasswordProofClientEndpointsLive(fetcher = authlessFetcher(), subpath = httpPath,)
         },
         passwordProof = schema.interfaces.find { it.matches.serialName == "PasswordProofClientEndpoints" }?.let {
             val httpPath = it.path
-            PasswordProofClientEndpoints.StandardImpl(fetcher = authlessFetcher(), subpath = httpPath,)
+            PasswordProofClientEndpointsLive(fetcher = authlessFetcher(), subpath = httpPath,)
         },
         knownDeviceProof = schema.interfaces.find { it.matches.serialName == "KnownDeviceProofClientEndpoints" }?.let {
             val httpPath = it.path
-            KnownDeviceProofClientEndpoints.StandardImpl(fetcher = authlessFetcher(), subpath = httpPath,)
+            KnownDeviceProofClientEndpointsLive(fetcher = authlessFetcher(), subpath = httpPath,)
         },
         authenticatedOneTimePasswordProof = schema.interfaces.find { it.matches.serialName == "AuthenticatedOneTimePasswordProofClientEndpoints" }?.let {
             { auth ->
                 val httpPath = it.path
-                AuthenticatedOneTimePasswordProofClientEndpoints.StandardImpl(fetcher = fetcher(auth), subpath = httpPath,)
+                AuthenticatedOneTimePasswordProofClientEndpointsLive(fetcher = fetcher(auth), subpath = httpPath,)
             }
         },
         authenticatedPasswordProof = schema.interfaces.find { it.matches.serialName == "AuthenticatedPasswordProofClientEndpoints" }?.let {
             { auth ->
                 val httpPath = it.path
-                AuthenticatedPasswordProofClientEndpoints.StandardImpl(fetcher = fetcher(auth), subpath = httpPath,)
+                AuthenticatedPasswordProofClientEndpointsLive(fetcher = fetcher(auth), subpath = httpPath,)
             }
         },
         authenticatedKnownDeviceProof = schema.interfaces.find { it.matches.serialName == "AuthenticatedKnownDeviceProofClientEndpoints" }?.let {
             { auth ->
                 val httpPath = it.path
-                AuthenticatedKnownDeviceProofClientEndpoints.StandardImpl(fetcher = fetcher(auth), subpath = httpPath,)
+                AuthenticatedKnownDeviceProofClientEndpointsLive(fetcher = fetcher(auth), subpath = httpPath,)
             }
         },
     )
