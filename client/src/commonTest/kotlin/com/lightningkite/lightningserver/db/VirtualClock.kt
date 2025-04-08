@@ -1,11 +1,12 @@
 package com.lightningkite.lightningserver.db
 
 import com.lightningkite.default
-import com.lightningkite.kiteui.launchGlobal
 import com.lightningkite.kiteui.printStackTrace2
 import com.lightningkite.lightningdb.condition
 import com.lightningkite.lightningdb.eq
 import com.lightningkite.lightningdb.lte
+import com.lightningkite.readable.AppScope
+import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlin.coroutines.*
@@ -36,7 +37,7 @@ class VirtualClock : Clock, CoroutineContext.Element {
 inline fun suspendTest(crossinline test: suspend ()->Unit) {
     var f: Throwable? = null
     var complete = false
-    launchGlobal {
+    AppScope.launch {
         try {
             test()
             complete = true

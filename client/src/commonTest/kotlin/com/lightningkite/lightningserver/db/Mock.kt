@@ -6,7 +6,10 @@ import com.lightningkite.readable.Property
 import com.lightningkite.readable.Readable
 import com.lightningkite.lightningdb.*
 import com.lightningkite.now
+import com.lightningkite.readable.AppScope
 import com.lightningkite.serialization.Partial
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import kotlinx.datetime.Instant
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.coroutineContext
@@ -188,7 +191,7 @@ class MockClientModelRestEndpoints<T : HasId<ID>, ID : Comparable<ID>>(val log: 
             }
 
             override fun onOpen(action: () -> Unit) {
-                launchGlobal {
+                AppScope.launch {
                     log("updates CONNECTING")
                     holdWsConnect.await()
                     log("updates CONNECTED")
@@ -198,7 +201,7 @@ class MockClientModelRestEndpoints<T : HasId<ID>, ID : Comparable<ID>>(val log: 
 
             override fun send(data: Condition<T>) {
                 lastCondition = data
-                launchGlobal {
+                AppScope.launch {
                     respond(CollectionUpdates(condition = data))
                 }
             }
@@ -222,7 +225,7 @@ class MockClientModelRestEndpoints<T : HasId<ID>, ID : Comparable<ID>>(val log: 
                     updates = list.mapNotNull { it.new }.toSet(),
                     remove = list.mapNotNull { it.old.takeIf { _ -> it.new == null }?._id }.toSet()
                 )
-                launchGlobal {
+                AppScope.launch {
                     respond(changes)
                 }
                 Unit
@@ -275,7 +278,7 @@ class ConnectivityGate(val delay: suspend (ms: Long) -> Unit = { ms -> kotlinx.c
                 return r
             } catch (e: ConnectionException) {
                 if (retryAt.value == null) {
-                    launchGlobal {
+                    AppScope.launch {
                         val d = nextRetry
                         retryAt.value = now() + d
                         nextRetry = d.times(2).coerceAtMost(maxRetry)
