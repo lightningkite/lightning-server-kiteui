@@ -18,7 +18,7 @@ import kotlin.time.Duration.Companion.seconds
 
 
 class MockClientModelRestEndpoints<T : HasId<ID>, ID : Comparable<ID>>(val log: (String) -> Unit) :
-    ClientModelRestEndpointsPlusUpdatesWebsocket<T, ID> {
+    ClientModelRestEndpointsPlusUpdatesWebsocket<T, ID>, ClientModelRestEndpoints<T, ID> {
 
     val hold = WaitGate(true)
 

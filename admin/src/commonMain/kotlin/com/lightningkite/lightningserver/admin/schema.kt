@@ -160,25 +160,35 @@ class ExternalLightningServer(
 
         private var cacheCache = PerAuthCache { auth ->
             when {
-                hasUpdatesWs -> ClientModelRestEndpointsPlusUpdatesWebsocketLive(
+                hasUpdatesWs -> object: ClientModelRestEndpoints<T, ID> by ClientModelRestEndpointsLive<T, ID>(
                     fetcher = auth?.let { fetcher(it) } ?: authlessFetcher(),
                     subpath = httpPath,
                     serializer = serializer,
                     idSerializer = idserializer,
-                )
-                hasWs -> ClientModelRestEndpointsPlusWsLive(
+                ), ClientModelRestEndpointsPlusUpdatesWebsocket<T, ID> by ClientModelRestEndpointsPlusUpdatesWebsocketLive<T, ID>(
                     fetcher = auth?.let { fetcher(it) } ?: authlessFetcher(),
                     subpath = httpPath,
                     serializer = serializer,
                     idSerializer = idserializer,
-                )
-                else -> ClientModelRestEndpointsLive(
+                ) {}
+                hasWs -> object: ClientModelRestEndpoints<T, ID> by ClientModelRestEndpointsLive<T, ID>(
                     fetcher = auth?.let { fetcher(it) } ?: authlessFetcher(),
                     subpath = httpPath,
                     serializer = serializer,
                     idSerializer = idserializer,
-                )
-            }.let { ModelCache(it, it.serializer) } as ModelCache<T, ID>
+                ), ClientModelRestEndpointsPlusWs<T, ID> by ClientModelRestEndpointsPlusWsLive<T, ID>(
+                    fetcher = auth?.let { fetcher(it) } ?: authlessFetcher(),
+                    subpath = httpPath,
+                    serializer = serializer,
+                    idSerializer = idserializer,
+                ) {}
+                else -> object: ClientModelRestEndpoints<T, ID> by ClientModelRestEndpointsLive<T, ID>(
+                    fetcher = auth?.let { fetcher(it) } ?: authlessFetcher(),
+                    subpath = httpPath,
+                    serializer = serializer,
+                    idSerializer = idserializer,
+                ) {}
+            }.let { ModelCache(it, serializer) } as ModelCache<T, ID>
         }
 
         @Suppress("UNCHECKED_CAST")
