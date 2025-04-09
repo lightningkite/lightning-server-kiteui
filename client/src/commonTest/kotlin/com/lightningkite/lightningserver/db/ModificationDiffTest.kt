@@ -4,6 +4,7 @@ import com.lightningkite.UUID
 import com.lightningkite.lightningdb.*
 import com.lightningkite.serialization.*
 import com.lightningkite.now
+import com.lightningkite.prepareModelsClientTest
 import com.lightningkite.prepareModelsShared
 import com.lightningkite.uuid
 import kotlin.test.Test

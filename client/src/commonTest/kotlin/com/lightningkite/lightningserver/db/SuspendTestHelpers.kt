@@ -1,10 +1,10 @@
 package com.lightningkite.lightningserver.db
 
 import com.lightningkite.readable.*
-import com.lightningkite.kiteui.suspendCoroutineCancellable
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.Continuation
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.resume
@@ -18,9 +18,8 @@ class VirtualDelay<T>(val action: () -> T) {
     var ready: Boolean = false
     suspend fun await(): T {
         if (ready) return value as T
-        return suspendCoroutineCancellable {
+        return suspendCancellableCoroutine {
             continuations.add(it)
-            return@suspendCoroutineCancellable {}
         }
     }
 
@@ -42,9 +41,8 @@ class VirtualDelay<T>(val action: () -> T) {
 class VirtualDelayer() {
     val continuations = ArrayList<Continuation<Unit>>()
     suspend fun await(): Unit {
-        return suspendCoroutineCancellable {
+        return suspendCancellableCoroutine {
             continuations.add(it)
-            return@suspendCoroutineCancellable {}
         }
     }
 
@@ -94,9 +92,7 @@ class TestContext : CoroutineScope {
 
 fun testContext(action: TestContext.() -> Unit) {
     with(TestContext()) {
-        CoroutineScopeStack.useIn(this) {
-            action()
-        }
+        action()
         job.cancel()
         if (error != null) throw Exception("Unexpected error", error!!)
         assertEquals(0, loadCount, "Some work was not completed: ${incompleteKeys}")
