@@ -80,7 +80,7 @@ class ExternalLightningServer(
     fun authlessFetcher(): Fetcher = fetcher(null)
     fun fetcher(auth: LightningServerAuthentication?): Fetcher {
         return bulk?.let {
-            BulkFetcher(schema.baseUrl, schema.baseWsUrl + "/multiplex", json, calculator = auth?.accessToken ?: nullToken)
+            BulkFetcher(schema.baseUrl + it.path, schema.baseWsUrl + "/multiplex", json, calculator = auth?.accessToken ?: nullToken)
         } ?: ConnectivityFetcher(schema.baseUrl, schema.baseWsUrl, json, calculator = auth?.accessToken ?: nullToken)
     }
 

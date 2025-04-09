@@ -127,131 +127,135 @@ class CollectionAdminPage(val collectionName: String) : Page {
                 clearChildren()
                 val mc = mc()
                 val forms = adminFormModule()
-                val condition = conditionWritable(mc)
-                val sort = sortWritable(mc)
-
-                @Suppress("UNCHECKED_CAST")
-                val columns: ImmediateWritable<List<DataClassPath<HasId<Comparable<Comparable<*>>>, *>>> =
-                    columnsWritable(mc)
-                val query = queryReadable(mc)
-                row {
-                    expanding - fieldTheme - textInput {
-                        content bind textSearch
-                    }
-                    menuButton {
-                        dynamicTheme { if (condition() != Condition.Always) SelectedSemantic else null }
-                        icon(Icon.filterList, "Filter")
-                        requireClick = true
-                        opensMenu {
-                            form(forms, Condition.serializer(mc.serializer), condition)
-                        }
-                    }
-                    menuButton {
-                        dynamicTheme { if (sort().isNotEmpty()) SelectedSemantic else null }
-                        icon(Icon.sort, "Sort")
-                        requireClick = true
-                        opensMenu {
-                            form(forms, ListSerializer(SortPartSerializer(mc.serializer)), sort)
-                        }
-                    }
-                    menuButton {
-                        icon(Icon.moreVert, "Bulk Actions")
-                        requireClick = true
-                        opensMenu {
-                            col {
-                                important - button {
-                                    text("Export...")
-                                    onClick { exportDialog() }
-                                }
-                                important - button {
-                                    text("Import...")
-                                    onClick { importDialog() }
-                                }
-                                col {
-                                    h3("My Permissions")
-                                    val p = shared { loadedPermissions().get(collectionName) ?: ModelPermissions() }
-                                    fun ViewWriter.kv(
-                                        key: String,
-                                        visibleIf: ReactiveContext.() -> Boolean = { true },
-                                        value: ReactiveContext.() -> String
-                                    ) {
-                                        row {
-                                            ::exists { visibleIf() }
-                                            expanding - text {
-                                                wraps = false
-                                                content = key
-                                            }
-                                            text {
-                                                wraps = false
-                                                ::content { value() }
-                                            }
-                                        }
-                                    }
-                                    kv("Read") { p().read.simplify().friendly() }
-                                    kv("Restricted fields", visibleIf = { p().readMask.pairs.isNotEmpty() }) {
-                                        p().readMask.pairs.flatMap { it.first.readPaths() }
-                                            .joinToString(", ") { it.properties.joinToString("'s ") { it.displayName } }
-                                    }
-                                    kv("Create") { p().create.simplify().friendly() }
-                                    kv("Update") { p().update.simplify().friendly() }
-                                    kv("Restricted fields", visibleIf = { p().readMask.pairs.isNotEmpty() }) {
-                                        p().updateRestrictions.fields
-                                            .joinToString(", ") { it.path.properties.joinToString("'s ") { it.displayName } }
-                                    }
-                                    kv("Delete") { p().delete.simplify().friendly() }
-                                }
-                            }
-                        }
-                    }
-                    link {
-                        icon(Icon.add, "Add New")
-                        to = {
-                            NewItemAdminPage(collectionName).apply {
-                                conditionString.value = this@CollectionAdminPage.conditionString.value
-                            }
-                        }
-                    }
-                }
-                subtext {
-                    val itemCount = sharedSuspending {
-                        val c = condition()
-                        mc.skipCache.count(c)
-                    }
-                    ::content {
-                        buildString {
-                            val c = condition()
-                            when (c) {
-                                Condition.Always -> append("Showing all ${itemCount()} items ")
-                                Condition.Never -> append("Showing NO ITEMS ")
-                                else -> append("Showing ${itemCount()} items where $c ")
-                            }
-                            val s = sort()
-                            if (s.isNotEmpty()) {
-                                append("sorted by ")
-                                s.forEach {
-                                    append(it.field.properties.joinToString("'s ") { it.displayName })
-                                    if (it.ascending) append(" ascending")
-                                    else append(" descending")
-                                }
-                            }
-                        }
-                    }
-                }
-                expanding - TableRenderer.view<HasId<Comparable<Comparable<*>>>>(
-                    formModule = forms,
-                    writer = this@col,
-                    innerSer = mc.serializer,
-                    columns = columns,
-                    readable = shared {
-                        mc.watch(query())
-                    },
-                    linkTo = {
-                        val id = UrlProperties.encodeToString(mc.serializer._id().serializer, it._id)
-                        return@view { DetailAdminPage(collectionName, id) }
-                    }
-                )
+                renderContents(mc, forms)
             }
         }
+    }
+
+    private fun RowOrCol.renderContents(mc: ModelCache<HasId<Comparable<Comparable<*>>>, Comparable<Comparable<*>>>, forms: FormModule) {
+        val condition = conditionWritable(mc)
+        val sort = sortWritable(mc)
+
+        @Suppress("UNCHECKED_CAST")
+        val columns: ImmediateWritable<List<DataClassPath<HasId<Comparable<Comparable<*>>>, *>>> =
+            columnsWritable(mc)
+        val query = queryReadable(mc)
+        row {
+            expanding - fieldTheme - textInput {
+                content bind textSearch
+            }
+            menuButton {
+                dynamicTheme { if (condition() != Condition.Always) SelectedSemantic else null }
+                icon(Icon.filterList, "Filter")
+                requireClick = true
+                opensMenu {
+                    form(forms, Condition.serializer(mc.serializer), condition)
+                }
+            }
+            menuButton {
+                dynamicTheme { if (sort().isNotEmpty()) SelectedSemantic else null }
+                icon(Icon.sort, "Sort")
+                requireClick = true
+                opensMenu {
+                    form(forms, ListSerializer(SortPartSerializer(mc.serializer)), sort)
+                }
+            }
+            menuButton {
+                icon(Icon.moreVert, "Bulk Actions")
+                requireClick = true
+                opensMenu {
+                    col {
+                        important - button {
+                            text("Export...")
+                            onClick { exportDialog() }
+                        }
+                        important - button {
+                            text("Import...")
+                            onClick { importDialog() }
+                        }
+                        col {
+                            h3("My Permissions")
+                            val p = shared { loadedPermissions().get(collectionName) ?: ModelPermissions() }
+                            fun ViewWriter.kv(
+                                key: String,
+                                visibleIf: ReactiveContext.() -> Boolean = { true },
+                                value: ReactiveContext.() -> String
+                            ) {
+                                row {
+                                    ::exists { visibleIf() }
+                                    expanding - text {
+                                        wraps = false
+                                        content = key
+                                    }
+                                    text {
+                                        wraps = false
+                                        ::content { value() }
+                                    }
+                                }
+                            }
+                            kv("Read") { p().read.simplify().friendly() }
+                            kv("Restricted fields", visibleIf = { p().readMask.pairs.isNotEmpty() }) {
+                                p().readMask.pairs.flatMap { it.first.readPaths() }
+                                    .joinToString(", ") { it.properties.joinToString("'s ") { it.displayName } }
+                            }
+                            kv("Create") { p().create.simplify().friendly() }
+                            kv("Update") { p().update.simplify().friendly() }
+                            kv("Restricted fields", visibleIf = { p().readMask.pairs.isNotEmpty() }) {
+                                p().updateRestrictions.fields
+                                    .joinToString(", ") { it.path.properties.joinToString("'s ") { it.displayName } }
+                            }
+                            kv("Delete") { p().delete.simplify().friendly() }
+                        }
+                    }
+                }
+            }
+            link {
+                icon(Icon.add, "Add New")
+                to = {
+                    NewItemAdminPage(collectionName).apply {
+                        conditionString.value = this@CollectionAdminPage.conditionString.value
+                    }
+                }
+            }
+        }
+        subtext {
+            val itemCount = sharedSuspending {
+                val c = condition()
+                mc.skipCache.count(c)
+            }
+            ::content {
+                buildString {
+                    val c = condition()
+                    when (c) {
+                        Condition.Always -> append("Showing all ${itemCount()} items ")
+                        Condition.Never -> append("Showing NO ITEMS ")
+                        else -> append("Showing ${itemCount()} items where $c ")
+                    }
+                    val s = sort()
+                    if (s.isNotEmpty()) {
+                        append("sorted by ")
+                        s.forEach {
+                            append(it.field.properties.joinToString("'s ") { it.displayName })
+                            if (it.ascending) append(" ascending")
+                            else append(" descending")
+                        }
+                    }
+                }
+            }
+        }
+        expanding - TableRenderer.view<HasId<Comparable<Comparable<*>>>>(
+            formModule = forms,
+            writer = this@renderContents,
+            innerSer = mc.serializer,
+            columns = columns,
+            readable = shared {
+                mc.watch(query())
+            },
+            linkTo = {
+                val id = UrlProperties.encodeToString(mc.serializer._id().serializer, it._id)
+                return@view { DetailAdminPage(collectionName, id) }
+            }
+        )
     }
 
     private fun columnsWritable(mc: ModelCache<HasId<Comparable<Comparable<*>>>, Comparable<Comparable<*>>>): ImmediateWritable<List<DataClassPath<HasId<Comparable<Comparable<*>>>, *>>> =

@@ -15,6 +15,7 @@ import com.lightningkite.kiteui.views.direct.*
 import com.lightningkite.kiteui.views.l2.*
 import com.lightningkite.lightningdb.*
 import com.lightningkite.lightningserver.auth.AuthenticatedUserAuthClientEndpoints
+import com.lightningkite.lightningserver.auth.AuthenticatedUserAuthClientEndpointsLive
 import com.lightningkite.lightningserver.schema.*
 import com.lightningkite.serialization.ClientModule
 import com.lightningkite.serialization.SerializableProperty
@@ -81,7 +82,7 @@ fun ViewWriter.app(navigator: PageNavigator, dialog: PageNavigator) {
                                         ?: return@label "Anonymous"]?.invoke(creds)
                                         ?: return@label "Anonymous"
                                     val serializer =
-                                        (sub as AuthenticatedUserAuthClientEndpoints.StandardImpl<*, *>).userSerializer
+                                        (sub as AuthenticatedUserAuthClientEndpointsLive<*, *>).userSerializer
                                     val self = sub.getSelf()
                                     serializer.serializableProperties
                                         ?.find { it.name == "email" || it.name == "phone" || it.name == "username" }

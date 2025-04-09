@@ -26,7 +26,7 @@ class EndpointsPage() : Page {
                 children(shared {
                     val f = filter()
                     endpoints().filter { it.path.contains(f) }
-                }, id = { it.path }) {
+                }, id = { it.method + it.path }) {
                     link {
                         text { ::content { it().method + " " + it().path } }
                         ::to { it().let { { EndpointPage(it.path, it.method) } } }
