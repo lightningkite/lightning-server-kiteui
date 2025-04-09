@@ -47,7 +47,7 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
     private val itemWatchCache = HashMap<ID, WritableModel<T>>()
     private val queryWatchCache = HashMap<Query<T>, WatchingWrapper<ListHolder, List<T>>>()
     internal val sockets =
-        (skipCache as? ClientModelRestEndpointsPlusUpdatesWebsocket)?.let {
+        (skipCache as? ClientModelRestEndpointsPlusUpdatesWebsocket<T, ID>)?.let {
             SharedChangeUpdateWrapper(it.updates()) {
                 val u = it.updates.associateBy { it._id }
                 it.updates.asSequence().map { itemHolder(it._id) }.plus(it.remove.map { itemHolder(it) })

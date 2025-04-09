@@ -29,11 +29,11 @@ interface ClientModelRestEndpoints<T : HasId<ID>, ID : Comparable<ID>> {
 
 }
 
-interface ClientModelRestEndpointsPlusWs<T : HasId<ID>, ID : Comparable<ID>> : ClientModelRestEndpoints<T, ID> {
+interface ClientModelRestEndpointsPlusWs<T : HasId<ID>, ID : Comparable<ID>> {
     fun watch(): TypedWebSocket<Query<T>, ListChange<T>>
 }
 
-interface ClientModelRestEndpointsPlusUpdatesWebsocket<T : HasId<ID>, ID : Comparable<ID>> : ClientModelRestEndpoints<T, ID> {
+interface ClientModelRestEndpointsPlusUpdatesWebsocket<T : HasId<ID>, ID : Comparable<ID>> {
     fun updates(): TypedWebSocket<Condition<T>, CollectionUpdates<T, ID>>
 }
 

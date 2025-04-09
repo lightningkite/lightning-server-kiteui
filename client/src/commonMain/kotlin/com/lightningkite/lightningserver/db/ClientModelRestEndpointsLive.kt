@@ -193,21 +193,21 @@ open class ClientModelRestEndpointsLive<T : HasId<ID>, ID : Comparable<ID>>(
 }
 
 class ClientModelRestEndpointsPlusWsLive<T : HasId<ID>, ID : Comparable<ID>>(
-    fetcher: Fetcher,
-    subpath: String,
-    serializer: KSerializer<T>,
-    idSerializer: KSerializer<ID>,
-): ClientModelRestEndpointsPlusWs<T, ID>, ClientModelRestEndpointsLive<T, ID>(fetcher, subpath, serializer, idSerializer) {
+    val fetcher: Fetcher,
+    val subpath: String,
+    val serializer: KSerializer<T>,
+    val idSerializer: KSerializer<ID>,
+): ClientModelRestEndpointsPlusWs<T, ID> {
     override fun watch(): TypedWebSocket<Query<T>, ListChange<T>> {
         return fetcher.websocket(subpath, Query.serializer(serializer), ListChange.serializer(serializer))
     }
 }
 class ClientModelRestEndpointsPlusUpdatesWebsocketLive<T : HasId<ID>, ID : Comparable<ID>>(
-    fetcher: Fetcher,
-    subpath: String,
-    serializer: KSerializer<T>,
-    idSerializer: KSerializer<ID>,
-): ClientModelRestEndpointsPlusUpdatesWebsocket<T, ID>, ClientModelRestEndpointsLive<T, ID>(fetcher, subpath, serializer, idSerializer) {
+    val fetcher: Fetcher,
+    val subpath: String,
+    val serializer: KSerializer<T>,
+    val idSerializer: KSerializer<ID>,
+): ClientModelRestEndpointsPlusUpdatesWebsocket<T, ID> {
     override fun updates(): TypedWebSocket<Condition<T>, CollectionUpdates<T, ID>> {
         return fetcher.websocket(subpath, Condition.serializer(serializer), CollectionUpdates.serializer(serializer, idSerializer))
     }
