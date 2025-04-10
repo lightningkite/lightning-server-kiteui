@@ -45,9 +45,11 @@ class BulkFetcher(
     val pingTime: Duration = 5_000.milliseconds,
     val delay: Duration = 100.milliseconds,
     val log: Console? = null,
-    val calculator: suspend () -> List<Pair<String, String>> = { listOf() }
+    val calculator: suspend () -> List<Pair<String, String>> = { listOf() },
 ) : Fetcher {
-    override fun withHeaderCalculator(calculator: suspend () -> List<Pair<String, String>>): Fetcher = BulkFetcher(httpBulk, wsMultiplex, json, pingTime, delay, log, calculator)
+    override fun withHeaderCalculator(calculator: suspend () -> List<Pair<String, String>>): Fetcher =
+        BulkFetcher(httpBulk, wsMultiplex, json, pingTime, delay, log, calculator)
+
     private var fetchQueue = HashMap<String, Pair<BulkRequest, CancellableContinuation<BulkResponse>>>()
     private var scheduled = false
     override suspend fun <I, O> invoke(
@@ -55,7 +57,7 @@ class BulkFetcher(
         method: HttpMethod,
         inSerializer: KSerializer<I>,
         body: I,
-        outSerializer: KSerializer<O>
+        outSerializer: KSerializer<O>,
     ): O {
         val jsonBody = json.encodeToString(inSerializer, body)
         val id = UUID.Companion.random().toString()
@@ -116,23 +118,34 @@ class BulkFetcher(
     }
 
     val shared = retryWebsocket(
-        { com.lightningkite.kiteui.websocket(wsMultiplex) },
-        pingTime.inWholeMilliseconds,
+        underlyingSocket = {
+            val headers = calculator()
+            val url = if(headers.isNotEmpty()){
+                wsMultiplex + "?${headers.joinToString("&"){ "${it.first}=${it.second}" }}"
+            } else wsMultiplex
+            com.lightningkite.kiteui.websocket(url)
+        },
+        pingTime = pingTime.inWholeMilliseconds,
         log = log
     ).typed(json, MultiplexMessage.Companion.serializer(), MultiplexMessage.Companion.serializer())
+
     override fun <I, O> websocket(
         url: String,
         inSerializer: KSerializer<I>,
-        outSerializer: KSerializer<O>
+        outSerializer: KSerializer<O>,
     ): TypedWebSocket<I, O> {
         return WebsocketChannel(url).typed(json, inSerializer, outSerializer)
     }
 
     private inner class WebsocketChannel(url: String) : RetryWebsocket {
         val path = url.substringBefore('?')
-        val params = url.substringAfter('?', "").split('&').map { it.substringBefore('=') to it.substringAfter('=') }.groupBy({ it.first }, { it.second })
+        val params = url.substringAfter('?', "")
+            .split('&')
+            .map { it.substringBefore('=') to it.substringAfter('=') }
+            .groupBy({ it.first }, { it.second })
         val channelOpen = Property(false)
         val channel = UUID.Companion.random().toString()
+
         init {
             shared.onMessage { message ->
                 if (message.channel == channel) {

@@ -21,15 +21,15 @@ class ConnectivityFetcher(
     val ws: String,
     val json: Json = DefaultJson,
     val pingTime: Duration = 5_000.milliseconds,
-    val calculator: suspend () -> List<Pair<String, String>> = { listOf() }
-): Fetcher {
+    val calculator: suspend () -> List<Pair<String, String>> = { listOf() },
+) : Fetcher {
     override fun withHeaderCalculator(calculator: suspend () -> List<Pair<String, String>>): Fetcher = this
     override suspend fun <I, O> invoke(
         url: String,
         method: HttpMethod,
         inSerializer: KSerializer<I>,
         body: I,
-        outSerializer: KSerializer<O>
+        outSerializer: KSerializer<O>,
     ): O {
         val jsonBody = json.encodeToString(inSerializer, body)
         return connectivityFetch("$http$url", method, {
@@ -61,6 +61,18 @@ class ConnectivityFetcher(
     override fun <I, O> websocket(
         url: String,
         inSerializer: KSerializer<I>,
-        outSerializer: KSerializer<O>
-    ): TypedWebSocket<I, O> = retryWebsocket("$ws$url", pingTime.inWholeMilliseconds).typed(json, inSerializer, outSerializer)
+        outSerializer: KSerializer<O>,
+    ): TypedWebSocket<I, O> {
+        return retryWebsocket(
+            underlyingSocket = {
+                val headers = calculator()
+                var url = "$ws$url"
+                url = if (headers.isNotEmpty()) {
+                    url + "?${headers.joinToString("&") { "${it.first}=${it.second}" }}"
+                } else url
+                com.lightningkite.kiteui.websocket(url)
+            },
+            pingTime = pingTime.inWholeMilliseconds
+        ).typed(json, inSerializer, outSerializer)
+    }
 }
