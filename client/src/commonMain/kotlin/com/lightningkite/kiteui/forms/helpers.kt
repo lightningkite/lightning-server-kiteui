@@ -64,7 +64,7 @@ fun ViewWriter.defaultFieldWrapper(field: SerializableProperty<*, *>? = null, in
         val before = it.substringBefore('_')
         val after = it.substringAfter('_')
         atBottom - row {
-            spacing = 0.3.rem
+            gap = 0.3.rem
             if(before.isNotBlank()) {
                 centered - text(before)
             }
@@ -75,7 +75,7 @@ fun ViewWriter.defaultFieldWrapper(field: SerializableProperty<*, *>? = null, in
             }
         }
     } ?: col {
-        spacing = 0.px
+        gap = 0.px
         subtext(field.displayName)
         inner()
     }

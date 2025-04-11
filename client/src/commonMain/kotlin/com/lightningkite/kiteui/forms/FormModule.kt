@@ -88,7 +88,7 @@ class FormModule {
         else ViewRenderer(this, null, key, size = options.first().size, handlesField = options.first().handlesField) { field, writable ->
             val selected = Property(options.first())
             row {
-//                spacing = 0.px
+//                gap = 0.px
                 expanding - stack {
                     reactive {
                         val sel = selected()
@@ -97,7 +97,7 @@ class FormModule {
                     }
                 }
                 sizeConstraints(width = 0.75.rem, height = 0.75.rem) - SubtextSemantic.onNext - atTopEnd - select {
-                    spacing = 0.px
+                    gap = 0.px
                     bind(selected, Constant(options)) { (it.generator?.name ?: "-") + " (${it.generator?.priority(this@FormModule, key)}, ${it.size.approximateWidth} x ${it.size.approximateHeight})" }
                 }
             }
@@ -129,7 +129,7 @@ class FormModule {
         else FormRenderer(this, null, key, size = options.first().size, handlesField = options.first().handlesField) { field, writable ->
             val selected = Property(options.first())
             row {
-//                spacing = 0.px
+//                gap = 0.px
                 expanding - stack {
                     reactive {
                         val sel = selected()
@@ -138,7 +138,7 @@ class FormModule {
                     }
                 }
                 sizeConstraints(width = 0.75.rem, height = 0.75.rem) - SubtextSemantic.onNext - atTopEnd - select {
-                    spacing = 0.px
+                    gap = 0.px
                     bind(selected, Constant(options)) { (it.generator?.name ?: "-") + " (${it.generator?.priority(this@FormModule, key)}, ${it.size.approximateWidth} x ${it.size.approximateHeight})" }
                 }
             }

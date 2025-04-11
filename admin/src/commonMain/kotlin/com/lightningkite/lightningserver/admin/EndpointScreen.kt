@@ -30,7 +30,7 @@ class EndpointPage(val path: String, val method: String) : Page {
     class RoutePage<T>(val formModule: FormModule, val name: String, val type: KSerializer<T>, val value: Property<T> = Property(type.default())) {
         fun render(viewWriter: ViewWriter) = with(viewWriter) {
             col {
-                spacing = 0.px
+                gap = 0.px
                 subtext(name)
                 form(formModule, type, value)
             }

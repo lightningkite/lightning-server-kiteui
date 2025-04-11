@@ -65,7 +65,7 @@ abstract class ListRenderer<C> : FormRenderer.Generator, ViewRenderer.Generator 
                     vertical = this@ListRenderer.vertical
                     forEachUpdating(lens(writable).lensByElementAssumingSetNeverManipulates()) {
                         card - row {
-                            spacing = 0.px
+                            gap = 0.px
                             if (this@ListRenderer.vertical) expanding
                             inner.render(this, null, it.flatten())
                             centered - button {

@@ -55,7 +55,7 @@ object ForeignKeyRenderer : FormRenderer.Generator, ViewRenderer.Generator {
             module.typeInfo(typeName)!! as FormTypeInfo<HasId<Comparable<Comparable<*>>>, Comparable<Comparable<*>>>
         return FormRenderer(module, this, selector as FormSelector<Comparable<Comparable<*>>?>) { field, writable ->
             fieldTheme - row {
-                spacing = 0.px
+                gap = 0.px
                 expanding - menuButton {
                     requireClick = true
                     gravity(Align.Start, Align.Center) - text {

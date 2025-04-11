@@ -111,7 +111,7 @@ object ByFieldRenderer : FormRenderer.Generator, ViewRenderer.Generator {
                         val before = it.substringBefore('_')
                         val after = it.substringAfter('_')
                         row {
-                            spacing = 0.3.rem
+                            gap = 0.3.rem
                             if (before.isNotBlank()) {
                                 centered - text(before)
                             }
@@ -122,7 +122,7 @@ object ByFieldRenderer : FormRenderer.Generator, ViewRenderer.Generator {
                             }
                         }
                     } ?: col {
-                        spacing = 0.px
+                        gap = 0.px
                         subtext(field.displayName)
                         inner(this)
                     }

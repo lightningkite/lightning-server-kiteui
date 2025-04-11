@@ -91,7 +91,7 @@ object TableRenderer : FormRenderer.Generator, ViewRenderer.Generator {
                             sizeConstraints(width = renderer(it).size.approximateWidth.coerceAtLeast(5.0).rem) - important - row {
                                 centered - expanding - text(it.properties.joinToString(" ") { it.displayName })
                                 button {
-                                    spacing = 0.px
+                                    gap = 0.px
                                     centered - icon(Icon.close.copy(width = 1.rem, height = 1.rem), "Remove Column")
                                     onClick {
                                         anyCols.value -= it
@@ -101,7 +101,7 @@ object TableRenderer : FormRenderer.Generator, ViewRenderer.Generator {
                         }
                     }
                     menuButton {
-                        spacing = 0.px
+                        gap = 0.px
                         centered - icon(Icon.add.copy(width = 1.rem, height = 1.rem), "Add")
                         preferredDirection = PopoverPreferredDirection.belowLeft
                         requireClick = true
