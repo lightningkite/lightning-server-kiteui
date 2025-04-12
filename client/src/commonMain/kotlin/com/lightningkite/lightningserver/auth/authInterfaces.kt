@@ -53,9 +53,11 @@ data class AuthClientEndpoints(
     val emailProof: EmailProofClientEndpoints? = null,
     val oneTimePasswordProof: OneTimePasswordProofClientEndpoints? = null,
     val passwordProof: PasswordProofClientEndpoints? = null,
+    val passkeyProof: PasskeyProofClientEndpoints? = null,
     val knownDeviceProof: KnownDeviceProofClientEndpoints? = null,
     val authenticatedOneTimePasswordProof: ((LightningServerAuthentication) -> AuthenticatedOneTimePasswordProofClientEndpoints)? = null,
     val authenticatedPasswordProof: ((LightningServerAuthentication) -> AuthenticatedPasswordProofClientEndpoints)? = null,
+    val authenticatedPasskeyProof: ((LightningServerAuthentication) -> AuthenticatedPasskeyProofClientEndpoints)? = null,
     val authenticatedKnownDeviceProof: ((LightningServerAuthentication) -> AuthenticatedKnownDeviceProofClientEndpoints)? = null,
 ) {
     val proofEndpoints
@@ -307,6 +309,30 @@ open class PasswordProofClientEndpointsLive(
     )
 }
 
+interface PasskeyProofClientEndpoints : ProofEndpoints {
+    suspend fun start(): PublicKeyCredentialRequestOptions
+    suspend fun prove(input: AssertedPublicKeyCredential): Proof
+}
+open class PasskeyProofClientEndpointsLive(
+    val fetcher: Fetcher,
+    val subpath: String,
+) : PasskeyProofClientEndpoints {
+    override suspend fun start(): PublicKeyCredentialRequestOptions = fetcher(
+        url = "$subpath/start",
+        method = HttpMethod.POST,
+        inSerializer = Unit.serializer(),
+        body = Unit,
+        outSerializer = PublicKeyCredentialRequestOptions.serializer()
+    )
+    override suspend fun prove(input: AssertedPublicKeyCredential): Proof = fetcher(
+        url = "$subpath/prove",
+        method = HttpMethod.POST,
+        inSerializer = AssertedPublicKeyCredential.serializer(),
+        body = input,
+        outSerializer = Proof.serializer()
+    )
+}
+
 interface KnownDeviceProofClientEndpoints : ProofEndpoints {
     suspend fun knownDeviceOptions(): KnownDeviceOptions
     suspend fun proveKnownDevice(input: String): Proof
@@ -362,6 +388,30 @@ open class AuthenticatedPasswordProofClientEndpointsLive(
         inSerializer = EstablishPassword.serializer(),
         body = input,
         outSerializer = Unit.serializer()
+    )
+}
+
+interface AuthenticatedPasskeyProofClientEndpoints {
+    suspend fun registerStart(): PublicKeyCredentialCreationOptions
+    suspend fun registerFinish(input: AttestedPublicKeyCredential): AttestedPublicKeyCredential
+}
+open class AuthenticatedPasskeyProofClientEndpointsLive(
+    val fetcher: Fetcher,
+    val subpath: String,
+) : AuthenticatedPasskeyProofClientEndpoints {
+    override suspend fun registerStart(): PublicKeyCredentialCreationOptions = fetcher(
+        url = "$subpath/registerStart",
+        method = HttpMethod.POST,
+        inSerializer = Unit.serializer(),
+        body = Unit,
+        outSerializer = PublicKeyCredentialCreationOptions.serializer()
+    )
+    override suspend fun registerFinish(input: AttestedPublicKeyCredential): AttestedPublicKeyCredential = fetcher(
+        url = "$subpath/registerFinish",
+        method = HttpMethod.POST,
+        inSerializer = AttestedPublicKeyCredential.serializer(),
+        body = input,
+        outSerializer = AttestedPublicKeyCredential.serializer()
     )
 }
 
