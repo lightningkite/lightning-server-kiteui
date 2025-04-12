@@ -23,7 +23,9 @@ class ConnectivityFetcher(
     val pingTime: Duration = 5_000.milliseconds,
     val calculator: suspend () -> List<Pair<String, String>> = { listOf() },
 ) : Fetcher {
-    override fun withHeaderCalculator(calculator: suspend () -> List<Pair<String, String>>): Fetcher = this
+    override fun withHeaderCalculator(calculator: suspend () -> List<Pair<String, String>>): Fetcher =
+        ConnectivityFetcher(http, ws, json, pingTime, calculator)
+
     override suspend fun <I, O> invoke(
         url: String,
         method: HttpMethod,
@@ -32,9 +34,14 @@ class ConnectivityFetcher(
         outSerializer: KSerializer<O>,
     ): O {
         val jsonBody = json.encodeToString(inSerializer, body)
-        return connectivityFetch("$http$url", method, {
-            httpHeaders(listOf("Accept" to "application/json") + calculator())
-        }, RequestBodyText(jsonBody, "application/json")).let {
+        return connectivityFetch(
+            url = "$http$url",
+            method = method,
+            headers = {
+                httpHeaders(listOf("Accept" to "application/json") + calculator())
+            },
+            body = RequestBodyText(jsonBody, "application/json")
+        ).let {
             if (!it.ok) {
                 val text = it.text()
                 throw try {
