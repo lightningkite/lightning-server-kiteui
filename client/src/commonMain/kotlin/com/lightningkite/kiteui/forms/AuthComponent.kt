@@ -1,14 +1,13 @@
 package com.lightningkite.kiteui.forms
 
 import com.lightningkite.kiteui.ClientAuthenticator
-import com.lightningkite.kiteui.PasskeyMediationType
+import com.lightningkite.kiteui.WebAuthNMediationType
 import com.lightningkite.kiteui.models.*
 import com.lightningkite.kiteui.printStackTrace2
 import com.lightningkite.kiteui.reactive.Action
 import com.lightningkite.kiteui.reactive.PersistentProperty
 import com.lightningkite.kiteui.views.*
 import com.lightningkite.kiteui.views.direct.*
-import com.lightningkite.kiteui.views.l2.errorText
 import com.lightningkite.kiteui.views.l2.field
 import com.lightningkite.kiteui.views.l2.icon
 import com.lightningkite.lightningserver.LsErrorException
@@ -329,7 +328,7 @@ class AuthComponent(
                             endpoints.smsProof != null -> KeyboardHints.phone
                             else -> KeyboardHints.id
                         }.let {
-                            if (endpoints.passkeyProof != null && ClientAuthenticator.autofillAvailable())
+                            if (endpoints.webAuthNProof != null && ClientAuthenticator.autofillAvailable())
                                 it.copy(includePasskeys = true)
                             else it
                         }
@@ -341,11 +340,11 @@ class AuthComponent(
                 }
             }
 
-            val pendingWebauthnRequest = endpoints.passkeyProof?.let { passkeyProof ->
+            val pendingWebauthnRequest = endpoints.webAuthNProof?.let { webAuthNProof ->
                 launch {
-                    val request = passkeyProof.start()
-                    val signedChallenge = ClientAuthenticator.getPasskey(request, PasskeyMediationType.Conditional)
-                    proofs.value += passkeyProof.prove(signedChallenge)
+                    val request = webAuthNProof.start()
+                    val signedChallenge = ClientAuthenticator.getWebAuthNCredentials(request, WebAuthNMediationType.Conditional)
+                    proofs.value += webAuthNProof.prove(signedChallenge)
                 }
             }
 
@@ -434,19 +433,19 @@ class AuthComponent(
                     action
                 }
 
-                val passkeyAction = endpoints.passkeyProof?.let { passkeyProof ->
+                val passkeyAction = endpoints.webAuthNProof?.let { passkeyProof ->
                     val action = Action("Sign in with passkey", Icon.passkey) {
                         try {
                             pendingWebauthnRequest?.cancelAndJoin()
                         } finally {
                             val request = passkeyProof.start()
-                            val signedChallenge = ClientAuthenticator.getPasskey(request, PasskeyMediationType.Optional)
+                            val signedChallenge = ClientAuthenticator.getWebAuthNCredentials(request, WebAuthNMediationType.Optional)
                             proofs.value += passkeyProof.prove(signedChallenge)
                         }
                     }
                     onlyWhen {
                         proofs().none { it.via == "passkey" } && (authResult()?.options?.any { it.method.via == "passkey" }
-                            ?: true) && ClientAuthenticator.passkeyAvailable()
+                            ?: true) && ClientAuthenticator.webAuthNAvailable()
                     } - buttonTheme - button {
                         this.action = action
                         row {
@@ -486,7 +485,7 @@ class AuthComponent(
                         proofs().none { it.via == "email" } && email() != null && emailStartAction != null -> emailStartAction
                         proofs().none { it.via == "sms" } && phone() != null && smsStartAction != null -> smsStartAction
                         proofs().none { it.via == "password" } && validId && passwordStartAction != null -> passwordStartAction
-                        proofs().none { it.via == "passkey" } && ClientAuthenticator.passkeyAvailable() && passkeyAction != null -> passkeyAction
+                        proofs().none { it.via == "passkey" } && ClientAuthenticator.webAuthNAvailable() && passkeyAction != null -> passkeyAction
                         proofs().none { it.via == "otp" } && validId && otpAction != null -> otpAction
                         else -> null
                     }

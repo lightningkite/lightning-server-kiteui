@@ -4,8 +4,6 @@ package com.lightningkite.lightningserver.auth
 
 import com.lightningkite.UUID
 import com.lightningkite.kiteui.HttpMethod
-import com.lightningkite.kiteui.navigation.DefaultJson
-import com.lightningkite.kiteui.navigation.UrlProperties
 import com.lightningkite.lightningdb.HasId
 import com.lightningkite.lightningserver.LSError
 import com.lightningkite.lightningserver.LsErrorException
@@ -28,10 +26,6 @@ import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.serializer
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.properties.Properties
-import kotlinx.serialization.serializer
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.minutes
 
@@ -53,11 +47,11 @@ data class AuthClientEndpoints(
     val emailProof: EmailProofClientEndpoints? = null,
     val oneTimePasswordProof: OneTimePasswordProofClientEndpoints? = null,
     val passwordProof: PasswordProofClientEndpoints? = null,
-    val passkeyProof: PasskeyProofClientEndpoints? = null,
+    val webAuthNProof: WebAuthNProofClientEndpoints? = null,
     val knownDeviceProof: KnownDeviceProofClientEndpoints? = null,
     val authenticatedOneTimePasswordProof: ((LightningServerAuthentication) -> AuthenticatedOneTimePasswordProofClientEndpoints)? = null,
     val authenticatedPasswordProof: ((LightningServerAuthentication) -> AuthenticatedPasswordProofClientEndpoints)? = null,
-    val authenticatedPasskeyProof: ((LightningServerAuthentication) -> AuthenticatedPasskeyProofClientEndpoints)? = null,
+    val authenticatedWebAuthNProof: ((LightningServerAuthentication) -> AuthenticatedWebAuthNProofClientEndpoints)? = null,
     val authenticatedKnownDeviceProof: ((LightningServerAuthentication) -> AuthenticatedKnownDeviceProofClientEndpoints)? = null,
 ) {
     val proofEndpoints
@@ -309,14 +303,14 @@ open class PasswordProofClientEndpointsLive(
     )
 }
 
-interface PasskeyProofClientEndpoints : ProofEndpoints {
+interface WebAuthNProofClientEndpoints : ProofEndpoints {
     suspend fun start(): PublicKeyCredentialRequestOptions
     suspend fun prove(input: AssertedPublicKeyCredential): Proof
 }
-open class PasskeyProofClientEndpointsLive(
+open class WebAuthNProofClientEndpointsLive(
     val fetcher: Fetcher,
     val subpath: String,
-) : PasskeyProofClientEndpoints {
+) : WebAuthNProofClientEndpoints {
     override suspend fun start(): PublicKeyCredentialRequestOptions = fetcher(
         url = "$subpath/start",
         method = HttpMethod.POST,
@@ -391,23 +385,23 @@ open class AuthenticatedPasswordProofClientEndpointsLive(
     )
 }
 
-interface AuthenticatedPasskeyProofClientEndpoints {
+interface AuthenticatedWebAuthNProofClientEndpoints {
     suspend fun registerStart(): PublicKeyCredentialCreationOptions
     suspend fun registerFinish(input: AttestedPublicKeyCredential): AttestedPublicKeyCredential
 }
-open class AuthenticatedPasskeyProofClientEndpointsLive(
+open class AuthenticatedWebAuthNProofClientEndpointsLive(
     val fetcher: Fetcher,
     val subpath: String,
-) : AuthenticatedPasskeyProofClientEndpoints {
+) : AuthenticatedWebAuthNProofClientEndpoints {
     override suspend fun registerStart(): PublicKeyCredentialCreationOptions = fetcher(
-        url = "$subpath/registerStart",
+        url = "$subpath/register-start",
         method = HttpMethod.POST,
         inSerializer = Unit.serializer(),
         body = Unit,
         outSerializer = PublicKeyCredentialCreationOptions.serializer()
     )
     override suspend fun registerFinish(input: AttestedPublicKeyCredential): AttestedPublicKeyCredential = fetcher(
-        url = "$subpath/registerFinish",
+        url = "$subpath/register-finish",
         method = HttpMethod.POST,
         inSerializer = AttestedPublicKeyCredential.serializer(),
         body = input,

@@ -119,9 +119,9 @@ class ExternalLightningServer(
             val httpPath = it.path
             PasswordProofClientEndpointsLive(fetcher = authlessFetcher(), subpath = httpPath,)
         },
-        passkeyProof = schema.interfaces.find { it.matches.serialName == "PasskeyProofClientEndpoints" }?.let {
+        webAuthNProof = schema.interfaces.find { it.matches.serialName == "PasskeyProofClientEndpoints" }?.let {
             val httpPath = it.path
-            PasskeyProofClientEndpointsLive(fetcher = authlessFetcher(), subpath = httpPath,)
+            WebAuthNProofClientEndpointsLive(fetcher = authlessFetcher(), subpath = httpPath,)
         },
         knownDeviceProof = schema.interfaces.find { it.matches.serialName == "KnownDeviceProofClientEndpoints" }?.let {
             val httpPath = it.path
@@ -139,10 +139,10 @@ class ExternalLightningServer(
                 AuthenticatedPasswordProofClientEndpointsLive(fetcher = fetcher(auth), subpath = httpPath,)
             }
         },
-        authenticatedPasskeyProof = schema.interfaces.find { it.matches.serialName == "AuthenticatedPasskeyProofClientEndpoints" }?.let {
+        authenticatedWebAuthNProof = schema.interfaces.find { it.matches.serialName == "AuthenticatedPasskeyProofClientEndpoints" }?.let {
             { auth ->
                 val httpPath = it.path
-                AuthenticatedPasskeyProofClientEndpointsLive(fetcher = fetcher(auth), subpath = httpPath,)
+                AuthenticatedWebAuthNProofClientEndpointsLive(fetcher = fetcher(auth), subpath = httpPath,)
             }
         },
         authenticatedKnownDeviceProof = schema.interfaces.find { it.matches.serialName == "AuthenticatedKnownDeviceProofClientEndpoints" }?.let {

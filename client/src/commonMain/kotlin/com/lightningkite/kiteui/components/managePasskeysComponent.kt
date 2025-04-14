@@ -23,7 +23,7 @@ import com.lightningkite.lightningdb.and
 import com.lightningkite.lightningdb.condition
 import com.lightningkite.lightningdb.eq
 import com.lightningkite.lightningdb.modification
-import com.lightningkite.lightningserver.auth.proof.PasskeyCredential
+import com.lightningkite.lightningserver.auth.proof.WebAuthNCredential
 import com.lightningkite.lightningserver.auth.proof.disabledAt
 import com.lightningkite.lightningserver.auth.proof.subjectId
 import com.lightningkite.lightningserver.auth.proof.subjectName
@@ -35,26 +35,26 @@ import com.lightningkite.readable.await
 import com.lightningkite.readable.shared
 
 
-fun ViewWriter.managePasskeysComponent(
-    passkeyCredentials: Readable<ModelCache<PasskeyCredential, String>?>,
+fun ViewWriter.manageWebAuthNCredentialsComponent(
+    webAuthNCCredentials: Readable<ModelCache<WebAuthNCredential, String>?>,
     subjectName: Readable<String>,
     subjectId: Readable<String>,
 ) {
-    val passkeys: Readable<LimitReadable<PasskeyCredential>> = shared {
-        passkeyCredentials.awaitNotNull()
+    val credentials: Readable<LimitReadable<WebAuthNCredential>> = shared {
+        webAuthNCCredentials.awaitNotNull()
             .query(Query(condition { it.subjectName.eq(subjectName()) and it.subjectId.eq(subjectId()) and it.disabledAt.eq(null) }))
     }
 
     recyclerView {
-        children (shared{ passkeys()() }, { it._id }) { passkey ->
+        children (shared{ credentials()() }, { it._id }) { credential ->
             row {
                 col {
                     spacing = 0.dp
                     text {
-                        ::content { passkey().friendlyName ?: "Passkey" }
+                        ::content { credential().friendlyName ?: "Passkey" }
                     }
                     subtext {
-                        ::content { "Created on ${passkey().establishedAt.renderToString(RenderSize.Numerical)}" }
+                        ::content { "Created on ${credential().establishedAt.renderToString(RenderSize.Numerical)}" }
                     }
                 }
                 expanding - space()
@@ -65,7 +65,7 @@ fun ViewWriter.managePasskeysComponent(
                             "Delete Passkey",
                             "Are you sure you want to delete this passkey? You won't be able to use it to sign in."
                         ) {
-                            passkeyCredentials.await()?.get(passkey.await()._id)?.modify(modification {
+                            webAuthNCCredentials.await()?.get(credential.await()._id)?.modify(modification {
                                 it.disabledAt assign now()
                             })
                         }
