@@ -141,7 +141,7 @@ external interface CredentialContainer {
 external interface AuthenticatorAttestationResponse {
     val attestationObject: ArrayBuffer?
         get() = definedExternally
-    val clientDataJSON: String?
+    val clientDataJSON: ArrayBuffer?
         get() = definedExternally
 
     fun getAuthenticatorData(): ArrayBuffer
@@ -167,9 +167,13 @@ external interface PublicKeyCredential {
 
     val authenticatorAttachment: String?
         get() = definedExternally
+    val clientExtensionResults: dynamic
+        get() = definedExternally
     val id: String? // Base64 encode
         get() = definedExternally
     val response: dynamic // this is union of: AuthenticatorAttestationResponse, and AuthenticatorAssertionResponse
+        get() = definedExternally
+    val type: String?
         get() = definedExternally
 
     fun toJSON(): String

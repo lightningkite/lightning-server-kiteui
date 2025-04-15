@@ -3,13 +3,11 @@ package com.lightningkite.kiteui
 import com.lightningkite.kiteui.exceptions.PlainTextException
 import com.lightningkite.lightningserver.auth.proof.AssertedPublicKeyCredential
 import com.lightningkite.lightningserver.auth.proof.AttestedPublicKeyCredential
-import com.lightningkite.lightningserver.auth.proof.PublicKeyAlgorithm
+import com.lightningkite.lightningserver.auth.proof.Transport
 import com.lightningkite.readable.Readable
 import com.lightningkite.readable.sharedProcess
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.serialization.ExperimentalSerializationApi
-import kotlinx.serialization.encodeToString
-import org.khronos.webgl.ArrayBuffer
 import org.khronos.webgl.Int8Array
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
@@ -101,22 +99,21 @@ actual object ClientAuthenticator {
                 .create(options)
                 .then(
                     onFulfilled = { result: PublicKeyCredential ->
-                        println(result.toJSON())
-                        println("On Success")
-                        js("console.log(typeof(result.response))")
                         val typedResponse = result.response.unsafeCast<AuthenticatorAttestationResponse>()
-
                         val output = AttestedPublicKeyCredential(
-                            result.id!!,
-                            com.lightningkite.lightningserver.auth.proof.AuthenticatorAttestationResponse(
+                            authenticatorAttachment = result.authenticatorAttachment!!,
+                            clientExtensionResults = result.clientExtensionResults,
+                            id = result.id!!,
+                            response = com.lightningkite.lightningserver.auth.proof.AuthenticatorAttestationResponse(
+                                attestationObject = Base64.encode(Int8Array(typedResponse.attestationObject!!).unsafeCast<ByteArray>()),
+                                authenticatorData = Base64.encode(Int8Array(typedResponse.getAuthenticatorData()).unsafeCast<ByteArray>()),
+                                clientDataJSON = Base64.encode(Int8Array(typedResponse.clientDataJSON!!).unsafeCast<ByteArray>()),
                                 publicKey = Base64.encode(Int8Array(typedResponse.getPublicKey()).unsafeCast<ByteArray>()),
-                                publicKeyAlgorithm = PublicKeyAlgorithm.fromCoseId(typedResponse.getPublicKeyAlgorithm())!!,
+                                publicKeyAlgorithm = typedResponse.getPublicKeyAlgorithm(),
+                                transports = typedResponse.getTransports().map { outer -> Transport.entries.find { it.jsonName == outer }!! },
                             )
                         )
-                        println("Have Return Value")
-
                         cont.resume(output)
-                        println("Resumed")
                     },
                     onRejected = { error ->
                         cont.resumeWithException(error.asKotlinException())
