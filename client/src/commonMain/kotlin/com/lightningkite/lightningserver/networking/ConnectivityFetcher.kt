@@ -10,12 +10,14 @@ import com.lightningkite.kiteui.retryWebsocket
 import com.lightningkite.kiteui.typed
 import com.lightningkite.lightningserver.LSError
 import com.lightningkite.lightningserver.LsErrorException
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 
+@OptIn(ExperimentalSerializationApi::class)
 class ConnectivityFetcher(
     val http: String,
     val ws: String,
@@ -33,14 +35,15 @@ class ConnectivityFetcher(
         body: I,
         outSerializer: KSerializer<O>,
     ): O {
-        val jsonBody = json.encodeToString(inSerializer, body)
         return connectivityFetch(
             url = "$http$url",
             method = method,
             headers = {
                 httpHeaders(listOf("Accept" to "application/json") + calculator())
             },
-            body = RequestBodyText(jsonBody, "application/json")
+            body = if (inSerializer.descriptor.serialName != "kotlin.Unit")
+                RequestBodyText(json.encodeToString(inSerializer, body), "application/json")
+            else null
         ).let {
             if (!it.ok) {
                 val text = it.text()

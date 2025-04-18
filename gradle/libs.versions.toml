@@ -9,6 +9,7 @@ kotlin = "2.0.21"
 kotlinerCli = "1.0.5"
 ksp = "2.0.21-1.0.25"
 ktor = "3.0.3"
+lkGradleHelpers = "1.2.5"
 proguard = "7.3.2"
 shadow = "8.1.1"
 vanniktechMavenPublish = "0.30.0"
@@ -34,6 +35,7 @@ comLightningkiteLightningserverServerTesting = { module = "com.lightningkite.lig
 comLightningkiteLightningserverShared = { module = "com.lightningkite.lightningserver:shared", version = "4.1.67" }
 kotlinerCli = { module = "com.lightningkite:kotliner-cli", version = { ref = "kotlinerCli" } }
 ktorCallLogging = { module = "io.ktor:ktor-server-call-logging", version = { ref = "ktor" } }
+lkGradleHelpers = { module = "com.lightningkite:lk-gradle-helpers", version.ref = "lkGradleHelpers" }
 proguard = { module = "com.guardsquare:proguard-gradle", version = { ref = "proguard" } }
 
 [plugins]

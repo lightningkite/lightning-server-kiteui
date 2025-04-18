@@ -29,6 +29,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.builtins.MapSerializer
 import kotlinx.serialization.builtins.serializer
@@ -38,6 +39,7 @@ import kotlin.coroutines.resumeWithException
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 
+@OptIn(ExperimentalSerializationApi::class)
 class BulkFetcher(
     val httpBulk: String,
     val wsMultiplex: String,
@@ -59,12 +61,13 @@ class BulkFetcher(
         body: I,
         outSerializer: KSerializer<O>,
     ): O {
-        val jsonBody = json.encodeToString(inSerializer, body)
         val id = UUID.Companion.random().toString()
         val req = BulkRequest(
             url,
             method = method.name,
-            body = jsonBody
+            body =  if (inSerializer.descriptor.serialName != "kotlin.Unit")
+                json.encodeToString(inSerializer, body)
+            else null
         )
         if (!scheduled) {
             scheduled = true
