@@ -25,6 +25,7 @@ import kotlinx.datetime.Instant
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.builtins.nullable
 import kotlinx.serialization.builtins.serializer
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.minutes
@@ -35,8 +36,6 @@ data class LightningServerAuthentication(
     val subjectPath: String,
     val sessionToken: String,
 ) {
-    var lastRefresh: Instant = Instant.DISTANT_PAST
-    var token: Deferred<String>? = null
     val accessToken = subject.accessToken(sessionToken)
 }
 
@@ -47,21 +46,13 @@ data class AuthClientEndpoints(
     val emailProof: EmailProofClientEndpoints? = null,
     val oneTimePasswordProof: OneTimePasswordProofClientEndpoints? = null,
     val passwordProof: PasswordProofClientEndpoints? = null,
-    val webAuthNProof: WebAuthNProofClientEndpoints? = null,
     val knownDeviceProof: KnownDeviceProofClientEndpoints? = null,
+    val webAuthNProof: WebAuthNProofEndpoints? = null,
     val authenticatedOneTimePasswordProof: ((LightningServerAuthentication) -> AuthenticatedOneTimePasswordProofClientEndpoints)? = null,
     val authenticatedPasswordProof: ((LightningServerAuthentication) -> AuthenticatedPasswordProofClientEndpoints)? = null,
-    val authenticatedWebAuthNProof: ((LightningServerAuthentication) -> AuthenticatedWebAuthNProofClientEndpoints)? = null,
     val authenticatedKnownDeviceProof: ((LightningServerAuthentication) -> AuthenticatedKnownDeviceProofClientEndpoints)? = null,
+    val webAuthNRegistration: ((LightningServerAuthentication) -> WebAuthNRegistrationEndpoints)? = null,
 ) {
-    val proofEndpoints
-        get() = listOfNotNull(
-            smsProof,
-            emailProof,
-            oneTimePasswordProof,
-            passwordProof,
-            knownDeviceProof
-        )
 
     companion object {
         val dummy = AuthClientEndpoints(
@@ -125,7 +116,10 @@ data class AuthClientEndpoints(
 
                 override suspend fun provePhoneOwnership(input: FinishProof): Proof {
                     delay(1000)
-                    if (input.password == "wrong") throw LsErrorException(400, LSError(400, "", "Code incorrect. 4 attempts remain", ""))
+                    if (input.password == "wrong") throw LsErrorException(
+                        400,
+                        LSError(400, "", "Code incorrect. 4 attempts remain", "")
+                    )
                     return Proof("sms", property = "phone", value = input.key, at = now(), signature = "")
                 }
             },
@@ -137,21 +131,30 @@ data class AuthClientEndpoints(
 
                 override suspend fun proveEmailOwnership(input: FinishProof): Proof {
                     delay(1000)
-                    if (input.password == "wrong") throw LsErrorException(400, LSError(400, "", "Code incorrect. 4 attempts remain", ""))
+                    if (input.password == "wrong") throw LsErrorException(
+                        400,
+                        LSError(400, "", "Code incorrect. 4 attempts remain", "")
+                    )
                     return Proof("email", property = "email", value = input.key, at = now(), signature = "")
                 }
             },
             passwordProof = object : PasswordProofClientEndpoints {
                 override suspend fun provePasswordOwnership(input: IdentificationAndPassword): Proof {
                     delay(1000)
-                    if (input.password == "wrong") throw LsErrorException(400, LSError(400, "", "Password and user do not match", ""))
+                    if (input.password == "wrong") throw LsErrorException(
+                        400,
+                        LSError(400, "", "Password and user do not match", "")
+                    )
                     return Proof("password", property = "password", value = "id", at = now(), signature = "")
                 }
             },
             oneTimePasswordProof = object : OneTimePasswordProofClientEndpoints {
                 override suspend fun proveOTP(input: IdentificationAndPassword): Proof {
                     delay(1000)
-                    if (input.password == "wrong") throw LsErrorException(400, LSError(400, "", "OTP and user do not match", ""))
+                    if (input.password == "wrong") throw LsErrorException(
+                        400,
+                        LSError(400, "", "OTP and user do not match", "")
+                    )
                     return Proof("otp", property = "otp", value = "id", at = now(), signature = "")
                 }
             },
@@ -199,20 +202,6 @@ data class AuthClientEndpoints(
     }
 }
 
-data class Identification(
-    val type: String,
-    val property: String,
-    val value: String,
-) {
-    fun withPassword(password: String) =
-        IdentificationAndPassword(
-            type,
-            property,
-            value,
-            password
-        )
-}
-
 sealed interface ProofEndpoints {
 }
 
@@ -221,6 +210,7 @@ interface SmsProofClientEndpoints : ProofEndpoints {
     suspend fun provePhoneOwnership(input: FinishProof): Proof
 
 }
+
 open class SmsProofClientEndpointsLive(
     val fetcher: Fetcher,
     val subpath: String,
@@ -274,6 +264,7 @@ interface OneTimePasswordProofClientEndpoints : ProofEndpoints {
 
 
 }
+
 open class OneTimePasswordProofClientEndpointsLive(
     val fetcher: Fetcher,
     val subpath: String,
@@ -290,6 +281,7 @@ open class OneTimePasswordProofClientEndpointsLive(
 interface PasswordProofClientEndpoints : ProofEndpoints {
     suspend fun provePasswordOwnership(input: IdentificationAndPassword): Proof
 }
+
 open class PasswordProofClientEndpointsLive(
     val fetcher: Fetcher,
     val subpath: String,
@@ -303,25 +295,27 @@ open class PasswordProofClientEndpointsLive(
     )
 }
 
-interface WebAuthNProofClientEndpoints : ProofEndpoints {
-    suspend fun start(): PublicKeyCredentialRequestOptions
-    suspend fun prove(input: AssertedPublicKeyCredential): Proof
+interface WebAuthNProofEndpoints : ProofEndpoints {
+    suspend fun start(input: WebAuthNStart): WebAuthNStartResponse
+    suspend fun prove(input: WebAuthNProve): Proof
 }
-open class WebAuthNProofClientEndpointsLive(
+
+open class WebAuthNProofEndpointsLive(
     val fetcher: Fetcher,
     val subpath: String,
-) : WebAuthNProofClientEndpoints {
-    override suspend fun start(): PublicKeyCredentialRequestOptions = fetcher(
+) : WebAuthNProofEndpoints {
+    override suspend fun start(input: WebAuthNStart): WebAuthNStartResponse = fetcher(
         url = "$subpath/start",
         method = HttpMethod.POST,
-        inSerializer = Unit.serializer(),
-        body = Unit,
-        outSerializer = PublicKeyCredentialRequestOptions.serializer()
+        inSerializer = WebAuthNStart.serializer(),
+        body = input,
+        outSerializer = WebAuthNStartResponse.serializer()
     )
-    override suspend fun prove(input: AssertedPublicKeyCredential): Proof = fetcher(
+
+    override suspend fun prove(input: WebAuthNProve): Proof = fetcher(
         url = "$subpath/prove",
         method = HttpMethod.POST,
-        inSerializer = AssertedPublicKeyCredential.serializer(),
+        inSerializer = WebAuthNProve.serializer(),
         body = input,
         outSerializer = Proof.serializer()
     )
@@ -331,6 +325,7 @@ interface KnownDeviceProofClientEndpoints : ProofEndpoints {
     suspend fun knownDeviceOptions(): KnownDeviceOptions
     suspend fun proveKnownDevice(input: String): Proof
 }
+
 open class KnownDeviceProofClientEndpointsLive(
     val fetcher: Fetcher,
     val subpath: String,
@@ -356,6 +351,7 @@ interface AuthenticatedOneTimePasswordProofClientEndpoints {
 
     suspend fun establishOneTimePassword(input: EstablishOtp): String
 }
+
 open class AuthenticatedOneTimePasswordProofClientEndpointsLive(
     val fetcher: Fetcher,
     val subpath: String,
@@ -372,6 +368,7 @@ open class AuthenticatedOneTimePasswordProofClientEndpointsLive(
 interface AuthenticatedPasswordProofClientEndpoints {
     suspend fun establishPassword(input: EstablishPassword): Unit
 }
+
 open class AuthenticatedPasswordProofClientEndpointsLive(
     val fetcher: Fetcher,
     val subpath: String,
@@ -385,27 +382,29 @@ open class AuthenticatedPasswordProofClientEndpointsLive(
     )
 }
 
-interface AuthenticatedWebAuthNProofClientEndpoints {
-    suspend fun registerStart(): PublicKeyCredentialCreationOptions
-    suspend fun registerFinish(input: AttestedPublicKeyCredential): AttestedPublicKeyCredential
+interface WebAuthNRegistrationEndpoints {
+    suspend fun registerStart(input: GeneralPreference): WebAuthNRegistrationResponse
+    suspend fun registerFinish(input: WebAuthNRegisterFinish): Unit
 }
-open class AuthenticatedWebAuthNProofClientEndpointsLive(
+
+open class WebAuthNRegistrationEndpointsLive(
     val fetcher: Fetcher,
     val subpath: String,
-) : AuthenticatedWebAuthNProofClientEndpoints {
-    override suspend fun registerStart(): PublicKeyCredentialCreationOptions = fetcher(
+) : WebAuthNRegistrationEndpoints {
+    override suspend fun registerStart(input: GeneralPreference): WebAuthNRegistrationResponse = fetcher(
         url = "$subpath/register-start",
         method = HttpMethod.POST,
-        inSerializer = Unit.serializer(),
-        body = Unit,
-        outSerializer = PublicKeyCredentialCreationOptions.serializer()
+        inSerializer = GeneralPreference.serializer(),
+        body = input,
+        outSerializer = WebAuthNRegistrationResponse.serializer()
     )
-    override suspend fun registerFinish(input: AttestedPublicKeyCredential): AttestedPublicKeyCredential = fetcher(
+
+    override suspend fun registerFinish(input: WebAuthNRegisterFinish): Unit = fetcher(
         url = "$subpath/register-finish",
         method = HttpMethod.POST,
-        inSerializer = AttestedPublicKeyCredential.serializer(),
+        inSerializer = WebAuthNRegisterFinish.serializer(),
         body = input,
-        outSerializer = AttestedPublicKeyCredential.serializer()
+        outSerializer = Unit.serializer(),
     )
 }
 
@@ -414,6 +413,7 @@ interface AuthenticatedKnownDeviceProofClientEndpoints {
     suspend fun establishKnownDeviceV2(): KnownDeviceSecretAndExpiration
 
 }
+
 open class AuthenticatedKnownDeviceProofClientEndpointsLive(
     val fetcher: Fetcher,
     val subpath: String,
@@ -457,6 +457,7 @@ interface UserAuthClientEndpoints<ID : Comparable<ID>> {
     suspend fun getToken(input: OauthTokenRequest): OauthResponse
     suspend fun getTokenSimple(input: String): String
 }
+
 open class UserAuthClientEndpointsLive<ID : Comparable<ID>>(
     val fetcher: Fetcher,
     val subpath: String,

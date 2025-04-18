@@ -17,8 +17,8 @@ expect object ClientAuthenticator {
 }
 
 enum class WebAuthNMediationType(val jsName:String) {
-    Conditional("optional"),
-    Optional("required"),
-    Required("conditional"),
+    Conditional("conditional"),
+    Optional("optional"),
+    Required("required"),
     Silent("silent")
 }

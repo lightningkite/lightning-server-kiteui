@@ -17,7 +17,7 @@ external interface AuthenticatorSelection {
 
 
 external interface ExistingCredential {
-    var id: String?
+    var id: ByteArray?
         get() = definedExternally
         set(value) = definedExternally
     var transports: Array<String>?
@@ -110,7 +110,29 @@ external interface CreateOptions {
 }
 
 
-external class GetOptions {
+external interface PublicKeyCredentialRequestOptions {
+    var allowCredentials: Array<ExistingCredential>?
+        get() = definedExternally
+        set(value) = definedExternally
+    var challenge: ByteArray?
+        get() = definedExternally
+        set(value) = definedExternally
+    var extensions: dynamic
+        get() = definedExternally
+        set(value) = definedExternally
+    var rp: String?
+        get() = definedExternally
+        set(value) = definedExternally
+    var timeout: Int?
+        get() = definedExternally
+        set(value) = definedExternally
+    var userVerification: String?
+        get() = definedExternally
+        set(value) = definedExternally
+}
+
+
+external interface GetOptions {
     var mediation: String?
         get() = definedExternally
         set(value) = definedExternally
@@ -126,7 +148,7 @@ external class GetOptions {
     var signal: dynamic
         get() = definedExternally
         set(value) = definedExternally
-    var publicKey: dynamic?
+    var publicKey: PublicKeyCredentialRequestOptions?
         get() = definedExternally
         set(value) = definedExternally
 }
@@ -152,9 +174,9 @@ external interface AuthenticatorAttestationResponse {
 
 
 external interface AuthenticatorAssertionResponse {
-    val authenticatorResponse: ArrayBuffer?
+    val authenticatorData: ArrayBuffer?
         get() = definedExternally
-    val clientDataJSON: String?
+    val clientDataJSON: ArrayBuffer?
         get() = definedExternally
     val signature: ArrayBuffer?
         get() = definedExternally
@@ -169,7 +191,7 @@ external interface PublicKeyCredential {
         get() = definedExternally
     val clientExtensionResults: dynamic
         get() = definedExternally
-    val id: String? // Base64 encode
+    val id: String?
         get() = definedExternally
     val response: dynamic // this is union of: AuthenticatorAttestationResponse, and AuthenticatorAssertionResponse
         get() = definedExternally
@@ -181,6 +203,7 @@ external interface PublicKeyCredential {
     companion object {
         fun isConditionalMediationAvailable(): Promise<Boolean>
         fun isUserVerifyingPlatformAuthenticatorAvailable(): Promise<Boolean>
+        fun parseCreationOptionsFromJSON(input: dynamic): PublicKeyCredentialCreationOptions
     }
 }
 

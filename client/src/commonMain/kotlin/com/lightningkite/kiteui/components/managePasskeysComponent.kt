@@ -26,7 +26,6 @@ import com.lightningkite.lightningdb.modification
 import com.lightningkite.lightningserver.auth.proof.WebAuthNCredential
 import com.lightningkite.lightningserver.auth.proof.disabledAt
 import com.lightningkite.lightningserver.auth.proof.subjectId
-import com.lightningkite.lightningserver.auth.proof.subjectName
 import com.lightningkite.lightningserver.db.LimitReadable
 import com.lightningkite.lightningserver.db.ModelCache
 import com.lightningkite.now
@@ -42,7 +41,7 @@ fun ViewWriter.manageWebAuthNCredentialsComponent(
 ) {
     val credentials: Readable<LimitReadable<WebAuthNCredential>> = shared {
         webAuthNCCredentials.awaitNotNull()
-            .query(Query(condition { it.subjectName.eq(subjectName()) and it.subjectId.eq(subjectId()) and it.disabledAt.eq(null) }))
+            .query(Query(condition { it.subjectId.eq(subjectId()) }))
     }
 
     recyclerView {
@@ -51,7 +50,7 @@ fun ViewWriter.manageWebAuthNCredentialsComponent(
                 col {
                     spacing = 0.dp
                     text {
-                        ::content { credential().friendlyName ?: "Passkey" }
+                        ::content { credential().displayName ?: "Passkey" }
                     }
                     subtext {
                         ::content { "Created on ${credential().establishedAt.renderToString(RenderSize.Numerical)}" }
