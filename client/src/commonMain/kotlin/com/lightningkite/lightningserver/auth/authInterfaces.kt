@@ -48,6 +48,7 @@ data class AuthClientEndpoints(
     val passwordProof: PasswordProofClientEndpoints? = null,
     val knownDeviceProof: KnownDeviceProofClientEndpoints? = null,
     val webAuthNProof: WebAuthNProofEndpoints? = null,
+    val webAuthNIncludePasskeyUI: Boolean = webAuthNProof != null,
     val authenticatedOneTimePasswordProof: ((LightningServerAuthentication) -> AuthenticatedOneTimePasswordProofClientEndpoints)? = null,
     val authenticatedPasswordProof: ((LightningServerAuthentication) -> AuthenticatedPasswordProofClientEndpoints)? = null,
     val authenticatedKnownDeviceProof: ((LightningServerAuthentication) -> AuthenticatedKnownDeviceProofClientEndpoints)? = null,
