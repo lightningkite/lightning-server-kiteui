@@ -1,22 +1,24 @@
 package com.lightningkite.kiteui
 
-import com.lightningkite.lightningserver.auth.proof.AssertedPublicKeyCredential
-import com.lightningkite.lightningserver.auth.proof.AttestedPublicKeyCredential
-import com.lightningkite.lightningserver.auth.proof.PublicKeyCredentialCreationOptions
-import com.lightningkite.lightningserver.auth.proof.PublicKeyCredentialRequestOptions
+import com.lightningkite.lightningserver.auth.proof.WebAuthN
 import com.lightningkite.readable.Readable
 
-expect object ClientAuthenticator {
+@Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
+expect class ClientAuthenticator {
     val webAuthNAvailable: Readable<Boolean>
     val autofillAvailable: Readable<Boolean>
-    suspend fun createWebAuthNCredentials(request: PublicKeyCredentialCreationOptions): AttestedPublicKeyCredential
+    suspend fun createWebAuthNCredentials(request: WebAuthN.Registration.PublicKeyCredentialCreationOptions): WebAuthN.Registration.AttestedPublicKeyCredential
     suspend fun getWebAuthNCredentials(
-        request: PublicKeyCredentialRequestOptions,
+        request: WebAuthN.Authentication.PublicKeyCredentialRequestOptions,
         mediation: WebAuthNMediationType = WebAuthNMediationType.Optional,
-    ): AssertedPublicKeyCredential
+    ): WebAuthN.Authentication.AssertedPublicKeyCredential
+
+    companion object{
+        fun getClientAuthenticator(): ClientAuthenticator
+    }
 }
 
-enum class WebAuthNMediationType(val jsName:String) {
+enum class WebAuthNMediationType(val standardName:String) {
     Conditional("conditional"),
     Optional("optional"),
     Required("required"),

@@ -58,6 +58,81 @@ external interface PublicKeyCredentialUserEntity {
         set(value) = definedExternally
 }
 
+external interface LargeBlob {
+    var support: String?
+        get() = definedExternally
+        set(value) = definedExternally
+    var read: Boolean?
+        get() = definedExternally
+        set(value) = definedExternally
+    var write: ByteArray?
+        get() = definedExternally
+        set(value) = definedExternally
+}
+
+external interface LargeBlobResponse {
+    var supported: Boolean?
+        get() = definedExternally
+        set(value) = definedExternally
+    var written: Boolean?
+        get() = definedExternally
+        set(value) = definedExternally
+    var blob: ArrayBuffer?
+        get() = definedExternally
+        set(value) = definedExternally
+}
+
+external interface Extensions {
+    var appid: String?
+        get() = definedExternally
+        set(value) = definedExternally
+    var appidExclude: String?
+        get() = definedExternally
+        set(value) = definedExternally
+    var credProps: Boolean?
+        get() = definedExternally
+        set(value) = definedExternally
+    var credentialProtectionPolicy: String?
+        get() = definedExternally
+        set(value) = definedExternally
+    var enforceCredentialProtectionPolicy: Boolean?
+        get() = definedExternally
+        set(value) = definedExternally
+    var largeBlob: LargeBlob?
+        get() = definedExternally
+        set(value) = definedExternally
+    var minPinLength: Boolean?
+        get() = definedExternally
+        set(value) = definedExternally
+}
+
+external interface CredPropsResponse{
+    var rk: Boolean?
+        get() = definedExternally
+        set(value) = definedExternally
+}
+
+external interface ExtensionsResponse {
+    var appid: Boolean?
+        get() = definedExternally
+        set(value) = definedExternally
+    var appidExclude: Boolean?
+        get() = definedExternally
+        set(value) = definedExternally
+    var credProps: CredPropsResponse?
+        get() = definedExternally
+        set(value) = definedExternally
+    var credProtect: Int?
+        get() = definedExternally
+        set(value) = definedExternally
+    var largeBlob: LargeBlobResponse?
+        get() = definedExternally
+        set(value) = definedExternally
+    var minPinLength: Long?
+        get() = definedExternally
+        set(value) = definedExternally
+}
+
 external interface PublicKeyCredentialCreationOptions {
     var attestation: String?
         get() = definedExternally
@@ -74,7 +149,7 @@ external interface PublicKeyCredentialCreationOptions {
     var excludeCredentials: Array<ExistingCredential>?
         get() = definedExternally
         set(value) = definedExternally
-    var extensions: dynamic
+    var extensions: Extensions?
         get() = definedExternally
         set(value) = definedExternally
     var hints: Array<String>?
@@ -117,7 +192,7 @@ external interface PublicKeyCredentialRequestOptions {
     var challenge: ByteArray?
         get() = definedExternally
         set(value) = definedExternally
-    var extensions: dynamic
+    var extensions: Extensions?
         get() = definedExternally
         set(value) = definedExternally
     var rp: String?
@@ -189,8 +264,6 @@ external interface PublicKeyCredential {
 
     val authenticatorAttachment: String?
         get() = definedExternally
-    val clientExtensionResults: dynamic
-        get() = definedExternally
     val id: String?
         get() = definedExternally
     val response: dynamic // this is union of: AuthenticatorAttestationResponse, and AuthenticatorAssertionResponse
@@ -199,6 +272,7 @@ external interface PublicKeyCredential {
         get() = definedExternally
 
     fun toJSON(): String
+    fun getClientExtensionResults(): ExtensionsResponse?
 
     companion object {
         fun isConditionalMediationAvailable(): Promise<Boolean>

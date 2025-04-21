@@ -1,11 +1,7 @@
 package com.lightningkite.kiteui
 
+import com.lightningkite.lightningserver.auth.proof.WebAuthN
 import com.lightningkite.kiteui.exceptions.PlainTextException
-import com.lightningkite.lightningserver.auth.proof.AssertedPublicKeyCredential
-import com.lightningkite.lightningserver.auth.proof.AttestedPublicKeyCredential
-import com.lightningkite.lightningserver.auth.proof.Transport
-import com.lightningkite.lightningserver.auth.proof.WebAuthNDecoder
-import com.lightningkite.lightningserver.auth.proof.WebAuthNEncoder
 import com.lightningkite.readable.Readable
 import com.lightningkite.readable.sharedProcess
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -16,8 +12,17 @@ import kotlin.coroutines.resumeWithException
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
 
+
+@Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
 @OptIn(ExperimentalSerializationApi::class)
-actual object ClientAuthenticator {
+actual class ClientAuthenticator {
+
+    actual companion object {
+        private val default = ClientAuthenticator()
+        actual fun getClientAuthenticator(): ClientAuthenticator = default
+    }
+
+    fun getCredentials(): CredentialContainer = js("(navigator.credentials)")
 
     private val webauthnAPIAvailable: Boolean
         get() = js("(window.PublicKeyCredential && PublicKeyCredential.isConditionalMediationAvailable)")
@@ -45,36 +50,50 @@ actual object ClientAuthenticator {
     }
 
     @OptIn(ExperimentalEncodingApi::class)
-    actual suspend fun createWebAuthNCredentials(request: com.lightningkite.lightningserver.auth.proof.PublicKeyCredentialCreationOptions): AttestedPublicKeyCredential =
-        suspendCancellableCoroutine<AttestedPublicKeyCredential> { cont ->
+    actual suspend fun createWebAuthNCredentials(request: WebAuthN.Registration.PublicKeyCredentialCreationOptions): WebAuthN.Registration.AttestedPublicKeyCredential =
+        suspendCancellableCoroutine<WebAuthN.Registration.AttestedPublicKeyCredential> { cont ->
 
             val controller = AbortController()
             val options: CreateOptions = object : CreateOptions {}
 
             val publicKey = object : PublicKeyCredentialCreationOptions {}.apply {
-                attestation = request.attestation.jsonName
+                attestation = request.attestation.standardName
                 attestationFormats = request.attestationFormats.toTypedArray()
                 authenticatorSelection = object : AuthenticatorSelection {}.apply {
-                    authenticatorAttachment = request.authenticatorSelection.authenticatorAttachment?.jsonName
-                    residentKey = request.authenticatorSelection.residentKey.jsonName
-                    userVerification = request.authenticatorSelection.userVerification.jsonName
+                    authenticatorAttachment = request.authenticatorSelection.authenticatorAttachment?.standardName
+                    residentKey = request.authenticatorSelection.residentKey.standardName
+                    userVerification = request.authenticatorSelection.userVerification.standardName
                 }
 
 
                 challenge = request.challenge.encodeToByteArray()
                 excludeCredentials = request.excludeCredentials.map {
                     object : ExistingCredential {}.apply {
-                        id = Base64.WebAuthNDecoder.decode(it.id)
-                        transports = it.transports.map { it.jsonName }.toTypedArray()
+                        id = WebAuthN.base64Decoder.decode(it.id)
+                        transports = it.transports.map { it.standardName }.toTypedArray()
                         type = it.type
                     }
                 }.toTypedArray()
-                extensions = object {}
-                request.extensions.entries.forEach {
-                    extensions[it.key] = it.value
+                extensions = object : Extensions {}.apply {
+                    request.extensions.appidExclude
+                        ?.also { appidExclude = it }
+                    request.extensions.credProps
+                        ?.also { credProps = it }
+                    request.extensions.credentialProtectionPolicy
+                        ?.also { credentialProtectionPolicy = it.standardName }
+                    request.extensions.enforceCredentialProtectionPolicy
+                        ?.also { enforceCredentialProtectionPolicy = it }
+                    request.extensions.largeBlob
+                        ?.also {
+                            largeBlob = object : LargeBlob {}.apply {
+                                support = it.support.standardName
+                            }
+                        }
+                    request.extensions.minPinLength
+                        ?.also { minPinLength = it }
                 }
 
-                hints = request.hints.map { it.jsonName }.toTypedArray()
+                hints = request.hints.map { it.standardName }.toTypedArray()
                 pubKeyCredParams = request.pubKeyCredParams.map {
                     object : PublicKeyCredentialParameters {}.apply {
                         alg = it.alg.coseAlgorithmId
@@ -102,18 +121,25 @@ actual object ClientAuthenticator {
                     onFulfilled = { result: PublicKeyCredential ->
 
                         val typedResponse = result.response.unsafeCast<AuthenticatorAttestationResponse>()
-                        val output = AttestedPublicKeyCredential(
+                        val output = WebAuthN.Registration.AttestedPublicKeyCredential(
                             authenticatorAttachment = result.authenticatorAttachment!!,
-                            clientExtensionResults = result.clientExtensionResults ?: emptyMap(),
+                            clientExtensionResults = result.getClientExtensionResults()?.let { extensions ->
+                                WebAuthN.Registration.CreateExtensionResponse(
+                                    appidExclude = extensions.appidExclude,
+                                    credProps = extensions.credProps?.rk
+                                        ?.let { WebAuthN.Registration.CredPropsResponse(it) },
+                                    credProtect = extensions.credProtect,
+                                    largeBlob = extensions.largeBlob?.supported
+                                        ?.let { WebAuthN.Registration.LargeBlobResponse(it) },
+                                    minPinLength = extensions.minPinLength?.toUInt()
+                                )
+                            },
                             id = result.id!!,
-                            response = com.lightningkite.lightningserver.auth.proof.AuthenticatorAttestationResponse(
-                                attestationObject = Base64.WebAuthNEncoder.encode(Int8Array(typedResponse.attestationObject!!).unsafeCast<ByteArray>()),
-                                authenticatorData = Base64.WebAuthNEncoder.encode(Int8Array(typedResponse.getAuthenticatorData()).unsafeCast<ByteArray>()),
-                                clientDataJSON = Base64.WebAuthNEncoder.encode(Int8Array(typedResponse.clientDataJSON!!).unsafeCast<ByteArray>()),
-                                publicKey = Base64.WebAuthNEncoder.encode(Int8Array(typedResponse.getPublicKey()).unsafeCast<ByteArray>()),
-                                publicKeyAlgorithm = typedResponse.getPublicKeyAlgorithm(),
+                            response = WebAuthN.Registration.AuthenticatorAttestationResponse(
+                                attestationObject = WebAuthN.base64Encoder.encode(Int8Array(typedResponse.attestationObject!!).unsafeCast<ByteArray>()),
+                                clientDataJSON = WebAuthN.base64Encoder.encode(Int8Array(typedResponse.clientDataJSON!!).unsafeCast<ByteArray>()),
                                 transports = typedResponse.getTransports()
-                                    .map { outer -> Transport.entries.find { it.jsonName == outer }!! },
+                                    .map { WebAuthN.Transport.fromStandardName(it) },
                             )
                         )
                         cont.resume(output)
@@ -127,10 +153,10 @@ actual object ClientAuthenticator {
 
     @OptIn(ExperimentalEncodingApi::class)
     actual suspend fun getWebAuthNCredentials(
-        request: com.lightningkite.lightningserver.auth.proof.PublicKeyCredentialRequestOptions,
+        request: WebAuthN.Authentication.PublicKeyCredentialRequestOptions,
         mediation: WebAuthNMediationType,
-    ): AssertedPublicKeyCredential =
-        suspendCancellableCoroutine<AssertedPublicKeyCredential> { cont ->
+    ): WebAuthN.Authentication.AssertedPublicKeyCredential =
+        suspendCancellableCoroutine<WebAuthN.Authentication.AssertedPublicKeyCredential> { cont ->
 
             val controller = AbortController()
             val options: GetOptions = object : GetOptions {}
@@ -138,21 +164,31 @@ actual object ClientAuthenticator {
             val publicKey = object : PublicKeyCredentialRequestOptions {}.apply {
                 allowCredentials = request.allowCredentials.map {
                     object : ExistingCredential {}.apply {
-                        id = Base64.WebAuthNDecoder.decode(it.id)
-                        transports = it.transports.map { it.jsonName }.toTypedArray()
+                        id = WebAuthN.base64Decoder.decode(it.id)
+                        transports = it.transports.map { it.standardName }.toTypedArray()
                         type = it.type
                     }
                 }.toTypedArray()
                 challenge = request.challenge.encodeToByteArray()
-                extensions = object {}
+                extensions = object : Extensions {}.apply {
+                    request.extensions.appid
+                        ?.also { appid = it }
+                    request.extensions.largeBlob
+                        ?.also {
+                            largeBlob = object : LargeBlob {}.apply {
+                                read = it.read
+                                write = it.write?.encodeToByteArray()
+                            }
+                        }
+                }
                 rp = request.rpId
                 timeout = request.timeout
-                userVerification = request.userVerification.jsonName
+                userVerification = request.userVerification.standardName
             }
 
             options.publicKey = publicKey
             options.signal = controller.signal
-            options.mediation = mediation.jsName
+            options.mediation = mediation.standardName
 
             getCredentials()
                 .get(options)
@@ -160,14 +196,28 @@ actual object ClientAuthenticator {
                     onFulfilled = { result: PublicKeyCredential ->
 
                         val typedResponse = result.response.unsafeCast<AuthenticatorAssertionResponse>()
-                        val output = AssertedPublicKeyCredential(
+                        val output = WebAuthN.Authentication.AssertedPublicKeyCredential(
                             id = result.id!!,
-                            response = com.lightningkite.lightningserver.auth.proof.AuthenticatorAssertionResponse(
-                                authenticatorData = Base64.WebAuthNEncoder.encode(Int8Array(typedResponse.authenticatorData!!).unsafeCast<ByteArray>()),
-                                clientDataJSON = Base64.WebAuthNEncoder.encode(Int8Array(typedResponse.clientDataJSON!!).unsafeCast<ByteArray>()),
-                                signature = Base64.WebAuthNEncoder.encode(Int8Array(typedResponse.signature!!).unsafeCast<ByteArray>()),
+
+                            clientExtensionResults = result.getClientExtensionResults()?.let { extensions ->
+                                WebAuthN.Authentication.RequestExtensionsResponse(
+                                    appid = extensions.appid,
+                                    largeBlob = extensions.largeBlob
+                                        ?.let {
+                                            WebAuthN.Authentication.LargeBlobResponse(
+                                                it.written!!,
+                                                it.blob
+                                                    ?.let { WebAuthN.base64Encoder.encode(Int8Array(it).unsafeCast<ByteArray>()) },
+                                            )
+                                        },
+                                )
+                            },
+                            response = WebAuthN.Authentication.AuthenticatorAssertionResponse(
+                                authenticatorData = WebAuthN.base64Encoder.encode(Int8Array(typedResponse.authenticatorData!!).unsafeCast<ByteArray>()),
+                                clientDataJSON = WebAuthN.base64Encoder.encode(Int8Array(typedResponse.clientDataJSON!!).unsafeCast<ByteArray>()),
+                                signature = WebAuthN.base64Encoder.encode(Int8Array(typedResponse.signature!!).unsafeCast<ByteArray>()),
                                 userHandle = typedResponse.userHandle?.let { handle ->
-                                    Base64.WebAuthNEncoder.encode(
+                                    WebAuthN.base64Encoder.encode(
                                         Int8Array(handle).unsafeCast<ByteArray>()
                                     )
                                 },
@@ -188,4 +238,3 @@ actual object ClientAuthenticator {
     }
 }
 
-fun getCredentials(): CredentialContainer = js("(navigator.credentials)")

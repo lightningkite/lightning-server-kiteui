@@ -1,7 +1,9 @@
 package com.lightningkite.kiteui.forms
 
 import com.lightningkite.kiteui.ClientAuthenticator
+import com.lightningkite.kiteui.Platform
 import com.lightningkite.kiteui.WebAuthNMediationType
+import com.lightningkite.kiteui.current
 import com.lightningkite.kiteui.models.*
 import com.lightningkite.kiteui.printStackTrace2
 import com.lightningkite.kiteui.reactive.Action
@@ -17,8 +19,7 @@ import com.lightningkite.lightningserver.auth.proof.IdentificationAndPassword
 import com.lightningkite.lightningserver.auth.proof.KnownDeviceOptions
 import com.lightningkite.lightningserver.auth.proof.KnownDeviceSecretAndExpiration
 import com.lightningkite.lightningserver.auth.proof.Proof
-import com.lightningkite.lightningserver.auth.proof.WebAuthNProve
-import com.lightningkite.lightningserver.auth.proof.WebAuthNStart
+import com.lightningkite.lightningserver.auth.proof.WebAuthN
 import com.lightningkite.lightningserver.auth.subject.LogInRequest
 import com.lightningkite.lightningserver.auth.subject.ProofsCheckResult
 import com.lightningkite.now
@@ -284,7 +285,9 @@ class AuthComponent(
                             endpoints.smsProof != null -> KeyboardHints.phone
                             else -> KeyboardHints.id
                         }.let {
-                            if (endpoints.webAuthNProof != null && ClientAuthenticator.autofillAvailable())
+                            if (endpoints.webAuthNProof != null && ClientAuthenticator.getClientAuthenticator()
+                                    .autofillAvailable()
+                            )
                                 it.copy(includePasskeys = true)
                             else it
                         }
@@ -409,48 +412,60 @@ class AuthComponent(
                     action
                 }
 
-                endpoints.webAuthNProof?.let { webAuthNProof ->
-                    val action = Action("Sign in with a Passkey", Icon.passkey) {
-                        try {
-                            if (proofs.value.isEmpty()) {
-                                primaryIdentifier.value = ""
-                                waitingPasskey.value = true
-                            }
-                            val identity = authResult.awaitOnce()?.id?.toString()
-                            val type = endpoints.subjects.keys.single()
-                            val (key, getOptions) = webAuthNProof.start(WebAuthNStart(identity, type))
-                            val signedChallenge =
-                                ClientAuthenticator.getWebAuthNCredentials(
-                                    getOptions,
-                                    WebAuthNMediationType.Optional
-                                )
-                            proofs.value += webAuthNProof.prove(WebAuthNProve(key, signedChallenge))
-                        } finally {
-                            waitingPasskey.value = false
-                        }
-                    }
-
-                    val isPrimary = shared { proofs().isEmpty() }
-                    shownWhen { (endpoints.webAuthNIncludePasskeyUI && isPrimary()) || authResult()?.options?.any { it.method.via == "WebAuthN" } == true } - col {
-                        centered - shownWhen { isPrimary() && !waitingPasskey() } - text("Or")
-
-                        important - buttonTheme - button {
-                            this.action = action
-                            row {
-                                expanding - space()
-                                centered - icon(Icon.passkey, "Passkey")
-                                centered - text {
-                                    ::content{
-                                        if (isPrimary()) "Use a Passkey"
-                                        else "Use your Security Key"
-                                    }
+                // WebAuthN is only supported in Web at the moment.
+                if (Platform.current == Platform.Web)
+                    endpoints.webAuthNProof?.let { webAuthNProof ->
+                        val action = Action("Sign in with a Passkey", Icon.passkey) {
+                            try {
+                                if (proofs.value.isEmpty()) {
+                                    primaryIdentifier.value = ""
+                                    waitingPasskey.value = true
                                 }
-                                expanding - space()
+                                val identity = authResult.awaitOnce()?.id?.toString()
+                                val type = endpoints.subjects.keys.single()
+                                val (key, getOptions) = webAuthNProof.start(
+                                    WebAuthN.Authentication.StartRequest(
+                                        identity,
+                                        type
+                                    )
+                                )
+                                val signedChallenge =
+                                    ClientAuthenticator.getClientAuthenticator().getWebAuthNCredentials(
+                                        getOptions,
+                                        WebAuthNMediationType.Required
+                                    )
+                                proofs.value += webAuthNProof.prove(
+                                    WebAuthN.Authentication.ProveRequest(
+                                        key,
+                                        signedChallenge
+                                    )
+                                )
+                            } finally {
+                                waitingPasskey.value = false
                             }
                         }
+
+                        val isPrimary = shared { proofs().isEmpty() }
+                        shownWhen { (endpoints.webAuthNIncludePasskeyUI && isPrimary()) || authResult()?.options?.any { it.method.via == "WebAuthN" } == true } - col {
+                            centered - shownWhen { isPrimary() && !waitingPasskey() } - text("Or")
+
+                            important - buttonTheme - button {
+                                this.action = action
+                                row {
+                                    expanding - space()
+                                    centered - icon(Icon.passkey, "Passkey")
+                                    centered - text {
+                                        ::content{
+                                            if (isPrimary()) "Use a Passkey"
+                                            else "Use your Security Key"
+                                        }
+                                    }
+                                    expanding - space()
+                                }
+                            }
+                        }
+                        action
                     }
-                    action
-                }
 
                 primaryIdentifierField::action {
                     val id = primaryIdentifier()

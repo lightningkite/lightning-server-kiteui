@@ -297,26 +297,26 @@ open class PasswordProofClientEndpointsLive(
 }
 
 interface WebAuthNProofEndpoints : ProofEndpoints {
-    suspend fun start(input: WebAuthNStart): WebAuthNStartResponse
-    suspend fun prove(input: WebAuthNProve): Proof
+    suspend fun start(input: WebAuthN.Authentication.StartRequest): WebAuthN.Authentication.StartResponse
+    suspend fun prove(input: WebAuthN.Authentication.ProveRequest): Proof
 }
 
 open class WebAuthNProofEndpointsLive(
     val fetcher: Fetcher,
     val subpath: String,
 ) : WebAuthNProofEndpoints {
-    override suspend fun start(input: WebAuthNStart): WebAuthNStartResponse = fetcher(
+    override suspend fun start(input: WebAuthN.Authentication.StartRequest): WebAuthN.Authentication.StartResponse = fetcher(
         url = "$subpath/start",
         method = HttpMethod.POST,
-        inSerializer = WebAuthNStart.serializer(),
+        inSerializer = WebAuthN.Authentication.StartRequest.serializer(),
         body = input,
-        outSerializer = WebAuthNStartResponse.serializer()
+        outSerializer = WebAuthN.Authentication.StartResponse.serializer()
     )
 
-    override suspend fun prove(input: WebAuthNProve): Proof = fetcher(
+    override suspend fun prove(input: WebAuthN.Authentication.ProveRequest): Proof = fetcher(
         url = "$subpath/prove",
         method = HttpMethod.POST,
-        inSerializer = WebAuthNProve.serializer(),
+        inSerializer = WebAuthN.Authentication.ProveRequest.serializer(),
         body = input,
         outSerializer = Proof.serializer()
     )
@@ -384,26 +384,26 @@ open class AuthenticatedPasswordProofClientEndpointsLive(
 }
 
 interface WebAuthNRegistrationEndpoints {
-    suspend fun registerStart(input: GeneralPreference): WebAuthNRegistrationResponse
-    suspend fun registerFinish(input: WebAuthNRegisterFinish): Unit
+    suspend fun registerStart(input: WebAuthN.GeneralPreference): WebAuthN.Registration.RegistrationResponse
+    suspend fun registerFinish(input: WebAuthN.Registration.RegisterRequest): Unit
 }
 
 open class WebAuthNRegistrationEndpointsLive(
     val fetcher: Fetcher,
     val subpath: String,
 ) : WebAuthNRegistrationEndpoints {
-    override suspend fun registerStart(input: GeneralPreference): WebAuthNRegistrationResponse = fetcher(
+    override suspend fun registerStart(input: WebAuthN.GeneralPreference): WebAuthN.Registration.RegistrationResponse = fetcher(
         url = "$subpath/register-start",
         method = HttpMethod.POST,
-        inSerializer = GeneralPreference.serializer(),
+        inSerializer = WebAuthN.GeneralPreference.serializer(),
         body = input,
-        outSerializer = WebAuthNRegistrationResponse.serializer()
+        outSerializer = WebAuthN.Registration.RegistrationResponse.serializer()
     )
 
-    override suspend fun registerFinish(input: WebAuthNRegisterFinish): Unit = fetcher(
+    override suspend fun registerFinish(input: WebAuthN.Registration.RegisterRequest): Unit = fetcher(
         url = "$subpath/register-finish",
         method = HttpMethod.POST,
-        inSerializer = WebAuthNRegisterFinish.serializer(),
+        inSerializer = WebAuthN.Registration.RegisterRequest.serializer(),
         body = input,
         outSerializer = Unit.serializer(),
     )
