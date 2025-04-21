@@ -61,7 +61,37 @@ class DetailAdminPage(val collectionName: String, val itemId: String) : Page {
                                 }
                             }
                         }
-                        important - button {
+                        card - button {
+                            text("Cancel")
+                            ::enabled { item.changesMade() }
+                            onClick {
+                                confirmDanger("Cancel Changes", "Are you sure you want to undo your local changes?") {
+                                    item set item.published()
+                                }
+                            }
+                        }
+                        shownWhen { item.published()._id != item()._id } - danger - button {
+                            text("Delete and Re-create")
+                            ::enabled { item.changesMade() }
+                            onClick {
+                                confirmDanger("Delete and Re-create", "Are you sure you want to delete this item then recreate it with a new ID?  This DOES COUNT as a deletion followed by a creation.") {
+                                    val mc = mc()
+                                    val actualId =
+                                        UrlProperties.decodeFromString(mc.serializer._id().serializer, itemId)
+                                    val newItem = item()
+                                    mc[actualId].delete()
+                                    val newId = mc.insert(newItem)()!!._id
+                                    toast {
+                                        row {
+                                            centered - icon(Icon.done, "Done")
+                                            centered - text("Your changes have been saved")
+                                        }
+                                    }
+                                    pageNavigator.replace(DetailAdminPage(collectionName, UrlProperties.encodeToString(mc.serializer._id().serializer, newId)))
+                                }
+                            }
+                        }
+                        shownWhen { item.published()._id == item()._id } - important - button {
                             text("Save")
                             ::enabled { item.changesMade() }
                             onClick {
