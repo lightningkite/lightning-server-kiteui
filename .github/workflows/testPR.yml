@@ -2,12 +2,8 @@ name: TestPullRequest
 
 on:
   pull_request:
-    branches:
-      - master
-      - version-**
+    branches: version-*
   workflow_dispatch:
-    - master
-    - version-**
 
 jobs:
   test_project:
