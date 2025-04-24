@@ -124,7 +124,8 @@ class BulkFetcher(
         underlyingSocket = {
             val headers = calculator()
             val url = if(headers.isNotEmpty()){
-                wsMultiplex + "?${headers.joinToString("&"){ "${it.first}=${it.second}" }}"
+                val terminator = if(wsMultiplex.contains('?')) '&' else '?'
+                wsMultiplex + "$terminator${headers.joinToString("&"){ "${it.first}=${it.second}" }}"
             } else wsMultiplex
             com.lightningkite.kiteui.websocket(url)
         },

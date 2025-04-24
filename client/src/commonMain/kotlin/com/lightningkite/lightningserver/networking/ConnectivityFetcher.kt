@@ -76,9 +76,9 @@ class ConnectivityFetcher(
         return retryWebsocket(
             underlyingSocket = {
                 val headers = calculator()
-                var url = "$ws$url"
+                var url = "$ws?path=$url"
                 url = if (headers.isNotEmpty()) {
-                    url + "?${headers.joinToString("&") { "${it.first}=${it.second}" }}"
+                    url + "&${headers.joinToString("&") { "${it.first}=${it.second}" }}"
                 } else url
                 com.lightningkite.kiteui.websocket(url)
             },
