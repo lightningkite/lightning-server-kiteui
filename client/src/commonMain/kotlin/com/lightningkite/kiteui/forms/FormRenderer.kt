@@ -298,9 +298,9 @@ fun <T> ViewWriter.form(
     annotations: List<SerializableAnnotation> = serializer.serializableAnnotations,
     desiredSize: FormLayoutPreferences = FormLayoutPreferences.Unbound,
     field: SerializableProperty<*, *>? = null,
-) {
+): ViewModifiable {
     val sel = FormSelector<T>(serializer, annotations, desiredSize)
-    context.form(sel).render(this, field, writable)
+    return context.form(sel).render(this, field, writable)
 }
 
 fun <T> ViewWriter.view(
@@ -310,7 +310,7 @@ fun <T> ViewWriter.view(
     annotations: List<SerializableAnnotation> = serializer.serializableAnnotations,
     desiredSize: FormLayoutPreferences = FormLayoutPreferences.Unbound,
     field: SerializableProperty<*, *>? = null,
-) {
+): ViewModifiable {
     val sel = FormSelector<T>(serializer, annotations, desiredSize)
-    context.view(sel).render(this, field, readable)
+    return context.view(sel).render(this, field, readable)
 }

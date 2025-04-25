@@ -46,9 +46,10 @@ object NullableFormRenderer : FormRenderer.Generator, ViewRenderer.Generator {
                     }
                 }
                 expanding - stack {
+                    val isNull = shared { writable() == null }
                     reactive {
                         clearChildren()
-                        if (writable() != null) inner.render(
+                        if (!isNull()) inner.render(
                             this@stack,
                             field,
                             writable.lens(
@@ -75,6 +76,7 @@ object NullableFormRenderer : FormRenderer.Generator, ViewRenderer.Generator {
                 val isNull = shared { readable() == null }
                 reactiveScope {
                     clearChildren()
+                    println("Rerender nullable")
                     if (isNull()) {
                         text("N/A")
                     } else {
