@@ -48,6 +48,7 @@ data class AdminSettings(
     val showAlternativeEditOptions: Boolean = false,
     val showEndpoints: Boolean = false,
     val unlockDestructiveActions: Instant? = null,
+    val liveData: Boolean = true,
 )
 val adminSettings = PersistentProperty("adminSettings", AdminSettings())
 val nowByMinute = sharedProcess {
@@ -77,7 +78,7 @@ val loadedPermissions: Readable<Map<String, ModelPermissions<out HasId<out Compa
 val adminServer = shared {
     println("Refetching ")
     try {
-        val s = ExternalLightningServer(serverSchema())
+        val s = ExternalLightningServer(serverSchema(), adminSettings().liveData)
         s.page = label@{ type, id ->
             type as ExternalLightningServer.ModelInfo<HasId<Comparable<Comparable<*>>>, Comparable<Comparable<*>>>
             val idAsString = UrlProperties.encodeToString(type.idserializer, id as Comparable<Comparable<*>>)

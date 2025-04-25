@@ -73,6 +73,15 @@ class HomePage : Page {
                             }
                     }
                 }
+                row {
+                    expanding - centered - text("Live Data")
+                    centered - switch {
+                        checked bind adminSettings.lens(
+                            get = { it.liveData },
+                            modify = { o, it -> o.copy(liveData = it) }
+                        )
+                    }
+                }
             }
             card - col {
                 h2("Server Status")

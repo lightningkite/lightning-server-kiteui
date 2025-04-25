@@ -63,6 +63,7 @@ private fun LightningServerKSchema.bulkEndpoint(): LightningServerKSchemaEndpoin
 
 class ExternalLightningServer(
     val schema: LightningServerKSchema,
+    val useLiveData: Boolean = true,
     val registry: SerializationRegistry = SerializationRegistry.master.copy(),
     val json: Json = DefaultJson,
     val properties: Properties = UrlProperties,
@@ -160,6 +161,12 @@ class ExternalLightningServer(
 
         private var cacheCache = PerAuthCache { auth ->
             when {
+                !useLiveData -> object: ClientModelRestEndpoints<T, ID> by ClientModelRestEndpointsLive<T, ID>(
+                    fetcher = auth?.let { fetcher(it) } ?: authlessFetcher(),
+                    subpath = httpPath,
+                    serializer = serializer,
+                    idSerializer = idserializer,
+                ) {}
                 hasUpdatesWs -> object: ClientModelRestEndpoints<T, ID> by ClientModelRestEndpointsLive<T, ID>(
                     fetcher = auth?.let { fetcher(it) } ?: authlessFetcher(),
                     subpath = httpPath,
