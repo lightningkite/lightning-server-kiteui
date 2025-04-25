@@ -1,25 +1,14 @@
 package com.lightningkite.kiteui
 
-import android.app.Activity
-import android.app.PendingIntent
-import androidx.activity.result.ActivityResult
-import androidx.activity.result.ActivityResultLauncher
-import androidx.activity.result.IntentSenderRequest
-import androidx.activity.result.contract.ActivityResultContracts
 import com.lightningkite.lightningserver.auth.proof.WebAuthN
 import com.lightningkite.readable.Constant
 import com.lightningkite.readable.Readable
-import com.lightningkite.readable.sharedSuspending
-import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
-import kotlin.io.encoding.ExperimentalEncodingApi
 
 
 @Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
 actual class ClientAuthenticator {
-    actual val webAuthNAvailable: Readable<Boolean> = Constant(false)
-    actual val autofillAvailable: Readable<Boolean> = Constant(false)
+    actual suspend fun webAuthNAvailable(): Boolean = false
+    actual suspend fun autofillAvailable(): Boolean = false
     actual suspend fun createWebAuthNCredentials(request: WebAuthN.Registration.PublicKeyCredentialCreationOptions): WebAuthN.Registration.AttestedPublicKeyCredential = TODO()
     actual suspend fun getWebAuthNCredentials(request: WebAuthN.Authentication.PublicKeyCredentialRequestOptions, mediation: WebAuthNMediationType): WebAuthN.Authentication.AssertedPublicKeyCredential = TODO()
 

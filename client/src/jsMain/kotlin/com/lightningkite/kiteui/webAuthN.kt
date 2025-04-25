@@ -25,26 +25,18 @@ actual class ClientAuthenticator {
     fun getCredentials(): CredentialContainer = js("(navigator.credentials)")
 
     private val webauthnAPIAvailable: Boolean
-        get() = js("(window.PublicKeyCredential && PublicKeyCredential.isConditionalMediationAvailable)")
+        get() = js("window.PublicKeyCredential")
 
-    actual val webAuthNAvailable: Readable<Boolean> = sharedProcess {
-        if (!webauthnAPIAvailable) {
-            emit(false)
-        } else {
-            PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable().then(
-                onFulfilled = { emit(it) },
-                onRejected = { emit(false) }
-            )
-        }
+
+    actual suspend fun webAuthNAvailable(): Boolean {
+        return webauthnAPIAvailable
     }
 
-    actual val autofillAvailable: Readable<Boolean> = sharedProcess {
-        if (!webauthnAPIAvailable) {
-            emit(false)
-        } else {
+    actual suspend fun autofillAvailable(): Boolean {
+        return suspendCancellableCoroutine { cont ->
             PublicKeyCredential.isConditionalMediationAvailable().then(
-                onFulfilled = { emit(it) },
-                onRejected = { emit(false) }
+                onFulfilled = { cont.resume(it) },
+                onRejected = { cont.resume(false) }
             )
         }
     }

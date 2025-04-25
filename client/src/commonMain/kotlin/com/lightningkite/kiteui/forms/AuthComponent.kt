@@ -121,7 +121,7 @@ class AuthComponent(
                         keyboardHints = KeyboardHints.id
                     }
                 }
-                important - button {
+                important - buttonTheme - button {
                     centered - text("Submit")
                     action = proveEmailOwnership
                 }
@@ -270,6 +270,8 @@ class AuthComponent(
                     else -> "Username"
                 }
             ) {
+                val autoFillAvailable =
+                    sharedSuspending { ClientAuthenticator.getClientAuthenticator().autofillAvailable() }
                 textInput {
                     primaryIdentifierField = this
                     hint = when {
@@ -285,8 +287,8 @@ class AuthComponent(
                             endpoints.smsProof != null -> KeyboardHints.phone
                             else -> KeyboardHints.id
                         }.let {
-                            if (endpoints.webAuthNProof != null && ClientAuthenticator.getClientAuthenticator()
-                                    .autofillAvailable()
+
+                            if (endpoints.webAuthNProof != null && autoFillAvailable()
                             )
                                 it.copy(includePasskeys = true)
                             else it
@@ -299,8 +301,23 @@ class AuthComponent(
                 }
             }
 
-            shownWhen { (proofs().isNotEmpty() || currentProof() != null || waitingPasskey()) && primaryIdentifier().isNotBlank() } - text {
-                ::content{ primaryIdentifier() }
+
+
+            shownWhen { (proofs().isNotEmpty() || currentProof() != null || waitingPasskey()) } - row {
+                expanding - centered - text {
+                    ::content{ primaryIdentifier().takeIf { it.isNotEmpty() } ?: "Using Passkey" }
+                }
+                centered - button {
+                    padding = 0.2.rem
+                    icon(Icon.close, "Restart Login")
+                    onClick {
+                        currentProof.value = null
+                        primaryIdentifier.value = ""
+                        rememberDevice.value = false
+                        desiredSessionLength.value = 1.days
+                        proofs.value = emptyList()
+                    }
+                }
             }
 
             shownWhen { proofs().isNotEmpty() } - card - progressBar {
@@ -357,8 +374,9 @@ class AuthComponent(
                         println("Debug CurrentProof.value ${currentProof.value}")
                     }
                     shownWhen {
-                        proofs().none { it.property == "phone" } && (authResult()?.options?.any { it.method.property == "phone" }
-                            ?: true) && phone() != null
+                        proofs().none { it.property == "phone" } &&
+                                (authResult()?.options?.any { it.method.property == "phone" }
+                                    ?: true) && phone() != null
                     } - important - buttonTheme - button {
                         this.action = action
                         centered - text("Text Code")
@@ -380,8 +398,9 @@ class AuthComponent(
                         )
                     }
                     shownWhen {
-                        proofs().none { it.via == "password" } && (authResult()?.options?.any { it.method.via == "password" }
-                            ?: true) && validId()
+                        proofs().none { it.via == "password" } &&
+                                (authResult()?.options?.any { it.method.via == "password" } ?: true) &&
+                                validId()
                     } - important - buttonTheme - button {
                         centered - text("Use Password")
                         this.action = action
@@ -403,8 +422,9 @@ class AuthComponent(
                         )
                     }
                     shownWhen {
-                        proofs().none { it.via == "otp" } && (authResult()?.options?.any { it.method.via == "otp" }
-                            ?: true) && validId()
+                        proofs().none { it.via == "otp" } &&
+                                (authResult()?.options?.any { it.method.via == "otp" } ?: true) &&
+                                validId()
                     } - important - buttonTheme - button {
                         this.action = action
                         centered - text("Use Authenticator App")
@@ -413,59 +433,94 @@ class AuthComponent(
                 }
 
                 // WebAuthN is only supported in Web at the moment.
-                if (Platform.current == Platform.Web)
-                    endpoints.webAuthNProof?.let { webAuthNProof ->
-                        val action = Action("Sign in with a Passkey", Icon.passkey) {
-                            try {
-                                if (proofs.value.isEmpty()) {
-                                    primaryIdentifier.value = ""
-                                    waitingPasskey.value = true
-                                }
-                                val identity = authResult.awaitOnce()?.id?.toString()
-                                val type = endpoints.subjects.keys.single()
-                                val (key, getOptions) = webAuthNProof.start(
-                                    WebAuthN.Authentication.StartRequest(
-                                        identity,
-                                        type
-                                    )
-                                )
-                                val signedChallenge =
-                                    ClientAuthenticator.getClientAuthenticator().getWebAuthNCredentials(
-                                        getOptions,
-                                        WebAuthNMediationType.Required
-                                    )
-                                proofs.value += webAuthNProof.prove(
-                                    WebAuthN.Authentication.ProveRequest(
-                                        key,
-                                        signedChallenge
-                                    )
-                                )
-                            } finally {
-                                waitingPasskey.value = false
-                            }
-                        }
+                endpoints.webAuthNProof?.let { webAuthNProof ->
 
-                        val isPrimary = shared { proofs().isEmpty() }
-                        shownWhen { (endpoints.webAuthNIncludePasskeyUI && isPrimary()) || authResult()?.options?.any { it.method.via == "WebAuthN" } == true } - col {
-                            centered - shownWhen { isPrimary() && !waitingPasskey() } - text("Or")
+                    val pendingWebauthnRequest = launch {
+                        if (!ClientAuthenticator.getClientAuthenticator().autofillAvailable()) return@launch
 
-                            important - buttonTheme - button {
-                                this.action = action
-                                row {
-                                    expanding - space()
-                                    centered - icon(Icon.passkey, "Passkey")
-                                    centered - text {
-                                        ::content{
-                                            if (isPrimary()) "Use a Passkey"
-                                            else "Use your Security Key"
-                                        }
-                                    }
-                                    expanding - space()
-                                }
-                            }
-                        }
-                        action
+                        val response = webAuthNProof.start(
+                            WebAuthN.Authentication.StartRequest(
+                                null,
+                                endpoints.subjects.keys.single()
+                            )
+                        )
+                        val signedChallenge = ClientAuthenticator.getClientAuthenticator()
+                            .getWebAuthNCredentials(response.options, WebAuthNMediationType.Conditional)
+
+                        proofs.value += webAuthNProof
+                            .prove(WebAuthN.Authentication.ProveRequest(response.challengeId, signedChallenge))
                     }
+
+
+                    val action = Action("Sign in with a Passkey", Icon.passkey) {
+                        try {
+                            try {
+                                pendingWebauthnRequest.cancelAndJoin()
+                            } catch (_: CancellationException) {
+                            }
+
+                            if (proofs.value.isEmpty()) {
+                                primaryIdentifier.value = ""
+                                waitingPasskey.value = true
+                            }
+                            val identity = authResult.awaitOnce()?.id?.toString()
+                            val type = endpoints.subjects.keys.single()
+                            val (key, getOptions) = webAuthNProof.start(
+                                WebAuthN.Authentication.StartRequest(
+                                    identity,
+                                    type
+                                )
+                            )
+                            val signedChallenge =
+                                ClientAuthenticator.getClientAuthenticator().getWebAuthNCredentials(
+                                    getOptions,
+                                    WebAuthNMediationType.Optional
+                                )
+                            proofs.value += webAuthNProof.prove(
+                                WebAuthN.Authentication.ProveRequest(
+                                    key,
+                                    signedChallenge
+                                )
+                            )
+                        } finally {
+                            waitingPasskey.value = false
+                        }
+                    }
+
+                    val isPrimary = shared {
+                        endpoints.webAuthNIncludePasskeyUI &&
+                                proofs().isEmpty() &&
+                                phone() == null &&
+                                email() == null
+                    }
+                    val webAuthNAvailable = sharedSuspending {
+                        ClientAuthenticator.getClientAuthenticator().webAuthNAvailable()
+                    }
+                    shownWhen {
+                        webAuthNAvailable() &&
+                                proofs().none { it.via == "WebAuthN" } &&
+                                (isPrimary() ||
+                                        authResult()?.options?.any { it.method.via == "WebAuthN" } == true)
+                    } - col {
+                        centered - shownWhen { isPrimary() && !waitingPasskey() } - text("Or")
+
+                        important - buttonTheme - button {
+                            this.action = action
+                            row {
+                                expanding - space()
+                                centered - icon(Icon.passkey, "Passkey")
+                                centered - text {
+                                    ::content{
+                                        if (isPrimary()) "Use a Passkey"
+                                        else "Use your Security Key"
+                                    }
+                                }
+                                expanding - space()
+                            }
+                        }
+                    }
+                    action
+                }
 
                 primaryIdentifierField::action {
                     val id = primaryIdentifier()
@@ -497,24 +552,13 @@ class AuthComponent(
                 centered - text("Authenticating...")
             }
 
-            shownWhen { proofs().isNotEmpty() && authResult()?.readyToLogIn != true } - col {
-                centered - button {
-                    padding = 0.2.rem
-                    text("Use a different log in")
-                    onClick {
-                        currentProof.value = null
-                        proofs.value = emptyList()
-                    }
-                }
-            }
-
             shownWhen { authResult()?.readyToLogIn == true } - col {
 
                 centered - h5("Ready to login")
                 sessionLengthComponent(knownDeviceOptions, rememberDevice, desiredSessionLength, authResult)
 
 
-                important - button {
+                important - buttonTheme - button {
                     centered - text("Login")
                     onClick {
 

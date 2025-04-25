@@ -1,12 +1,11 @@
 package com.lightningkite.kiteui
 
 import com.lightningkite.lightningserver.auth.proof.WebAuthN
-import com.lightningkite.readable.Readable
 
 @Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
 expect class ClientAuthenticator {
-    val webAuthNAvailable: Readable<Boolean>
-    val autofillAvailable: Readable<Boolean>
+    suspend fun webAuthNAvailable(): Boolean
+    suspend fun autofillAvailable(): Boolean
     suspend fun createWebAuthNCredentials(request: WebAuthN.Registration.PublicKeyCredentialCreationOptions): WebAuthN.Registration.AttestedPublicKeyCredential
     suspend fun getWebAuthNCredentials(
         request: WebAuthN.Authentication.PublicKeyCredentialRequestOptions,
