@@ -48,7 +48,7 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
     private val queryWatchCache = HashMap<Query<T>, WatchingWrapper<ListHolder, List<T>>>()
     internal val sockets =
         (skipCache as? ClientModelRestEndpointsPlusUpdatesWebsocket<T, ID>)?.let {
-            SharedChangeUpdateWrapper(it.updates()) {
+            SharedChangeUpdateWrapper(it.updates(), log = null) {
                 val u = it.updates.associateBy { it._id }
                 it.updates.asSequence().map { itemHolder(it._id) }.plus(it.remove.map { itemHolder(it) })
                     .forEach {
@@ -438,7 +438,8 @@ class ChangeUpdateWrapper<T : HasId<ID>, ID : Comparable<ID>>(
 
 class SharedChangeUpdateWrapper<T : HasId<ID>, ID : Comparable<ID>>(
     sharedSocket: TypedWebSocket<Condition<T>, CollectionUpdates<T, ID>>,
-    onMessage: (CollectionUpdates<T, ID>) -> Unit
+    val log: Console? = null,
+    onMessage: (CollectionUpdates<T, ID>) -> Unit,
 ) {
     val wraps = ChangeUpdateWrapper(sharedSocket, onMessage)
     val health = wraps.health
@@ -446,12 +447,12 @@ class SharedChangeUpdateWrapper<T : HasId<ID>, ID : Comparable<ID>>(
 
     var queuedCondition: Condition<T>? = null
     fun refresh() {
-        queuedCondition = if (conditionSet.isEmpty()) Condition.Never else Condition.Or(conditionSet.toList())
+        queuedCondition = if (requirementSet.isEmpty()) Condition.Never else Condition.Or(requirementSet.map { it.condition })
     }
 
     var awaitingSuccessfulFlush = ArrayList<Continuation<Unit>>()
     suspend fun refreshAndWait() {
-        queuedCondition = if (conditionSet.isEmpty()) Condition.Never else Condition.Or(conditionSet.toList())
+        queuedCondition = if (requirementSet.isEmpty()) Condition.Never else Condition.Or(requirementSet.map { it.condition })
         suspendCancellableCoroutine<Unit> { it ->
             awaitingSuccessfulFlush.add(it)
             it.invokeOnCancellation { _ -> awaitingSuccessfulFlush.remove(it) }
@@ -460,6 +461,7 @@ class SharedChangeUpdateWrapper<T : HasId<ID>, ID : Comparable<ID>>(
 
     suspend fun flush() {
         queuedCondition?.let {
+            log?.info("flush condition $it")
             queuedCondition = null
             val toComplete = awaitingSuccessfulFlush
             awaitingSuccessfulFlush = ArrayList()
@@ -468,10 +470,11 @@ class SharedChangeUpdateWrapper<T : HasId<ID>, ID : Comparable<ID>>(
         }
     }
 
-    var conditionSet = HashSet<Condition<T>>()
-    fun outsideResource(condition: Condition<T>) = object : OutsideResource {
+    var requirementSet = HashSet<Out>()
+    inner class Out(val condition: Condition<T>): OutsideResource {
         override suspend fun start(): Boolean {
-            conditionSet.add(condition)
+            log?.info("start requiring $condition")
+            requirementSet.add(this)
             refreshAndWait()
             return true
         }
@@ -479,10 +482,12 @@ class SharedChangeUpdateWrapper<T : HasId<ID>, ID : Comparable<ID>>(
         override fun interruptStartup() = stop()
 
         override fun stop() {
-            conditionSet.remove(condition)
+            log?.info("stop requiring $condition")
+            requirementSet.remove(this)
             refresh()
         }
     }
+    fun outsideResource(condition: Condition<T>) = Out(condition)
 }
 
 interface OutsideResource {
