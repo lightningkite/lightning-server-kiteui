@@ -11,7 +11,7 @@ local.properties
 .terraform
 /gradle-plugin/gradle/wrapper/gradle-wrapper.jar
 /gradle-plugin/gradle/wrapper/gradle-wrapper.properties
-.kotlin
+node_modules
 
 local.version.txt
 version.js
