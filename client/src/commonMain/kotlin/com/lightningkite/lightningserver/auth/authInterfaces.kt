@@ -529,7 +529,7 @@ open class UserAuthClientEndpointsLive<ID : Comparable<ID>>(
 }
 
 interface AuthenticatedUserAuthClientEndpoints<User : HasId<ID>, ID : Comparable<ID>> {
-    suspend fun availableProofs(): List<ProofOption>
+    suspend fun authRequirements(): AuthRequirements
     suspend fun createSubSession(input: SubSessionRequest): String
     suspend fun getSelf(): User
     suspend fun terminateSession(): Unit
@@ -545,12 +545,12 @@ open class AuthenticatedUserAuthClientEndpointsLive<USER : HasId<ID>, ID : Compa
     val idSerializer: KSerializer<ID>,
 ) : AuthenticatedUserAuthClientEndpoints<USER, ID> {
 
-    override suspend fun availableProofs(): List<ProofOption> = fetcher(
-        url = "$subpath/available-proofs",
+    override suspend fun authRequirements(): AuthRequirements = fetcher(
+        url = "$subpath/auth-requirements",
         method = HttpMethod.GET,
         inSerializer = Unit.serializer(),
         body = Unit,
-        outSerializer = ListSerializer(ProofOption.serializer())
+        outSerializer = AuthRequirements.serializer()
     )
 
     override suspend fun createSubSession(input: SubSessionRequest): String = fetcher(

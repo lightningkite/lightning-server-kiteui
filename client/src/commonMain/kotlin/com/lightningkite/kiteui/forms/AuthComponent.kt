@@ -1,9 +1,7 @@
 package com.lightningkite.kiteui.forms
 
 import com.lightningkite.kiteui.ClientAuthenticator
-import com.lightningkite.kiteui.Platform
 import com.lightningkite.kiteui.WebAuthNMediationType
-import com.lightningkite.kiteui.current
 import com.lightningkite.kiteui.models.*
 import com.lightningkite.kiteui.printStackTrace2
 import com.lightningkite.kiteui.reactive.Action
@@ -29,6 +27,7 @@ import kotlinx.serialization.Serializable
 import kotlin.math.roundToInt
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.days
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.DurationUnit
 
@@ -45,7 +44,13 @@ fun ViewWriter.login(
     knownDeviceLocalStorageName: String? = "known-device",
     onAuthentication: suspend (String) -> Unit,
 ) {
-    AuthComponent(endpoints, subjectPath, subject, knownDeviceLocalStorageName, onAuthentication).apply {
+    AuthComponent(
+        endpoints,
+        subjectPath,
+        subject,
+        knownDeviceLocalStorageName,
+        onAuthentication
+    ).apply {
         render()
     }
 }
@@ -55,6 +60,388 @@ data class KnownDeviceSecretInfoStuff(
     val info: KnownDeviceSecretAndExpiration,
     val primaryIdentifier: String,
 )
+
+
+class EmailProof(val p: EmailProofClientEndpoints, val id: String, var codeKey: String) : CurrentProof {
+    val code = Property("")
+    val resendTime = 15.seconds
+    override fun ViewWriter.render(onProof: (Proof) -> Unit) {
+        col {
+            val proveEmailOwnership = Action("Submit", Icon.done) {
+                onProof(p.proveEmailOwnership(FinishProof(codeKey, code.await())))
+            }
+
+            field("Login code emailed to $id") {
+                textInput {
+                    ::hint { "ABCDEF" }
+                    requestFocus()
+                    content bind code
+                    action = proveEmailOwnership
+                    keyboardHints = KeyboardHints.id
+                }
+            }
+            important - buttonTheme - button {
+                centered - text("Submit")
+                action = proveEmailOwnership
+            }
+            val newCodeSentAt = Property(now())
+            val nowBySecond = readable {
+                while (true) {
+                    emit(now()); delay(1000)
+                }
+            }
+            button {
+                ::enabled { nowBySecond() !in newCodeSentAt() + 3.seconds..newCodeSentAt() + resendTime }
+                centered - shownWhen { nowBySecond() > newCodeSentAt() + resendTime } - text("Send new code")
+                centered - shownWhen { nowBySecond() < newCodeSentAt() + 3.seconds } - row {
+                    centered - icon(Icon.done.copy(1.rem, 1.rem), "")
+                    centered - text("Sent!")
+                }
+                centered - shownWhen { nowBySecond() in newCodeSentAt() + 3.seconds..newCodeSentAt() + resendTime } - text {
+                    ::content { "Can send new code in ${(newCodeSentAt() + resendTime - nowBySecond()).inWholeSeconds}" }
+                }
+                onClick {
+                    if (nowBySecond.await() > newCodeSentAt.await() + resendTime) {
+                        codeKey = p.beginEmailOwnershipProof(id)
+                        newCodeSentAt.value = now()
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+class SmsProof(val p: SmsProofClientEndpoints, val id: String, var codeKey: String) : CurrentProof {
+    val code = Property("")
+    val resendTime = 15.seconds
+    override fun ViewWriter.render(onProof: (Proof) -> Unit) {
+        col {
+            val provePhoneOwnership = Action("Submit", Icon.done) {
+                onProof(p.provePhoneOwnership(FinishProof(codeKey, code.await())))
+            }
+            field("Login code texted to $id") {
+                expanding - textInput {
+                    ::hint { "ABCDEF" }
+                    requestFocus()
+                    action = provePhoneOwnership
+                    content bind code
+                    keyboardHints = KeyboardHints.id
+                }
+            }
+            important - button {
+                centered - text("Submit")
+                action = provePhoneOwnership
+            }
+            val newCodeSentAt = Property(now())
+            val nowBySecond = readable {
+                while (true) {
+                    emit(now()); delay(1000)
+                }
+            }
+            button {
+                ::enabled { nowBySecond() !in newCodeSentAt() + 3.seconds..newCodeSentAt() + resendTime }
+                centered - shownWhen { nowBySecond() > newCodeSentAt() + resendTime } - text("Send new code")
+                centered - shownWhen { nowBySecond() < newCodeSentAt() + 3.seconds } - row {
+                    centered - icon(Icon.done.copy(1.rem, 1.rem), "")
+                    centered - text("Sent!")
+                }
+                centered - shownWhen { nowBySecond() in newCodeSentAt() + 3.seconds..newCodeSentAt() + resendTime } - text {
+                    ::content { "Can send new code in ${(newCodeSentAt() + resendTime - nowBySecond()).inWholeSeconds}" }
+                }
+                onClick {
+                    if (nowBySecond.await() > newCodeSentAt.await() + resendTime) {
+                        codeKey = p.beginSmsOwnershipProof(id)
+                        newCodeSentAt.value = now()
+                    }
+                }
+            }
+        }
+    }
+}
+
+class PasswordProof(
+    val p: PasswordProofClientEndpoints,
+    val type: String,
+    val key: String,
+    val value: String,
+) : CurrentProof {
+    val code = Property("")
+    override fun ViewWriter.render(onProof: (Proof) -> Unit) {
+        val provePasswordOwnership = Action("Submit", Icon.done) {
+            onProof(p.provePasswordOwnership(IdentificationAndPassword(type, key, value, code.await())))
+        }
+        col {
+            field("Password") {
+                textInput {
+                    ::hint { "" }
+                    requestFocus()
+                    content bind code
+                    action = provePasswordOwnership
+                    keyboardHints = KeyboardHints.password
+                }
+            }
+            important - button {
+                centered - text("Submit")
+                action = provePasswordOwnership
+            }
+
+        }
+    }
+}
+
+class OtpProof(
+    val p: OneTimePasswordProofClientEndpoints,
+    val type: String,
+    val key: String,
+    val value: String,
+) : CurrentProof {
+    val code = Property("")
+    override fun ViewWriter.render(onProof: (Proof) -> Unit) {
+        col {
+            val proveOtpProofAction = Action("Submit", Icon.done) {
+                onProof(p.proveOTP(IdentificationAndPassword(type, key, value, code.await())))
+            }
+            field("One-time Password from App") {
+                textInput {
+                    ::hint { "000000" }
+                    requestFocus()
+                    content bind code
+                    keyboardHints = KeyboardHints.integer
+                    action = proveOtpProofAction
+                }
+            }
+            button {
+                centered - text("Submit")
+                action = proveOtpProofAction
+            }
+        }
+    }
+}
+
+interface CurrentProof {
+    fun ViewWriter.render(onProof: (Proof) -> Unit)
+}
+
+class ReAuthComponent(
+    val subjectId: String,
+    val endpoints: AuthClientEndpoints,
+    val subjectType: String,
+    val subject: UserAuthClientEndpoints<*>,
+    val authenticationSubject: AuthenticatedUserAuthClientEndpoints<*, *>,
+    val knownDeviceLocalStorageName: String? = "known-device",
+    val newSessionDuration: Duration = 15.minutes,
+    val onAuthentication: suspend (String) -> Unit,
+) {
+    val proofs = Property<List<Proof>>(listOf())
+    val currentProof = Property<CurrentProof?>(null)
+    val authenticating = Property(false)
+    val knownDevice = knownDeviceLocalStorageName?.let { PersistentProperty<KnownDeviceSecretInfoStuff?>(it, null) }
+    val waitingPasskey = Property(false)
+    val requirements = sharedSuspending {
+        authenticationSubject.authRequirements()
+    }
+    val readyToLogin = Property(false)
+
+    fun ViewWriter.render(): ViewModifiable {
+        reactiveSuspending {
+            val proofs = proofs.await()
+
+            if (proofs.isEmpty()) return@reactiveSuspending
+            authenticating.value = true
+            try {
+                val result = subject.checkProofs(proofs)
+                readyToLogin.value = result.readyToLogIn
+            } catch (e: LsErrorException) {
+                if (e.status / 100 == 4) this@ReAuthComponent.proofs.value = listOf()
+                if (e.status / 100 == 5) throw e
+                null
+            } finally {
+                authenticating.value = false
+            }
+        }
+
+        reactiveSuspending {
+            if (!readyToLogin()) return@reactiveSuspending
+
+            val result = subject.logInV2(
+                LogInRequest(
+                    proofs = proofs(),
+                    expires = now() + newSessionDuration
+                ))
+
+            result.session?.also{ onAuthentication(it) }
+
+        }
+
+        return col {
+            shownWhen { proofs().isNotEmpty() } - card - progressBar {
+                ::ratio {
+                    proofs().sumOf { it.strength } / requirements().strengthRequired.toFloat()
+                }
+            }
+
+            knownDevice?.value?.takeIf {
+                now() < it.info.expiresAt
+            }?.let { kd ->
+                endpoints.knownDeviceProof?.let { endpoints ->
+                    (this as CoroutineScope).launch {
+                        try {
+                            authenticating.value = true
+                            proofs.value += endpoints.proveKnownDevice(kd.info.secret)
+                        } catch (e: Exception) {
+                            authenticating.value = false
+                            e.printStackTrace2()
+                            knownDevice.value = null
+                        }
+                    }
+                }
+            }
+
+            shownWhen { currentProof() == null && !authenticating() && readyToLogin() != true } - col {
+
+                shownWhen { proofs().isNotEmpty() } - text("We need more information.")
+
+                endpoints.emailProof?.let { p ->
+                    shownWhen {
+                        proofs().none { it.via == "email" } &&
+                                requirements().options.any { it.method.via == "email" }
+                    } - important - buttonTheme - button {
+                        this.action = Action("Email Code", Icon.send) {
+                            val id = requirements().options.find { it.method.via == "email" }?.value ?: return@Action
+                            currentProof.value = EmailProof(p, id, p.beginEmailOwnershipProof(id))
+                        }
+                        centered - text("Email Code")
+                    }
+                }
+
+                endpoints.smsProof?.let { p ->
+                    shownWhen {
+                        proofs().none { it.via == "sms" } &&
+                                requirements().options.any { it.method.via == "sms" }
+                    } - important - buttonTheme - button {
+                        this.action = Action("Text Code", Icon.send) {
+                            val id = requirements().options.find { it.method.via == "sms" }?.value ?: return@Action
+                            currentProof.value = SmsProof(p, id, p.beginSmsOwnershipProof(id))
+                        }
+                        centered - text("Text Code")
+                    }
+                }
+
+                endpoints.passwordProof?.let { p ->
+                    shownWhen {
+                        proofs().none { it.via == "password" } &&
+                                requirements().options.any { it.method.via == "password" }
+                    } - important - buttonTheme - button {
+                        centered - text("Use Password")
+                        this.action = Action("Use Password", Icon.chevronRight) {
+                            currentProof.value = PasswordProof(
+                                p = p,
+                                type = subjectType,
+                                key = "_id",
+                                value = subjectId
+                            )
+                        }
+                    }
+                }
+
+                endpoints.oneTimePasswordProof?.let { p ->
+                    shownWhen {
+                        proofs().none { it.via == "otp" } &&
+                                requirements().options.any { it.method.via == "otp" }
+                    } - important - buttonTheme - button {
+                        centered - text("Use Authenticator App")
+                        this.action = Action("Use Authenticator App", Icon.chevronRight) {
+                            currentProof.value = OtpProof(
+                                p = p,
+                                type = subjectType,
+                                key = "${subjectType}/_id",
+                                value = subjectId
+                            )
+                        }
+                    }
+                }
+
+                // WebAuthN is only supported in Web at the moment.
+                endpoints.webAuthNProof?.let { webAuthNProof ->
+
+                    val isPrimary = shared {
+                        endpoints.webAuthNIncludePasskeyUI &&
+                                proofs().isEmpty()
+                    }
+                    val webAuthNAvailable = sharedSuspending {
+                        ClientAuthenticator.getClientAuthenticator().webAuthNAvailable()
+                    }
+
+                    shownWhen {
+                        webAuthNAvailable() &&
+                                proofs().none { it.via == "WebAuthN" } &&
+                                requirements().options.any { it.method.via == "WebAuthN" }
+                    } - col {
+                        important - buttonTheme - button {
+                            row {
+                                expanding - space()
+                                centered - icon(Icon.passkey, "Passkey")
+                                centered - text {
+                                    ::content{
+                                        if (isPrimary()) "Use a Passkey"
+                                        else "Use your Security Key"
+                                    }
+                                }
+                                expanding - space()
+                            }
+                            this.action = Action("Sign in with a Passkey", Icon.passkey) {
+                                try {
+
+                                    if (proofs.value.isEmpty()) {
+                                        waitingPasskey.value = true
+                                    }
+                                    val (key, getOptions) = webAuthNProof.start(
+                                        WebAuthN.Authentication.StartRequest(
+                                            subjectId = if(isPrimary.await()) null else subjectId,
+                                            subjectType = subjectType
+                                        )
+                                    )
+                                    val signedChallenge =
+                                        ClientAuthenticator.getClientAuthenticator().getWebAuthNCredentials(
+                                            getOptions,
+                                            WebAuthNMediationType.Optional
+                                        )
+                                    proofs.value += webAuthNProof.prove(
+                                        WebAuthN.Authentication.ProveRequest(
+                                            key,
+                                            signedChallenge
+                                        )
+                                    )
+                                } finally {
+                                    waitingPasskey.value = false
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            frame {
+                reactive {
+                    clearChildren()
+                    currentProof()?.run {
+                        render {
+                            proofs.value += it
+                            currentProof.value = null
+                        }
+                    }
+                }
+            }
+
+            centered - shownWhen { authenticating() } - row {
+                activityIndicator()
+                centered - text("Authenticating...")
+            }
+        }
+    }
+}
+
 
 class AuthComponent(
     val endpoints: AuthClientEndpoints,
@@ -98,169 +485,9 @@ class AuthComponent(
     }
     val waitingPasskey = Property(false)
 
-    interface CurrentProof {
-        fun ViewWriter.render(onProof: (Proof) -> Unit)
-    }
 
-    val resendTime = 15.seconds
-
-    inner class EmailProof(val p: EmailProofClientEndpoints, val id: String, var codeKey: String) : CurrentProof {
-        val code = Property("")
-        override fun ViewWriter.render(onProof: (Proof) -> Unit) {
-            col {
-                val proveEmailOwnership = Action("Submit", Icon.done) {
-                    onProof(p.proveEmailOwnership(FinishProof(codeKey, code.await())))
-                }
-
-                field("Login code emailed to $id") {
-                    textInput {
-                        ::hint { "ABCDEF" }
-                        requestFocus()
-                        content bind code
-                        action = proveEmailOwnership
-                        keyboardHints = KeyboardHints.id
-                    }
-                }
-                important - buttonTheme - button {
-                    centered - text("Submit")
-                    action = proveEmailOwnership
-                }
-                val newCodeSentAt = Property(now())
-                val nowBySecond = readable {
-                    while (true) {
-                        emit(now()); delay(1000)
-                    }
-                }
-                button {
-                    ::enabled { nowBySecond() !in newCodeSentAt() + 3.seconds..newCodeSentAt() + resendTime }
-                    centered - shownWhen { nowBySecond() > newCodeSentAt() + resendTime } - text("Send new code")
-                    centered - shownWhen { nowBySecond() < newCodeSentAt() + 3.seconds } - row {
-                        centered - icon(Icon.done.copy(1.rem, 1.rem), "")
-                        centered - text("Sent!")
-                    }
-                    centered - shownWhen { nowBySecond() in newCodeSentAt() + 3.seconds..newCodeSentAt() + resendTime } - text {
-                        ::content { "Can send new code in ${(newCodeSentAt() + resendTime - nowBySecond()).inWholeSeconds}" }
-                    }
-                    onClick {
-                        if (nowBySecond.await() > newCodeSentAt.await() + resendTime) {
-                            codeKey = p.beginEmailOwnershipProof(id)
-                            newCodeSentAt.value = now()
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    inner class SmsProof(val p: SmsProofClientEndpoints, val id: String, var codeKey: String) : CurrentProof {
-        val code = Property("")
-        override fun ViewWriter.render(onProof: (Proof) -> Unit) {
-            col {
-                val provePhoneOwnership = Action("Submit", Icon.done) {
-                    onProof(p.provePhoneOwnership(FinishProof(codeKey, code.await())))
-                }
-                field("Login code texted to $id") {
-                    expanding - textInput {
-                        ::hint { "ABCDEF" }
-                        requestFocus()
-                        action = provePhoneOwnership
-                        content bind code
-                        keyboardHints = KeyboardHints.id
-                    }
-                }
-                important - button {
-                    centered - text("Submit")
-                    action = provePhoneOwnership
-                }
-                val newCodeSentAt = Property(now())
-                val nowBySecond = readable {
-                    while (true) {
-                        emit(now()); delay(1000)
-                    }
-                }
-                button {
-                    ::enabled { nowBySecond() !in newCodeSentAt() + 3.seconds..newCodeSentAt() + resendTime }
-                    centered - shownWhen { nowBySecond() > newCodeSentAt() + resendTime } - text("Send new code")
-                    centered - shownWhen { nowBySecond() < newCodeSentAt() + 3.seconds } - row {
-                        centered - icon(Icon.done.copy(1.rem, 1.rem), "")
-                        centered - text("Sent!")
-                    }
-                    centered - shownWhen { nowBySecond() in newCodeSentAt() + 3.seconds..newCodeSentAt() + resendTime } - text {
-                        ::content { "Can send new code in ${(newCodeSentAt() + resendTime - nowBySecond()).inWholeSeconds}" }
-                    }
-                    onClick {
-                        if (nowBySecond.await() > newCodeSentAt.await() + resendTime) {
-                            codeKey = p.beginSmsOwnershipProof(id)
-                            newCodeSentAt.value = now()
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    inner class PasswordProof(
-        val p: PasswordProofClientEndpoints,
-        val type: String,
-        val key: String,
-        val value: String,
-    ) : CurrentProof {
-        val code = Property("")
-        override fun ViewWriter.render(onProof: (Proof) -> Unit) {
-            val provePasswordOwnership = Action("Submit", Icon.done) {
-                onProof(p.provePasswordOwnership(IdentificationAndPassword(type, key, value, code.await())))
-            }
-            col {
-                field("Password") {
-                    textInput {
-                        ::hint { "" }
-                        requestFocus()
-                        content bind code
-                        action = provePasswordOwnership
-                        keyboardHints = KeyboardHints.password
-                    }
-                }
-                important - button {
-                    centered - text("Submit")
-                    action = provePasswordOwnership
-                }
-
-            }
-        }
-    }
-
-    inner class OtpProof(
-        val p: OneTimePasswordProofClientEndpoints,
-        val type: String,
-        val key: String,
-        val value: String,
-    ) : CurrentProof {
-        val code = Property("")
-        override fun ViewWriter.render(onProof: (Proof) -> Unit) {
-            col {
-                val proveOtpProofAction = Action("Submit", Icon.done) {
-                    onProof(p.proveOTP(IdentificationAndPassword(type, key, value, code.await())))
-                }
-                field("One-time Password from App") {
-                    textInput {
-                        ::hint { "000000" }
-                        requestFocus()
-                        content bind code
-                        keyboardHints = KeyboardHints.integer
-                        action = proveOtpProofAction
-                    }
-                }
-                button {
-                    centered - text("Submit")
-                    action = proveOtpProofAction
-                }
-            }
-        }
-    }
-
-
-    fun ViewWriter.render() {
-        col {
+    fun ViewWriter.render(): ViewModifiable {
+        return col {
             val primaryIdentifierField: TextField
             shownWhen { proofs().isEmpty() && currentProof() == null && !waitingPasskey() } - field(
                 when {
@@ -300,7 +527,6 @@ class AuthComponent(
                     }
                 }
             }
-
 
 
             shownWhen { (proofs().isNotEmpty() || currentProof() != null || waitingPasskey()) } - row {
@@ -346,7 +572,7 @@ class AuthComponent(
 
             shownWhen { currentProof() == null && !authenticating() && authResult()?.readyToLogIn != true } - col {
 
-                shownWhen { proofs().isNotEmpty() && authResult().let { it != null && !it.readyToLogIn } } - text("We need more information.")
+                shownWhen { proofs().isNotEmpty() } - text("We need more information.")
                 val validId =
                     shared { Regexes.email.matches(primaryIdentifier()) || Regexes.phoneNumber.matches(primaryIdentifier()) }
 
@@ -356,7 +582,7 @@ class AuthComponent(
                         currentProof.value = EmailProof(p, id, p.beginEmailOwnershipProof(id))
                     }
                     shownWhen {
-                        proofs().none { it.property == "email" } && (authResult()?.options?.any { it.method.property == "email" }
+                        proofs().none { it.via == "email" } && (authResult()?.options?.any { it.method.via == "email" }
                             ?: true) && email() != null
                     } - important - buttonTheme - button {
                         this.action = action
@@ -368,14 +594,11 @@ class AuthComponent(
                 val smsStartAction = endpoints.smsProof?.let { p ->
                     val action = Action("Text Code", Icon.send) {
                         val id = phone.await() ?: return@Action
-                        println("Debug p ${p}")
-                        println("Debug id ${id}")
                         currentProof.value = SmsProof(p, id, p.beginSmsOwnershipProof(id))
-                        println("Debug CurrentProof.value ${currentProof.value}")
                     }
                     shownWhen {
-                        proofs().none { it.property == "phone" } &&
-                                (authResult()?.options?.any { it.method.property == "phone" }
+                        proofs().none { it.via == "sms" } &&
+                                (authResult()?.options?.any { it.method.via == "sms" }
                                     ?: true) && phone() != null
                     } - important - buttonTheme - button {
                         this.action = action
@@ -451,51 +674,17 @@ class AuthComponent(
                             .prove(WebAuthN.Authentication.ProveRequest(response.challengeId, signedChallenge))
                     }
 
-
-                    val action = Action("Sign in with a Passkey", Icon.passkey) {
-                        try {
-                            try {
-                                pendingWebauthnRequest.cancelAndJoin()
-                            } catch (_: CancellationException) {
-                            }
-
-                            if (proofs.value.isEmpty()) {
-                                primaryIdentifier.value = ""
-                                waitingPasskey.value = true
-                            }
-                            val identity = authResult.awaitOnce()?.id?.toString()
-                            val type = endpoints.subjects.keys.single()
-                            val (key, getOptions) = webAuthNProof.start(
-                                WebAuthN.Authentication.StartRequest(
-                                    identity,
-                                    type
-                                )
-                            )
-                            val signedChallenge =
-                                ClientAuthenticator.getClientAuthenticator().getWebAuthNCredentials(
-                                    getOptions,
-                                    WebAuthNMediationType.Optional
-                                )
-                            proofs.value += webAuthNProof.prove(
-                                WebAuthN.Authentication.ProveRequest(
-                                    key,
-                                    signedChallenge
-                                )
-                            )
-                        } finally {
-                            waitingPasskey.value = false
-                        }
-                    }
-
                     val isPrimary = shared {
                         endpoints.webAuthNIncludePasskeyUI &&
                                 proofs().isEmpty() &&
                                 phone() == null &&
                                 email() == null
                     }
+
                     val webAuthNAvailable = sharedSuspending {
                         ClientAuthenticator.getClientAuthenticator().webAuthNAvailable()
                     }
+
                     shownWhen {
                         webAuthNAvailable() &&
                                 proofs().none { it.via == "WebAuthN" } &&
@@ -505,7 +694,6 @@ class AuthComponent(
                         centered - shownWhen { isPrimary() && !waitingPasskey() } - text("Or")
 
                         important - buttonTheme - button {
-                            this.action = action
                             row {
                                 expanding - space()
                                 centered - icon(Icon.passkey, "Passkey")
@@ -517,9 +705,42 @@ class AuthComponent(
                                 }
                                 expanding - space()
                             }
+                            this.action = Action("Sign in with a Passkey", Icon.passkey) {
+                                try {
+                                    try {
+                                        pendingWebauthnRequest.cancelAndJoin()
+                                    } catch (_: CancellationException) {
+                                    }
+
+                                    if (proofs.value.isEmpty()) {
+                                        primaryIdentifier.value = ""
+                                        waitingPasskey.value = true
+                                    }
+                                    val identity = authResult.awaitOnce()?.id?.toString()
+                                    val type = endpoints.subjects.keys.single()
+                                    val (key, getOptions) = webAuthNProof.start(
+                                        WebAuthN.Authentication.StartRequest(
+                                            identity,
+                                            type
+                                        )
+                                    )
+                                    val signedChallenge =
+                                        ClientAuthenticator.getClientAuthenticator().getWebAuthNCredentials(
+                                            getOptions,
+                                            WebAuthNMediationType.Optional
+                                        )
+                                    proofs.value += webAuthNProof.prove(
+                                        WebAuthN.Authentication.ProveRequest(
+                                            key,
+                                            signedChallenge
+                                        )
+                                    )
+                                } finally {
+                                    waitingPasskey.value = false
+                                }
+                            }
                         }
                     }
-                    action
                 }
 
                 primaryIdentifierField::action {

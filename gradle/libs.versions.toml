@@ -18,20 +18,20 @@ vite = "0.4.0"
 androidDesugaring = { module = "com.android.tools:desugar_jdk_libs", version = { ref = "androidDesugaring" } }
 comLightningkiteKiteuiLibrary = { module = "com.lightningkite.kiteui:library", version = "5.2.30" }
 comLightningkiteKotlinxSerializationCsvDurable = { module = "com.lightningkite:kotlinx-serialization-csv-durable", version = "0.2.7" }
-comLightningkiteLightningserverProcessor = { module = "com.lightningkite.lightningserver:processor", version = "4.1.74" }
-comLightningkiteLightningserverServerAws = { module = "com.lightningkite.lightningserver:server-aws", version = "4.1.74" }
-comLightningkiteLightningserverServerAzure = { module = "com.lightningkite.lightningserver:server-azure", version = "4.1.74" }
-comLightningkiteLightningserverServerCore = { module = "com.lightningkite.lightningserver:server-core", version = "4.1.74" }
-comLightningkiteLightningserverServerDynamodb = { module = "com.lightningkite.lightningserver:server-dynamodb", version = "4.1.74" }
-comLightningkiteLightningserverServerFirebase = { module = "com.lightningkite.lightningserver:server-firebase", version = "4.1.74" }
-comLightningkiteLightningserverServerKtor = { module = "com.lightningkite.lightningserver:server-ktor", version = "4.1.74" }
-comLightningkiteLightningserverServerMemcached = { module = "com.lightningkite.lightningserver:server-memcached", version = "4.1.74" }
-comLightningkiteLightningserverServerMongo = { module = "com.lightningkite.lightningserver:server-mongo", version = "4.1.74" }
-comLightningkiteLightningserverServerRedis = { module = "com.lightningkite.lightningserver:server-redis", version = "4.1.74" }
-comLightningkiteLightningserverServerSentry = { module = "com.lightningkite.lightningserver:server-sentry", version = "4.1.74" }
-comLightningkiteLightningserverServerSftp = { module = "com.lightningkite.lightningserver:server-sftp", version = "4.1.74" }
-comLightningkiteLightningserverServerTesting = { module = "com.lightningkite.lightningserver:server-testing", version = "4.1.74" }
-comLightningkiteLightningserverShared = { module = "com.lightningkite.lightningserver:shared", version = "4.1.74" }
+comLightningkiteLightningserverProcessor = { module = "com.lightningkite.lightningserver:processor", version = "version-4-reauth-SNAPSHOT" }
+comLightningkiteLightningserverServerAws = { module = "com.lightningkite.lightningserver:server-aws", version = "version-4-reauth-SNAPSHOT" }
+comLightningkiteLightningserverServerAzure = { module = "com.lightningkite.lightningserver:server-azure", version = "version-4-reauth-SNAPSHOT" }
+comLightningkiteLightningserverServerCore = { module = "com.lightningkite.lightningserver:server-core", version = "version-4-reauth-SNAPSHOT" }
+comLightningkiteLightningserverServerDynamodb = { module = "com.lightningkite.lightningserver:server-dynamodb", version = "version-4-reauth-SNAPSHOT" }
+comLightningkiteLightningserverServerFirebase = { module = "com.lightningkite.lightningserver:server-firebase", version = "version-4-reauth-SNAPSHOT" }
+comLightningkiteLightningserverServerKtor = { module = "com.lightningkite.lightningserver:server-ktor", version = "version-4-reauth-SNAPSHOT" }
+comLightningkiteLightningserverServerMemcached = { module = "com.lightningkite.lightningserver:server-memcached", version = "version-4-reauth-SNAPSHOT" }
+comLightningkiteLightningserverServerMongo = { module = "com.lightningkite.lightningserver:server-mongo", version = "version-4-reauth-SNAPSHOT" }
+comLightningkiteLightningserverServerRedis = { module = "com.lightningkite.lightningserver:server-redis", version = "version-4-reauth-SNAPSHOT" }
+comLightningkiteLightningserverServerSentry = { module = "com.lightningkite.lightningserver:server-sentry", version = "version-4-reauth-SNAPSHOT" }
+comLightningkiteLightningserverServerSftp = { module = "com.lightningkite.lightningserver:server-sftp", version = "version-4-reauth-SNAPSHOT" }
+comLightningkiteLightningserverServerTesting = { module = "com.lightningkite.lightningserver:server-testing", version = "version-4-reauth-SNAPSHOT" }
+comLightningkiteLightningserverShared = { module = "com.lightningkite.lightningserver:shared", version = "version-4-reauth-SNAPSHOT" }
 kotlinerCli = { module = "com.lightningkite:kotliner-cli", version = { ref = "kotlinerCli" } }
 ktorCallLogging = { module = "io.ktor:ktor-server-call-logging", version = { ref = "ktor" } }
 lkGradleHelpers = { module = "com.lightningkite:lk-gradle-helpers", version = { ref = "lkGradleHelpers" } }
