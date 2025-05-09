@@ -190,6 +190,10 @@ data class AuthClientEndpoints(
                         delay(1000)
                         return "URL for OTP"
                     }
+
+                    override suspend fun confirmOneTimePassword(input: String) {
+                        delay(1000)
+                    }
                 }
             },
             authenticatedPasswordProof = {
@@ -351,6 +355,7 @@ open class KnownDeviceProofClientEndpointsLive(
 interface AuthenticatedOneTimePasswordProofClientEndpoints {
 
     suspend fun establishOneTimePassword(input: EstablishOtp): String
+    suspend fun confirmOneTimePassword(input: String): Unit
 }
 
 open class AuthenticatedOneTimePasswordProofClientEndpointsLive(
@@ -363,6 +368,13 @@ open class AuthenticatedOneTimePasswordProofClientEndpointsLive(
         inSerializer = EstablishOtp.serializer(),
         body = input,
         outSerializer = String.serializer()
+    )
+    override suspend fun confirmOneTimePassword(input: String): Unit = fetcher(
+        url = "$subpath/existing",
+        method = HttpMethod.POST,
+        inSerializer = String.serializer(),
+        body = input,
+        outSerializer = Unit.serializer()
     )
 }
 
