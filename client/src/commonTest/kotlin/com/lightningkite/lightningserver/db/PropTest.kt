@@ -3,17 +3,21 @@ package com.lightningkite.lightningserver.db
 import com.lightningkite.readable.Property
 import com.lightningkite.readable.invoke
 import com.lightningkite.readable.lensByElement
+import com.lightningkite.readable.lensByElementAssumingSetNeverManipulates
+import com.lightningkite.readable.modify
 import com.lightningkite.readable.reactiveScope
 import com.lightningkite.serialization.lensPath
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.time.Duration.Companion.seconds
 
 class PropTest {
     @Test fun test() {
         val model = Property(LargeTestModel())
         val view = model.lensPath { it.int }
-        testContext {
+        runTest2 {
             assertEquals(model.value.int, view.state.get())
             reactiveScope { println(view()) }
             assertEquals(model.value.int, view.state.get())
@@ -23,9 +27,10 @@ class PropTest {
     }
     @Test fun testMulti() {
         val model = Property(LargeTestModel())
-        val views = model.lensPath { it.listEmbedded }.lensByElement { it }
-        testContext {
-            launch { views.add(ClassUsedForEmbedding(value2 = 52)) }
+        val views = model.lensPath { it.listEmbedded }.lensByElementAssumingSetNeverManipulates()
+        runTest2 {
+            launch { model.modify { it.copy(listEmbedded = it.listEmbedded.plus(ClassUsedForEmbedding(value2 = 52))) } }
+            delay(1.seconds)
             val view = views.state.get().find { it.value.value2 == 52 }!!
             val prop = view.lensPath { it.value2 }
             reactiveScope { println(view()) }

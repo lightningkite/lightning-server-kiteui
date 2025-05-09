@@ -46,6 +46,7 @@ kotlin {
         val commonTest by getting {
             dependencies {
                 implementation(kotlin("test"))
+                implementation(libs.kotlinxCoroutinesTest)
             }
             kotlin {
                 srcDir(file("build/generated/ksp/common/commonTest/kotlin"))

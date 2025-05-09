@@ -1,0 +1,46 @@
+package com.lightningkite.lightningserver.db
+
+import com.lightningkite.lightningdb.Condition
+import com.lightningkite.lightningdb.HasId
+import com.lightningkite.lightningdb.Query
+import kotlinx.datetime.Instant
+
+sealed class CacheUpdate<T : HasId<ID>, ID : Comparable<ID>> {
+    abstract val items: Collection<T>?
+    class SocketOverload<T : HasId<ID>, ID : Comparable<ID>>(): CacheUpdate<T, ID>() {
+        override val items: Collection<T>? get() = null
+        override fun toString(): String = "SocketOverload"
+    }
+    class SocketChanges<T : HasId<ID>, ID : Comparable<ID>>(
+        val changed: Set<T>,
+        val removed: Set<ID>,
+        val fromCondition: Condition<T>,
+        val fromRequirements: Set<ConditionAndTimestamp<T>>
+    ): CacheUpdate<T, ID>(){
+        interface ConditionAndTimestamp<T> {
+            val condition: Condition<T>
+            val activatedAt: Instant?
+        }
+        override val items: Collection<T> get() = changed
+        override fun toString(): String = "SocketChanges"
+    }
+    class QueryResult<T : HasId<ID>, ID : Comparable<ID>>(
+        val query: Query<T>,
+        val result: List<T>
+    ): CacheUpdate<T, ID>(){
+        override val items: Collection<T> get() = result
+        override fun toString(): String = "QueryResult"
+    }
+    class MutationResult<T : HasId<ID>, ID : Comparable<ID>>(
+        override val items: Collection<T>
+    ): CacheUpdate<T, ID>() {
+
+        override fun toString(): String = "MutationResult"
+    }
+    class DeletionResult<T : HasId<ID>, ID : Comparable<ID>>(
+        val deletedIds: Set<ID>
+    ): CacheUpdate<T, ID>() {
+        override val items: Collection<T> = listOf()
+        override fun toString(): String = "DeletionResult"
+    }
+}

@@ -1,694 +1,462 @@
-@file:OptIn(ExperimentalSerializationApi::class)
-
 package com.lightningkite.lightningserver.db
 
-import com.lightningkite.kiteui.*
-import com.lightningkite.readable.*
-import com.lightningkite.lightningdb.*
-import com.lightningkite.serialization.*
-import com.lightningkite.lightningserver.db.*
+import com.lightningkite.kiteui.Console
+import com.lightningkite.kiteui.ConsoleRoot
+import com.lightningkite.lightningdb.CollectionUpdates
+import com.lightningkite.lightningdb.Condition
+import com.lightningkite.lightningdb.HasId
+import com.lightningkite.lightningdb.MassModification
+import com.lightningkite.lightningdb.Modification
+import com.lightningkite.lightningdb.Query
+import com.lightningkite.lightningdb._id
+import com.lightningkite.lightningdb.modification
 import com.lightningkite.now
+import com.lightningkite.readable.AppScope
+import com.lightningkite.readable.BasicListenable
+import com.lightningkite.readable.LateInitProperty
+import com.lightningkite.readable.Property
+import com.lightningkite.readable.Readable
+import com.lightningkite.readable.ReadableState
+import com.lightningkite.readable.awaitOnce
+import com.lightningkite.readable.lens
+import com.lightningkite.readable.lensListenable
+import com.lightningkite.readable.onRemove
+import com.lightningkite.readable.shared
+import com.lightningkite.readable.sharedProcess
+import com.lightningkite.readable.sharedProcessRaw
+import com.lightningkite.readable.use
+import kotlinx.coroutines.CancellableContinuation
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.datetime.Instant
-import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
-import kotlin.coroutines.Continuation
-import kotlin.coroutines.resume
+import kotlin.Unit
 import kotlin.random.Random
 import kotlin.time.Duration
-import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
+
 
 class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
-    override val skipCache: ClientModelRestEndpoints<T, ID>,
+    val skipCache: ClientModelRestEndpoints<T, ID>,
     val serializer: KSerializer<T>,
-    val cacheTime: Duration = 5.minutes,
-    val showReload: Boolean = false,
-    val showReloadOnInvalidate: Boolean = false,
-    val onUpdate: (T) -> Unit = {}
-) : CachingModelRestEndpoints<T, ID> {
-    var apiCalls: Int = 0
-        private set
-    val log = ConsoleRoot.tag("ModelCache3(${serializer.descriptor.serialName.substringAfterLast('.')})")
-    var totalInvalidation: Instant = Instant.DISTANT_PAST
-        private set
-
-    override fun totallyInvalidate() {
-        totalInvalidation = now()
-    }
-
+//    val newest: (T?, T?) -> T? = { _, it -> it },
+    val onUpdate: ((CollectionUpdates<T, ID>) -> Unit)? = null,
+    val scope: CoroutineScope = AppScope,
+    val log: Console? = ConsoleRoot.tag(
+        "ModelCache(${serializer.descriptor.serialName.substringAfterLast('.')} ${
+            Random.nextInt(
+                100
+            )
+        })"
+    )
+) : ModelCacheLike<T, ID> {
     private val idProp = serializer._id()
 
-    //    private var desiredSocketCondition: Condition<T> = Condition.Never
-//    private var activeSocketCondition: Condition<T> = Condition.Never
-    private val itemCache = HashMap<ID, ItemHolder>()
-    private val queryCache = HashMap<Pair<Condition<T>, List<SortPart<T>>>, ListHolder>()
-    private val itemWatchCache = HashMap<ID, WritableModel<T>>()
-    private val queryWatchCache = HashMap<Query<T>, WatchingWrapper<ListHolder, List<T>>>()
-    internal val sockets =
+    // The main pipeline for all data changes in the system
+    val newData = Property<CacheUpdate<T, ID>>(CacheUpdate.SocketOverload())
+    val interrupt = InterruptibleDelay()
+
+    // sockets
+    val sockets: SharedCollectionUpdatesSocket<T, ID>? =
         (skipCache as? ClientModelRestEndpointsPlusUpdatesWebsocket<T, ID>)?.let {
-            SharedChangeUpdateWrapper(it.updates(), log = null) {
-                val u = it.updates.associateBy { it._id }
-                it.updates.asSequence().map { itemHolder(it._id) }.plus(it.remove.map { itemHolder(it) })
-                    .forEach {
-                        it.onFreshData(u[it.id])
-                    }
-                flushLists()
+            SharedCollectionUpdatesSocket(
+                scope = scope,
+                socket = it.updates(),
+                log = log?.tag("Sockets"),
+                onChange = { it ->
+                    if (it.overload)
+                        newData.value = CacheUpdate.SocketOverload()
+                    else
+                        newData.value = CacheUpdate.SocketChanges(
+                            changed = it.updates,
+                            removed = it.remove,
+                            fromCondition = sockets!!.listeningStatus.value.fullCondition,
+                            fromRequirements = sockets.listeningStatus.value.requirements
+                        )
+                }
+            )
+        }
+
+
+    val multiget = BatchAndQueue<ID, T?>(scope, log = log?.tag("multiget")) {
+        val r = skipCache.query(
+            Query(
+                condition = Condition.OnField(idProp, Condition.Inside(it))
+            )
+        )
+        newData.value = CacheUpdate.MutationResult(r)
+        val map = r.associateBy { it._id }
+        it.map { map[it] }
+    }
+    val queryInternal = BatchAndQueue<Query<T>, List<T>>(scope, log = log?.tag("queryInternal")) {
+        coroutineScope {
+            it.map {
+                async {
+                    val r = skipCache.query(it)
+                    newData.value = CacheUpdate.QueryResult(it, r)
+                    r
+                }
+            }.awaitAll()
+        }
+    }
+
+    val lastIndividualValues = HashMap<ID, LateInitProperty<WithTimestamp<T?>>>()
+
+    init {
+        newData.addListener {
+            when (val update = newData.value) {
+                is CacheUpdate.DeletionResult -> update.deletedIds.forEach { id ->
+                    lastIndividualValues.getOrPut(id, ::LateInitProperty).value = WithTimestamp(null)
+                }
+
+                is CacheUpdate.SocketOverload -> lastIndividualValues.values.forEach { it.unset() }
+                else -> update.items?.forEach { item ->
+                    lastIndividualValues.getOrPut(item._id, ::LateInitProperty).value = WithTimestamp(item)
+                }
             }
         }
-    val health = sockets?.health ?: Constant(null)
-    val socketCondition = sockets?.condition ?: Constant(Condition.Never)
+    }
 
-    private fun itemHolder(id: ID): ItemHolder = itemCache.getOrPut(id) { ItemHolder(id) }
+    fun idIs(id: ID) = Condition.OnField(idProp, Condition.Equal(id))
+    val WithTimestamp<T?>.isLive
+        get() = item != null && sockets?.listeningStatus?.value?.requirements
+            ?.asSequence()
+            ?.filter { it.condition.invoke(item) }
+            ?.minOfOrNull { it.activatedAt ?: Instant.DISTANT_FUTURE }
+            ?.let { at > it } == true
 
-    private inner class ItemHolder(val id: ID) : WritableModel<T>, CacheReadable<T?>() {
-        override val showReload: Boolean get() = this@ModelCache.showReload
-        override val showReloadOnInvalidate: Boolean get() = this@ModelCache.showReloadOnInvalidate
-        override val totalInvalidation: Instant get() = this@ModelCache.totalInvalidation
-        override val cacheTime: Duration get() = this@ModelCache.cacheTime
-        override val serializer: KSerializer<T> get() = this@ModelCache.serializer
-        override fun addListener(listener: () -> Unit): () -> Unit {
-            startLoop()
-            return super.addListener(listener)
+    fun Condition<T>.isLiveAt(timestamp: Instant) = sockets?.listeningStatus?.value?.requirements
+        ?.asSequence()
+        ?.filter { it.condition == this }
+        ?.minOfOrNull { it.activatedAt ?: Instant.DISTANT_FUTURE }
+        ?.let { timestamp > it } == true
+
+    fun WithTimestamp<T?>.couldExpireAt(recencyRequirement: Duration): Duration = when {
+        isLive -> recencyRequirement
+        else -> recencyRequirement - (now() - at)
+    }
+
+    override fun item(
+        id: ID,
+        maximumAge: Duration,
+        pullFrequency: Duration,
+    ): ModelCacheItemReadable<T> = ModelCacheItemReadableImpl(id, maximumAge, pullFrequency)
+    inner class ModelCacheItemReadableImpl(
+        val id: ID,
+        val maximumAge: Duration,
+        val pullFrequency: Duration,
+    ) : ModelCacheItemReadable<T> {
+        val log = this@ModelCache.log?.tag("$id")
+        val interrupt = this@ModelCache.interrupt.child()
+        val basis = lastIndividualValues.getOrPut(id, ::LateInitProperty)
+        val processWhileRunning = ResourceUse(scope) {
+            onRemove { log?.log("No longer needed") }
+
+            // Use a live socket if pullFrequency is very low.
+            val socketToWaitFor = if (pullFrequency < 30.seconds && sockets != null) {
+                log?.log("Using socket")
+                val r = sockets.require(Condition.OnField(idProp, Condition.Equal(id)))
+                use(r)
+                onRemove(r.satisfied.addListener {
+                    if (r.satisfied.value) {
+                        launch {
+                            log?.log("Fetching after socket connected")
+                            multiget(id)
+                        }
+                    }
+                })
+                r
+            } else null
+
+            // Automatically emit our best known value, if it matches the requirements.
+            basis.state.getOrNull()?.let { lastKnown ->
+                if (lastKnown.isLive || now() - lastKnown.at < maximumAge) {
+                    log?.log("Found existing value ${lastKnown.at}")
+                } else null
+            } ?: run {
+                // Otherwise, pull immediately
+                if (socketToWaitFor != null) {
+                    log?.log("Waiting for socket to connect...")
+                    withTimeoutOrNull<Unit>(5.seconds) {
+                        // Wait for the socket to connect first though, if we have one.
+                        socketToWaitFor.wait()
+                        log?.log("Socket connected.")
+                    } ?: log?.log("Failed to connect to socket")
+                }
+                log?.log("Initial fetch")
+                multiget(id)
+                log?.log("Initial fetch complete.")
+            }
+
+            // Pull regularly
+            val pullFrequency = maxOf(5.seconds, pullFrequency)
+            while (true) {
+                val next = basis.state.getOrNull()?.couldExpireAt(pullFrequency) ?: (-1).seconds
+                if (next > 0.seconds) {
+                    log?.log("No need to pull for $next")
+                    interrupt.delay(next)
+                } else {
+                    log?.log("Needs pull, starting")
+                    multiget(id)
+                    interrupt.delay(pullFrequency)
+                }
+            }
+        }
+
+        override val state: ReadableState<T?>
+            get() {
+                return basis.state.handle(
+                    success = {
+                        if (it.isLive || now() - it.at < maximumAge) ReadableState(it.item)
+                        else ReadableState.notReady
+                    },
+                    exception = { ReadableState.exception(it) },
+                    notReady = { ReadableState.notReady }
+                )
+            }
+
+        val diff = basis.lens { it.item }.uses(processWhileRunning)
+        override fun addListener(listener: () -> Unit): () -> Unit = diff.addListener(listener)
+        override val lastUpdatedAt: Readable<Instant?> = basis.lens { it.at }
+        val live = shared(coroutineContext = scope.coroutineContext) {
+            sockets?.listeningStatus?.let(::rerunOn)
+            basis().isLive
+        }
+
+        override suspend fun invalidate() {
+            basis.unset()
+            multiget(id)
+            interrupt.interrupt()
+        }
+
+        override suspend fun modify(modification: Modification<T>): T? {
+            return skipCache.modify(id, modification).also {
+                run {
+                    newData.value = CacheUpdate.MutationResult(items = listOf(it))
+                }
+            }
         }
 
         override suspend fun delete() {
-            apiCalls++
-            skipCache.delete(id)
-            onFreshData(null)
-            flushLists()
-        }
-
-        override suspend fun modify(modification: Modification<T>): T {
-            apiCalls++
-            val value = skipCache.modify(id, modification)
-            onFreshData(value)
-            flushLists()
-            return value
+            return skipCache.delete(id)
+                .also { run { newData.value = CacheUpdate.DeletionResult(setOf(id)) } }
         }
 
         override suspend fun set(value: T?) {
             if (value == null) delete()
             else {
-                apiCalls++
                 val existing = awaitOnce()
                 if (existing == null)
-                    onFreshData(skipCache.insert(value))
+                    skipCache.insert(value).also {
+                        run {
+                            newData.value = CacheUpdate.MutationResult(items = listOf(it))
+                        }
+                    }
                 else
                     modification(serializer, existing, value)?.let {
-                        onFreshData(skipCache.modify(id, it))
+                        skipCache.modify(id, it)
+                    }?.also { run { newData.value = CacheUpdate.MutationResult(items = listOf(it)) } }
+            }
+        }
+
+        override fun equals(other: Any?): Boolean = other is ModelCache<T, ID>.ModelCacheItemReadableImpl
+                && id == other.id
+                && maximumAge == other.maximumAge
+                && pullFrequency == other.pullFrequency
+
+        override fun hashCode(): Int = id.hashCode() + maximumAge.hashCode() + pullFrequency.hashCode()
+    }
+
+    val cache: ListReconstructionCalculator<T, ID> = NaiveListReconstructionCalculator<T, ID>(serializer, log = log?.tag("CollectionCache"))
+
+    init {
+        newData.addListener { cache.update(newData.value) }
+    }
+
+    override fun list(
+        query: Query<T>,
+        maximumAge: Duration,
+        pullFrequency: Duration,
+    ): ModelCacheLimitReadable<T> = ModelCacheLimitReadableImpl(query, maximumAge, pullFrequency)
+    inner class ModelCacheLimitReadableImpl(
+        val query: Query<T>,
+        val maximumAge: Duration,
+        val pullFrequency: Duration,
+    ) : ModelCacheLimitReadable<T> {
+        val interrupt = this@ModelCache.interrupt.child()
+        var currentQuery = query
+        val processWhileRunning = ResourceUse(scope) {
+            val log = log?.tag("${currentQuery.condition} ${currentQuery.orderBy}")
+
+            // Use a live socket if pullFrequency is very low.
+            val socketToWaitFor = if (pullFrequency < 30.seconds && sockets != null) {
+                log?.log("Using socket")
+                val r = sockets.require(currentQuery.condition)
+                use(r)
+                onRemove(r.satisfied.addListener {
+                    if (r.satisfied.value) {
+                        launch {
+                            log?.log("Fetching after socket connected")
+                            queryInternal(currentQuery)
+                        }
                     }
-                flushLists()
+                })
+                r
+            } else null
+
+            // Automatically emit our best known value, if it matches the requirements.
+            cache.cached(currentQuery)?.let { lastKnown ->
+                if (currentQuery.condition.isLiveAt(lastKnown.at) || now() - lastKnown.at < maximumAge) {
+                    log?.log("Found existing value ${lastKnown.at} / ${lastKnown.requestedLimit}")
+                } else null
+            } ?: run {
+                // Otherwise, pull immediately
+                if (socketToWaitFor != null) {
+                    withTimeoutOrNull<Unit>(5.seconds) {
+                        // Wait for the socket to connect first though, if we have one.
+                        log?.log("Waiting for socket to connect...")
+                        socketToWaitFor.wait()
+                        log?.log("Socket connected.")
+                    } ?: log?.log("Failed to connect to socket")
+                }
+                log?.log("Initial fetch")
+                queryInternal(cache.recommendQuery(currentQuery))
+                log?.log("Initial fetch complete.")
+            }
+
+            // Pull regularly
+            val pullFrequency = maxOf(5.seconds, pullFrequency)
+            while (true) {
+                val mostRecent = cache.cached(currentQuery)
+                val next = when {
+                    mostRecent == null -> (-1).seconds
+                    mostRecent.requestedLimit < currentQuery.limit -> (-1).seconds
+                    currentQuery.condition.isLiveAt(mostRecent.at) -> pullFrequency
+                    else -> pullFrequency - (now() - mostRecent.at)
+                }
+                // TODO: if we're up to date otherwise, can we do limit extension to request more items?
+                if (next > 0.seconds) {
+                    log?.log("No need to pull for $next")
+                    interrupt.delay(next)
+                } else {
+                    //TODO: Harden against exceptions
+                    log?.log("Needs pull, starting because most recent is ${mostRecent?.at} / ${mostRecent?.requestedLimit}")
+                    queryInternal(cache.recommendQuery(currentQuery))
+                    interrupt.delay(pullFrequency)
+                }
             }
         }
 
-        override fun onFreshData(value: T?) {
-            queryCache.values.asSequence()
-                .filter {
-                    val matchesOld = lastKnownValue?.let { old -> it.condition(old) } ?: false
-                    val matchesNew = value?.let { new -> it.condition(new) } ?: false
-                    matchesNew || matchesOld
-                }
-                .forEach {
-                    if (value != null) it.updating.queueItemUpdate(value)
-                    else it.updating.delete(id)
-                }
-            super.onFreshData(value)
-            value?.let { onUpdate(it) }
-        }
-
-        internal fun onFreshDataSkipQueries(value: T?) {
-            super.onFreshData(value)
-            value?.let { onUpdate(it) }
-        }
-
-        override fun toString(): String = "ItemHolder<${serializer.descriptor.serialName.substringAfterLast('.')}>($id)"
-    }
-
-    private fun listHolder(query: Query<T>): ListHolder {
-        val order = query.orderBy.ensureTotal(serializer)
-        return queryCache.getOrPut(query.condition to order) {
-            ListHolder(
-                query.condition,
-                order,
-                query.limit + query.skip
-            )
-        }.apply {
-            val newLimit = query.limit + query.skip
-            if (limit < newLimit) limit = newLimit
-        }
-    }
-
-    private inner class ListHolder(
-        val condition: Condition<T> = Condition.Always,
-        val orderBy: List<SortPart<T>> = listOf(),
-        limit: Int,
-    ) : CacheReadable<List<T>>(), LimitReadable<T> {
-        override val showReload: Boolean get() = this@ModelCache.showReload
-        override val showReloadOnInvalidate: Boolean get() = this@ModelCache.showReloadOnInvalidate
-        override val totalInvalidation: Instant get() = this@ModelCache.totalInvalidation
-        override val cacheTime: Duration get() = this@ModelCache.cacheTime
-        override fun addListener(listener: () -> Unit): () -> Unit {
-            startLoop()
-            return super.addListener(listener)
-        }
-
-        var limitLoaded: Int = -1
-        val updating = UpdatingQueryList(condition, orderBy, limit)
-        override var limit: Int by updating::limit
-
-        override fun onFreshData(value: List<T>) {
-            updating.fullPull(value)
-            super.onFreshData(value)
-        }
-
-        fun onAdditionalData(value: List<T>) {
-            val list = (lastKnownValue ?: listOf()) + value
-            updating.fullPull(list)
-            super.onFreshData(list)
-        }
-
-        val shouldPullMore: Boolean
-            get() = !establishingSocket && upToDate && inUse && !requestOpen && limit > limitLoaded
-
-        override fun toString(): String =
-            "ListHolder(${serializer.descriptor.serialName}, establishingSocket=$establishingSocket, upToDate=$upToDate, inUse=$inUse, requestOpen=$requestOpen)"
-    }
-
-    override fun get(id: ID): WritableModel<T> = itemHolder(id)
-    override fun watch(id: ID): WritableModel<T> = sockets?.let { sockets ->
-        itemWatchCache.getOrPut(id) {
-            WatchingWrapperWritableModel(
-                itemHolder(id),
-                sockets.outsideResource(DataClassPathAccess(DataClassPathSelf(serializer), idProp).eq(id))
-            )
-        }
-    } ?: itemHolder(id)
-
-    override fun query(query: Query<T>): LimitReadable<T> = listHolder(query)
-    override fun watch(query: Query<T>): LimitReadable<T> = object : LimitReadable<T> {
-        val under = listHolder(query)
-        val basis = sockets?.let { sockets ->
-            queryWatchCache.getOrPut(query) {
-                WatchingWrapper(
-                    under,
-                    sockets.outsideResource(query.condition)
-                )
+        override val state: ReadableState<List<T>>
+            get() {
+                return cache.cached(currentQuery)?.let { lastKnown ->
+                    if (currentQuery.condition.isLiveAt(lastKnown.at) || now() - lastKnown.at < maximumAge) {
+                        ReadableState(lastKnown.item)
+                    } else ReadableState.notReady
+                } ?: ReadableState.notReady
             }
-        } ?: under
-        override val state: ReadableState<List<T>> get() = basis.state
-        override fun addListener(listener: () -> Unit): () -> Unit = basis.addListener(listener)
-        override var limit: Int by under::limit
+
+        val diff = cache.updates(query).lensListenable {
+            cache.cached(currentQuery)?.let { lastKnown ->
+                if (currentQuery.condition.isLiveAt(lastKnown.at) || now() - lastKnown.at < maximumAge) {
+                    lastKnown.item
+                } else null
+            }
+        }.uses(processWhileRunning)
+        val diffWithTs = cache.updates(query).lensListenable {
+            cache.cached(currentQuery)?.let { lastKnown ->
+                if (currentQuery.condition.isLiveAt(lastKnown.at) || now() - lastKnown.at < maximumAge) {
+                    lastKnown
+                } else null
+            }
+        }.uses(processWhileRunning)
+
+        override fun addListener(listener: () -> Unit): () -> Unit = diff.addListener(listener)
+        override val lastUpdatedAt: Readable<Instant?> = diffWithTs.lens { it?.at }
+        val live = shared(coroutineContext = scope.coroutineContext) {
+            sockets?.listeningStatus?.let(::rerunOn)
+            cache.cached(currentQuery)?.at?.let { time ->
+                currentQuery.condition.isLiveAt(time)
+            } == true
+        }
+
+        override var limit: Int = query.limit
+            set(value) {
+                field = value
+                currentQuery = currentQuery.copy(limit = value)
+                interrupt.interrupt()
+            }
+
+        override fun equals(other: Any?): Boolean = other is ModelCache<T, ID>.ModelCacheLimitReadableImpl
+                && query == other.query
+                && maximumAge == other.maximumAge
+                && pullFrequency == other.pullFrequency
+
+        override fun hashCode(): Int = query.hashCode() + maximumAge.hashCode() + pullFrequency.hashCode()
+    }
+
+
+    // Other operations
+    override suspend fun add(item: T): T {
+        return skipCache.insert(item).also {
+            newData.value = CacheUpdate.MutationResult(items = setOf(it))
+        }
+    }
+
+    override suspend fun addAll(items: List<T>): List<T> {
+        return skipCache.insertBulk(items).also {
+            newData.value = CacheUpdate.MutationResult(items = it.toSet())
+        }
+    }
+
+    override suspend fun upsert(item: T): ModelCacheItemReadable<T> {
+        skipCache.upsert(item._id, item).let {
+            newData.value = CacheUpdate.MutationResult(items = setOf(it))
+        }
+        return this[item._id]
     }
 
     override suspend fun bulkModify(bulkUpdate: MassModification<T>): Int {
-        apiCalls++
-        val result = skipCache.bulkModify(bulkUpdate)
-        totallyInvalidate()
-        return result
-    }
-
-    override suspend fun insert(item: T): WritableModel<T> {
-        apiCalls++
-        return itemHolder(skipCache.insert(item))
-    }
-
-    override suspend fun insert(item: List<T>): List<T> {
-        apiCalls++
-        return skipCache.insertBulk(item).also {
-            it.map { itemHolder(it._id).onFreshData(it) }
-            flushLists()
+        return skipCache.bulkModify(bulkUpdate).also {
+            newData.value = CacheUpdate.SocketOverload()
         }
     }
 
-    override suspend fun upsert(item: T): WritableModel<T> {
-        apiCalls++
-        return itemHolder(skipCache.upsert(item._id, item))
+// Local shenanigans
+
+    val totalInvalidation =
+        MutableSharedFlow<Unit>(onBufferOverflow = BufferOverflow.DROP_OLDEST, extraBufferCapacity = 1)
+
+    suspend fun totallyInvalidate() {
+        totalInvalidation.tryEmit(Unit)
+        interrupt.interrupt()
     }
-
-    internal var allowLoop = true
-
-    companion object {
-        val universalLoop: ArrayList<() -> Unit> by lazy {
-            val listeners = ArrayList<() -> Unit>()
-            AppScope.reactiveSuspending {
-                if (AppState.inForeground()) {
-                    while (true) {
-                        delay(100)
-                        listeners.invokeAllSafe()
-                    }
-                }
-            }
-            listeners
-        }
-    }
-
-    private var isLooping = false
-    internal fun startLoop() {
-        if (!allowLoop) return
-        if (isLooping) return
-        var l: () -> Unit = {}
-        var exceptionReported = false
-        l = {
-            try {
-                regularly()
-                val inUse = itemCache.values.any { it.inUse } || queryCache.values.any { it.inUse }
-                if (!inUse) {
-                    log.info("Stopped due to no one listening")
-                    isLooping = false
-                    universalLoop.remove(l)
-                }
-            } catch (e: Exception) {
-                if (!exceptionReported) {
-                    Exception(
-                        "ModelCache3 ${serializer.descriptor.serialName.substringAfterLast('.')} loop failed",
-                        e
-                    ).report()
-                    exceptionReported = true
-                }
-            }
-        }
-        log.info("Starting loop")
-        universalLoop.add(l)
-        isLooping = true
-        log.info("Loop started.")
-    }
-
-    internal fun regularly() {
-        AppScope.launch {
-            sockets?.flush()
-        }
-        queryCache.values.asSequence()
-            .filter { it.shouldPull }
-            .forEach {
-                AppScope.launch {
-                    it.onLoadStart()
-                    try {
-                        apiCalls++
-                        val data = skipCache.query(Query(it.condition, it.orderBy, limit = it.limit))
-                        data.forEach { itemHolder(it._id).onFreshDataSkipQueries(it) }
-                        it.limitLoaded = it.limit
-                        it.onFreshData(data)
-                    } catch (e: Exception) {
-                        it.onRetrievalError(e)
-                    }
-                }
-            }
-        queryCache.values.asSequence()
-            .filter { it.shouldPullMore }
-            .forEach { q ->
-                AppScope.launch {
-                    q.onLoadStart()
-                    try {
-                        apiCalls++
-                        val last = q.lastKnownValue?.lastOrNull() ?: return@launch
-                        val after = q.orderBy.after(last)
-                        val limitDiff = q.limit - q.limitLoaded
-                        val data = skipCache.query(Query(q.condition and after, q.orderBy, limit = limitDiff))
-                        data.forEach { itemHolder(it._id).onFreshDataSkipQueries(it) }
-                        q.limitLoaded = q.limit
-                        q.onAdditionalData(data)
-                    } catch (e: Exception) {
-                        q.onRetrievalError(e)
-                    }
-                }
-            }
-        val limit = 1000
-        itemCache.values.asSequence()
-            .filter { it.shouldPull }
-            .chunked(limit)
-            .toList()
-            .filter { it.isNotEmpty() }
-            .forEach {
-                AppScope.launch {
-                    it.forEach { it.onLoadStart() }
-                    try {
-                        it.forEach { it.onLoadStart() }
-                        apiCalls++
-                        val values = skipCache.query(
-                            Query(
-                                condition = DataClassPathSelf(serializer).get(idProp).inside(it.map { it.id }),
-                                limit = limit
-                            )
-                        ).associateBy { it._id }
-                        it.forEach {
-                            it.onFreshData(values[it.id])
-                        }
-                        flushLists()
-                    } catch (e: Exception) {
-                        it.forEach { it.onRetrievalError(e) }
-                    }
-                }
-            }
-    }
-
-    private fun flushLists() {
-        queryCache.values.forEach {
-            it.updating.flush()?.let { l -> it.partialUpdate(l) }
-        }
-    }
-
-    private fun itemHolder(item: T): ItemHolder = itemHolder(item._id).apply { onFreshData(item); flushLists() }
 
     fun localSignalUpdate(matching: (T) -> Boolean, modify: (T) -> T?) {
-        itemCache.values
+        val updates = HashSet<T>()
+        val removals = HashSet<ID>()
+        lastIndividualValues.values.asSequence()
+            .mapNotNull { it.value.item }
+            .filter(matching)
             .forEach {
-                val v = it.lastKnownValue ?: return@forEach
-                if (matching(v))
-                    it.onFreshData(modify(v))
+                modify(it)?.let { updates.add(it) }
+                    ?: removals.add(it._id)
             }
-        flushLists()
+        newData.value = CacheUpdate.MutationResult(items = updates)
+        newData.value = CacheUpdate.DeletionResult(deletedIds = removals)
     }
 
-    fun localInsert(item: T): T = itemHolder(item).lastKnownValue!!
-}
-
-class ChangeUpdateWrapper<T : HasId<ID>, ID : Comparable<ID>>(
-    val sharedSocket: TypedWebSocket<Condition<T>, CollectionUpdates<T, ID>>,
-    val onMessage: (CollectionUpdates<T, ID>) -> Unit
-) {
-    private val open = Property(false)
-    private val conditionMatches = Property(false)
-    val health = shared {
-        when {
-            !open() -> "Socket not open"
-            !conditionMatches() -> "Condition does not match"
-            else -> null
-        }
-    }
-
-    private var endUse: (() -> Unit)? = null
-    val condition: Property<Condition<T>> = Property(Condition.Never)
-    init {
-        condition.addListener {
-            val value = condition.value
-            if (value is Condition.Never) {
-                endUse?.invoke()
-                endUse = null
-                messageList.forEach { it.resume(Unit) }
-                messageList.clear()
-                conditionMatches.value = true
-            } else {
-                conditionMatches.value = false
-                if (endUse == null) {
-                    endUse = sharedSocket.beginUse()
-                }
-                if (sharedSocket.connected.state == ReadableState(true)) {
-                    sharedSocket.send(value)
-                }
-            }
-        }
-    }
-    private val messageList = ArrayList<Continuation<Unit>>()
-
-    suspend fun update(condition: Condition<T>): Boolean {
-        suspendCancellableCoroutine { cont ->
-            messageList.add(cont)
-            this.condition.value = condition
-            cont.invokeOnCancellation {
-                messageList.remove(cont)
-            }
-        }
-        return true
-    }
-
-    init {
-        sharedSocket.onOpen {
-            conditionMatches.value = false
-            sharedSocket.send(condition.value)
-            open.value = true
-        }
-        sharedSocket.onClose {
-            open.value = false
-        }
-        sharedSocket.onMessage {
-            if (it.condition == this.condition.value) {
-                messageList.forEach { it.resume(Unit) }
-                messageList.clear()
-                conditionMatches.value = true
-            } else if (it.condition != null) {
-                println("Ignoring condition update ${it.condition}; does not match ${this.condition.value}")
-                conditionMatches.value = false
-            }
-            onMessage(it)
-        }
+    fun localInsert(item: T): T {
+        newData.value = CacheUpdate.MutationResult(items = setOf(item))
+        return item
     }
 }
 
-class SharedChangeUpdateWrapper<T : HasId<ID>, ID : Comparable<ID>>(
-    sharedSocket: TypedWebSocket<Condition<T>, CollectionUpdates<T, ID>>,
-    val log: Console? = null,
-    onMessage: (CollectionUpdates<T, ID>) -> Unit,
-) {
-    val wraps = ChangeUpdateWrapper(sharedSocket, onMessage)
-    val health = wraps.health
-    val condition = wraps.condition
-
-    var queuedCondition: Condition<T>? = null
-    fun refresh() {
-        queuedCondition = if (requirementSet.isEmpty()) Condition.Never else Condition.Or(requirementSet.map { it.condition })
-    }
-
-    var awaitingSuccessfulFlush = ArrayList<Continuation<Unit>>()
-    suspend fun refreshAndWait() {
-        queuedCondition = if (requirementSet.isEmpty()) Condition.Never else Condition.Or(requirementSet.map { it.condition })
-        suspendCancellableCoroutine<Unit> { it ->
-            awaitingSuccessfulFlush.add(it)
-            it.invokeOnCancellation { _ -> awaitingSuccessfulFlush.remove(it) }
-        }
-    }
-
-    suspend fun flush() {
-        queuedCondition?.let {
-            log?.info("flush condition $it")
-            queuedCondition = null
-            val toComplete = awaitingSuccessfulFlush
-            awaitingSuccessfulFlush = ArrayList()
-            wraps.update(it)
-            toComplete.forEach { it.resume(Unit) }
-        }
-    }
-
-    var requirementSet = HashSet<Out>()
-    inner class Out(val condition: Condition<T>): OutsideResource {
-        override suspend fun start(): Boolean {
-            log?.info("start requiring $condition")
-            requirementSet.add(this)
-            refreshAndWait()
-            return true
-        }
-
-        override fun interruptStartup() = stop()
-
-        override fun stop() {
-            log?.info("stop requiring $condition")
-            requirementSet.remove(this)
-            refresh()
-        }
-    }
-    fun outsideResource(condition: Condition<T>) = Out(condition)
-}
-
-interface OutsideResource {
-    suspend fun start(): Boolean
-    fun interruptStartup() = stop()
-    fun stop()
-}
-
-class WatchingWrapperWritableModel<T, R>(base: R, outsideResource: OutsideResource) :
-    WatchingWrapper<R, T?>(base, outsideResource), WritableModel<T> where R : WritableModel<T>, R : CacheReadable<T?> {
-    override suspend fun set(value: T?) = base.set(value)
-    override val serializer: KSerializer<T> get() = base.serializer
-    override suspend fun delete() = base.delete()
-    override fun invalidate() = (base as CacheReadable<T?>).invalidate()
-    override suspend fun modify(modification: Modification<T>): T? = base.modify(modification)
-
-}
-
-open class WatchingWrapper<R : CacheReadable<T>, T>(val base: R, val outsideResource: OutsideResource) : Readable<T> {
-    private var uses = 0
-    override val state: ReadableState<T> get() = base.state
-    private var starting = false
-    private var started = false
-    override fun addListener(listener: () -> Unit): () -> Unit {
-        uses++
-        val b = base.addListener { listener() }
-        if (!starting && !started) {
-            starting = true
-            base.establishingSocket = true
-            val attempt = Random.nextInt()
-            AppScope.launch {
-                try {
-                    started = outsideResource.start()
-                    if (started) base.socketIsLive = true
-                } finally {
-                    base.establishingSocket = false
-                    starting = false
-                }
-            }
-        }
-        return {
-            b()
-            --uses
-            if (uses == 0) {
-                if (started) {
-                    started = false
-                    outsideResource.stop()
-                } else {
-                    outsideResource.interruptStartup()
-                }
-            }
-        }
-    }
-
-    override fun toString(): String = "Wrapping$base"
-}
-
-abstract class CacheReadable<T> : BaseReadable2<T>() {
-    abstract val cacheTime: Duration
-    abstract val totalInvalidation: Instant
-    open val showReload: Boolean get() = true
-    open val showReloadOnInvalidate: Boolean get() = true
-
-    private var freshDataReceivedAt: Instant = Instant.DISTANT_PAST
-    private var socketLiveSince: Instant = Instant.DISTANT_FUTURE
-
-    private inline val totalInvalidationRequired: Boolean get() = freshDataReceivedAt < totalInvalidation
-    private inline val freshWithinCacheTime: Boolean get() = now() < freshDataReceivedAt + cacheTime
-    private inline val wouldHaveSeenChanges: Boolean get() = socketLiveSince < freshDataReceivedAt
-
-    fun invalidate() {
-        freshDataReceivedAt = Instant.DISTANT_PAST
-        if (showReloadOnInvalidate) state = ReadableState.notReady
-    }
-
-    val upToDate: Boolean
-        get() = (!totalInvalidationRequired && (freshWithinCacheTime || wouldHaveSeenChanges)).also {
-            if ((!it && showReload) || (totalInvalidationRequired && showReloadOnInvalidate)) state = ReadableState.notReady
-        }
-    val shouldPull: Boolean
-        get() {
-            return !establishingSocket && !upToDate && inUse && !requestOpen
-        }
-    val shouldPullExplanation: String get() = "!establishingSocket($establishingSocket) && !upToDate($upToDate)(!totalInvalidationRequired($totalInvalidationRequired) && (freshWithinCacheTime($freshWithinCacheTime) || wouldHaveSeenChanges($wouldHaveSeenChanges))) && inUse($inUse) && !requestOpen($requestOpen)"
-
-    var establishingSocket: Boolean = false
-    var socketIsLive: Boolean = false
-        set(value) {
-            if (!field && value) socketLiveSince = now()
-            else if (field && !value) socketLiveSince = Instant.DISTANT_FUTURE
-            field = value
-        }
-
-    var requestOpen: Boolean = false
-        private set
-
-    var lastKnownValue: T? = null
-
-    fun onLoadStart() {
-        requestOpen = true
-        if (showReload) state = ReadableState.notReady
-    }
-
-    fun partialUpdate(value: T) {
-        if (upToDate) {
-            state = ReadableState(value)
-            lastKnownValue = value
-        }
-    }
-
-    open fun onFreshData(value: T) {
-        requestOpen = false
-        freshDataReceivedAt = now()
-        state = ReadableState(value)
-        lastKnownValue = value
-    }
-
-    fun onRetrievalError(exception: Exception) {
-        requestOpen = false
-        freshDataReceivedAt = now()
-        state = ReadableState.exception(exception)
-    }
-}
-
-abstract class BaseReadable2<T>(start: ReadableState<T> = ReadableState.notReady) : Readable<T> {
-    private val listeners = ArrayList<() -> Unit>()
-    internal val inUse: Boolean get() = listeners.isNotEmpty()
-    override var state: ReadableState<T> = start
-        protected set(value) {
-            if (field != value) {
-                field = value
-                listeners.invokeAllSafe()
-            }
-        }
-
-    override fun addListener(listener: () -> Unit): () -> Unit {
-        listeners.add(listener)
-        return {
-            val pos = listeners.indexOfFirst { it === listener }
-            if (pos != -1) {
-                listeners.removeAt(pos)
-            }
-        }
-    }
-}
-
-class UpdatingQueryList<T : HasId<ID>, ID : Comparable<ID>>(val condition: Condition<T>, val orderBy: List<SortPart<T>>, limit: Int) {
-    var limit: Int = limit
-    val comparator = orderBy.comparator ?: throw Error("No comparator found for ordering - this should not be possible")
-    val queued = ArrayList<T>()
-    var updatesMade: Boolean = false
-    fun delete(id: ID) {
-        updatesMade = queued.removeAll { it._id == id }
-    }
-
-    var total: Boolean = false
-    fun fullPull(list: List<T>) {
-        queued.clear()
-        queued.addAll(list.sortedWith(comparator))
-        total = list.size < limit
-        updatesMade = true
-    }
-
-    fun queueItemUpdate(item: T) {
-        val afterEnd = queued.lastOrNull()?.let { comparator.compare(item, it) > 0 } ?: false
-        var itemFound = false
-        var itemReplaced = !condition(item)
-        var index = 0
-        while (!(itemReplaced && itemFound) && index < queued.size) {
-            val found = queued[index]
-            if (!itemFound && found._id == item._id) {
-                queued.removeAt(index)
-                updatesMade = true
-                itemFound = true
-                continue
-            }
-            if (!itemReplaced && comparator.compare(item, found) < 0) {
-                queued.add(index, item)
-                updatesMade = true
-                itemReplaced = true
-                index++
-            }
-            index++
-        }
-        if (!itemReplaced && (total || !afterEnd)) {
-            updatesMade = true
-            queued.add(item)
-        }
-    }
-
-    fun flush(): List<T>? {
-        if (updatesMade) {
-            updatesMade = false
-            return queued.toList()
-        }
-        return null
-    }
-}
-
-fun <T> List<SortPart<T>>.ensureTotal(serializer: KSerializer<T>): List<SortPart<T>> {
-    if (lastOrNull()?.field?.properties?.singleOrNull()?.name == "_id") return this
-    @Suppress("UNCHECKED_CAST")
-    return this + SortPart(DataClassPathAccess(DataClassPathSelf<T>(serializer), serializer.serializableProperties!!.find { it.name == "_id" } as SerializableProperty<T, Comparable<*>>))
-}

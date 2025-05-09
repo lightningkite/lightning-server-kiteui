@@ -1,9 +1,6 @@
 package com.lightningkite.lightningserver.db
 
 import com.lightningkite.lightningdb.*
-import com.lightningkite.kiteui.TypedWebSocket
-import com.lightningkite.readable.*
-import kotlinx.serialization.KSerializer
 import com.lightningkite.serialization.*
 
 interface ClientModelRestEndpoints<T : HasId<ID>, ID : Comparable<ID>> {
@@ -27,41 +24,6 @@ interface ClientModelRestEndpoints<T : HasId<ID>, ID : Comparable<ID>> {
     suspend fun groupAggregate(input: GroupAggregateQuery<T>): Map<String, Double?>
     suspend fun permissions(): ModelPermissions<T>
 
-}
-
-interface ClientModelRestEndpointsPlusWs<T : HasId<ID>, ID : Comparable<ID>> {
-    fun watch(): TypedWebSocket<Query<T>, ListChange<T>>
-}
-
-interface ClientModelRestEndpointsPlusUpdatesWebsocket<T : HasId<ID>, ID : Comparable<ID>> {
-    fun updates(): TypedWebSocket<Condition<T>, CollectionUpdates<T, ID>>
-}
-
-interface WritableModel<T> : Writable<T?> {
-    val serializer: KSerializer<T>
-    suspend fun modify(modification: Modification<T>): T?
-    suspend fun delete(): Unit
-    fun invalidate(): Unit
-}
-
-interface LimitReadable<T>: Readable<List<T>> {
-    var limit: Int
-}
-
-interface ModelCollection<T : HasId<ID>, ID : Comparable<ID>> {
-    operator fun get(id: ID): WritableModel<T>
-    fun query(query: Query<T>): LimitReadable<T>
-    fun watch(query: Query<T>): LimitReadable<T>
-    fun watch(id: ID): WritableModel<T> = get(id)
-    suspend fun insert(item: T): WritableModel<T>
-    suspend fun insert(item: List<T>): List<T>
-    suspend fun upsert(item: T): WritableModel<T>
-    suspend fun bulkModify(bulkUpdate: MassModification<T>): Int
-}
-
-interface CachingModelRestEndpoints<T : HasId<ID>, ID : Comparable<ID>> : ModelCollection<T, ID> {
-    val skipCache: ClientModelRestEndpoints<T, ID>
-    fun totallyInvalidate()
 }
 
 

@@ -6,6 +6,7 @@ dokka = "1.9.20"
 graalVmNative = "0.9.24"
 kotlin = "2.0.21"
 kotlinerCli = "1.0.5"
+kotlinxCoroutinesTest = "1.10.2"
 ksp = "2.0.21-1.0.25"
 ktor = "3.0.3"
 lkGradleHelpers = "1.2.5"
@@ -33,6 +34,7 @@ comLightningkiteLightningserverServerSftp = { module = "com.lightningkite.lightn
 comLightningkiteLightningserverServerTesting = { module = "com.lightningkite.lightningserver:server-testing", version = "4.1.74" }
 comLightningkiteLightningserverShared = { module = "com.lightningkite.lightningserver:shared", version = "4.1.74" }
 kotlinerCli = { module = "com.lightningkite:kotliner-cli", version = { ref = "kotlinerCli" } }
+kotlinxCoroutinesTest = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinxCoroutinesTest" }
 ktorCallLogging = { module = "io.ktor:ktor-server-call-logging", version = { ref = "ktor" } }
 lkGradleHelpers = { module = "com.lightningkite:lk-gradle-helpers", version = { ref = "lkGradleHelpers" } }
 proguard = { module = "com.guardsquare:proguard-gradle", version = { ref = "proguard" } }
