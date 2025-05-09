@@ -31,6 +31,13 @@ sealed class CacheUpdate<T : HasId<ID>, ID : Comparable<ID>> {
         override val items: Collection<T> get() = result
         override fun toString(): String = "QueryResult"
     }
+    class MultiGetResult<T : HasId<ID>, ID : Comparable<ID>>(
+        val missing: Set<ID>,
+        val result: List<T>
+    ): CacheUpdate<T, ID>(){
+        override val items: Collection<T> get() = result
+        override fun toString(): String = "MultiGetResult"
+    }
     class MutationResult<T : HasId<ID>, ID : Comparable<ID>>(
         override val items: Collection<T>
     ): CacheUpdate<T, ID>() {

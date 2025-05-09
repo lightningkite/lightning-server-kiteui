@@ -30,6 +30,17 @@ class NaiveListReconstructionCalculator<T : HasId<ID>, ID : Comparable<ID>>(
                 }
             }
 
+            is CacheUpdate.MultiGetResult -> {
+                val iter = byQuery.iterator()
+                while (iter.hasNext()) {
+                    val entry = iter.next()
+                    val old = entry.value
+                    // If we can't guarantee this was a full knowledge update, we can't update the timestamp with confidence.
+                    val new = old.item.update(entry.key, update.items, update.missing)
+                    entry.setValue(old.copy(item = new))
+                }
+            }
+
             is CacheUpdate.MutationResult -> {
                 val iter = byQuery.iterator()
                 while (iter.hasNext()) {

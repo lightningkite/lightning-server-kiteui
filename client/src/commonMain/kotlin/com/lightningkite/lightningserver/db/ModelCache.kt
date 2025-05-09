@@ -86,7 +86,7 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
                 condition = Condition.OnField(idProp, Condition.Inside(it))
             )
         )
-        newData.value = CacheUpdate.MutationResult(r)
+        newData.value = CacheUpdate.MultiGetResult(it.toSet() - r.mapTo(HashSet()) {it._id}, r)
         val map = r.associateBy { it._id }
         it.map { map[it] }
     }
@@ -110,7 +110,14 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
                 is CacheUpdate.DeletionResult -> update.deletedIds.forEach { id ->
                     lastIndividualValues.getOrPut(id, ::LateInitProperty).value = WithTimestamp(null)
                 }
-
+                is CacheUpdate.MultiGetResult -> {
+                    update.items.forEach { item ->
+                        lastIndividualValues.getOrPut(item._id, ::LateInitProperty).value = WithTimestamp(item)
+                    }
+                    update.missing.forEach { id ->
+                        lastIndividualValues.getOrPut(id, ::LateInitProperty).value = WithTimestamp(null)
+                    }
+                }
                 is CacheUpdate.SocketOverload -> lastIndividualValues.values.forEach { it.unset() }
                 else -> update.items?.forEach { item ->
                     lastIndividualValues.getOrPut(item._id, ::LateInitProperty).value = WithTimestamp(item)

@@ -26,6 +26,7 @@ import kotlinx.datetime.Instant
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 import kotlin.test.fail
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
@@ -387,6 +388,38 @@ class ModelCacheTest {
             )
         }
         advanceTimeBy(30.seconds)
+    }
+
+    @Test
+    fun getGone() = runTest2 {
+        val mock = ClientModelRestEndpointsMock<LargeTestModel, UUID>(this)
+//        val mock = ClientModelRestEndpointsPlusUpdatesWebsocketMock<LargeTestModel, UUID>(this)
+        val dataToInsert = listOf(
+            LargeTestModel(int = 1),
+            LargeTestModel(int = 2),
+            LargeTestModel(int = 3),
+            LargeTestModel(int = 4),
+            LargeTestModel(int = 5),
+        )
+        mock.data.putAll(dataToInsert.associateBy { it._id })
+        val cache = ModelCache<LargeTestModel, UUID>(
+            mock,
+            LargeTestModel.serializer(),
+            scope = backgroundScope,
+            log = testLog
+        )
+
+        var runs = 0
+        val ref = cache.item(UUID.random())
+        reactive {
+            assertEquals(
+                null,
+                ref().also(::println)
+            )
+            runs++
+        }
+        advanceTimeBy(30.seconds)
+        assertTrue(runs >= 1)
     }
 
     /*
