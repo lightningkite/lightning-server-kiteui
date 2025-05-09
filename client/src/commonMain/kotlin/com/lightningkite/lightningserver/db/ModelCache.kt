@@ -50,13 +50,7 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
 //    val newest: (T?, T?) -> T? = { _, it -> it },
     val onUpdate: ((CollectionUpdates<T, ID>) -> Unit)? = null,
     val scope: CoroutineScope = AppScope,
-    val log: Console? = ConsoleRoot.tag(
-        "ModelCache(${serializer.descriptor.serialName.substringAfterLast('.')} ${
-            Random.nextInt(
-                100
-            )
-        })"
-    )
+    val log: Console? = null
 ) : ModelCacheLike<T, ID> {
     private val idProp = serializer._id()
 
