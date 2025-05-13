@@ -76,7 +76,6 @@ object NullableFormRenderer : FormRenderer.Generator, ViewRenderer.Generator {
                 val isNull = shared { readable() == null }
                 reactiveScope {
                     clearChildren()
-                    println("Rerender nullable")
                     if (isNull()) {
                         text("N/A")
                     } else {

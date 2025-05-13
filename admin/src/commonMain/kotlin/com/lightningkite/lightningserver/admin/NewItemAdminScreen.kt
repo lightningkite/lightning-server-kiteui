@@ -25,7 +25,7 @@ class NewItemAdminPage(val collectionName: String) : Page {
     val conditionString: Property<String?> = Property(null)
 
     override fun ViewWriter.render(): ViewModifiable {
-        val mc = shared { adminServer().models[collectionName]?.cache(adminAuthentication()) as ModelCache<HasId<Comparable<Comparable<*>>>, Comparable<Comparable<*>>> }
+        val mc = shared { adminServer().models[collectionName]?.cache(adminAuthentication()) as ModelCache<UnknownModel, UnknownId> }
         val item = asyncReadable {
             val coerceCondition = conditionString.value?.let {
                 try {

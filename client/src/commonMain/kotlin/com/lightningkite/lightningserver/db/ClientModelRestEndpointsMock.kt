@@ -139,8 +139,10 @@ open class ClientModelRestEndpointsMock<T : HasId<ID>, ID : Comparable<ID>>(
     }
 
     override suspend fun groupCount(input: GroupCountQuery<T>): Map<String, Int> = TODO()
+    override suspend fun groupCount2(input: GroupCountQuery<T>): Map<String, Int> = TODO()
     override suspend fun aggregate(input: AggregateQuery<T>): Double? = TODO()
     override suspend fun groupAggregate(input: GroupAggregateQuery<T>): Map<String, Double?> = TODO()
+    override suspend fun groupAggregate2(input: GroupAggregateQuery<T>): Map<String, Double?> = TODO()
     override suspend fun permissions(): ModelPermissions<T> = ModelPermissions.Companion.allowAll()
 
 }

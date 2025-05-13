@@ -121,7 +121,7 @@ object TableRenderer : FormRenderer.Generator, ViewRenderer.Generator {
                         }
                     }
                 }
-                expanding - recyclerView {
+                expanding - ListSemantic.onNext - recyclerView {
                     reactive {
                         val inner = readable()
                         if (inner is LimitReadable<T>) {

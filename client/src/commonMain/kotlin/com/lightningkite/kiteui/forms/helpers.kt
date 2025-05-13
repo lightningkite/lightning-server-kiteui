@@ -36,6 +36,7 @@ enum class FormLayoutPreferences(
     Block(approximateWidthBound = null, approximateHeightBound = 12.0),
     Field(approximateWidthBound = 12.0, approximateHeightBound = 2.0),
     Unbound(approximateWidthBound = null, approximateHeightBound = null),
+    ScreenBound(approximateWidthBound = 100.0, approximateHeightBound = null),
 }
 
 object GenericPlaceholderSerializer: KSerializer<Any?> {

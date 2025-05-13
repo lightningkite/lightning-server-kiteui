@@ -23,10 +23,6 @@ import com.lightningkite.serialization.serializableProperties
 import kotlinx.datetime.TimeZone
 import kotlin.time.Duration.Companion.milliseconds
 
-//val defaultTheme = brandBasedExperimental("bsa", normalBack = Color.white)
-val defaultTheme = Theme.flat("default", Angle(0.55f))
-val appTheme = Property<Theme>(defaultTheme)
-
 @JsModule("@js-joda/timezone")
 @JsNonModule
 external object JsJodaTimeZoneModule

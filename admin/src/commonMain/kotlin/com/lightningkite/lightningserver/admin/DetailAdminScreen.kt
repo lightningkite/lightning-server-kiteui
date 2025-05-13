@@ -24,10 +24,10 @@ import com.lightningkite.serialization.default
 import com.lightningkite.serialization.serializableProperties
 import kotlinx.serialization.encodeToString
 
-@Routable("collections/{collectionName}/{itemId}")
+@Routable("collections/{collectionName}/detail/{itemId}")
 class DetailAdminPage(val collectionName: String, val itemId: String) : Page {
     override fun ViewWriter.render(): ViewModifiable {
-        val mc = shared { adminServer().models[collectionName]?.cache(adminAuthentication()) as ModelCache<HasId<Comparable<Comparable<*>>>, Comparable<Comparable<*>>> }
+        val mc = shared { adminServer().models[collectionName]?.cache(adminAuthentication()) as ModelCache<UnknownModel, UnknownId> }
         val item = Draft(shared {
             val mc = mc()
             val actualId = UrlProperties.decodeFromString(mc.serializer._id().serializer, itemId)
@@ -118,7 +118,6 @@ class DetailAdminPage(val collectionName: String, val itemId: String) : Page {
                         model.value.serializer.serializableProperties?.forEach {
                             val anno = it.serializableAnnotations.find { it.fqn == "com.lightningkite.lightningdb.References" } ?: return@forEach
                             val typeName = anno.values.get("references")?.let { it as? SerializableAnnotationValue.ClassValue }?.fqn ?: return@forEach
-                            println("Checking for type name $myTypeName, comparing with ${typeName} from ${model.key}.${it.name}")
                             if (typeName != myTypeName) return@forEach
                             val reverseName = anno.values.get("reverseName")?.let { it as? SerializableAnnotationValue.StringValue }?.value?.takeUnless { it.isEmpty() }
                             val label = reverseName ?: "${model.value.serializer.displayName}'s ${it.displayName}"
@@ -126,7 +125,7 @@ class DetailAdminPage(val collectionName: String, val itemId: String) : Page {
                                 text(label)
                                 to = { CollectionAdminPage(model.key).apply { conditionString.value = DefaultJson.encodeToString(
                                     ConditionSerializer(model.value.serializer),
-                                    Condition.OnField(it as SerializableProperty<HasId<*>, Comparable<Comparable<*>>>, Condition.Equal(itemId))
+                                    Condition.OnField(it as SerializableProperty<HasId<*>, UnknownId>, Condition.Equal(itemId))
                                 ) } }
                             }
                         }

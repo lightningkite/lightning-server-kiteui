@@ -61,7 +61,7 @@ class CollectionAdminPage(val collectionName: String) : Page {
 
     val mc = shared {
         adminServer().models[collectionName]?.cache(adminAuthentication())!!
-                as ModelCache<HasId<Comparable<Comparable<*>>>, Comparable<Comparable<*>>>
+                as ModelCache<UnknownModel, UnknownId>
     }
 
     fun ViewWriter.exportDialog() = dialog {
@@ -132,12 +132,12 @@ class CollectionAdminPage(val collectionName: String) : Page {
         }
     }
 
-    private fun RowOrCol.renderContents(mc: ModelCache<HasId<Comparable<Comparable<*>>>, Comparable<Comparable<*>>>, forms: FormModule) {
+    private fun RowOrCol.renderContents(mc: ModelCache<UnknownModel, UnknownId>, forms: FormModule) {
         val condition = conditionWritable(mc)
         val sort = sortWritable(mc)
 
         @Suppress("UNCHECKED_CAST")
-        val columns: ImmediateWritable<List<DataClassPath<HasId<Comparable<Comparable<*>>>, *>>> =
+        val columns: ImmediateWritable<List<DataClassPath<UnknownModel, *>>> =
             columnsWritable(mc)
         val query = queryReadable(mc)
         row {
@@ -159,6 +159,10 @@ class CollectionAdminPage(val collectionName: String) : Page {
                 opensMenu {
                     form(forms, ListSerializer(SortPartSerializer(mc.serializer)), sort)
                 }
+            }
+            link {
+                icon(Icon.info, "Statistics")
+                to = { CollectionStatsPage(collectionName) }
             }
             menuButton {
                 icon(Icon.moreVert, "Bulk Actions")
@@ -243,7 +247,7 @@ class CollectionAdminPage(val collectionName: String) : Page {
                 }
             }
         }
-        expanding - TableRenderer.view<HasId<Comparable<Comparable<*>>>>(
+        expanding - TableRenderer.view<UnknownModel>(
             formModule = forms,
             writer = this@renderContents,
             innerSer = mc.serializer,
@@ -258,7 +262,7 @@ class CollectionAdminPage(val collectionName: String) : Page {
         )
     }
 
-    private fun columnsWritable(mc: ModelCache<HasId<Comparable<Comparable<*>>>, Comparable<Comparable<*>>>): ImmediateWritable<List<DataClassPath<HasId<Comparable<Comparable<*>>>, *>>> =
+    private fun columnsWritable(mc: ModelCache<UnknownModel, UnknownId>): ImmediateWritable<List<DataClassPath<UnknownModel, *>>> =
         columnsString.lens(
             get = {
                 it?.let {
@@ -266,7 +270,7 @@ class CollectionAdminPage(val collectionName: String) : Page {
                         DefaultJson.decodeFromString(
                             ListSerializer(DataClassPathSerializer(mc.serializer)),
                             it
-                        ) as List<DataClassPath<HasId<Comparable<Comparable<*>>>, *>>
+                        ) as List<DataClassPath<UnknownModel, *>>
                     } catch (e: Exception) {
                         null
                     }
@@ -275,12 +279,12 @@ class CollectionAdminPage(val collectionName: String) : Page {
             set = {
                 DefaultJson.encodeToString(
                     ListSerializer(DataClassPathSerializer(mc.serializer)),
-                    it as List<DataClassPathPartial<HasId<Comparable<Comparable<*>>>>>
+                    it as List<DataClassPathPartial<UnknownModel>>
                 )
             }
         )
 
-    private fun sortWritable(mc: ModelCache<HasId<Comparable<Comparable<*>>>, Comparable<Comparable<*>>>): ImmediateWritable<List<SortPart<HasId<Comparable<Comparable<*>>>>>> =
+    private fun sortWritable(mc: ModelCache<UnknownModel, UnknownId>): ImmediateWritable<List<SortPart<UnknownModel>>> =
         sortString.lens(
             get = {
                 it?.let {
@@ -294,7 +298,7 @@ class CollectionAdminPage(val collectionName: String) : Page {
             set = { DefaultJson.encodeToString(ListSerializer(SortPartSerializer(mc.serializer)), it) }
         )
 
-    private fun conditionWritable(mc: ModelCache<HasId<Comparable<Comparable<*>>>, Comparable<Comparable<*>>>): ImmediateWritable<Condition<HasId<Comparable<Comparable<*>>>>> =
+    private fun conditionWritable(mc: ModelCache<UnknownModel, UnknownId>): ImmediateWritable<Condition<UnknownModel>> =
         conditionString.lens(
             get = {
                 it?.let {
@@ -308,14 +312,14 @@ class CollectionAdminPage(val collectionName: String) : Page {
             set = { DefaultJson.encodeToString(Condition.serializer(mc.serializer), it) }
         )
 
-    private fun queryReadable(mc: ModelCache<HasId<Comparable<Comparable<*>>>, Comparable<Comparable<*>>>): Readable<Query<HasId<Comparable<Comparable<*>>>>> {
+    private fun queryReadable(mc: ModelCache<UnknownModel, UnknownId>): Readable<Query<UnknownModel>> {
         val sort = sortWritable(mc)
         val condition = conditionWritable(mc)
         val columns = columnsWritable(mc)
         val hasTextIndex = mc.serializer.serializableAnnotations.any { it.fqn.endsWith("TextIndex") }
         return shared {
             Query(
-                Condition.And<HasId<Comparable<Comparable<*>>>>(
+                Condition.And<UnknownModel>(
                     listOfNotNull(
                         textSearch.debounce(500)().takeUnless { it.isBlank() }?.let {
                             if (hasTextIndex) Condition.FullTextSearch(it)
@@ -326,7 +330,7 @@ class CollectionAdminPage(val collectionName: String) : Page {
                                             it.nullElement() ?: it
                                         }.descriptor.serialName.substringBefore('/')
                                         val p =
-                                            if (it.serializer.descriptor.isNullable) DataClassPathNotNull(it as DataClassPath<HasId<Comparable<Comparable<*>>>, Any?>) else it
+                                            if (it.serializer.descriptor.isNullable) DataClassPathNotNull(it as DataClassPath<UnknownModel, Any?>) else it
                                         if (s == "kotlin.String") {
                                             p.mapCondition(
                                                 Condition.StringContains(
@@ -384,7 +388,7 @@ fun Condition<*>.friendly(): String {
 //
 //    val mc = shared {
 //        adminServer().models[collectionName]?.cache(adminAuthentication())!!
-//                as ModelCache<HasId<Comparable<Comparable<*>>>, Comparable<Comparable<*>>>
+//                as ModelCache<UnknownModel, UnknownId>
 //    }
 //
 //    override fun ViewWriter.render(): Any? {
@@ -414,7 +418,7 @@ fun Condition<*>.friendly(): String {
 //        }
 //    }
 //
-//    private fun conditionWritable(mc: ModelCache<HasId<Comparable<Comparable<*>>>, Comparable<Comparable<*>>>): ImmediateWritable<Condition<HasId<Comparable<Comparable<*>>>>> =
+//    private fun conditionWritable(mc: ModelCache<UnknownModel, UnknownId>): ImmediateWritable<Condition<UnknownModel>> =
 //        conditionString.lens(
 //            get = {
 //                it?.let {

@@ -16,6 +16,7 @@ import com.lightningkite.kiteui.views.direct.text
 import com.lightningkite.lightningdb.HasId
 import com.lightningkite.lightningdb.SortPart
 import com.lightningkite.lightningserver.db.ModelCache
+import com.lightningkite.readable.ReactiveContext
 import com.lightningkite.serialization.*
 import kotlinx.datetime.Instant
 import kotlinx.serialization.ExperimentalSerializationApi
@@ -285,8 +286,8 @@ fun <T> KSerializer<T>.defaultTitleFields(): List<DataClassPath<T, *>> {
 
 class FormTypeInfo<T : HasId<ID>, ID : Comparable<ID>>(
     val serializer: KSerializer<T>,
-    val cache: () -> ModelCache<T, ID>,
-    val page: (ID) -> (() -> Page)?,
+    val cache: ReactiveContext.() -> ModelCache<T, ID>,
+    val page: ReactiveContext.(ID) -> (() -> Page)?,
     val titleFields: List<DataClassPath<T, *>> = serializer.defaultTitleFields(),
     val renderToString: (suspend (ID) -> String)
 )
@@ -296,7 +297,7 @@ fun <T> ViewWriter.form(
     serializer: KSerializer<T>,
     writable: Writable<T>,
     annotations: List<SerializableAnnotation> = serializer.serializableAnnotations,
-    desiredSize: FormLayoutPreferences = FormLayoutPreferences.Unbound,
+    desiredSize: FormLayoutPreferences = FormLayoutPreferences.ScreenBound,
     field: SerializableProperty<*, *>? = null,
 ): ViewModifiable {
     val sel = FormSelector<T>(serializer, annotations, desiredSize)
@@ -308,7 +309,7 @@ fun <T> ViewWriter.view(
     serializer: KSerializer<T>,
     readable: Readable<T>,
     annotations: List<SerializableAnnotation> = serializer.serializableAnnotations,
-    desiredSize: FormLayoutPreferences = FormLayoutPreferences.Unbound,
+    desiredSize: FormLayoutPreferences = FormLayoutPreferences.ScreenBound,
     field: SerializableProperty<*, *>? = null,
 ): ViewModifiable {
     val sel = FormSelector<T>(serializer, annotations, desiredSize)

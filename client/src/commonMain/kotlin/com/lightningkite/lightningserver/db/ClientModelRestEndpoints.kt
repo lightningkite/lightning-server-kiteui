@@ -20,8 +20,10 @@ interface ClientModelRestEndpoints<T : HasId<ID>, ID : Comparable<ID>> {
     suspend fun delete(id: ID): Unit
     suspend fun count(input: Condition<T>): Int
     suspend fun groupCount(input: GroupCountQuery<T>): Map<String, Int>
+    suspend fun groupCount2(input: GroupCountQuery<T>): Map<String, Int> = groupCount(input)
     suspend fun aggregate(input: AggregateQuery<T>): Double?
     suspend fun groupAggregate(input: GroupAggregateQuery<T>): Map<String, Double?>
+    suspend fun groupAggregate2(input: GroupAggregateQuery<T>): Map<String, Double?> = groupAggregate(input)
     suspend fun permissions(): ModelPermissions<T>
 
 }

@@ -80,8 +80,8 @@ val adminServer = shared {
     try {
         val s = ExternalLightningServer(serverSchema(), adminSettings().liveData)
         s.page = label@{ type, id ->
-            type as ExternalLightningServer.ModelInfo<HasId<Comparable<Comparable<*>>>, Comparable<Comparable<*>>>
-            val idAsString = UrlProperties.encodeToString(type.idserializer, id as Comparable<Comparable<*>>)
+            type as ExternalLightningServer.ModelInfo<UnknownModel, UnknownId>
+            val idAsString = UrlProperties.encodeToString(type.idserializer, id as UnknownId)
             return@label {
                 DetailAdminPage(
                     collectionName = s.models.entries.single { (_, it) -> it.serializer.descriptor.serialName == type.serializer.descriptor.serialName }.key,

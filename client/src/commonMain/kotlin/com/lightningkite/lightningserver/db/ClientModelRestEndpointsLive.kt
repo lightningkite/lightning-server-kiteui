@@ -171,6 +171,14 @@ open class ClientModelRestEndpointsLive<T : HasId<ID>, ID : Comparable<ID>>(
         MapSerializer(String.serializer(), Int.serializer())
     )
 
+    override suspend fun groupCount2(input: GroupCountQuery<T>): Map<String, Int> = fetcher(
+        "$subpath/group-count-2",
+        HttpMethod.POST,
+        GroupCountQuery.Companion.serializer(serializer),
+        input,
+        MapSerializer(String.serializer(), Int.serializer())
+    )
+
     override suspend fun aggregate(input: AggregateQuery<T>): Double? = fetcher(
         "$subpath/aggregate",
         HttpMethod.POST,
@@ -181,6 +189,14 @@ open class ClientModelRestEndpointsLive<T : HasId<ID>, ID : Comparable<ID>>(
 
     override suspend fun groupAggregate(input: GroupAggregateQuery<T>): Map<String, Double?> = fetcher(
         "$subpath/group-aggregate",
+        HttpMethod.POST,
+        GroupAggregateQuery.Companion.serializer(serializer),
+        input,
+        MapSerializer(String.serializer(), Double.serializer().nullable)
+    )
+
+    override suspend fun groupAggregate2(input: GroupAggregateQuery<T>): Map<String, Double?> = fetcher(
+        "$subpath/group-aggregate-2",
         HttpMethod.POST,
         GroupAggregateQuery.Companion.serializer(serializer),
         input,

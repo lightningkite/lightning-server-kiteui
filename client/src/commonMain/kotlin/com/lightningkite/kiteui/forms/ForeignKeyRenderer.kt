@@ -150,13 +150,13 @@ object ForeignKeyRenderer : FormRenderer.Generator, ViewRenderer.Generator {
                             }
                             expanding - swapView {
                                 swapping(
-                                    current = { full() },
-                                    views = { full->
+                                    current = { full() to typeInfo.cache() },
+                                    views = { (full, cache) ->
                                         if(full) {
                                             TableRenderer.view<HasId<Comparable<Comparable<*>>>>(
                                                 formModule = module,
                                                 writer = this@swapping,
-                                                innerSer = typeInfo.cache().serializer,
+                                                innerSer = cache.serializer,
                                                 readable = itemsMeta,
                                                 linkTo = null,
                                                 action = {

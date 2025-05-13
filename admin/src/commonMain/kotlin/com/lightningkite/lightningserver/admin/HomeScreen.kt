@@ -12,12 +12,14 @@ import com.lightningkite.readable.*
 import com.lightningkite.kiteui.views.ViewWriter
 import com.lightningkite.kiteui.views.*
 import com.lightningkite.kiteui.views.direct.*
+import com.lightningkite.kiteui.views.display
 import com.lightningkite.lightningserver.serverhealth.HealthStatus
 import com.lightningkite.lightningserver.serverhealth.ServerHealth
 import com.lightningkite.now
 import com.lightningkite.serialization.lensPath
 import kotlinx.serialization.builtins.nullable
 import kotlinx.serialization.builtins.serializer
+import kotlin.text.iterator
 
 @Routable("/")
 class HomePage : Page {
@@ -83,6 +85,39 @@ class HomePage : Page {
                     }
                 }
             }
+//            card - col {
+//                text("Theme")
+//                scrollingHorizontally - row {
+//                    expanding - space()
+//                    for (type in ThemePreference.entries) {
+//                        ThemeDerivation.Set(type.theme(null)).onNext - centered - card - button {
+//                            text(type.display)
+//                            onClick { themePreference.value = type }
+//                        }
+//                    }
+//                    expanding - space()
+//                }
+//                scrollingHorizontally - row {
+//                    expanding - space()
+//                    val colorOptions = (0..360 step 45).map {
+//                        HSPColor(hue = it.degrees, saturation = 0.8f, brightness = 0.7f, alpha = 1f).toRGB()
+//                    } + Color.white + Color.black + Color.gray(0.5f)
+//                    card - button {
+//                        text("Default")
+//                        onClick { themePreferenceColor.value = null }
+//                    }
+//                    for (color in colorOptions) {
+//                        ThemeDerivation(
+//                            Theme(id = "color-${color.toInt()}", background = color, foreground = Color.white)
+//                        ).onNext - button {
+//                            onClick {
+//                                themePreferenceColor.value = color
+//                            }
+//                        }
+//                    }
+//                    expanding - space()
+//                }
+//            }
             card - col {
                 h2("Server Status")
                 val status = asyncReadable {
@@ -120,6 +155,7 @@ class HomePage : Page {
                     }
                 }
             }
+
         }
     }
 }

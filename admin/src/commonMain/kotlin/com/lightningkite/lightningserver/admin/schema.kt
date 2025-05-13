@@ -157,8 +157,8 @@ class ExternalLightningServer(
         val docGroup = inter.docGroup
         val serializer = inter.matches.arguments[0].serializer(registry, mapOf()) as KSerializer<T>
         val idserializer = serializer.serializableProperties!!.find { it.name == "_id" }!!.serializer as KSerializer<ID>
-        val vserializer = inter.matches.arguments[0].serializer(registry, mapOf()) as KSerializer<HasId<Comparable<Comparable<*>>>>
-        val vidserializer = serializer.serializableProperties!!.find { it.name == "_id" }!!.serializer as KSerializer<Comparable<Comparable<*>>>
+        val vserializer = inter.matches.arguments[0].serializer(registry, mapOf()) as KSerializer<UnknownModel>
+        val vidserializer = serializer.serializableProperties!!.find { it.name == "_id" }!!.serializer as KSerializer<UnknownId>
         val httpPath = inter.path
         val hasWs =
             schema.endpoints.any { it.path == inter.path && it.method == "WEBSOCKET" && it.input.serialName == "com.lightningkite.lightningdb.Query" && it.output.serialName == "com.lightningkite.lightningdb.ListChange" }
@@ -215,7 +215,7 @@ class ExternalLightningServer(
     val models: Map<String, ModelInfo<*, *>> = schema.interfaces.filter {
         it.matches.serialName == "ClientModelRestEndpoints"
     }.associate { inter ->
-        inter.path to ModelInfo<HasId<Comparable<Comparable<*>>>, Comparable<Comparable<*>>>(inter)
+        inter.path to ModelInfo<UnknownModel, UnknownId>(inter)
     }
 
     fun formModule(auth: LightningServerAuthentication?) = FormModule().apply {
@@ -237,7 +237,7 @@ class ExternalLightningServer(
             }
         }
         typeInfo = label@{ name ->
-            val m = models.values.find { it.serializer.descriptor.serialName == name } as? ModelInfo<HasId<Comparable<Comparable<*>>>, Comparable<Comparable<*>>> ?: return@label null
+            val m = models.values.find { it.serializer.descriptor.serialName == name } as? ModelInfo<UnknownModel, UnknownId> ?: return@label null
             FormTypeInfo(
                 serializer = m.serializer,
                 cache = { m.cache(auth) },

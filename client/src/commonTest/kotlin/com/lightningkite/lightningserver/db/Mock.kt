@@ -164,6 +164,11 @@ class MockClientModelRestEndpoints<T : HasId<ID>, ID : Comparable<ID>>(val log: 
         hold.await()
         return items.values.groupBy { input.groupBy.getAny(it).toString() }.mapValues { it.value.size }
     }
+    override suspend fun groupCount2(input: GroupCountQuery<T>): Map<String, Int> {
+        log("groupCount $input")
+        hold.await()
+        return items.values.groupBy { input.groupBy.getAny(it).toString() }.mapValues { it.value.size }
+    }
 
     override suspend fun aggregate(input: AggregateQuery<T>): Double? {
         log("aggregate $input")
@@ -172,6 +177,11 @@ class MockClientModelRestEndpoints<T : HasId<ID>, ID : Comparable<ID>>(val log: 
     }
 
     override suspend fun groupAggregate(input: GroupAggregateQuery<T>): Map<String, Double?> {
+        log("groupAggregate $input")
+        hold.await()
+        TODO("Not yet implemented")
+    }
+    override suspend fun groupAggregate2(input: GroupAggregateQuery<T>): Map<String, Double?> {
         log("groupAggregate $input")
         hold.await()
         TODO("Not yet implemented")

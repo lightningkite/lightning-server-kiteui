@@ -20,7 +20,7 @@ fun main() {
         val info = DefaultJson.decodeFromString<InjectedBackendInformation>(it)
         serverUrl.value = info.url
     }
-    root(appTheme.value) {
+    root(appTheme) {
         app(PageNavigator { AutoRoutes }, PageNavigator { AutoRoutes })
     }
 }

@@ -13,6 +13,7 @@ import com.lightningkite.readable.lens
 import com.lightningkite.kiteui.views.*
 import com.lightningkite.kiteui.views.direct.*
 import com.lightningkite.kiteui.views.l2.field
+import com.lightningkite.lightningdb.MySealedClassSerializerInterface
 import com.lightningkite.serialization.*
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.InternalSerializationApi
@@ -29,6 +30,7 @@ object ByFieldRenderer : FormRenderer.Generator, ViewRenderer.Generator {
     override val kind = StructureKind.CLASS
     override fun matches(module: FormModule, selector: FormSelector<*>): Boolean {
         if(selector.serializer.descriptor.isInline) return false
+        if( selector.serializer is MySealedClassSerializerInterface<*>) return false
         return super<FormRenderer.Generator>.matches(module, selector) && !selector.serializer.descriptor.isNullable
     }
     override fun size(module: FormModule, selector: FormSelector<*>): FormSize {
