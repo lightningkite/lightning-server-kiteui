@@ -2,14 +2,23 @@ package com.lightningkite.kiteui.forms
 
 import com.lightningkite.kiteui.ClientAuthenticator
 import com.lightningkite.kiteui.WebAuthNMediationType
+import com.lightningkite.kiteui.debugMode
+import com.lightningkite.kiteui.exceptions.ExceptionHandlers
+import com.lightningkite.kiteui.exceptions.ExceptionMessage
+import com.lightningkite.kiteui.exceptions.ExceptionToMessage
+import com.lightningkite.kiteui.exceptions.ExceptionToMessages
 import com.lightningkite.kiteui.models.*
+import com.lightningkite.kiteui.navigation.dialogPageNavigator
 import com.lightningkite.kiteui.printStackTrace2
 import com.lightningkite.kiteui.reactive.Action
 import com.lightningkite.kiteui.reactive.PersistentProperty
 import com.lightningkite.kiteui.views.*
 import com.lightningkite.kiteui.views.direct.*
+import com.lightningkite.kiteui.views.l2.dialog
+import com.lightningkite.kiteui.views.l2.errorText
 import com.lightningkite.kiteui.views.l2.field
 import com.lightningkite.kiteui.views.l2.icon
+import com.lightningkite.lightningserver.LSError
 import com.lightningkite.lightningserver.LsErrorException
 import com.lightningkite.lightningserver.auth.*
 import com.lightningkite.lightningserver.auth.proof.FinishProof
@@ -24,6 +33,7 @@ import com.lightningkite.now
 import com.lightningkite.readable.*
 import kotlinx.coroutines.*
 import kotlinx.serialization.Serializable
+import kotlin.collections.plus
 import kotlin.math.roundToInt
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.days
@@ -65,7 +75,7 @@ data class KnownDeviceSecretInfoStuff(
 class EmailProof(val p: EmailProofClientEndpoints, val id: String, var codeKey: String) : CurrentProof {
     val code = Property("")
     val resendTime = 15.seconds
-    override fun ViewWriter.render(onProof: (Proof) -> Unit) {
+    override fun ViewWriter.render(onProof: (Proof) -> Unit, onException: (Exception) -> Unit) {
         col {
             val proveEmailOwnership = Action("Submit", Icon.done) {
                 onProof(p.proveEmailOwnership(FinishProof(codeKey, code.await())))
@@ -115,7 +125,7 @@ class EmailProof(val p: EmailProofClientEndpoints, val id: String, var codeKey: 
 class SmsProof(val p: SmsProofClientEndpoints, val id: String, var codeKey: String) : CurrentProof {
     val code = Property("")
     val resendTime = 15.seconds
-    override fun ViewWriter.render(onProof: (Proof) -> Unit) {
+    override fun ViewWriter.render(onProof: (Proof) -> Unit, onException: (Exception) -> Unit) {
         col {
             val provePhoneOwnership = Action("Submit", Icon.done) {
                 onProof(p.provePhoneOwnership(FinishProof(codeKey, code.await())))
@@ -167,7 +177,7 @@ class PasswordProof(
     val value: String,
 ) : CurrentProof {
     val code = Property("")
-    override fun ViewWriter.render(onProof: (Proof) -> Unit) {
+    override fun ViewWriter.render(onProof: (Proof) -> Unit, onException: (Exception) -> Unit) {
         val provePasswordOwnership = Action("Submit", Icon.done) {
             onProof(p.provePasswordOwnership(IdentificationAndPassword(type, key, value, code.await())))
         }
@@ -197,7 +207,7 @@ class OtpProof(
     val value: String,
 ) : CurrentProof {
     val code = Property("")
-    override fun ViewWriter.render(onProof: (Proof) -> Unit) {
+    override fun ViewWriter.render(onProof: (Proof) -> Unit, onException: (Exception) -> Unit) {
         col {
             val proveOtpProofAction = Action("Submit", Icon.done) {
                 onProof(p.proveOTP(IdentificationAndPassword(type, key, value, code.await())))
@@ -219,8 +229,58 @@ class OtpProof(
     }
 }
 
+class WebAuthNProof(
+    val p: WebAuthNProofEndpoints,
+    val type: String,
+    val key: String?,
+    val isPrimary: Boolean,
+) : CurrentProof {
+    override fun ViewWriter.render(onProof: (Proof) -> Unit, onException: (Exception) -> Unit) {
+        important - buttonTheme - frame {
+
+            launch {
+                try {
+                    val (key, getOptions) = p.start(
+                        WebAuthN.Authentication.StartRequest(
+                            subjectId = if (isPrimary) null else key,
+                            subjectType = type
+                        )
+                    )
+                    val signedChallenge =
+                        ClientAuthenticator.getClientAuthenticator().getWebAuthNCredentials(
+                            getOptions,
+                            WebAuthNMediationType.Optional
+                        )
+                    val result = p.prove(
+                        WebAuthN.Authentication.ProveRequest(
+                            key,
+                            signedChallenge
+                        )
+                    )
+                    onProof(result)
+                } catch (e: Exception) {
+                    onException(Exception("Failed to prove ${if (isPrimary) "Passkey" else "Security Key"}"))
+                }
+            }
+
+            row {
+                expanding - space()
+                centered - icon(Icon.passkey, "Passkey")
+                centered - text {
+                    ::content{
+                        if (isPrimary) "Use a Passkey"
+                        else "Use your Security Key"
+                    }
+                }
+                expanding - space()
+            }
+            centered - activityIndicator()
+        }
+    }
+}
+
 interface CurrentProof {
-    fun ViewWriter.render(onProof: (Proof) -> Unit)
+    fun ViewWriter.render(onProof: (Proof) -> Unit, onException: (Exception) -> Unit)
 }
 
 class ReAuthComponent(
@@ -237,7 +297,6 @@ class ReAuthComponent(
     val currentProof = Property<CurrentProof?>(null)
     val authenticating = Property(false)
     val knownDevice = knownDeviceLocalStorageName?.let { PersistentProperty<KnownDeviceSecretInfoStuff?>(it, null) }
-    val waitingPasskey = Property(false)
     val requirements = sharedSuspending {
         authenticationSubject.authRequirements()
     }
@@ -268,9 +327,10 @@ class ReAuthComponent(
                 LogInRequest(
                     proofs = proofs(),
                     expires = now() + newSessionDuration
-                ))
+                )
+            )
 
-            result.session?.also{ onAuthentication(it) }
+            result.session?.also { onAuthentication(it) }
 
         }
 
@@ -391,31 +451,12 @@ class ReAuthComponent(
                                 expanding - space()
                             }
                             this.action = Action("Sign in with a Passkey", Icon.passkey) {
-                                try {
-
-                                    if (proofs.value.isEmpty()) {
-                                        waitingPasskey.value = true
-                                    }
-                                    val (key, getOptions) = webAuthNProof.start(
-                                        WebAuthN.Authentication.StartRequest(
-                                            subjectId = if(isPrimary.await()) null else subjectId,
-                                            subjectType = subjectType
-                                        )
-                                    )
-                                    val signedChallenge =
-                                        ClientAuthenticator.getClientAuthenticator().getWebAuthNCredentials(
-                                            getOptions,
-                                            WebAuthNMediationType.Optional
-                                        )
-                                    proofs.value += webAuthNProof.prove(
-                                        WebAuthN.Authentication.ProveRequest(
-                                            key,
-                                            signedChallenge
-                                        )
-                                    )
-                                } finally {
-                                    waitingPasskey.value = false
-                                }
+                                currentProof.value = WebAuthNProof(
+                                    p = webAuthNProof,
+                                    type = subjectType,
+                                    key = subjectId,
+                                    isPrimary = isPrimary.await()
+                                )
                             }
                         }
                     }
@@ -426,11 +467,46 @@ class ReAuthComponent(
                 reactive {
                     clearChildren()
                     currentProof()?.run {
-                        render {
-                            proofs.value += it
-                            currentProof.value = null
-                        }
+                        var callBackDone = false
+                        render(
+                            onProof = {
+                                if (callBackDone) return@render
+                                callBackDone = true
+
+                                proofs.value += it
+                                currentProof.value = null
+                            },
+                            onException = {
+                                if (callBackDone) return@render
+                                callBackDone = true
+
+                                currentProof.value = null
+                                this@frame.dialog {
+                                    col {
+                                        h2("Error")
+                                        text(it.message ?: "???")
+                                        row {
+                                            expanding - space()
+                                            buttonTheme - button {
+                                                text("OK")
+                                                onClick { closePopovers() }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        )
                     }
+                }
+            }
+
+            shownWhen { currentProof() != null } - button {
+                subtext {
+                    content = "Use a different Method"
+                    align = Align.Center
+                }
+                onClick {
+                    currentProof.value = null
                 }
             }
 
@@ -483,13 +559,11 @@ class AuthComponent(
     val knownDeviceOptions = sharedSuspending {
         endpoints.knownDeviceProof?.knownDeviceOptions()
     }
-    val waitingPasskey = Property(false)
-
 
     fun ViewWriter.render(): ViewModifiable {
         return col {
             val primaryIdentifierField: TextField
-            shownWhen { proofs().isEmpty() && currentProof() == null && !waitingPasskey() } - field(
+            shownWhen { proofs().isEmpty() && currentProof() == null } - field(
                 when {
                     endpoints.emailProof != null && endpoints.smsProof != null -> "Email or Phone Number"
                     endpoints.emailProof != null -> "Email"
@@ -529,7 +603,7 @@ class AuthComponent(
             }
 
 
-            shownWhen { (proofs().isNotEmpty() || currentProof() != null || waitingPasskey()) } - row {
+            shownWhen { proofs().isNotEmpty() || currentProof() != null } - row {
                 expanding - centered - text {
                     ::content{ primaryIdentifier().takeIf { it.isNotEmpty() } ?: "Using Passkey" }
                 }
@@ -691,7 +765,7 @@ class AuthComponent(
                                 (isPrimary() ||
                                         authResult()?.options?.any { it.method.via == "WebAuthN" } == true)
                     } - col {
-                        centered - shownWhen { isPrimary() && !waitingPasskey() } - text("Or")
+                        centered - shownWhen { isPrimary() } - text("Or")
 
                         important - buttonTheme - button {
                             row {
@@ -705,39 +779,17 @@ class AuthComponent(
                                 }
                                 expanding - space()
                             }
-                            this.action = Action("Sign in with a Passkey", Icon.passkey) {
-                                try {
-                                    try {
-                                        pendingWebauthnRequest.cancelAndJoin()
-                                    } catch (_: CancellationException) {
-                                    }
 
-                                    if (proofs.value.isEmpty()) {
-                                        primaryIdentifier.value = ""
-                                        waitingPasskey.value = true
-                                    }
-                                    val identity = authResult.awaitOnce()?.id?.toString()
-                                    val type = endpoints.subjects.keys.single()
-                                    val (key, getOptions) = webAuthNProof.start(
-                                        WebAuthN.Authentication.StartRequest(
-                                            identity,
-                                            type
-                                        )
-                                    )
-                                    val signedChallenge =
-                                        ClientAuthenticator.getClientAuthenticator().getWebAuthNCredentials(
-                                            getOptions,
-                                            WebAuthNMediationType.Optional
-                                        )
-                                    proofs.value += webAuthNProof.prove(
-                                        WebAuthN.Authentication.ProveRequest(
-                                            key,
-                                            signedChallenge
-                                        )
-                                    )
-                                } finally {
-                                    waitingPasskey.value = false
-                                }
+                            this.action = Action("Sign in with a Passkey", Icon.passkey) {
+                                val identity = authResult.awaitOnce()?.id?.toString()
+                                val type = endpoints.subjects.keys.single()
+
+                                currentProof.value = WebAuthNProof(
+                                    p = webAuthNProof,
+                                    type = type,
+                                    key = identity,
+                                    isPrimary = isPrimary.await()
+                                )
                             }
                         }
                     }
@@ -761,10 +813,35 @@ class AuthComponent(
                 reactive {
                     clearChildren()
                     currentProof()?.run {
-                        render {
-                            proofs.value += it
-                            currentProof.value = null
-                        }
+                        var callBackDone = false
+                        render(
+                            onProof = {
+                                if (callBackDone) return@render
+                                callBackDone = true
+
+                                proofs.value += it
+                                currentProof.value = null
+                            },
+                            onException = {
+                                if (callBackDone) return@render
+                                callBackDone = true
+
+                                currentProof.value = null
+                                this@frame.dialog {
+                                    col {
+                                        h2("Error")
+                                        text(it.message ?: "???")
+                                        row {
+                                            expanding - space()
+                                            buttonTheme - button {
+                                                text("OK")
+                                                onClick { closePopovers() }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        )
                     }
                 }
             }
