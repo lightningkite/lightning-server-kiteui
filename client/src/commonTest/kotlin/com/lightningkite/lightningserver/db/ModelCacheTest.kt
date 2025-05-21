@@ -7,6 +7,7 @@ import com.lightningkite.kiteui.Platform
 import com.lightningkite.kiteui.current
 import com.lightningkite.kiteui.forms.prepareModelsClient
 import com.lightningkite.lightningdb.Condition
+import com.lightningkite.lightningdb.MassModification
 import com.lightningkite.lightningdb.Query
 import com.lightningkite.lightningdb.condition
 import com.lightningkite.lightningdb.gt
@@ -458,8 +459,310 @@ class ModelCacheTest {
         assertTrue(runs >= 1)
     }
 
-    /*
-    TO TEST:
-    Listen, stop, add, reconnect
-     */
+        @Test
+    fun listenStopAddReconnect() = runTest2 {
+        val mock = ClientModelRestEndpointsPlusUpdatesWebsocketMock<LargeTestModel, UUID>(this)
+        val dataToInsert = listOf(
+            LargeTestModel(int = 1),
+            LargeTestModel(int = 2),
+            LargeTestModel(int = 3),
+        )
+        mock.data.putAll(dataToInsert.associateBy { it._id })
+        val cache = ModelCache<LargeTestModel, UUID>(
+            mock,
+            LargeTestModel.serializer(),
+            scope = backgroundScope,
+            log = testLog
+        )
+
+        // Start listening
+        var lastRead: List<LargeTestModel> = listOf()
+        val ref = cache.list(Query(Condition.Always, sort { it.int.ascending() }))
+        reactive {
+            lastRead = ref()
+        }
+        delay(5.seconds)
+        assertEquals(dataToInsert.sortedBy { it.int }, lastRead)
+
+        // Stop listening (simulate disconnection)
+        mock.connectivityFailure = true
+        delay(5.seconds)
+
+        // Add new data while disconnected
+        val newItem = LargeTestModel(int = 4)
+        mock.data[newItem._id] = newItem
+
+        // Reconnect
+        mock.connectivityFailure = false
+        delay(5.seconds)
+
+        // Verify new data is received
+        assertEquals(dataToInsert.plus(newItem).sortedBy { it.int }, lastRead)
+    }
+
+    @Test
+    fun localModifications() = runTest2 {
+        val mock = ClientModelRestEndpointsMock<LargeTestModel, UUID>(this)
+        val dataToInsert = listOf(
+            LargeTestModel(int = 1),
+            LargeTestModel(int = 2),
+            LargeTestModel(int = 3),
+        )
+        mock.data.putAll(dataToInsert.associateBy { it._id })
+        val cache = ModelCache<LargeTestModel, UUID>(
+            mock,
+            LargeTestModel.serializer(),
+            scope = backgroundScope,
+            log = testLog
+        )
+
+        // Get initial data
+        var lastRead: List<LargeTestModel> = listOf()
+        val ref = cache.list(Query(Condition.Always, sort { it.int.ascending() }))
+        reactive {
+            lastRead = ref()
+        }
+        delay(5.seconds)
+        assertEquals(dataToInsert.sortedBy { it.int }, lastRead)
+
+        // Test localSignalUpdate - also update the mock data to match
+        val itemToUpdate = dataToInsert.first { it.int == 2 }
+        val updatedItem = itemToUpdate.copy(short = 99)
+        mock.data[itemToUpdate._id] = updatedItem
+
+        cache.localSignalUpdate(
+            matching = { it.int == 2 },
+            modify = { it.copy(short = 99) }
+        )
+        delay(5.seconds)
+
+        // Verify the local update is reflected
+        val expectedAfterUpdate = dataToInsert.map { 
+            if (it.int == 2) it.copy(short = 99) else it 
+        }.sortedBy { it.int }
+        assertEquals(expectedAfterUpdate, lastRead)
+
+        // Test localInsert - also add to mock data
+        val newItem = LargeTestModel(int = 4)
+        mock.data[newItem._id] = newItem
+
+        cache.localInsert(newItem)
+        delay(5.seconds)
+
+        // Verify the local insert is reflected
+        assertEquals(expectedAfterUpdate.plus(newItem).sortedBy { it.int }, lastRead)
+    }
+
+    @Test
+    fun totalInvalidation() = runTest2 {
+        val mock = ClientModelRestEndpointsMock<LargeTestModel, UUID>(this)
+        val initialItem = LargeTestModel(int = 1)
+        mock.data[initialItem._id] = initialItem
+        val cache = ModelCache<LargeTestModel, UUID>(
+            mock,
+            LargeTestModel.serializer(),
+            scope = backgroundScope,
+            log = testLog
+        )
+
+        // Get initial data
+        var lastRead: LargeTestModel? = null
+        val ref = cache.item(initialItem._id)
+        reactive {
+            lastRead = ref()
+        }
+        delay(5.seconds)
+        assertEquals(initialItem, lastRead)
+
+        // Modify the data in the mock but not in the cache
+        val updatedItem = initialItem.copy(short = 99)
+        mock.data[initialItem._id] = updatedItem
+
+        // Total invalidation should force a refresh
+        cache.totallyInvalidate()
+        delay(5.seconds)
+
+        // Verify the updated data is received
+        assertEquals(updatedItem, lastRead)
+    }
+
+    @Test
+    fun upsertTest() = runTest2 {
+        val mock = ClientModelRestEndpointsMock<LargeTestModel, UUID>(this)
+        val cache = ModelCache<LargeTestModel, UUID>(
+            mock,
+            LargeTestModel.serializer(),
+            scope = backgroundScope,
+            log = testLog
+        )
+
+        // Create a new item
+        val newItem = LargeTestModel(int = 1)
+
+        // Upsert the item
+        val ref = cache.upsert(newItem)
+        var lastRead: LargeTestModel? = null
+        reactive {
+            lastRead = ref()
+        }
+        delay(5.seconds)
+
+        // Verify the item was inserted
+        assertEquals(newItem, lastRead)
+        assertTrue(mock.data.containsKey(newItem._id))
+
+        // Update the item
+        val updatedItem = newItem.copy(short = 99)
+        cache.upsert(updatedItem)
+        delay(5.seconds)
+
+        // Verify the item was updated
+        assertEquals(updatedItem, lastRead)
+    }
+
+    @Test
+    fun bulkModifyTest() = runTest2 {
+        val mock = ClientModelRestEndpointsMock<LargeTestModel, UUID>(this)
+        val dataToInsert = listOf(
+            LargeTestModel(int = 1),
+            LargeTestModel(int = 2),
+            LargeTestModel(int = 3),
+        )
+        mock.data.putAll(dataToInsert.associateBy { it._id })
+        val cache = ModelCache<LargeTestModel, UUID>(
+            mock,
+            LargeTestModel.serializer(),
+            scope = backgroundScope,
+            log = testLog
+        )
+
+        // Get initial data
+        var lastRead: List<LargeTestModel> = listOf()
+        val ref = cache.list(Query(Condition.Always, sort { it.int.ascending() }))
+        reactive {
+            lastRead = ref()
+        }
+        delay(5.seconds)
+        assertEquals(dataToInsert.sortedBy { it.int }, lastRead)
+
+        // Perform bulk modification
+        val bulkUpdate = MassModification(
+            condition = condition { it.int gt 1 },
+            modification = modification { it.short assign 99 }
+        )
+        cache.bulkModify(bulkUpdate)
+        delay(5.seconds)
+
+        // Verify the bulk update is reflected
+        val expectedAfterUpdate = dataToInsert.map { 
+            if (it.int > 1) it.copy(short = 99) else it 
+        }.sortedBy { it.int }
+        assertEquals(expectedAfterUpdate, lastRead)
+    }
+
+    @Test
+    fun emptyDataAddElements() = runTest2 {
+        // Start with an empty mock data source
+        val mock = ClientModelRestEndpointsMock<LargeTestModel, UUID>(this)
+        val cache = ModelCache<LargeTestModel, UUID>(
+            mock,
+            LargeTestModel.serializer(),
+            scope = backgroundScope,
+            log = testLog
+        )
+
+        // Set up reactive listener for the list
+        var lastRead: List<LargeTestModel> = listOf()
+        val ref = cache.list(Query(Condition.Always, sort { it.int.ascending() }))
+        reactive {
+            lastRead = ref()
+        }
+        delay(5.seconds)
+
+        // Initially, the list should be empty
+        assertEquals(emptyList(), lastRead)
+
+        // Add first element
+        val item1 = LargeTestModel(int = 1)
+        cache.add(item1)
+        delay(5.seconds)
+
+        // Verify the first element is in the list
+        assertEquals(listOf(item1), lastRead)
+
+        // Add second element
+        val item2 = LargeTestModel(int = 2)
+        cache.add(item2)
+        delay(5.seconds)
+
+        // Verify both elements are in the list, sorted by int
+        assertEquals(listOf(item1, item2).sortedBy { it.int }, lastRead)
+
+        // Add third element
+        val item3 = LargeTestModel(int = 3)
+        cache.add(item3)
+        delay(5.seconds)
+
+        // Verify all three elements are in the list, sorted by int
+        assertEquals(listOf(item1, item2, item3).sortedBy { it.int }, lastRead)
+
+        // Verify the mock data source contains all added items
+        assertEquals(3, mock.data.size)
+        assertTrue(mock.data.containsKey(item1._id))
+        assertTrue(mock.data.containsKey(item2._id))
+        assertTrue(mock.data.containsKey(item3._id))
+    }
+
+    @Test
+    fun emptyDataAddElementsSocket() = runTest2 {
+        // Start with an empty mock data source using websocket
+        val mock = ClientModelRestEndpointsPlusUpdatesWebsocketMock<LargeTestModel, UUID>(this)
+        val cache = ModelCache<LargeTestModel, UUID>(
+            mock,
+            LargeTestModel.serializer(),
+            scope = backgroundScope,
+            log = testLog
+        )
+
+        // Set up reactive listener for the list
+        var lastRead: List<LargeTestModel> = listOf()
+        val ref = cache.list(Query(Condition.Always, sort { it.int.ascending() }))
+        reactive {
+            lastRead = ref()
+        }
+        delay(5.seconds)
+
+        // Initially, the list should be empty
+        assertEquals(emptyList(), lastRead)
+
+        // Add first element through the socket
+        val item1 = LargeTestModel(int = 1)
+        mock.insert(item1)
+        delay(5.seconds)
+
+        // Verify the first element is in the list
+        assertEquals(listOf(item1), lastRead)
+
+        // Add second element through the socket
+        val item2 = LargeTestModel(int = 2)
+        mock.insert(item2)
+        delay(5.seconds)
+
+        // Verify both elements are in the list, sorted by int
+        assertEquals(listOf(item1, item2).sortedBy { it.int }, lastRead)
+
+        // Add third element through the socket
+        val item3 = LargeTestModel(int = 3)
+        mock.insert(item3)
+        delay(5.seconds)
+
+        // Verify all three elements are in the list, sorted by int
+        assertEquals(listOf(item1, item2, item3).sortedBy { it.int }, lastRead)
+
+        // Verify the mock data source contains all added items
+        assertEquals(3, mock.data.size)
+        assertTrue(mock.data.containsKey(item1._id))
+        assertTrue(mock.data.containsKey(item2._id))
+        assertTrue(mock.data.containsKey(item3._id))
+    }
 }
