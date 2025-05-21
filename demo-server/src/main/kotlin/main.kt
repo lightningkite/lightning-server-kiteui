@@ -38,8 +38,13 @@ fun main(vararg args: String) {
     cli(
         arguments = args,
         setup = ::setup,
-        available = listOf(::serve, ::terraform, ::dbTest),
+        available = listOf(::serve, ::terraform, ::dbTest, ::sdk),
     )
+}
+
+fun sdk(): Unit {
+    Server
+    SDK2.write("com.lightningkite.specialtest", generateSequence(File(".").absoluteFile) { it.parentFile.takeIf { it.exists() } }.dropWhile { it.name != "lightning-server-kiteui" }.first().resolve("client/src/commonTest/kotlin/com/lightningkite/specialtest"))
 }
 
 fun dbTest(): Unit = runBlocking {

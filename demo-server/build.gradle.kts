@@ -73,6 +73,13 @@ tasks.create("serve", JavaExec::class.java) {
     args("serve")
     workingDir(project.rootDir)
 }
+tasks.create("generateSdk", JavaExec::class.java) {
+    group = "application"
+    classpath(sourceSets.main.get().runtimeClasspath)
+    mainClass.set("com.lightningkite.lightningserver.demo.MainKt")
+    args("sdk")
+    workingDir(project.rootDir)
+}
 tasks.withType(Zip::class) {
     isZip64 = true
 }

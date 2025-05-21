@@ -3,7 +3,6 @@ package com.lightningkite.lightningserver.db
 import com.lightningkite.kiteui.HttpMethod
 import com.lightningkite.kiteui.TypedWebSocket
 import com.lightningkite.kiteui.navigation.UrlProperties
-import com.lightningkite.kiteui.navigation.encodeToString
 import com.lightningkite.lightningdb.AggregateQuery
 import com.lightningkite.lightningdb.CollectionUpdates
 import com.lightningkite.lightningdb.Condition
@@ -17,7 +16,9 @@ import com.lightningkite.lightningdb.ModelPermissions
 import com.lightningkite.lightningdb.Modification
 import com.lightningkite.lightningdb.Query
 import com.lightningkite.lightningdb.QueryPartial
+import com.lightningkite.lightningserver.StringArrayFormat
 import com.lightningkite.lightningserver.networking.Fetcher
+import com.lightningkite.serialization.DefaultStringArrayFormat
 import com.lightningkite.serialization.Partial
 import com.lightningkite.serialization.PartialSerializer
 import kotlinx.serialization.KSerializer
@@ -66,7 +67,7 @@ open class ClientModelRestEndpointsLive<T : HasId<ID>, ID : Comparable<ID>>(
     )
 
     override suspend fun detail(id: ID): T = fetcher(
-        "$subpath/${id.urlify()}",
+        "$subpath/${id.urlifyToCommaString()}",
         HttpMethod.GET,
         Unit.serializer(),
         Unit,
@@ -90,7 +91,7 @@ open class ClientModelRestEndpointsLive<T : HasId<ID>, ID : Comparable<ID>>(
     )
 
     override suspend fun upsert(id: ID, input: T): T = fetcher(
-        "$subpath/${id.urlify()}",
+        "$subpath/${id.urlifyToCommaString()}",
         HttpMethod.POST,
         serializer,
         input,
@@ -106,7 +107,7 @@ open class ClientModelRestEndpointsLive<T : HasId<ID>, ID : Comparable<ID>>(
     )
 
     override suspend fun replace(id: ID, input: T): T = fetcher(
-        "$subpath/${id.urlify()}",
+        "$subpath/${id.urlifyToCommaString()}",
         HttpMethod.PUT,
         serializer,
         input,
@@ -122,7 +123,7 @@ open class ClientModelRestEndpointsLive<T : HasId<ID>, ID : Comparable<ID>>(
     )
 
     override suspend fun modifyWithDiff(id: ID, input: Modification<T>): EntryChange<T> = fetcher(
-        "$subpath/${id.urlify()}/delta",
+        "$subpath/${id.urlifyToCommaString()}/delta",
         HttpMethod.PATCH,
         Modification.Companion.serializer(serializer),
         input,
@@ -131,7 +132,7 @@ open class ClientModelRestEndpointsLive<T : HasId<ID>, ID : Comparable<ID>>(
 
     override suspend fun modify(id: ID, input: Modification<T>): T {
         return fetcher(
-            "$subpath/${id.urlify()}",
+            "$subpath/${id.urlifyToCommaString()}",
             HttpMethod.PATCH,
             Modification.Companion.serializer(serializer),
             input,
@@ -148,7 +149,7 @@ open class ClientModelRestEndpointsLive<T : HasId<ID>, ID : Comparable<ID>>(
     )
 
     override suspend fun delete(id: ID): Unit = fetcher(
-        "$subpath/${id.urlify()}",
+        "$subpath/${id.urlifyToCommaString()}",
         HttpMethod.DELETE,
         Unit.serializer(),
         Unit,
@@ -203,8 +204,8 @@ open class ClientModelRestEndpointsLive<T : HasId<ID>, ID : Comparable<ID>>(
         MapSerializer(String.serializer(), Double.serializer().nullable)
     )
 
-    private fun ID.urlify(): String {
-        return UrlProperties.encodeToString(idSerializer, this)
+    private fun ID.urlifyToCommaString(): String {
+        return DefaultStringArrayFormat.encodeToString(idSerializer, this)
     }
 }
 
