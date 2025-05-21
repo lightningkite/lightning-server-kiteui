@@ -170,7 +170,11 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
                     if (r.satisfied.value) {
                         launch {
                             log?.log("Fetching after socket connected")
-                            multiget(id)
+                            try {
+                                multiget(id)
+                            } catch(e: Exception) {
+                                println("WARN: $e")
+                            }
                         }
                     }
                 })
@@ -193,7 +197,11 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
                     } ?: log?.log("Failed to connect to socket")
                 }
                 log?.log("Initial fetch")
-                multiget(id)
+                try {
+                    multiget(id)
+                } catch(e: Exception) {
+                    println("WARN: $e")
+                }
                 log?.log("Initial fetch complete.")
             }
 
@@ -206,7 +214,11 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
                     interrupt.delay(next)
                 } else {
                     log?.log("Needs pull, starting")
-                    multiget(id)
+                    try {
+                        multiget(id)
+                    } catch(e: Exception) {
+                        println("WARN: $e")
+                    }
                     interrupt.delay(pullFrequency)
                 }
             }
@@ -306,7 +318,11 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
                     if (r.satisfied.value) {
                         launch {
                             log?.log("Fetching after socket connected")
-                            queryInternal(currentQuery)
+                            try {
+                                queryInternal(currentQuery)
+                            } catch(e: Exception) {
+                                println("WARN: $e")
+                            }
                         }
                     }
                 })
@@ -329,7 +345,11 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
                     } ?: log?.log("Failed to connect to socket")
                 }
                 log?.log("Initial fetch")
-                queryInternal(cache.recommendQuery(currentQuery))
+                try {
+                    queryInternal(cache.recommendQuery(currentQuery))
+                } catch(e: Exception) {
+                    println("WARN: $e")
+                }
                 log?.log("Initial fetch complete.")
             }
 
@@ -350,7 +370,11 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
                 } else {
                     //TODO: Harden against exceptions
                     log?.log("Needs pull, starting because most recent is ${mostRecent?.at} / ${mostRecent?.requestedLimit}")
-                    queryInternal(cache.recommendQuery(currentQuery))
+                    try {
+                        queryInternal(cache.recommendQuery(currentQuery))
+                    } catch(e: Exception) {
+                        println("WARN: $e")
+                    }
                     interrupt.delay(pullFrequency)
                 }
             }

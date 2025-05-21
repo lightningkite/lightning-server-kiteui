@@ -9,6 +9,11 @@ import com.lightningkite.readable.BasicListenable
 import com.lightningkite.readable.Listenable
 import kotlinx.serialization.KSerializer
 
+/**
+ * A simple tool that can reconstruct lists from partial updates.
+ *
+ * This could be a lot more smart about when it needs to pull - theoretically, it could merge needs between queries in smarter ways.
+ */
 class NaiveListReconstructionCalculator<T : HasId<ID>, ID : Comparable<ID>>(
     val serializer: KSerializer<T>,
     val log: Console? = null,
@@ -84,17 +89,23 @@ class NaiveListReconstructionCalculator<T : HasId<ID>, ID : Comparable<ID>>(
     }
 
     fun List<T>.update(query: Query<T>, edits: Collection<T>, removed: Collection<ID> = emptyList()): List<T> {
-        //TODO: please make a better implementation
-        // This has so many issues.  It doesn't account for totality at the moment, so it stupidly just adds the element
-        // to the back regardless of if there should be items between.
+        // Get the IDs of items to be removed (either explicitly removed or updated)
         val rem = removed + edits.map { it._id }.toSet()
-        return this
-            .asSequence()
-            .filter { it._id !in rem }
-            .plus(edits)
+
+        // Filter out removed items
+        val filteredList = this.filter { it._id !in rem }
+
+        // Add edited items
+        val combinedList = filteredList + edits
+
+        // Filter by query condition, remove duplicates, and sort according to query
+        return combinedList
             .filter { query.condition(it) }
             .distinctBy { it._id }
             .sortedWith(query.orderBy.ensureTotal(serializer).comparator!!)
-            .toList()
+            .let { 
+                // Apply limit if specified in the query
+                if (query.limit > 0) it.take(query.limit) else it 
+            }
     }
 }

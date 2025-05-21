@@ -21,6 +21,17 @@ open class ClientModelRestEndpointsPlusUpdatesWebsocketMock<T : HasId<ID>, ID : 
     delayAmount: Duration = 0.1.seconds,
 ) :
     ClientModelRestEndpointsMock<T, ID>(scope, delayAmount), ClientModelRestEndpointsPlusUpdatesWebsocket<T, ID> {
+
+    override var connectivityFailure: Boolean
+        get() = super.connectivityFailure
+        set(value) {
+            super.connectivityFailure = value
+            if(value)
+                updatesWs.onCloseList.forEach { it.invoke(1000) }
+            else
+                updatesWs.onOpenList.forEach { it.invoke() }
+        }
+
     val entryChanges = Property<List<EntryChange<T>>>(listOf())
     override fun change(collectionUpdates: CollectionUpdates<T, ID>) {
         val before = collectionUpdates.updates.associate { it._id to data[it._id] } + collectionUpdates.remove.associate { it to data[it] }
@@ -69,7 +80,9 @@ open class ClientModelRestEndpointsPlusUpdatesWebsocketMock<T : HasId<ID>, ID : 
             uses++
             if(myListen == null) {
                 myListen = entryChanges.addListener {
+                    if(connectivityFailure) return@addListener
                     log?.log("Entry changes ${entryChanges.value}")
+
                     val v = entryChanges.value.map { EntryChange(it.old?.takeIf { filter(it) }, it.new?.takeIf { filter(it) }) }
                     val u = CollectionUpdates(
                         updates = v.mapNotNull { it.new }.toSet(),
@@ -80,7 +93,12 @@ open class ClientModelRestEndpointsPlusUpdatesWebsocketMock<T : HasId<ID>, ID : 
                 log?.log("Listening started")
                 scope.launch {
                     delay(10.milliseconds)
-                    onOpenList.invokeAllSafe()
+                    if(connectivityFailure) {
+//                        onOpenList.invokeAllSafe()
+                        onCloseList.forEach { it.invoke(1000) }
+                    } else {
+                        onOpenList.invokeAllSafe()
+                    }
                 }
             }
             var once = false
@@ -100,5 +118,6 @@ open class ClientModelRestEndpointsPlusUpdatesWebsocketMock<T : HasId<ID>, ID : 
         }
     }
 
-    override fun updates(): UpdatesWs = UpdatesWs()
+    val updatesWs = UpdatesWs()
+    override fun updates(): UpdatesWs = updatesWs
 }

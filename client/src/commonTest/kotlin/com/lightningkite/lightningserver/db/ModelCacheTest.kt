@@ -29,6 +29,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import kotlin.test.fail
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
 class ModelCacheTest {
@@ -37,6 +38,41 @@ class ModelCacheTest {
         prepareModelsShared()
         prepareModelsClient()
         prepareModelsClientTest()
+    }
+
+    @Test fun connectivityIssue() = runTest2 {
+        val mock = ClientModelRestEndpointsPlusUpdatesWebsocketMock<LargeTestModel, UUID>(this)
+        var currentValue = LargeTestModel(int = 0)
+        mock.data[currentValue._id] = currentValue
+        val cache = ModelCache<LargeTestModel, UUID>(
+            mock,
+            LargeTestModel.serializer(),
+            scope = backgroundScope,
+            log = testLog
+        )
+
+        reactive {
+            val ref = cache.item(currentValue._id)
+            assertEquals(
+                currentValue,
+                ref().also(::println)//.also { lastReceived = it }
+            )
+        }
+        delay(5.seconds)
+
+        // Start out as working
+        val mod = modification<LargeTestModel> { it.short assign 2 }
+        currentValue = mod(currentValue)
+        mock.modify(currentValue._id, mod)
+        delay(5.seconds)
+
+        println("Break!")
+        mock.connectivityFailure = true
+        delay(5.minutes)
+
+        println("Reconnect")
+        mock.connectivityFailure = false
+        delay(5.seconds)
     }
 
     @Test fun listLimitIncrease() = runTest2 {
