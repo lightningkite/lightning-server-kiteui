@@ -79,8 +79,9 @@ class ExternalLightningServer(
     
     private val nullToken: suspend () -> List<Pair<String, String>> = { listOf() }
     fun authlessFetcher(): Fetcher = fetcher(null)
-    fun fetcher(auth: LightningServerAuthentication?): Fetcher {
-        return bulk?.let {
+    private val cachedbyLsa = HashMap<LightningServerAuthentication?, Fetcher>()
+    fun fetcher(auth: LightningServerAuthentication?): Fetcher = cachedbyLsa.getOrPut(auth) {
+        bulk?.let {
             BulkFetcher(schema.baseUrl + it.path, schema.baseWsUrl + "/multiplex", json, calculator = auth?.accessToken ?: nullToken)
         } ?: ConnectivityFetcher(schema.baseUrl, schema.baseWsUrl, json, calculator = auth?.accessToken ?: nullToken)
     }

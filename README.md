@@ -2,20 +2,5 @@
 
 Implements form generation, live querying, and pre-built auth components.
 
-## TODO
+Has a cache as well as an automatically generated admin for a Lightning Server.
 
-- [ ] Authenticate with other server
-- [ ] Add new server to track
-- [ ] General search bar
-- [ ] Skinny Forms
-- [ ] Sub editors without background
-- [ ] Better default column picks for table
-- [ ] Transferred Permissions
-- [ ] Graphing
-- [ ] Geocoordinate / Address specialized model editors
-- [ ] Name specialized model editor?
-- [ ] Radio button enums
-- [ ] Stepped forms
-- [ ] Null context
-- [ ] Duration editor
-- 

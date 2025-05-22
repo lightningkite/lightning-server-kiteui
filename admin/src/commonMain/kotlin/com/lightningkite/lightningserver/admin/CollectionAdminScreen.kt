@@ -121,6 +121,46 @@ class CollectionAdminPage(val collectionName: String) : Page {
         }
     }
 
+    fun ViewWriter.bulkDeleteDialog() = dialog {
+        col {
+            h2("Bulk Delete")
+            reactive<Unit> {
+                clearChildren()
+                val mc = mc()
+                val condition = conditionWritable(mc)
+                val itemCount = sharedSuspending {
+                    val c = condition()
+                    mc.skipCache.count(c)
+                }
+                subtext {
+                    ::content {
+                        buildString {
+                            val c = condition()
+                            when (c) {
+                                Condition.Always -> append("This will delete ALL ${itemCount()} items in the collection.")
+                                Condition.Never -> append("No items will be deleted.")
+                                else -> append("This will delete ${itemCount()} items where $c")
+                            }
+                        }
+                    }
+                }
+                important - button {
+                    centered - text("Delete All Matching Items")
+                    action = Action("Delete", Icon.deleteForever) {
+                        val c = condition()
+                        confirmDanger(
+                            "Delete all matching items?", 
+                            "Are you sure you want to delete all items matching the current query? This action cannot be undone."
+                        ) {
+                            mc.skipCache.bulkDelete(c)
+                            mc.totallyInvalidate()
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     override fun ViewWriter.render(): ViewModifiable {
         return col {
             reactive<Unit> {
@@ -176,6 +216,10 @@ class CollectionAdminPage(val collectionName: String) : Page {
                         important - button {
                             text("Import...")
                             onClick { importDialog() }
+                        }
+                        important - button {
+                            text("Bulk Delete...")
+                            onClick { bulkDeleteDialog() }
                         }
                         col {
                             h3("My Permissions")
