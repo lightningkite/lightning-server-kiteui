@@ -170,6 +170,20 @@ open class ClientModelRestEndpointsStandardImpl<T : HasId<ID>, ID : Comparable<I
         MapSerializer(String.serializer(), Double.serializer().nullable)
     )
 
+    override suspend fun groupAggregate2(input: GroupAggregateQuery<T>): Map<String, Double?> = fetchImplementation(
+        "/group-aggregate-2",
+        HttpMethod.POST,
+        enc(GroupAggregateQuery.serializer(serializer), input),
+        MapSerializer(String.serializer(), Double.serializer().nullable)
+    )
+
+    override suspend fun groupCount2(input: GroupCountQuery<T>): Map<String, Int> = fetchImplementation(
+        "/group-count-2",
+        HttpMethod.POST,
+        enc(GroupCountQuery.Companion.serializer(serializer), input),
+        MapSerializer(String.serializer(), Int.serializer())
+    )
+
     suspend fun RequestResponse.discard() = Unit
     fun ID.urlify(): String {
         return properties.encodeToString(idSerializer, this)

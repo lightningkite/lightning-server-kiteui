@@ -26,6 +26,8 @@ interface ClientModelRestEndpoints<T : HasId<ID>, ID : Comparable<ID>> {
     suspend fun aggregate(input: AggregateQuery<T>): Double?
     suspend fun groupAggregate(input: GroupAggregateQuery<T>): Map<String, Double?>
     suspend fun permissions(): ModelPermissions<T>
+    suspend fun groupCount2(input: GroupCountQuery<T>): Map<String, Int>
+    suspend fun groupAggregate2(input: GroupAggregateQuery<T>): Map<String, Double?>
 }
 
 interface ClientModelRestEndpointsPlusWs<T : HasId<ID>, ID : Comparable<ID>> : ClientModelRestEndpoints<T, ID> {

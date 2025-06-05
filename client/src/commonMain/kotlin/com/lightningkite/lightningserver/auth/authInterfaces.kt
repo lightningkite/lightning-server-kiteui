@@ -457,6 +457,7 @@ interface AuthenticatedUserAuthClientEndpoints<User : HasId<ID>, ID : Comparable
     suspend fun getSelf(): User
     suspend fun terminateSession(): Unit
     suspend fun terminateOtherSession(sessionId: UUID): Unit
+    suspend fun authenticationRequirements(): AuthRequirements
     open class StandardImpl<USER : HasId<ID>, ID : Comparable<ID>>(
         val fetchImplementation: Fetcher,
         val userSerializer: KSerializer<USER>,
@@ -464,6 +465,13 @@ interface AuthenticatedUserAuthClientEndpoints<User : HasId<ID>, ID : Comparable
         val json: Json = DefaultJson,
         val properties: Properties = UrlProperties,
     ) : AuthenticatedUserAuthClientEndpoints<USER, ID> {
+        override suspend fun authenticationRequirements(): AuthRequirements = fetchImplementation(
+            url = "/auth-requirements",
+            method = HttpMethod.GET,
+            jsonBody = null,
+            outSerializer = AuthRequirements.serializer()
+        )
+
         override suspend fun createSubSession(input: SubSessionRequest): String = fetchImplementation(
             url = "/sub-session",
             method = HttpMethod.POST,
