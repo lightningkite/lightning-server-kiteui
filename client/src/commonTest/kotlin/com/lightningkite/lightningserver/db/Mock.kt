@@ -38,6 +38,18 @@ class MockClientModelRestEndpoints<T : HasId<ID>, ID : Comparable<ID>>(val log: 
 
     override suspend fun permissions(): ModelPermissions<T> = ModelPermissions.allowAll()
 
+    override suspend fun groupCount2(input: GroupCountQuery<T>): Map<String, Int> {
+        log("groupCount2 $input")
+        hold.await()
+        TODO()
+    }
+
+    override suspend fun groupAggregate2(input: GroupAggregateQuery<T>): Map<String, Double?> {
+        log("groupAggregate2 $input")
+        hold.await()
+        TODO()
+    }
+
     override suspend fun queryPartial(input: QueryPartial<T>): List<Partial<T>> {
         log("queryPartial $input")
         hold.await()
