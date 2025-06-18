@@ -26,7 +26,7 @@ class SharedCollectionUpdatesSocket<T : HasId<ID>, ID : Comparable<ID>>(
     val scope: CoroutineScope,
     val socket: TypedWebSocket<Condition<T>, CollectionUpdates<T, ID>>,
     val onChange: (CollectionUpdates<T, ID>) -> Unit,
-    val log: Console? = null,
+    val log: Console? = null,  // TODO: log this somewhere that I can access later
 ) {
     fun require(condition: Condition<T>) = Req(condition)
 
@@ -78,14 +78,17 @@ class SharedCollectionUpdatesSocket<T : HasId<ID>, ID : Comparable<ID>>(
             // Build the total condition
             val willSend = run {
                 val r = desiredRequirements.value
-                if (r === listeningStatus.value.requirements) return
+                if (r === listeningStatus.value.requirements) {
+                    log?.log("No need to update condition; already satisfied by exact requirements")
+                    return
+                }
                 ListeningStatus(Condition.Or(r.map { it.condition }.distinct()).simplify(), r)
             }
 
             // Don't bother sending it if the net condition is equivalent.  Just mark it as fulfilled.
             if (listeningStatus.value.fullCondition == willSend.fullCondition) {
                 listeningStatus.value = willSend
-                log?.log("No need to update condition; already satisfied")
+                log?.log("No need to update condition; already satisfied by condition match")
                 return
             }
             lastSent = willSend
@@ -94,6 +97,7 @@ class SharedCollectionUpdatesSocket<T : HasId<ID>, ID : Comparable<ID>>(
 
             // If we don't get the message in 5 seconds, we need to try again.
             scope.launch {
+                // TODO: Is this retry logic actually working?
                 delay(4.seconds)
                 if (lastSent == willSend) {
                     log?.log("Update condition to ${lastSent.fullCondition} failed.")
@@ -135,7 +139,10 @@ class SharedCollectionUpdatesSocket<T : HasId<ID>, ID : Comparable<ID>>(
         scope.reactive {
             val requirements = debouncedRequirements()
             // Only keep the socket open if we have something to listen for.
-            if (requirements.isEmpty()) return@reactive
+            if (requirements.isEmpty()) {
+                listeningStatus.value = ListeningStatus()
+                return@reactive
+            }
             use(socket)
             updateCondition()
         }

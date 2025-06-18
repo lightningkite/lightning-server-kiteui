@@ -4,13 +4,16 @@ import com.lightningkite.UUID
 import com.lightningkite.kiteui.Blob
 import com.lightningkite.kiteui.Console
 import com.lightningkite.kiteui.HttpMethod
+import com.lightningkite.kiteui.Log
 import com.lightningkite.kiteui.RequestBodyText
 import com.lightningkite.kiteui.RequestResponse
 import com.lightningkite.kiteui.RetryWebsocket
 import com.lightningkite.kiteui.TypedWebSocket
 import com.lightningkite.kiteui.connectivityFetch
+import com.lightningkite.kiteui.debugMode
 import com.lightningkite.kiteui.httpHeaders
 import com.lightningkite.kiteui.navigation.DefaultJson
+import com.lightningkite.kiteui.report
 import com.lightningkite.kiteui.retryWebsocket
 import com.lightningkite.kiteui.typed
 import com.lightningkite.lightningserver.LSError
@@ -23,6 +26,7 @@ import com.lightningkite.readable.Property
 import com.lightningkite.readable.Readable
 import com.lightningkite.readable.reactiveScope
 import kotlinx.coroutines.CancellableContinuation
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
@@ -123,6 +127,7 @@ class BulkFetcher(
     val shared = retryWebsocket(
         underlyingSocket = {
             val headers = calculator()
+
             val url = if(headers.isNotEmpty()){
                 val terminator = if(wsMultiplex.contains('?')) '&' else '?'
                 wsMultiplex + "$terminator${headers.joinToString("&"){ "${it.first}=${it.second}" }}"
@@ -131,7 +136,16 @@ class BulkFetcher(
         },
         pingTime = pingTime.inWholeMilliseconds,
         log = log
-    ).typed(json, MultiplexMessage.Companion.serializer(), MultiplexMessage.Companion.serializer())
+    ).typedWithDebug(json, MultiplexMessage.Companion.serializer(), MultiplexMessage.Companion.serializer()).also {
+        if(debugMode && log != null) {
+            it.onOpen {
+                it.send(MultiplexMessage(channel = "debug", start = true))
+            }
+        }
+        it.onMessage {
+            if(log != null && it.channel == "debug") log.log("Multiplex debug: $it")
+        }
+    }
 
     override fun <I, O> websocket(
         url: String,
@@ -168,6 +182,7 @@ class BulkFetcher(
             }
             shared.onClose {
                 channelOpen.value = false
+                onCloseList.forEach { it(-1) }
             }
         }
 
@@ -249,5 +264,43 @@ class BulkFetcher(
         override fun onClose(action: (Short) -> Unit) {
             onCloseList.add(action)
         }
+    }
+}
+
+private fun <SEND, RECEIVE> RetryWebsocket.typedWithDebug(
+    json: Json,
+    send: KSerializer<SEND>,
+    receive: KSerializer<RECEIVE>,
+    log: Log? = null,
+): TypedWebSocket<SEND, RECEIVE> = object : TypedWebSocket<SEND, RECEIVE> {
+    override val connected: Readable<Boolean>
+        get() = this@typedWithDebug.connected
+
+    override fun beginUse(): () -> Unit = this@typedWithDebug.beginUse()
+    override fun close(code: Short, reason: String) = this@typedWithDebug.close(code, reason)
+    override fun onOpen(action: () -> Unit) = this@typedWithDebug.onOpen(action)
+    override fun onClose(action: (Short) -> Unit) = this@typedWithDebug.onClose(action)
+    override fun onMessage(action: (RECEIVE) -> Unit) {
+        this@typedWithDebug.onMessage {
+            if(log != null && it.startsWith("!!! DEBUG AWS INFO !!! - ")) {
+                log.log("AWS: " + it.substringAfter("!!! DEBUG AWS INFO !!! - "))
+                return@onMessage
+            }
+            try {
+                action(json.decodeFromString(receive, it))
+            } catch (e: CancellationException) {
+                /*squish*/
+            } catch (e: Exception) {
+                @OptIn(ExperimentalSerializationApi::class)
+                Exception(
+                    "Failed to decode message; expected a ${receive.descriptor.serialName} but got '${it.take(150)}'",
+                    e
+                ).report()
+            }
+        }
+    }
+
+    override fun send(data: SEND) {
+        this@typedWithDebug.send(json.encodeToString(send, data))
     }
 }

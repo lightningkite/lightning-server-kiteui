@@ -20,11 +20,6 @@ plugins {
 apply<KiteUiPlugin>()
 
 group = "com.lightningkite"
-version = "1.0-SNAPSHOT"
-
-val lk = project.lk {
-    kiteUiPlugin(5)
-}
 
 @OptIn(ExperimentalKotlinGradlePluginApi::class)
 kotlin {
@@ -64,13 +59,7 @@ kotlin {
         val commonMain by getting {
             dependencies {
                 api(project(":client"))
-                api(lk.mavenOrLocal(
-                    gitUrl = "git@github.com:lightningkite/kotlinx-serialization-csv-durable.git",
-                    group = "com.lightningkite",
-                    artifact = "kotlinx-serialization-csv-durable",
-                    major = 0,
-                    minor = 2
-                ))
+                api(libs.comLightningkiteKotlinxSerializationCsvDurable)
             }
             kotlin {
                 srcDir(file("build/generated/ksp/common/commonMain/kotlin"))
@@ -95,7 +84,7 @@ ksp {
 
 dependencies {
     configurations.filter { it.name.startsWith("ksp") && it.name != "ksp" }.forEach {
-        add(it.name, lk.lightningServer("processor", 4))
+        add(it.name, libs.comLightningkiteLightningserverProcessor)
     }
 }
 

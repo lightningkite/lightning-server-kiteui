@@ -89,7 +89,10 @@ class BatchAndQueue<T, R>(
         }
         try {
             return deferred.await()
-        } catch(t: Throwable) {
+        } catch(e: CancellationException) {
+            // Cool.  We don't care.
+            throw e
+        }catch(t: Throwable) {
             log?.log("Failed to report.  Error: ${t.message}")
             throw t
         }

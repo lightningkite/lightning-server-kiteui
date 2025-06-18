@@ -1,0 +1,10 @@
+{
+    "info": { "version": 1, "author": "xcode" },
+    "images": [
+        { 
+            "filename": "tiny-lk-logo.png",
+            "scale": "1x",
+            "idiom": "universal"
+        }
+    ]
+}

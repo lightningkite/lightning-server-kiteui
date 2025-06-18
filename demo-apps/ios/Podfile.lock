@@ -1,0 +1,25 @@
+PODS:
+  - apps (1.0):
+    - Sentry (~> 8.25)
+  - Sentry (8.44.0):
+    - Sentry/Core (= 8.44.0)
+  - Sentry/Core (8.44.0)
+
+DEPENDENCIES:
+  - apps (from `../apps.podspec`)
+
+SPEC REPOS:
+  trunk:
+    - Sentry
+
+EXTERNAL SOURCES:
+  apps:
+    :path: "../apps.podspec"
+
+SPEC CHECKSUMS:
+  apps: 5e50a83c6af5be37937cb4e2f425b459e51960c4
+  Sentry: 0f9bc9adfc0b960e7f3bb5ec67e9a3d8193f3bdb
+
+PODFILE CHECKSUM: 984791058769461f871eca5c934b7e0a9734bf5b
+
+COCOAPODS: 1.16.2

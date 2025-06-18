@@ -13,9 +13,6 @@ plugins {
     id("signing")
 }
 
-val lk = project.lk {
-}
-
 kotlin {
     targetHierarchy.default()
     androidTarget {
@@ -36,8 +33,8 @@ kotlin {
     sourceSets {
         val commonMain by getting {
             dependencies {
-                api(lk.lightningServer("shared", 4))
-                api(lk.kiteUi(5))
+                api(libs.comLightningkiteLightningserverShared)
+                api(libs.comLightningkiteKiteuiLibrary)
             }
             kotlin {
                 srcDir(file("build/generated/ksp/common/commonMain/kotlin"))
@@ -65,7 +62,7 @@ android {
 
 dependencies {
     configurations.filter { it.name.startsWith("ksp") && it.name != "ksp" }.forEach {
-        add(it.name, lk.lightningServer("processor", 4))
+        add(it.name, libs.comLightningkiteLightningserverProcessor)
     }
 }
 

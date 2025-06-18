@@ -1,52 +1,68 @@
 import com.lightningkite.deployhelpers.*
-import org.gradle.api.internal.file.archive.ZipFileTree
-import proguard.gradle.ProGuardTask
-import java.util.*
+import java.util.Properties
 
 plugins {
-    alias(libs.plugins.kotlinJvm)
-    alias(libs.plugins.serialization)
-    alias(libs.plugins.ksp)
+    kotlin("jvm")
+    kotlin("plugin.serialization")
+    id("com.google.devtools.ksp")
     application
-    alias(libs.plugins.graalVmNative)
-    alias(libs.plugins.shadow)
 }
 
-val lk = project.lk {}
 
-group = "com.lightningkite.lightningserver"
+group = "com.lightningkite.template"
+version = "1.0-SNAPSHOT"
+
+
+application {
+    mainClass.set("com.lightningite.template.MainKt")
+}
 
 dependencies {
-    api(lk.lightningServer("shared", 4))
-    api(lk.lightningServer("server-aws", 4))
-    api(lk.lightningServer("server-azure", 4))
-    api(lk.lightningServer("server-core", 4))
-    api(lk.lightningServer("server-testing", 4))
-    api(lk.lightningServer("server-dynamodb", 4))
-    api(lk.lightningServer("server-firebase", 4))
-    api(lk.lightningServer("server-ktor", 4))
-    api(lk.lightningServer("server-memcached", 4))
-    api(lk.lightningServer("server-mongo", 4))
-    api(lk.lightningServer("server-redis", 4))
-    api(lk.lightningServer("server-sentry", 4))
-    api(lk.lightningServer("server-sftp", 4))
-    ksp(lk.lightningServer("processor", 4))
-    implementation(libs.kotlinerCli)
-    implementation(libs.ktorCallLogging)
-    testImplementation("org.jetbrains.kotlin:kotlin-test-junit")
+
+    implementation(project(":demo-shared"))
+    api(libs.comLightningkiteLightningserverServerAws)
+    api(libs.comLightningkiteLightningserverServerCore)
+    api(libs.comLightningkiteLightningserverServerFirebase)
+    api(libs.comLightningkiteLightningserverServerKtor)
+    api(libs.comLightningkiteLightningserverServerMongo)
+    api(libs.comLightningkiteLightningserverServerRedis)
+    api(libs.comLightningkiteLightningserverServerSentry)
+    api(libs.comLightningkiteLightningserverShared)
+    ksp(libs.comLightningkiteLightningserverProcessor)
+
+    api(libs.kotlinerCli)
+    implementation(libs.log4j.to.slf4j)
+
+    testImplementation(libs.kotlin.test.junit)
 }
 
 kotlin {
-
     sourceSets.main {
         kotlin.srcDir("build/generated/ksp/main/kotlin")
     }
 }
 
-application {
-    mainClass.set("com.lightningkite.lightningserver.demo.MainKt")
+tasks.named<JavaExec>("run") {
+    standardInput = System.`in`
 }
 
+tasks.getByName<Zip>("distZip"){
+    archiveFileName.set("server.zip")
+}
+tasks.create("generateSdk", JavaExec::class.java) {
+    group = "deploy"
+    classpath(sourceSets.main.get().runtimeClasspath)
+    mainClass.set("com.lightningkite.template.MainKt")
+    args("sdk")
+    workingDir(project.rootDir)
+}
+tasks.create("serve", JavaExec::class.java) {
+    group = "application"
+    classpath(sourceSets.main.get().runtimeClasspath)
+    mainClass.set("com.lightningkite.template.MainKt")
+    args("serve")
+    workingDir(project.rootDir)
+}
 
 tasks.create("lambda", Copy::class.java) {
     group = "deploy"
@@ -62,26 +78,9 @@ tasks.create("lambda", Copy::class.java) {
 tasks.create("rebuildTerraform", JavaExec::class.java) {
     group = "deploy"
     classpath(sourceSets.main.get().runtimeClasspath)
-    mainClass.set("com.lightningkite.lightningserver.demo.MainKt")
+    mainClass.set("com.lightningkite.template.MainKt")
     args("terraform")
     workingDir(project.rootDir)
-}
-tasks.create("serve", JavaExec::class.java) {
-    group = "application"
-    classpath(sourceSets.main.get().runtimeClasspath)
-    mainClass.set("com.lightningkite.lightningserver.demo.MainKt")
-    args("serve")
-    workingDir(project.rootDir)
-}
-tasks.create("generateSdk", JavaExec::class.java) {
-    group = "application"
-    classpath(sourceSets.main.get().runtimeClasspath)
-    mainClass.set("com.lightningkite.lightningserver.demo.MainKt")
-    args("sdk")
-    workingDir(project.rootDir)
-}
-tasks.withType(Zip::class) {
-    isZip64 = true
 }
 
 fun env(name: String, profile: String) {
@@ -108,23 +107,11 @@ fun env(name: String, profile: String) {
             val props = Properties()
             mongoProfile.reader().use { props.load(it) }
             props.entries.forEach { environment(it.key.toString().trim('"', ' '), it.value.toString().trim('"', ' ')) }
+
             this.executable = "terraform"
             this.args("apply", "-auto-approve")
             this.workingDir = file("terraform/$name")
         }
     }
 }
-env("example", "default")
-
-tasks.create("proguardTest", ProGuardTask::class) {
-    this.injars(tasks.getByName("shadowJar"))
-    this.outjars("${buildDir}/outputs/proguarded.jar")
-    File("${System.getProperty("java.home")}/jmods").listFiles()?.filter { it.extension == "jmod" }?.forEach {
-        this.libraryjars(it)
-    }
-//    this.libraryjars("${System.getProperty("java.home")}/lib/rt.jar".also { println("rt jar is ${it}") })
-    this.libraryjars(configurations.runtimeClasspath)
-    this.configuration("src/main/proguard.pro")
-//    this.keepnames("com.lightningkite.lightningserver.demo.**")
-//    this.keepnames("com.lightningkite.lightningserver.demo.AwsHandler")
-}
+env("default", "default")
