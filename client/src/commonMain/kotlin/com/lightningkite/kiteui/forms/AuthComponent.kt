@@ -481,7 +481,7 @@ class ReAuthComponent(
                                 callBackDone = true
 
                                 currentProof.value = null
-                                this@frame.dialog {
+                                this@frame.dialog { close ->
                                     col {
                                         h2("Error")
                                         text(it.message ?: "???")
@@ -489,7 +489,7 @@ class ReAuthComponent(
                                             expanding - space()
                                             buttonTheme - button {
                                                 text("OK")
-                                                onClick { closePopovers() }
+                                                onClick { close() }
                                             }
                                         }
                                     }
@@ -827,7 +827,7 @@ class AuthComponent(
                                 callBackDone = true
 
                                 currentProof.value = null
-                                this@frame.dialog {
+                                this@frame.dialog { close ->
                                     col {
                                         h2("Error")
                                         text(it.message ?: "???")
@@ -835,7 +835,7 @@ class AuthComponent(
                                             expanding - space()
                                             buttonTheme - button {
                                                 text("OK")
-                                                onClick { closePopovers() }
+                                                onClick { close() }
                                             }
                                         }
                                     }
