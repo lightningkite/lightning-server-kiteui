@@ -2,23 +2,15 @@ package com.lightningkite.kiteui.forms
 
 import com.lightningkite.kiteui.ClientAuthenticator
 import com.lightningkite.kiteui.WebAuthNMediationType
-import com.lightningkite.kiteui.debugMode
-import com.lightningkite.kiteui.exceptions.ExceptionHandlers
-import com.lightningkite.kiteui.exceptions.ExceptionMessage
-import com.lightningkite.kiteui.exceptions.ExceptionToMessage
-import com.lightningkite.kiteui.exceptions.ExceptionToMessages
 import com.lightningkite.kiteui.models.*
-import com.lightningkite.kiteui.navigation.dialogPageNavigator
 import com.lightningkite.kiteui.printStackTrace2
 import com.lightningkite.kiteui.reactive.Action
 import com.lightningkite.kiteui.reactive.PersistentProperty
 import com.lightningkite.kiteui.views.*
 import com.lightningkite.kiteui.views.direct.*
 import com.lightningkite.kiteui.views.l2.dialog
-import com.lightningkite.kiteui.views.l2.errorText
 import com.lightningkite.kiteui.views.l2.field
 import com.lightningkite.kiteui.views.l2.icon
-import com.lightningkite.lightningserver.LSError
 import com.lightningkite.lightningserver.LsErrorException
 import com.lightningkite.lightningserver.auth.*
 import com.lightningkite.lightningserver.auth.proof.FinishProof
@@ -229,6 +221,34 @@ class OtpProof(
     }
 }
 
+class BackupCodeProof(
+    val p: BackupCodeProofClientEndpoints,
+    val type: String,
+    val key: String,
+    val value: String,
+) : CurrentProof {
+    val code = Property("")
+    override fun ViewWriter.render(onProof: (Proof) -> Unit, onException: (Exception) -> Unit) {
+        col {
+            val proveBackupCodeProofAction = Action("Submit", Icon.done) {
+                onProof(p.proveBackupCode(IdentificationAndPassword(type, key, value, code.await())))
+            }
+            field("Backup Code") {
+                textInput {
+                    ::hint { "xxxxx-xxxxx-xxxxx-xxxxx" }
+                    requestFocus()
+                    content bind code
+                    action = proveBackupCodeProofAction
+                }
+            }
+            button {
+                centered - text("Submit")
+                action = proveBackupCodeProofAction
+            }
+        }
+    }
+}
+
 class WebAuthNProof(
     val p: WebAuthNProofEndpoints,
     val type: String,
@@ -413,6 +433,23 @@ class ReAuthComponent(
                         centered - text("Use Authenticator App")
                         this.action = Action("Use Authenticator App", Icon.chevronRight) {
                             currentProof.value = OtpProof(
+                                p = p,
+                                type = subjectType,
+                                key = "${subjectType}/_id",
+                                value = subjectId
+                            )
+                        }
+                    }
+                }
+
+                endpoints.backupCodeProof?.let { p ->
+                    shownWhen {
+                        proofs().none { it.via == "backupcode" } &&
+                                requirements().options.any { it.method.via == "backupcode" }
+                    } - important - buttonTheme - button {
+                        centered - text("Use Backup Code")
+                        this.action = Action("Use Backup Code", Icon.chevronRight) {
+                            currentProof.value = BackupCodeProof(
                                 p = p,
                                 type = subjectType,
                                 key = "${subjectType}/_id",
@@ -729,6 +766,31 @@ class AuthComponent(
                     action
                 }
 
+
+                val backupCodeAction = endpoints.backupCodeProof?.let { p ->
+                    val action = Action("Use Backup Code", Icon.chevronRight) {
+                        currentProof.value = BackupCodeProof(
+                            p = p,
+                            type = endpoints.subjects.keys.single(),
+                            key = when {
+                                Regexes.email.matches(primaryIdentifier.await()) -> "email"
+                                Regexes.phoneNumber.matches(primaryIdentifier.await()) -> "phone"
+                                else -> "_id"
+                            },
+                            value = primaryIdentifier.await()
+                        )
+                    }
+                    shownWhen {
+                        proofs().none { it.via == "backupcode" } &&
+                                (authResult()?.options?.any { it.method.via == "backupcode" } ?: true) &&
+                                validId()
+                    } - important - buttonTheme - button {
+                        this.action = action
+                        centered - text("Use Backup Code")
+                    }
+                    action
+                }
+
                 // WebAuthN is only supported in Web at the moment.
                 endpoints.webAuthNProof?.let { webAuthNProof ->
 
@@ -802,6 +864,7 @@ class AuthComponent(
                         proofs().none { it.via.lowercase() == "email" } && email() != null && emailStartAction != null -> emailStartAction
                         proofs().none { it.via.lowercase() == "sms" } && phone() != null && smsStartAction != null -> smsStartAction
                         proofs().none { it.via.lowercase() == "password" } && validId && passwordStartAction != null -> passwordStartAction
+                        proofs().none { it.via.lowercase() == "backupcode" } && validId && backupCodeAction != null -> backupCodeAction
                         proofs().none { it.via == "otp" } && validId && otpAction != null -> otpAction
                         else -> null
                     }

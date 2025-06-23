@@ -46,12 +46,14 @@ data class AuthClientEndpoints(
     val emailProof: EmailProofClientEndpoints? = null,
     val oneTimePasswordProof: OneTimePasswordProofClientEndpoints? = null,
     val passwordProof: PasswordProofClientEndpoints? = null,
+    val backupCodeProof: BackupCodeProofClientEndpoints? = null,
     val knownDeviceProof: KnownDeviceProofClientEndpoints? = null,
     val webAuthNProof: WebAuthNProofEndpoints? = null,
     val webAuthNIncludePasskeyUI: Boolean = webAuthNProof != null,
     val authenticatedOneTimePasswordProof: ((LightningServerAuthentication) -> AuthenticatedOneTimePasswordProofClientEndpoints)? = null,
     val authenticatedPasswordProof: ((LightningServerAuthentication) -> AuthenticatedPasswordProofClientEndpoints)? = null,
     val authenticatedKnownDeviceProof: ((LightningServerAuthentication) -> AuthenticatedKnownDeviceProofClientEndpoints)? = null,
+    val authenticatedBackupCodeProof: ((LightningServerAuthentication) -> AuthenticatedBackupCodeProofClientEndpoints)? = null,
     val webAuthNRegistration: ((LightningServerAuthentication) -> WebAuthNRegistrationEndpoints)? = null,
 ) {
 
@@ -300,6 +302,23 @@ open class PasswordProofClientEndpointsLive(
     )
 }
 
+interface BackupCodeProofClientEndpoints : ProofEndpoints {
+    suspend fun proveBackupCode(input: IdentificationAndPassword): Proof
+}
+
+open class BackupCodeProofClientEndpointsLive(
+    val fetcher: Fetcher,
+    val subpath: String,
+) : BackupCodeProofClientEndpoints {
+    override suspend fun proveBackupCode(input: IdentificationAndPassword): Proof = fetcher(
+        url = "$subpath/prove",
+        method = HttpMethod.POST,
+        inSerializer = IdentificationAndPassword.serializer(),
+        body = input,
+        outSerializer = Proof.serializer()
+    )
+}
+
 interface WebAuthNProofEndpoints : ProofEndpoints {
     suspend fun start(input: WebAuthN.Authentication.StartRequest): WebAuthN.Authentication.StartResponse
     suspend fun prove(input: WebAuthN.Authentication.ProveRequest): Proof
@@ -448,6 +467,41 @@ open class AuthenticatedKnownDeviceProofClientEndpointsLive(
         inSerializer = Unit.serializer(),
         body = Unit,
         outSerializer = KnownDeviceSecretAndExpiration.serializer()
+    )
+}
+
+interface AuthenticatedBackupCodeProofClientEndpoints {
+    suspend fun resetCodes(): List<String>
+    suspend fun clearCodes(): Unit
+    suspend fun established(): Boolean
+}
+
+open class AuthenticatedBackupCodeProofClientEndpointsLive(
+    val fetcher: Fetcher,
+    val subpath: String,
+) : AuthenticatedBackupCodeProofClientEndpoints {
+    override suspend fun resetCodes(): List<String> = fetcher(
+        url = "$subpath/reset-codes",
+        method = HttpMethod.POST,
+        inSerializer = Unit.serializer(),
+        body = Unit,
+        outSerializer = ListSerializer(String.serializer())
+    )
+
+    override suspend fun clearCodes(): Unit = fetcher(
+        url = "$subpath/clear-codes",
+        method = HttpMethod.POST,
+        inSerializer = Unit.serializer(),
+        body = Unit,
+        outSerializer = Unit.serializer(),
+    )
+
+    override suspend fun established(): Boolean = fetcher(
+        url = "$subpath/established",
+        method = HttpMethod.GET,
+        inSerializer = Unit.serializer(),
+        body = Unit,
+        outSerializer = Boolean.serializer()
     )
 }
 
