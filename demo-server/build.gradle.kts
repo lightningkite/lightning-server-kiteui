@@ -2,9 +2,9 @@ import com.lightningkite.deployhelpers.*
 import java.util.Properties
 
 plugins {
-    kotlin("jvm")
-    kotlin("plugin.serialization")
-    id("com.google.devtools.ksp")
+    alias(libs.plugins.kotlinJvm)
+    alias(libs.plugins.serialization)
+    alias(libs.plugins.ksp)
     application
 }
 

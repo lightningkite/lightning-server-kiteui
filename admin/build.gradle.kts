@@ -2,7 +2,6 @@ import com.lightningkite.kiteui.KiteUiPlugin
 import com.lightningkite.kiteui.KiteUiPluginExtension
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-import org.jetbrains.kotlin.gradle.plugin.mpp.BitcodeEmbeddingMode
 import org.jetbrains.kotlin.gradle.plugin.mpp.NativeBuildType
 import org.jetbrains.kotlin.gradle.targets.js.webpack.KotlinWebpackConfig
 import java.util.*
@@ -91,21 +90,6 @@ dependencies {
 configure<KiteUiPluginExtension> {
     this.packageName = "com.lightningkite.lightningserver.admin"
     this.iosProjectRoot = project.file("../example-app-ios/KiteUI Example App")
-}
-
-kotlin {
-    targets
-        .matching { it is org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget }
-        .configureEach {
-            this as org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
-
-            compilations.getByName("main") {
-                this.kotlinOptions {
-//                    this.freeCompilerArgs += "-Xruntime-logs=gc=info"
-//                    this.freeCompilerArgs += "-Xallocator=mimalloc"
-                }
-            }
-        }
 }
 
 fun env(name: String, profile: String) {

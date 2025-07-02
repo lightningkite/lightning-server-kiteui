@@ -14,7 +14,7 @@ plugins {
 }
 
 kotlin {
-    targetHierarchy.default()
+    applyDefaultHierarchyTemplate()
     androidTarget {
         publishLibraryVariants("release", "debug")
         compilerOptions {

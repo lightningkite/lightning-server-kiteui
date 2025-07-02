@@ -1,10 +1,10 @@
 import com.lightningkite.deployhelpers.*
 
 plugins {
-    kotlin("multiplatform")
-    kotlin("plugin.serialization")
-    id("com.android.library")
-    id("com.google.devtools.ksp")
+    alias(libs.plugins.kotlinMultiplatform)
+    alias(libs.plugins.serialization)
+    alias(libs.plugins.androidLibrary)
+    alias(libs.plugins.ksp)
 }
 
 group = "com.lightningkite.template"

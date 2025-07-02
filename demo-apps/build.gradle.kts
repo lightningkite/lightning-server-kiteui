@@ -1,26 +1,21 @@
 import com.lightningkite.kiteui.KiteUiPluginExtension
-import org.jetbrains.kotlin.gradle.plugin.mpp.BitcodeEmbeddingMode
 import org.jetbrains.kotlin.gradle.plugin.mpp.NativeBuildType
 import java.util.*
 import com.lightningkite.deployhelpers.*
 
 plugins {
-    kotlin("multiplatform")
-    kotlin("plugin.serialization")
-    kotlin("native.cocoapods")
-    id("com.android.application")
+    alias(libs.plugins.androidApp)
+    alias(libs.plugins.kotlinMultiplatform)
+    alias(libs.plugins.serialization)
+    alias(libs.plugins.kotlinCocoapods)
     alias(libs.plugins.comLightningkiteKiteui)
+    alias(libs.plugins.vite)
     id("io.sentry.android.gradle") version "4.5.1"
-    id("dev.opensavvy.vite.kotlin") version "0.5.1"
 }
 
 group = "com.lightningkite.template"
 version = "1.0-SNAPSHOT"
 
-
-repositories {
-    maven("https://jitpack.io")
-}
 
 kotlin {
     applyDefaultHierarchyTemplate()
@@ -85,8 +80,6 @@ kotlin {
             export(project(":demo-shared"))
             export(libs.comLightningkiteKiteuiLibrary)
             export(project(":client"))
-            embedBitcode(BitcodeEmbeddingMode.BITCODE)
-//            embedBitcode(BitcodeEmbeddingMode.DISABLE)
 //            podfile = project.file("../example-app-ios/Podfile")
         }
         pod("Sentry") {

@@ -173,7 +173,7 @@ class InterruptibleDelay(val parent: InterruptibleDelay? = null) {
         val toRace = listOf(suspend { kotlinx.coroutines.delay(duration) })
             .plus(generateSequence(this) { it.parent }.map { inter ->
                 suspend {
-                    var closer: () -> Unit
+                    var closer: () -> Unit = {}
                     suspendCancellableCoroutine { cont ->
                         closer = inter.listenable.addListener {
                             cont.resume(Unit)
