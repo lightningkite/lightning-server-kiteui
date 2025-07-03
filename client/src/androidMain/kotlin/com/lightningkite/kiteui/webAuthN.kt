@@ -13,7 +13,7 @@ actual class ClientAuthenticator {
     actual suspend fun getWebAuthNCredentials(request: WebAuthN.Authentication.PublicKeyCredentialRequestOptions, mediation: WebAuthNMediationType): WebAuthN.Authentication.AssertedPublicKeyCredential = TODO()
 
     actual companion object {
-        actual fun getClientAuthenticator(): ClientAuthenticator = TODO()
+        actual fun getClientAuthenticator(): ClientAuthenticator = ClientAuthenticator()
     }
 }
 
