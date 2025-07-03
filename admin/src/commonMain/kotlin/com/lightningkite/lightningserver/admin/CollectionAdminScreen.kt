@@ -64,7 +64,7 @@ class CollectionAdminPage(val collectionName: String) : Page {
                 as ModelCache<UnknownModel, UnknownId>
     }
 
-    fun ViewWriter.exportDialog() = dialog {
+    fun ViewWriter.exportDialog() = dialog { close ->
         col {
             h2("Export")
             important - button {
@@ -77,6 +77,7 @@ class CollectionAdminPage(val collectionName: String) : Page {
                     )()
                     val items = csv.encodeToString(ListSerializer(mc().serializer), data)
                     ExternalServices.download("data.csv", items.toBlob("text/csv"), DownloadLocation.Downloads)
+                    close()
                 }
             }
             important - button {
@@ -96,13 +97,14 @@ class CollectionAdminPage(val collectionName: String) : Page {
                     val items = csv.encodeToString(ListSerializer(mc().serializer), data)
                     ExternalServices.setClipboardText(items)
                     success.value = true
+                    close()
                 }
             }
         }
 
     }
 
-    fun ViewWriter.importDialog() = dialog {
+    fun ViewWriter.importDialog() = dialog { close ->
         col {
             h2("Import")
             important - button {
@@ -116,12 +118,13 @@ class CollectionAdminPage(val collectionName: String) : Page {
                     confirmDanger("Upload ${items.size} items?", "Are you sure you want to upload these items?") {
                         mc().insert(items)
                     }
+                    close()
                 }
             }
         }
     }
 
-    fun ViewWriter.bulkDeleteDialog() = dialog {
+    fun ViewWriter.bulkDeleteDialog() = dialog { close ->
         col {
             h2("Bulk Delete")
             reactive<Unit> {
@@ -155,6 +158,7 @@ class CollectionAdminPage(val collectionName: String) : Page {
                             mc.skipCache.bulkDelete(c)
                             mc.totallyInvalidate()
                         }
+                        close()
                     }
                 }
             }

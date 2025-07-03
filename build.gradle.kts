@@ -1,6 +1,8 @@
 import com.lightningkite.deployhelpers.publishing
 import com.lightningkite.deployhelpers.useGitBasedVersion
 import com.lightningkite.deployhelpers.useLocalDependencies
+import org.jetbrains.kotlin.gradle.targets.js.yarn.YarnLockMismatchReport
+import org.jetbrains.kotlin.gradle.targets.js.yarn.YarnRootExtension
 
 plugins {
     alias(libs.plugins.dokka) apply false
@@ -37,4 +39,10 @@ allprojects {
         mavenCentral()
         maven("https://jitpack.io")
     }
+}
+
+plugins.withType<org.jetbrains.kotlin.gradle.targets.js.yarn.YarnPlugin> {
+    the<YarnRootExtension>().yarnLockMismatchReport = YarnLockMismatchReport.NONE
+    the<YarnRootExtension>().reportNewYarnLock = false
+    the<YarnRootExtension>().yarnLockAutoReplace = true
 }
