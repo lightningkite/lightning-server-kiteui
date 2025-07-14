@@ -17,6 +17,7 @@ import com.lightningkite.lightningserver.auth.subject.SubSessionRequest
 import com.lightningkite.lightningserver.networking.Fetcher
 import com.lightningkite.now
 import com.lightningkite.readable.AppScope
+import com.lightningkite.readable.Listenable
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
@@ -58,20 +59,59 @@ data class AuthClientEndpoints(
 ) {
 
     companion object {
+        private val methodLookup = mapOf(
+            "all" to listOf(
+                ProofOption(ProofMethodInfo("email", "email"), "test@test.com"),
+                ProofOption(ProofMethodInfo("sms", "phone"), "801-000-0000"),
+                ProofOption(ProofMethodInfo("password", null)),
+                ProofOption(ProofMethodInfo("otp", null)),
+                ProofOption(ProofMethodInfo("backupcode", null)),
+                ProofOption(ProofMethodInfo("WebAuthN", null)),
+            ),
+            "emailpass" to listOf(
+                ProofOption(ProofMethodInfo("email", "email"), "test@test.com"),
+                ProofOption(ProofMethodInfo("password", null)),
+            ),
+            "emailpassotp" to listOf(
+                ProofOption(ProofMethodInfo("email", "email"), "test@test.com"),
+                ProofOption(ProofMethodInfo("password", null)),
+                ProofOption(ProofMethodInfo("otp", null)),
+                ProofOption(ProofMethodInfo("backupcode", null)),
+            ),
+            "emailpasswebauth" to listOf(
+                ProofOption(ProofMethodInfo("email", "email"), "test@test.com"),
+                ProofOption(ProofMethodInfo("WebAuthN", null)),
+            ),
+            "phonepass" to listOf(
+                ProofOption(ProofMethodInfo("sms", "phone"), "801-000-0000"),
+                ProofOption(ProofMethodInfo("password", null)),
+            ),
+            "phonepassotp" to listOf(
+                ProofOption(ProofMethodInfo("sms", "phone"), "801-000-0000"),
+                ProofOption(ProofMethodInfo("password", null)),
+                ProofOption(ProofMethodInfo("otp", null)),
+                ProofOption(ProofMethodInfo("backupcode", null)),
+            ),
+            "phonepasswebauth" to listOf(
+                ProofOption(ProofMethodInfo("sms", "phone"), "801-000-0000"),
+                ProofOption(ProofMethodInfo("WebAuthN", null)),
+            ),
+            "none" to listOf(
+            ),
+        )
         val dummy = AuthClientEndpoints(
             subjects = mapOf("User" to object : UserAuthClientEndpoints<String> {
                 override suspend fun getToken(input: OauthTokenRequest): OauthResponse = OauthResponse("")
                 override suspend fun getTokenSimple(input: String): String = ""
+                fun get(proofs: List<Proof>): List<ProofOption> {
+                    val id = proofs.find { it.property == "email" }?.value?.substringBefore('@')?.substringBefore('+')
+                    return methodLookup[id] ?: methodLookup["all"]!!
+                }
                 override suspend fun logIn(input: List<Proof>): IdAndAuthMethods<String> {
                     delay(1000)
                     return IdAndAuthMethods(
                         id = "id",
-                        options = listOf(
-                            ProofOption(ProofMethodInfo("email", "email"), "test@test.com"),
-                            ProofOption(ProofMethodInfo("sms", "phone"), "801-000-0000"),
-                            ProofOption(ProofMethodInfo("password", null)),
-                            ProofOption(ProofMethodInfo("otp", null)),
-                        ).filter { it.method.via !in input.map { it.via } },
+                        options = get(input).filter { it.method.via !in input.map { it.via } },
                         strengthRequired = 3,
                         session = if (input.sumOf { it.strength } >= 3) "" else null
                     )
@@ -81,12 +121,7 @@ data class AuthClientEndpoints(
                     delay(1000)
                     return IdAndAuthMethods(
                         id = "id",
-                        options = listOf(
-                            ProofOption(ProofMethodInfo("email", "email"), "test@test.com"),
-                            ProofOption(ProofMethodInfo("sms", "phone"), "801-000-0000"),
-                            ProofOption(ProofMethodInfo("password", null)),
-                            ProofOption(ProofMethodInfo("otp", null)),
-                        ).filter { it.method.via !in input.proofs.map { it.via } },
+                        options = get(input.proofs).filter { it.method.via !in input.proofs.map { it.via } },
                         strengthRequired = 3,
                         session = if (input.proofs.sumOf { it.strength } >= 3) "" else null
                     )
@@ -96,12 +131,7 @@ data class AuthClientEndpoints(
                     delay(1000)
                     return ProofsCheckResult(
                         id = "id",
-                        options = listOf(
-                            ProofOption(ProofMethodInfo("email", "email"), "test@test.com"),
-                            ProofOption(ProofMethodInfo("sms", "phone"), "801-000-0000"),
-                            ProofOption(ProofMethodInfo("password", null)),
-                            ProofOption(ProofMethodInfo("otp", null)),
-                        ).filter { it.method.via !in input.map { it.via } },
+                        options = get(input).filter { it.method.via !in input.map { it.via } },
                         strengthRequired = 3,
                         maxExpiration = now() + 7.days,
                         readyToLogIn = input.sumOf { it.strength } >= 3
@@ -173,6 +203,29 @@ data class AuthClientEndpoints(
                     return KnownDeviceOptions(30.days, 1)
                 }
             },
+            webAuthNProof = object : WebAuthNProofEndpoints {
+                override suspend fun start(input: WebAuthN.Authentication.StartRequest): WebAuthN.Authentication.StartResponse {
+                    delay(1000)
+                    return WebAuthN.Authentication.StartResponse(
+                        "sfhfhfsghdgjdghjfsgsgbbcnkfhkjrtshgdzfgv",
+                        options = WebAuthN.Authentication.PublicKeyCredentialRequestOptions(challenge ="sfhfhfsghdgjdghjfsgsgbbcnkfhkjrtshgdzfgv", rpId = "com.test")
+                    )
+                }
+                override suspend fun prove(input: WebAuthN.Authentication.ProveRequest): Proof {
+                    delay(1000)
+                    return Proof(via = "WebAuthN", property = "WebAuthN", value = "id", at = now(), signature = "")
+                }
+            },
+            backupCodeProof = object : BackupCodeProofClientEndpoints {
+                override suspend fun proveBackupCode(input: IdentificationAndPassword): Proof {
+                    delay(1000)
+                    if (input.password == "wrong") throw LsErrorException(
+                        400,
+                        LSError(400, "", "OTP and user do not match", "")
+                    )
+                    return Proof("backupcode", property = "backupcode", value = "id", at = now(), signature = "")
+                }
+            },
             authenticatedKnownDeviceProof = {
                 object : AuthenticatedKnownDeviceProofClientEndpoints {
                     override suspend fun establishKnownDevice(): String {
@@ -210,9 +263,13 @@ data class AuthClientEndpoints(
 }
 
 sealed interface ProofEndpoints {
+    val via: String
+    val property: String? get() = null
 }
 
 interface SmsProofClientEndpoints : ProofEndpoints {
+    override val via: String get() = "sms"
+    override val property: String? get() = "phone"
     suspend fun beginSmsOwnershipProof(input: String): String
     suspend fun provePhoneOwnership(input: FinishProof): Proof
 
@@ -240,6 +297,8 @@ open class SmsProofClientEndpointsLive(
 }
 
 interface EmailProofClientEndpoints : ProofEndpoints {
+    override val via: String get() = "email"
+    override val property: String get() = "email"
     suspend fun beginEmailOwnershipProof(input: String): String
     suspend fun proveEmailOwnership(input: FinishProof): Proof
 
@@ -267,9 +326,8 @@ open class EmailProofClientEndpointsLive(
 }
 
 interface OneTimePasswordProofClientEndpoints : ProofEndpoints {
+    override val via: String get() = "otp"
     suspend fun proveOTP(input: IdentificationAndPassword): Proof
-
-
 }
 
 open class OneTimePasswordProofClientEndpointsLive(
@@ -286,6 +344,7 @@ open class OneTimePasswordProofClientEndpointsLive(
 }
 
 interface PasswordProofClientEndpoints : ProofEndpoints {
+    override val via: String get() = "password"
     suspend fun provePasswordOwnership(input: IdentificationAndPassword): Proof
 }
 
@@ -303,6 +362,7 @@ open class PasswordProofClientEndpointsLive(
 }
 
 interface BackupCodeProofClientEndpoints : ProofEndpoints {
+    override val via: String get() = "backupcode"
     suspend fun proveBackupCode(input: IdentificationAndPassword): Proof
 }
 
@@ -320,6 +380,7 @@ open class BackupCodeProofClientEndpointsLive(
 }
 
 interface WebAuthNProofEndpoints : ProofEndpoints {
+    override val via: String get() = "WebAuthN"
     suspend fun start(input: WebAuthN.Authentication.StartRequest): WebAuthN.Authentication.StartResponse
     suspend fun prove(input: WebAuthN.Authentication.ProveRequest): Proof
 }
@@ -347,6 +408,7 @@ open class WebAuthNProofEndpointsLive(
 }
 
 interface KnownDeviceProofClientEndpoints : ProofEndpoints {
+    override val via: String get() = "known-device"
     suspend fun knownDeviceOptions(): KnownDeviceOptions
     suspend fun proveKnownDevice(input: String): Proof
 }
@@ -505,17 +567,28 @@ open class AuthenticatedBackupCodeProofClientEndpointsLive(
     )
 }
 
-fun <ID : Comparable<ID>> UserAuthClientEndpoints<ID>.accessToken(sessionToken: String): suspend () -> List<Pair<String, String>> {
+fun <ID : Comparable<ID>> UserAuthClientEndpoints<ID>.accessToken(sessionToken: String): suspend () -> List<Pair<String, String>>
+    = accessToken(sessionToken, null)
+fun <ID : Comparable<ID>> UserAuthClientEndpoints<ID>.accessToken(sessionToken: String, forceInvalidate: Listenable?): suspend () -> List<Pair<String, String>> {
     var lastRefresh: Instant = Instant.DISTANT_PAST
     var token: Deferred<String>? = null
+    forceInvalidate?.let {
+        it.addListener {
+            lastRefresh = Instant.DISTANT_PAST
+            token = null
+        }
+    }
     return {
-        if (System.now() - lastRefresh > 4.minutes || token == null) {
+        var toUse = token
+        if (System.now() - lastRefresh > 4.minutes || toUse == null) {
             lastRefresh = System.now()
-            token = AppScope.async {
+            val out = AppScope.async {
                 getTokenSimple(sessionToken)
             }
+            token = out
+            toUse = out
         }
-        listOf("Authorization" to token.await())
+        listOf("Authorization" to toUse.await())
     }
 }
 

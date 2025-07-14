@@ -1,6 +1,7 @@
 package com.lightningkite.lightningserver.admin
 
 import com.lightningkite.*
+import com.lightningkite.kiteui.auth.authComponent2
 import com.lightningkite.kiteui.exceptions.ExceptionMessage
 import com.lightningkite.kiteui.exceptions.ExceptionToMessage
 import com.lightningkite.kiteui.exceptions.ExceptionToMessages
@@ -142,7 +143,7 @@ fun ViewWriter.app(navigator: PageNavigator, dialog: PageNavigator) {
                                         reactive {
                                             clearChildren()
                                             try {
-                                                login(adminServer().auth, userType() ?: return@reactive) { v ->
+                                                authComponent2(adminServer().auth, userType() ?: return@reactive) { v ->
                                                     adminCredentials.value =
                                                         adminCredentials.value?.copy(session = v) ?: AdminCredentials(
                                                             session = v

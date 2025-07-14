@@ -577,16 +577,27 @@ class AuthComponent(
     val authenticating = Property(false)
     val rememberDevice = Property(false)
     val desiredSessionLength = Property<Duration?>(1.days)
+    val error = Property<Exception?>(null)
     val authResult: Readable<ProofsCheckResult<out Comparable<*>>?> = sharedSuspending {
         val proofs = proofs.await()
 
-        if (proofs.isEmpty()) return@sharedSuspending null
+        if (proofs.isEmpty()) {
+            error.value = null
+            return@sharedSuspending null
+        }
         authenticating.value = true
         try {
-            subject.checkProofs(proofs)
+            subject.checkProofs(proofs).also {
+                error.value = null
+            }
         } catch (e: LsErrorException) {
-            if (e.status / 100 == 4) this@AuthComponent.proofs.value = listOf()
-            if (e.status / 100 == 5) throw e
+            if (e.status / 100 == 4) {
+                this@AuthComponent.proofs.value = listOf()
+            }
+            error.value = e
+            null
+        } catch (e: Exception) {
+            error.value = e
             null
         } finally {
             authenticating.value = false
