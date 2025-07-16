@@ -1,7 +1,9 @@
 package com.lightningkite.kiteui.auth
 
 import com.lightningkite.kiteui.ClientAuthenticator
+import com.lightningkite.kiteui.Platform
 import com.lightningkite.kiteui.WebAuthNMediationType
+import com.lightningkite.kiteui.current
 import com.lightningkite.kiteui.forms.KnownDeviceSecretInfoStuff
 import com.lightningkite.kiteui.models.ErrorSemantic
 import com.lightningkite.kiteui.models.Icon
@@ -130,10 +132,11 @@ open class AuthComponent2(
 
         renderPrimaryIdentifier(this)
 
-        card - progressBar {
-            ::ratio {
-                authResult()?.let { proofs().sumOf { it.strength } / it.strengthRequired.toFloat() } ?: 0.00f
-            }
+        val progress = shared { authResult()?.let { proofs().sumOf { it.strength } / it.strengthRequired.toFloat() } ?: 0.00f }
+        shownWhen {
+            progress() in 0.01f..0.99f
+        } - card - progressBar {
+            ::ratio { progress() }
         }
 
         centered - shownWhen { !authResult.state().ready } - activityIndicator()
@@ -221,7 +224,9 @@ open class AuthComponent2(
                 reactive {
                     if (currentProof() == null) requestFocus()
                 }
-                action = selectFirstAction
+                if (Platform.current == Platform.Web) {
+                    action = selectFirstAction
+                }
             }
         }
 
@@ -243,7 +248,7 @@ open class AuthComponent2(
 
     open fun renderFinalize(to: ViewWriter): ViewModifiable = to.col {
         val desiredSessionLength = Property<Duration?>(1.days)
-        val rememberDevice = Property(false)
+        val rememberDevice = Property(Platform.current != Platform.Web)
         val knownDevice =
             knownDeviceLocalStorageName?.let { PersistentProperty<KnownDeviceSecretInfoStuff?>(it, null) }
         val knownDeviceOptions = sharedSuspending {
@@ -254,7 +259,6 @@ open class AuthComponent2(
             centered - checkbox { checked bind rememberDevice }
             centered - text {
                 content = "This is my device"
-//                        ::content { "Remember this device for ${knownDeviceOptions()?.duration?.inWholeDays} days" }
             }
         }
         shownWhen { rememberDevice() || knownDeviceOptions() == null } - row {
