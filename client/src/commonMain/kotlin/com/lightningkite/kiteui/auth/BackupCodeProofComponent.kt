@@ -51,7 +51,7 @@ data class BackupCodeProofComponent(val p: BackupCodeProofClientEndpoints, val t
                 requestFocus()
                 content bind code
                 action = provePasswordOwnership
-                keyboardHints = KeyboardHints.Companion.password
+                keyboardHints = KeyboardHints.Companion.oneTimeCodeLetters
             }
         }
         SubtextSemantic.onNext - errorText()

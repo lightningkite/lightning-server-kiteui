@@ -14,6 +14,7 @@ import com.lightningkite.kiteui.views.l2.icon
 import com.lightningkite.lightningserver.LsErrorException
 import com.lightningkite.lightningserver.auth.*
 import com.lightningkite.lightningserver.auth.proof.FinishProof
+import com.lightningkite.lightningserver.auth.proof.Identification
 import com.lightningkite.lightningserver.auth.proof.IdentificationAndPassword
 import com.lightningkite.lightningserver.auth.proof.KnownDeviceOptions
 import com.lightningkite.lightningserver.auth.proof.KnownDeviceSecretAndExpiration
@@ -252,6 +253,7 @@ class BackupCodeProof(
 class WebAuthNProof(
     val p: WebAuthNProofEndpoints,
     val type: String,
+    val property: String?,
     val key: String?,
     val isPrimary: Boolean,
 ) : CurrentProof {
@@ -261,9 +263,10 @@ class WebAuthNProof(
             launch {
                 try {
                     val (key, getOptions) = p.start(
-                        WebAuthN.Authentication.StartRequest(
-                            subjectId = if (isPrimary) null else key,
-                            subjectType = type
+                        Identification(
+                            type = type,
+                            property = property,
+                            value = key,
                         )
                     )
                     val signedChallenge =
@@ -491,6 +494,7 @@ class ReAuthComponent(
                                 currentProof.value = WebAuthNProof(
                                     p = webAuthNProof,
                                     type = subjectType,
+                                    property = "${subjectType}/_id",
                                     key = subjectId,
                                     isPrimary = isPrimary.await()
                                 )
@@ -809,9 +813,10 @@ class AuthComponent(
                         if (!ClientAuthenticator.getClientAuthenticator().autofillAvailable()) return@launch
 
                         val response = webAuthNProof.start(
-                            WebAuthN.Authentication.StartRequest(
+                            Identification(
+                                endpoints.subjects.keys.single(),
                                 null,
-                                endpoints.subjects.keys.single()
+                                null,
                             )
                         )
                         val signedChallenge = ClientAuthenticator.getClientAuthenticator()
@@ -854,13 +859,18 @@ class AuthComponent(
                             }
 
                             this.action = Action("Sign in with a Passkey", Icon.passkey) {
-                                val identity = authResult.awaitOnce()?.id?.toString()
                                 val type = endpoints.subjects.keys.single()
-
+                                pendingWebauthnRequest.cancel()
                                 currentProof.value = WebAuthNProof(
                                     p = webAuthNProof,
                                     type = type,
-                                    key = identity,
+                                    property = when {
+                                        authResult.awaitOnce()?.id != null -> "$type/_id"
+                                        Regexes.email.matches(primaryIdentifier.await()) -> "email"
+                                        Regexes.phoneNumber.matches(primaryIdentifier.await()) -> "phone"
+                                        else -> "_id"
+                                    },
+                                    key = authResult.awaitOnce()?.id?.toString() ?: primaryIdentifier.await(),
                                     isPrimary = isPrimary.await()
                                 )
                             }

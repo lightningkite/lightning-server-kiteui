@@ -204,7 +204,7 @@ data class AuthClientEndpoints(
                 }
             },
             webAuthNProof = object : WebAuthNProofEndpoints {
-                override suspend fun start(input: WebAuthN.Authentication.StartRequest): WebAuthN.Authentication.StartResponse {
+                override suspend fun start(input: Identification): WebAuthN.Authentication.StartResponse {
                     delay(1000)
                     return WebAuthN.Authentication.StartResponse(
                         "sfhfhfsghdgjdghjfsgsgbbcnkfhkjrtshgdzfgv",
@@ -381,7 +381,7 @@ open class BackupCodeProofClientEndpointsLive(
 
 interface WebAuthNProofEndpoints : ProofEndpoints {
     override val via: String get() = "WebAuthN"
-    suspend fun start(input: WebAuthN.Authentication.StartRequest): WebAuthN.Authentication.StartResponse
+    suspend fun start(input: Identification): WebAuthN.Authentication.StartResponse
     suspend fun prove(input: WebAuthN.Authentication.ProveRequest): Proof
 }
 
@@ -389,11 +389,11 @@ open class WebAuthNProofEndpointsLive(
     val fetcher: Fetcher,
     val subpath: String,
 ) : WebAuthNProofEndpoints {
-    override suspend fun start(input: WebAuthN.Authentication.StartRequest): WebAuthN.Authentication.StartResponse =
+    override suspend fun start(input: Identification): WebAuthN.Authentication.StartResponse =
         fetcher(
             url = "$subpath/start",
             method = HttpMethod.POST,
-            inSerializer = WebAuthN.Authentication.StartRequest.serializer(),
+            inSerializer = Identification.serializer(),
             body = input,
             outSerializer = WebAuthN.Authentication.StartResponse.serializer()
         )

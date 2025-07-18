@@ -23,19 +23,16 @@ import com.lightningkite.kiteui.views.important
 import com.lightningkite.kiteui.views.l2.field
 import com.lightningkite.kiteui.views.l2.icon
 import com.lightningkite.lightningserver.auth.AuthClientEndpoints
-import com.lightningkite.lightningserver.auth.AuthenticatedKnownDeviceProofClientEndpoints
-import com.lightningkite.lightningserver.auth.KnownDeviceProofClientEndpoints
 import com.lightningkite.lightningserver.auth.LightningServerAuthentication
 import com.lightningkite.lightningserver.auth.UserAuthClientEndpoints
+import com.lightningkite.lightningserver.auth.proof.Identification
 import com.lightningkite.lightningserver.auth.proof.Proof
 import com.lightningkite.lightningserver.auth.proof.WebAuthN
 import com.lightningkite.lightningserver.auth.subject.LogInRequest
 import com.lightningkite.lightningserver.auth.subject.ProofsCheckResult
-import com.lightningkite.lightningserver.db.debounce
 import com.lightningkite.now
 import com.lightningkite.readable.Action
 import com.lightningkite.readable.AppScope
-import com.lightningkite.readable.ImmediateWritable
 import com.lightningkite.readable.Property
 import com.lightningkite.readable.Readable
 import com.lightningkite.readable.await
@@ -48,10 +45,8 @@ import com.lightningkite.readable.sharedSuspending
 import com.lightningkite.toEmailAddress
 import com.lightningkite.toPhoneNumber
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.plus
-import kotlinx.serialization.json.JsonNull.content
 import kotlin.collections.plus
 import kotlin.let
 import kotlin.math.roundToInt
@@ -109,11 +104,11 @@ open class AuthComponent2(
             .filter { it.via !in solved }
             .filter { it.supported() }
             .filter {
-                if(primaryIdentifier == null)
+                if (primaryIdentifier == null)
                     !it.primaryIdentifierRequired
                 else if (proofs.value.isEmpty())
                     (it.property == null || it.property == primaryIdentifier.property) &&
-                        (supportUsernames || primaryIdentifier.property != "username")
+                            (supportUsernames || primaryIdentifier.property != "username")
                 else
                     true
             }
@@ -132,7 +127,8 @@ open class AuthComponent2(
 
         renderPrimaryIdentifier(this)
 
-        val progress = shared { authResult()?.let { proofs().sumOf { it.strength } / it.strengthRequired.toFloat() } ?: 0.00f }
+        val progress =
+            shared { authResult()?.let { proofs().sumOf { it.strength } / it.strengthRequired.toFloat() } ?: 0.00f }
         shownWhen {
             progress() in 0.01f..0.99f
         } - card - progressBar {
@@ -141,7 +137,7 @@ open class AuthComponent2(
 
         centered - shownWhen { !authResult.state().ready } - activityIndicator()
         shownWhen { authResult.state().exception != null } - ErrorSemantic.onNext - col {
-            val msg = shared { authResult.state().exception?.let { exceptionToMessage(it) }}
+            val msg = shared { authResult.state().exception?.let { exceptionToMessage(it) } }
             text { ::content { msg()?.title ?: "Error" } }
             subtext { ::content { msg()?.body ?: "" } }
         }
@@ -151,6 +147,9 @@ open class AuthComponent2(
                 it.render(this@forEachAnimated, primaryIdentifier.value, authResult) {
                     if (it != null) {
                         proofs.value += it
+                        if (primaryIdentifier.value == null) {
+                            primaryIdentifier.value = UserIdentification(it.property, it.value)
+                        }
                     }
                     currentProof.value = null
                 }
@@ -195,10 +194,13 @@ open class AuthComponent2(
                 val primaryIdentifier2 = Property("")
                 content bind primaryIdentifier2
                 reactive {
-                    primaryIdentifier()?.value?.let { primaryIdentifier2.value = it }
+                    val p = primaryIdentifier()
+                    if (p?.property?.contains("_id") != true)
+                        primaryIdentifier2.value = p?.value ?: primaryIdentifier2.value
                 }
                 reactive {
                     val it = primaryIdentifier2()
+                    if (it == primaryIdentifier.value?.value) return@reactive
                     primaryIdentifier.value = run lens@{
                         if (it.isBlank()) return@lens null
                         try {
@@ -235,13 +237,36 @@ open class AuthComponent2(
                 padding = 0.2.rem
                 icon(Icon.arrowBack, "Cancel")
                 onClick {
+                    if (primaryIdentifier.value?.property?.contains("_id") == true) {
+                        primaryIdentifier.value = null
+                    }
                     currentProof.value = null
-                    primaryIdentifier.value = null
                     proofs.value = emptyList()
                 }
             }
             expanding - centered - text {
-                ::content{ primaryIdentifier()?.value?.takeIf { it.isNotEmpty() } ?: "Using Passkey" }
+                ::content{ primaryIdentifier()?.takeIf { !it.property.contains("_id") }?.value ?: "Using Passkey" }
+            }
+        }
+
+        endpoints.webAuthNProof?.let { webAuthn ->
+            if (endpoints.webAuthNIncludePasskeyUI) {
+                val webAuthAvailable = sharedSuspending { ClientAuthenticator.getClientAuthenticator().webAuthNAvailable() }
+                shownWhen { primaryIdentifier() == null && currentProof() == null && proofs().isEmpty() && webAuthAvailable() } - col {
+
+                    centered - text("Or")
+
+                    card - buttonTheme - button {
+                        centered - row {
+                            icon(Icon.Companion.passkey, "")
+                            text("Use Passkey")
+                        }
+                        onClick {
+                            currentProof.value =
+                                WebAuthNProofComponent(webAuthn, endpoints.subjects.keys.single(), false)
+                        }
+                    }
+                }
             }
         }
     }
@@ -311,6 +336,7 @@ open class AuthComponent2(
             }
         }
     }
+
     open fun pickProof(to: ViewWriter): ViewModifiable = to.col {
         val cancelIfSelected = launch {
             proofOptions()

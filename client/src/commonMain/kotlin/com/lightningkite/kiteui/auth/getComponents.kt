@@ -11,5 +11,5 @@ fun AuthClientEndpoints.components(
     oneTimePasswordProof?.let { OtpProofComponent(it, subjectType) },
     passwordProof?.let { PasswordProofComponent(it, subjectType) },
     backupCodeProof?.let { BackupCodeProofComponent(it, subjectType) },
-    webAuthNProof?.let { WebAuthNProofComponent(it, subjectType) },
+    webAuthNProof?.let { WebAuthNProofComponent(it, subjectType, webAuthNIncludePasskeyUI) },
 )

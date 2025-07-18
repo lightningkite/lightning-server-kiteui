@@ -14,6 +14,7 @@ import com.lightningkite.kiteui.views.direct.col
 import com.lightningkite.kiteui.views.direct.frame
 import com.lightningkite.kiteui.views.launch
 import com.lightningkite.lightningserver.auth.WebAuthNProofEndpoints
+import com.lightningkite.lightningserver.auth.proof.Identification
 import com.lightningkite.lightningserver.auth.proof.Proof
 import com.lightningkite.lightningserver.auth.proof.ProofOption
 import com.lightningkite.lightningserver.auth.proof.WebAuthN
@@ -30,6 +31,7 @@ import kotlinx.coroutines.launch
 data class WebAuthNProofComponent(
     val p: WebAuthNProofEndpoints,
     val type: String,
+    val usePasskeyUI: Boolean,
 ) : ProofComponent {
     override val name: String = "Use Passkey"
     override val icon: Icon = Icon.Companion.passkey
@@ -38,29 +40,32 @@ data class WebAuthNProofComponent(
     override val primaryIdentifierRequired: Boolean get() = true
     override suspend fun supported(): Boolean = ClientAuthenticator.getClientAuthenticator().webAuthNAvailable()
 
-    override val earlyProof: (suspend (ViewWriter) -> Proof?)? = label@{
-        if (!ClientAuthenticator.getClientAuthenticator().autofillAvailable()) return@label null
+    override val earlyProof: (suspend (ViewWriter) -> Proof?)? = if (usePasskeyUI) {
+        label@{
+            if (!ClientAuthenticator.getClientAuthenticator().autofillAvailable()) return@label null
 
-        val response = p.start(WebAuthN.Authentication.StartRequest(null, type))
-        val signedChallenge = ClientAuthenticator.getClientAuthenticator()
-            .getWebAuthNCredentials(response.options, WebAuthNMediationType.Conditional)
+            val response = p.start(Identification(type, null, null))
+            val signedChallenge = ClientAuthenticator.getClientAuthenticator()
+                .getWebAuthNCredentials(response.options, WebAuthNMediationType.Conditional)
 
-        p.prove(WebAuthN.Authentication.ProveRequest(response.challengeId, signedChallenge))
-    }
+            p.prove(WebAuthN.Authentication.ProveRequest(response.challengeId, signedChallenge))
+        }
+    } else null
 
     override fun render(
         to: ViewWriter,
         primaryIdentifier: UserIdentification?,
         checks: ProofsCheckResult<*>?,
-        onResult: (Proof?) -> Unit
+        onResult: (Proof?) -> Unit,
     ): ViewModifiable = to.frame {
         centered - activityIndicator()
         launch {
             try {
                 val (key, getOptions) = p.start(
-                    WebAuthN.Authentication.StartRequest(
-                        subjectId = primaryIdentifier?.value,
-                        subjectType = type,
+                    Identification(
+                        type = type,
+                        property = primaryIdentifier?.property,
+                        value = primaryIdentifier?.value,
                     )
                 )
                 val signedChallenge =
