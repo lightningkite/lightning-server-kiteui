@@ -40,7 +40,7 @@ interface ProofComponent {
                 via,
                 primaryIdentifier.property
             ), primaryIdentifier.value)
-        return render(to, option, onResult)
+        return render(to, primaryIdentifier, option, onResult)
     }
-    fun render(to: ViewWriter, option: ProofOption, onResult: (Proof?) -> Unit): ViewModifiable = TODO()
+    fun render(to: ViewWriter, primaryIdentifier: UserIdentification?, option: ProofOption, onResult: (Proof?) -> Unit): ViewModifiable = TODO()
 }

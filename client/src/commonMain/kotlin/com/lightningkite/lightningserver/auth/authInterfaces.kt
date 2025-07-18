@@ -326,7 +326,7 @@ open class EmailProofClientEndpointsLive(
 }
 
 interface OneTimePasswordProofClientEndpoints : ProofEndpoints {
-    override val via: String get() = "otp"
+    override val via: String get() = "totp"
     suspend fun proveOTP(input: IdentificationAndPassword): Proof
 }
 

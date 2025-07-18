@@ -44,6 +44,7 @@ data class EmailProofComponent(val p: EmailProofClientEndpoints) : ProofComponen
     val resendTime = 15.seconds
     override fun render(
         to: ViewWriter,
+        primaryIdentifier: UserIdentification?,
         option: ProofOption,
         onResult: (Proof?) -> Unit
     ): ViewModifiable = to.col {

@@ -29,6 +29,7 @@ data class BackupCodeProofComponent(val p: BackupCodeProofClientEndpoints, val t
 
     override fun render(
         to: ViewWriter,
+        primaryIdentifier: UserIdentification?,
         option: ProofOption,
         onResult: (Proof?) -> Unit
     ): ViewModifiable = to.col {
@@ -38,8 +39,8 @@ data class BackupCodeProofComponent(val p: BackupCodeProofClientEndpoints, val t
                 p.proveBackupCode(
                     IdentificationAndPassword(
                         type = type,
-                        property = option.method.property ?: "",
-                        value = option.value ?: "",
+                        property = option.method.property ?: primaryIdentifier?.property ?: "",
+                        value = option.value ?: primaryIdentifier?.value ?: "",
                         password = code.await()
                     )
                 )

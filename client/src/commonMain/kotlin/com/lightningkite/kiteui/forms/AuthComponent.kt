@@ -193,7 +193,7 @@ class PasswordProof(
     }
 }
 
-class OtpProof(
+class TotpProof(
     val p: OneTimePasswordProofClientEndpoints,
     val type: String,
     val key: String,
@@ -387,11 +387,11 @@ class ReAuthComponent(
 
                 endpoints.emailProof?.let { p ->
                     shownWhen {
-                        proofs().none { it.via == "email" } &&
-                                requirements().options.any { it.method.via == "email" }
+                        proofs().none { it.via == p.via } &&
+                                requirements().options.any { it.method.via == p.via }
                     } - important - buttonTheme - button {
                         this.action = Action("Email Code", Icon.send) {
-                            val id = requirements().options.find { it.method.via == "email" }?.value ?: return@Action
+                            val id = requirements().options.find { it.method.via == p.via }?.value ?: return@Action
                             currentProof.value = EmailProof(p, id, p.beginEmailOwnershipProof(id))
                         }
                         centered - text("Email Code")
@@ -400,11 +400,11 @@ class ReAuthComponent(
 
                 endpoints.smsProof?.let { p ->
                     shownWhen {
-                        proofs().none { it.via == "sms" } &&
-                                requirements().options.any { it.method.via == "sms" }
+                        proofs().none { it.via == p.via } &&
+                                requirements().options.any { it.method.via == p.via }
                     } - important - buttonTheme - button {
                         this.action = Action("Text Code", Icon.send) {
-                            val id = requirements().options.find { it.method.via == "sms" }?.value ?: return@Action
+                            val id = requirements().options.find { it.method.via == p.via }?.value ?: return@Action
                             currentProof.value = SmsProof(p, id, p.beginSmsOwnershipProof(id))
                         }
                         centered - text("Text Code")
@@ -413,8 +413,8 @@ class ReAuthComponent(
 
                 endpoints.passwordProof?.let { p ->
                     shownWhen {
-                        proofs().none { it.via == "password" } &&
-                                requirements().options.any { it.method.via == "password" }
+                        proofs().none { it.via == p.via } &&
+                                requirements().options.any { it.method.via == p.via }
                     } - important - buttonTheme - button {
                         centered - text("Use Password")
                         this.action = Action("Use Password", Icon.chevronRight) {
@@ -430,12 +430,12 @@ class ReAuthComponent(
 
                 endpoints.oneTimePasswordProof?.let { p ->
                     shownWhen {
-                        proofs().none { it.via == "otp" } &&
-                                requirements().options.any { it.method.via == "otp" }
+                        proofs().none { it.via == p.via } &&
+                                requirements().options.any { it.method.via == p.via }
                     } - important - buttonTheme - button {
                         centered - text("Use Authenticator App")
                         this.action = Action("Use Authenticator App", Icon.chevronRight) {
-                            currentProof.value = OtpProof(
+                            currentProof.value = TotpProof(
                                 p = p,
                                 type = subjectType,
                                 key = "${subjectType}/_id",
@@ -447,8 +447,8 @@ class ReAuthComponent(
 
                 endpoints.backupCodeProof?.let { p ->
                     shownWhen {
-                        proofs().none { it.via == "backupcode" } &&
-                                requirements().options.any { it.method.via == "backupcode" }
+                        proofs().none { it.via == p.via } &&
+                                requirements().options.any { it.method.via == p.via }
                     } - important - buttonTheme - button {
                         centered - text("Use Backup Code")
                         this.action = Action("Use Backup Code", Icon.chevronRight) {
@@ -475,8 +475,8 @@ class ReAuthComponent(
 
                     shownWhen {
                         webAuthNAvailable() &&
-                                proofs().none { it.via == "WebAuthN" } &&
-                                requirements().options.any { it.method.via == "WebAuthN" }
+                                proofs().none { it.via == webAuthNProof.via } &&
+                                requirements().options.any { it.method.via == webAuthNProof.via }
                     } - col {
                         important - buttonTheme - button {
                             row {
@@ -708,7 +708,7 @@ class AuthComponent(
                         currentProof.value = EmailProof(p, id, p.beginEmailOwnershipProof(id))
                     }
                     shownWhen {
-                        proofs().none { it.via == "email" } && (authResult()?.options?.any { it.method.via == "email" }
+                        proofs().none { it.via == p.via } && (authResult()?.options?.any { it.method.via == p.via }
                             ?: true) && email() != null
                     } - important - buttonTheme - button {
                         this.action = action
@@ -723,8 +723,8 @@ class AuthComponent(
                         currentProof.value = SmsProof(p, id, p.beginSmsOwnershipProof(id))
                     }
                     shownWhen {
-                        proofs().none { it.via == "sms" } &&
-                                (authResult()?.options?.any { it.method.via == "sms" }
+                        proofs().none { it.via == p.via } &&
+                                (authResult()?.options?.any { it.method.via == p.via }
                                     ?: true) && phone() != null
                     } - important - buttonTheme - button {
                         this.action = action
@@ -747,8 +747,8 @@ class AuthComponent(
                         )
                     }
                     shownWhen {
-                        proofs().none { it.via == "password" } &&
-                                (authResult()?.options?.any { it.method.via == "password" } ?: true) &&
+                        proofs().none { it.via == p.via } &&
+                                (authResult()?.options?.any { it.method.via == p.via } ?: true) &&
                                 validId()
                     } - important - buttonTheme - button {
                         centered - text("Use Password")
@@ -757,9 +757,9 @@ class AuthComponent(
                     action
                 }
 
-                val otpAction = endpoints.oneTimePasswordProof?.let { p ->
+                val totpAction = endpoints.oneTimePasswordProof?.let { p ->
                     val action = Action("Use Authenticator App", Icon.chevronRight) {
-                        currentProof.value = OtpProof(
+                        currentProof.value = TotpProof(
                             p = p,
                             type = endpoints.subjects.keys.single(),
                             key = when {
@@ -771,8 +771,8 @@ class AuthComponent(
                         )
                     }
                     shownWhen {
-                        proofs().none { it.via == "otp" } &&
-                                (authResult()?.options?.any { it.method.via == "otp" } ?: true) &&
+                        proofs().none { it.via == p.via } &&
+                                (authResult()?.options?.any { it.method.via == p.via } ?: true) &&
                                 validId()
                     } - important - buttonTheme - button {
                         this.action = action
@@ -796,8 +796,8 @@ class AuthComponent(
                         )
                     }
                     shownWhen {
-                        proofs().none { it.via == "backupcode" } &&
-                                (authResult()?.options?.any { it.method.via == "backupcode" } ?: true) &&
+                        proofs().none { it.via == p.via } &&
+                                (authResult()?.options?.any { it.method.via == p.via } ?: true) &&
                                 validId()
                     } - important - buttonTheme - button {
                         this.action = action
@@ -839,9 +839,9 @@ class AuthComponent(
 
                     shownWhen {
                         webAuthNAvailable() &&
-                                proofs().none { it.via == "WebAuthN" } &&
+                                proofs().none { it.via == webAuthNProof.via } &&
                                 (isPrimary() ||
-                                        authResult()?.options?.any { it.method.via == "WebAuthN" } == true)
+                                        authResult()?.options?.any { it.method.via == webAuthNProof.via } == true)
                     } - col {
                         centered - shownWhen { isPrimary() } - text("Or")
 
@@ -882,11 +882,11 @@ class AuthComponent(
                     val id = primaryIdentifier()
                     val validId = Regexes.email.matches(id) || Regexes.phoneNumber.matches(id)
                     when {
-                        proofs().none { it.via.lowercase() == "email" } && email() != null && emailStartAction != null -> emailStartAction
-                        proofs().none { it.via.lowercase() == "sms" } && phone() != null && smsStartAction != null -> smsStartAction
-                        proofs().none { it.via.lowercase() == "password" } && validId && passwordStartAction != null -> passwordStartAction
-                        proofs().none { it.via.lowercase() == "backupcode" } && validId && backupCodeAction != null -> backupCodeAction
-                        proofs().none { it.via == "otp" } && validId && otpAction != null -> otpAction
+                        proofs().none { it.via == endpoints.emailProof?.via } && email() != null && emailStartAction != null -> emailStartAction
+                        proofs().none { it.via == endpoints.smsProof?.via } && phone() != null && smsStartAction != null -> smsStartAction
+                        proofs().none { it.via == endpoints.passwordProof?.via } && validId && passwordStartAction != null -> passwordStartAction
+                        proofs().none { it.via == endpoints.backupCodeProof?.via } && validId && backupCodeAction != null -> backupCodeAction
+                        proofs().none { it.via == endpoints.oneTimePasswordProof?.via } && validId && totpAction != null -> totpAction
                         else -> null
                     }
                 }

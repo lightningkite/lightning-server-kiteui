@@ -28,6 +28,7 @@ data class PasswordProofComponent(val p: PasswordProofClientEndpoints, val type:
     override val property: String? = p.property
     override fun render(
         to: ViewWriter,
+        primaryIdentifier: UserIdentification?,
         option: ProofOption,
         onResult: (Proof?) -> Unit
     ): ViewModifiable = to.col {
@@ -37,8 +38,8 @@ data class PasswordProofComponent(val p: PasswordProofClientEndpoints, val type:
                 p.provePasswordOwnership(
                     IdentificationAndPassword(
                         type = type,
-                        property = option.method.property ?: "",
-                        value = option.value ?: "",
+                        property = option.method.property ?: primaryIdentifier?.property ?: "",
+                        value = option.value ?: primaryIdentifier?.value ?: "",
                         password = code.await()
                     )
                 )

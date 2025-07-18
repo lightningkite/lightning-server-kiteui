@@ -13,7 +13,6 @@ import com.lightningkite.kiteui.views.direct.text
 import com.lightningkite.kiteui.views.direct.textInput
 import com.lightningkite.kiteui.views.important
 import com.lightningkite.kiteui.views.l2.errorText
-import com.lightningkite.kiteui.views.l2.field
 import com.lightningkite.lightningserver.auth.OneTimePasswordProofClientEndpoints
 import com.lightningkite.lightningserver.auth.proof.IdentificationAndPassword
 import com.lightningkite.lightningserver.auth.proof.Proof
@@ -21,13 +20,14 @@ import com.lightningkite.lightningserver.auth.proof.ProofOption
 import com.lightningkite.readable.Property
 import com.lightningkite.readable.await
 
-data class OtpProofComponent(val p: OneTimePasswordProofClientEndpoints, val type: String) : ProofComponent {
+data class TotpProofComponent(val p: OneTimePasswordProofClientEndpoints, val type: String) : ProofComponent {
     override val name: String = "Use Authenticator App"
     override val icon: Icon = Icon.Companion.pinCode
     override val via: String = p.via
     override val property: String? = p.property
     override fun render(
         to: ViewWriter,
+        primaryIdentifier: UserIdentification?,
         option: ProofOption,
         onResult: (Proof?) -> Unit
     ): ViewModifiable = to.col {
@@ -37,8 +37,8 @@ data class OtpProofComponent(val p: OneTimePasswordProofClientEndpoints, val typ
                 p.proveOTP(
                     IdentificationAndPassword(
                         type = type,
-                        property = option.method.property ?: "",
-                        value = option.value ?: "",
+                        property = option.method.property ?: primaryIdentifier?.property ?: "",
+                        value = option.value ?: primaryIdentifier?.value ?: "",
                         password = code.await()
                     )
                 )
