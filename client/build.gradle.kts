@@ -1,4 +1,4 @@
-//import com.lightningkite.deployhelpers.*
+import com.lightningkite.deployhelpers.*
 import com.lightningkite.deployhelpers.useGitBasedVersion
 import com.lightningkite.deployhelpers.useLocalDependencies
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
