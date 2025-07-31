@@ -1,7 +1,6 @@
-import com.lightningkite.deployhelpers.brady
-import com.lightningkite.deployhelpers.github
-import com.lightningkite.deployhelpers.joseph
-import com.lightningkite.deployhelpers.mit
+//import com.lightningkite.deployhelpers.*
+import com.lightningkite.deployhelpers.useGitBasedVersion
+import com.lightningkite.deployhelpers.useLocalDependencies
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 group = "com.lightningkite.lightningserver"
@@ -11,10 +10,21 @@ plugins {
     alias(libs.plugins.androidLibrary)
     alias(libs.plugins.ksp)
     alias(libs.plugins.serialization)
+//    signing
+    alias(libs.plugins.vanniktechPublishing)
 //    alias(libs.plugins.dokka)
-    alias(libs.plugins.vanniktechMavenPublish)
-    id("signing")
 }
+
+//dokka {
+//    // Dokka generates a new process managed by Gradle
+//    dokkaGeneratorIsolation = ProcessIsolation {
+//        // Configures heap size
+//        maxHeapSize = "4g"
+//    }
+//}
+
+useGitBasedVersion()
+useLocalDependencies()
 
 kotlin {
     applyDefaultHierarchyTemplate()
@@ -57,7 +67,7 @@ kotlin {
 
 android {
     namespace = "com.lightningkite.lightningserver"
-    compileSdk = 34
+    compileSdk = 35
     defaultConfig {
         minSdk = 24
     }
@@ -69,28 +79,9 @@ dependencies {
     }
 }
 
-mavenPublishing {
-    // publishToMavenCentral(SonatypeHost.CENTRAL_PORTAL)
-    signAllPublications()
-    coordinates(group.toString(), name, version.toString())
-    pom {
-        name.set("Lightning-server-Client")
-        description.set("The client side of communication between server and client.")
-        github("lightningkite", "lightning-server-kiteui")
-
-        licenses {
-            mit()
-        }
-
-        developers {
-            joseph()
-            brady()
-        }
-    }
-}
 android {
     namespace = "com.lightningkite.lightningserver.client"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         minSdk = 21
@@ -104,3 +95,8 @@ android {
         coreLibraryDesugaring(libs.androidDesugaring)
     }
 }
+
+//lkLibrary("lightningkite", "lightning-server-kiteui") {
+//    description.set("The client side of communication between server and client.")
+//    name.set("Lightning-Server-Client")
+//}
