@@ -4,23 +4,14 @@ import com.lightningkite.kiteui.Routable
 import com.lightningkite.kiteui.forms.FormModule
 import com.lightningkite.kiteui.forms.FormSelector
 import com.lightningkite.kiteui.forms.displayName
-import com.lightningkite.kiteui.models.rem
-import com.lightningkite.kiteui.monitoring.Funnels
-import com.lightningkite.kiteui.monitoring.funnel
 import com.lightningkite.kiteui.navigation.Page
 import com.lightningkite.kiteui.views.ViewModifiable
-import com.lightningkite.readable.reactive
 import com.lightningkite.kiteui.views.ViewWriter
-import com.lightningkite.kiteui.views.direct.button
 import com.lightningkite.kiteui.views.direct.col
-import com.lightningkite.kiteui.views.direct.onClick
-import com.lightningkite.kiteui.views.direct.row
 import com.lightningkite.kiteui.views.direct.scrolling
-import com.lightningkite.kiteui.views.direct.sizeConstraints
 import com.lightningkite.kiteui.views.direct.text
-import com.lightningkite.kiteui.views.expanding
 import com.lightningkite.kiteui.views.l2.field
-import com.lightningkite.readable.Property
+import com.lightningkite.reactive.core.Signal
 import com.lightningkite.serialization.SerializationRegistry
 import com.lightningkite.serialization.default
 import kotlinx.serialization.KSerializer
@@ -42,7 +33,7 @@ class FieldTestScreen: Page {
                             listOf(),
                             handlesField = it.handlesField
                         )
-                    ).render(this, null, Property(s.default()))
+                    ).render(this, null, Signal(s.default()))
                 } catch (e: Throwable) {
                     text("Error on ${it.name}: ${e.message}")
                 }

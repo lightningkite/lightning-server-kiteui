@@ -5,10 +5,10 @@ import com.lightningkite.lightningdb.CollectionUpdates
 import com.lightningkite.lightningdb.Condition
 import com.lightningkite.lightningdb.EntryChange
 import com.lightningkite.lightningdb.HasId
-import com.lightningkite.readable.Constant
-import com.lightningkite.readable.Property
-import com.lightningkite.readable.Readable
-import com.lightningkite.readable.invokeAllSafe
+import com.lightningkite.reactive.core.Constant
+import com.lightningkite.reactive.core.Reactive
+import com.lightningkite.reactive.core.Signal
+import com.lightningkite.reactive.extensions.invokeAllSafe
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -32,7 +32,7 @@ open class ClientModelRestEndpointsPlusUpdatesWebsocketMock<T : HasId<ID>, ID : 
                 updatesWs.onOpenList.forEach { it.invoke() }
         }
 
-    val entryChanges = Property<List<EntryChange<T>>>(listOf())
+    val entryChanges = Signal<List<EntryChange<T>>>(listOf())
     override fun change(collectionUpdates: CollectionUpdates<T, ID>) {
         val before = collectionUpdates.updates.associate { it._id to data[it._id] } + collectionUpdates.remove.associate { it to data[it] }
         super.change(collectionUpdates)
@@ -46,7 +46,7 @@ open class ClientModelRestEndpointsPlusUpdatesWebsocketMock<T : HasId<ID>, ID : 
     inner class UpdatesWs : TypedWebSocket<Condition<T>, CollectionUpdates<T, ID>> {
         var filter: Condition<T> = Condition.Never
 
-        override val connected: Readable<Boolean> = Constant(true)
+        override val connected: Reactive<Boolean> = Constant(true)
 
         val listeners = ArrayList<(CollectionUpdates<T, ID>)->Unit>()
 

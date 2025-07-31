@@ -1,23 +1,14 @@
 package com.lightningkite.kiteui.auth
 
-import com.lightningkite.kiteui.models.AutoComplete
-import com.lightningkite.kiteui.models.FieldLabelSemantic
-import com.lightningkite.kiteui.models.Icon
-import com.lightningkite.kiteui.models.KeyboardCase
-import com.lightningkite.kiteui.models.KeyboardHints
-import com.lightningkite.kiteui.models.KeyboardType
-import com.lightningkite.kiteui.models.SubtextSemantic
-import com.lightningkite.kiteui.models.px
-import com.lightningkite.kiteui.models.rem
+import com.lightningkite.kiteui.models.*
 import com.lightningkite.kiteui.views.ViewDsl
 import com.lightningkite.kiteui.views.ViewModifiable
 import com.lightningkite.kiteui.views.ViewWriter
 import com.lightningkite.kiteui.views.direct.col
 import com.lightningkite.kiteui.views.direct.text
 import com.lightningkite.kiteui.views.fieldTheme
-import com.lightningkite.kiteui.views.l2.errorText
 import com.lightningkite.now
-import com.lightningkite.readable.sharedProcess
+import com.lightningkite.reactive.core.reactiveProcess
 import kotlinx.coroutines.delay
 import kotlinx.datetime.Instant
 import kotlin.contracts.ExperimentalContracts
@@ -25,7 +16,7 @@ import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
 
 
-internal val nowBySecond = sharedProcess {
+internal val nowBySecond = reactiveProcess {
     while (true) {
         emit(now()); delay(1000)
     }

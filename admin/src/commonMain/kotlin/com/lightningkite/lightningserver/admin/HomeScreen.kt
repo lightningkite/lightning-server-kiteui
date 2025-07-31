@@ -2,24 +2,18 @@ package com.lightningkite.lightningserver.admin
 
 import com.lightningkite.kiteui.HttpMethod
 import com.lightningkite.kiteui.Routable
-import com.lightningkite.kiteui.forms.FormModule
-import com.lightningkite.kiteui.forms.form
-import com.lightningkite.kiteui.forms.view
 import com.lightningkite.kiteui.models.*
 import com.lightningkite.kiteui.navigation.Page
-import com.lightningkite.readable.Property
-import com.lightningkite.readable.*
-import com.lightningkite.kiteui.views.ViewWriter
 import com.lightningkite.kiteui.views.*
 import com.lightningkite.kiteui.views.direct.*
-import com.lightningkite.kiteui.views.display
 import com.lightningkite.lightningserver.serverhealth.HealthStatus
 import com.lightningkite.lightningserver.serverhealth.ServerHealth
 import com.lightningkite.now
-import com.lightningkite.serialization.lensPath
-import kotlinx.serialization.builtins.nullable
+import com.lightningkite.reactive.context.invoke
+import com.lightningkite.reactive.core.remember
+import com.lightningkite.reactive.extensions.asyncReactive
+import com.lightningkite.reactive.extensions.withWrite
 import kotlinx.serialization.builtins.serializer
-import kotlin.text.iterator
 
 @Routable("/")
 class HomePage : Page {
@@ -120,9 +114,9 @@ class HomePage : Page {
 //            }
             card - col {
                 h2("Server Status")
-                val status = asyncReadable {
-                    val endpoint = adminServer().health ?: return@asyncReadable null
-                    val fetcher = adminServer().fetcher(adminAuthentication() ?: return@asyncReadable null)
+                val status = asyncReactive {
+                    val endpoint = adminServer().health ?: return@asyncReactive null
+                    val fetcher = adminServer().fetcher(adminAuthentication() ?: return@asyncReactive null)
                     val health = fetcher(endpoint.path, HttpMethod.GET, Unit.serializer(), Unit, ServerHealth.serializer())
                     health
                 }
@@ -139,7 +133,7 @@ class HomePage : Page {
                     }
                 }
                 col {
-                    forEach(shared { status()?.features?.entries?.sortedBy { it.key } ?: listOf() }) {
+                    forEach(remember { status()?.features?.entries?.sortedBy { it.key } ?: listOf() }) {
                         row {
                             dynamicTheme {
                                 when(it.value.level) {

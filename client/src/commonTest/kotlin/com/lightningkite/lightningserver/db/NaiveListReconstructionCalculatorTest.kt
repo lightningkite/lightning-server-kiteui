@@ -5,12 +5,7 @@ import com.lightningkite.kiteui.ConsoleRoot
 import com.lightningkite.kiteui.Platform
 import com.lightningkite.kiteui.current
 import com.lightningkite.kiteui.forms.prepareModelsClient
-import com.lightningkite.lightningdb.Condition
-import com.lightningkite.lightningdb.Query
-import com.lightningkite.lightningdb.condition
-import com.lightningkite.lightningdb.gt
-import com.lightningkite.lightningdb.lt
-import com.lightningkite.lightningdb.sort
+import com.lightningkite.lightningdb.*
 import com.lightningkite.now
 import com.lightningkite.prepareModelsClientTest
 import com.lightningkite.prepareModelsShared

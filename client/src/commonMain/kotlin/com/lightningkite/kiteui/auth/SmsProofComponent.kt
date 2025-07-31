@@ -5,33 +5,21 @@ import com.lightningkite.kiteui.models.KeyboardHints
 import com.lightningkite.kiteui.models.SubtextSemantic
 import com.lightningkite.kiteui.models.rem
 import com.lightningkite.kiteui.reactive.Action
-import com.lightningkite.kiteui.views.ViewModifiable
-import com.lightningkite.kiteui.views.ViewWriter
-import com.lightningkite.kiteui.views.buttonTheme
-import com.lightningkite.kiteui.views.centered
-import com.lightningkite.kiteui.views.direct.button
-import com.lightningkite.kiteui.views.direct.col
-import com.lightningkite.kiteui.views.direct.onClick
-import com.lightningkite.kiteui.views.direct.row
-import com.lightningkite.kiteui.views.direct.shownWhen
-import com.lightningkite.kiteui.views.direct.text
-import com.lightningkite.kiteui.views.direct.textInput
-import com.lightningkite.kiteui.views.important
+import com.lightningkite.kiteui.views.*
+import com.lightningkite.kiteui.views.direct.*
 import com.lightningkite.kiteui.views.l2.errorText
-import com.lightningkite.kiteui.views.l2.field
 import com.lightningkite.kiteui.views.l2.icon
 import com.lightningkite.lightningserver.auth.SmsProofClientEndpoints
 import com.lightningkite.lightningserver.auth.proof.FinishProof
 import com.lightningkite.lightningserver.auth.proof.Proof
 import com.lightningkite.lightningserver.auth.proof.ProofOption
-import com.lightningkite.readable.BasicListenable
-import com.lightningkite.readable.Property
-import com.lightningkite.readable.await
-import com.lightningkite.readable.invoke
-import com.lightningkite.readable.reactive
-import com.lightningkite.readable.rerunOn
-import com.lightningkite.readable.sharedSuspending
-import com.lightningkite.toPhoneNumber
+import com.lightningkite.reactive.context.await
+import com.lightningkite.reactive.context.invoke
+import com.lightningkite.reactive.context.reactive
+import com.lightningkite.reactive.context.rerunOn
+import com.lightningkite.reactive.core.BasicListenable
+import com.lightningkite.reactive.core.Signal
+import com.lightningkite.reactive.core.rememberSuspending
 import kotlin.time.Duration.Companion.seconds
 
 data class SmsProofComponent(val p: SmsProofClientEndpoints) : ProofComponent {
@@ -40,7 +28,7 @@ data class SmsProofComponent(val p: SmsProofClientEndpoints) : ProofComponent {
     override val via: String = p.via
     override val property: String? = p.property
 
-    val code = Property("")
+    val code = Signal("")
     val resendTime = 15.seconds
     override fun render(
         to: ViewWriter,
@@ -49,7 +37,7 @@ data class SmsProofComponent(val p: SmsProofClientEndpoints) : ProofComponent {
         onResult: (Proof?) -> Unit
     ): ViewModifiable = to.col {
         val resend = BasicListenable()
-        val challenge = sharedSuspending {
+        val challenge = rememberSuspending {
             rerunOn(resend)
             p.beginSmsOwnershipProof(option.value ?: "").withTimestamp()
         }

@@ -13,13 +13,12 @@ import com.lightningkite.kiteui.views.direct.text
 import com.lightningkite.kiteui.views.direct.textInput
 import com.lightningkite.kiteui.views.important
 import com.lightningkite.kiteui.views.l2.errorText
-import com.lightningkite.kiteui.views.l2.field
 import com.lightningkite.lightningserver.auth.PasswordProofClientEndpoints
 import com.lightningkite.lightningserver.auth.proof.IdentificationAndPassword
 import com.lightningkite.lightningserver.auth.proof.Proof
 import com.lightningkite.lightningserver.auth.proof.ProofOption
-import com.lightningkite.readable.Property
-import com.lightningkite.readable.await
+import com.lightningkite.reactive.context.await
+import com.lightningkite.reactive.core.Signal
 
 data class PasswordProofComponent(val p: PasswordProofClientEndpoints, val type: String) : ProofComponent {
     override val name: String = "Enter Password"
@@ -32,7 +31,7 @@ data class PasswordProofComponent(val p: PasswordProofClientEndpoints, val type:
         option: ProofOption,
         onResult: (Proof?) -> Unit
     ): ViewModifiable = to.col {
-        val code = Property("")
+        val code = Signal("")
         val provePasswordOwnership = Action("Submit", Icon.Companion.done) {
             onResult(
                 p.provePasswordOwnership(

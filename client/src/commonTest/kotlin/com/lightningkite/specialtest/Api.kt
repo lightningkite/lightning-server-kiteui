@@ -1,12 +1,8 @@
 package com.lightningkite.specialtest
 
-import com.lightningkite.*
-import com.lightningkite.lightningdb.*
-import com.lightningkite.kiteui.*
-import kotlinx.datetime.*
-import com.lightningkite.serialization.*
-import com.lightningkite.lightningserver.db.*
 import com.lightningkite.lightningserver.auth.*
+import com.lightningkite.lightningserver.db.ClientModelRestEndpoints
+import com.lightningkite.lightningserver.db.ClientModelRestEndpointsPlusWs
 
 interface Api2 {
 fun withHeaderCalculator(headerCalculator: suspend () -> List<Pair<String, String>>): Api2

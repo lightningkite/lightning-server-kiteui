@@ -3,13 +3,18 @@ package com.lightningkite.kiteui.forms
 import com.lightningkite.kiteui.models.Icon
 import com.lightningkite.kiteui.models.px
 import com.lightningkite.kiteui.models.rem
-import com.lightningkite.readable.*
 import com.lightningkite.kiteui.views.card
 import com.lightningkite.kiteui.views.centered
 import com.lightningkite.kiteui.views.direct.*
 import com.lightningkite.kiteui.views.expanding
 import com.lightningkite.kiteui.views.forEachUpdating
 import com.lightningkite.kiteui.views.l2.icon
+import com.lightningkite.reactive.context.invoke
+import com.lightningkite.reactive.core.MutableReactive
+import com.lightningkite.reactive.core.Reactive
+import com.lightningkite.reactive.extensions.flatten
+import com.lightningkite.reactive.lensing.lens
+import com.lightningkite.reactive.lensing.lensByElementAssumingSetNeverManipulates
 import com.lightningkite.serialization.SerializableAnnotation
 import com.lightningkite.serialization.default
 import com.lightningkite.serialization.listElement
@@ -22,8 +27,8 @@ abstract class ListRenderer<C> : FormRenderer.Generator, ViewRenderer.Generator 
     abstract val vertical: Boolean
     abstract val typeName: String
     abstract fun inner(serializer: KSerializer<C>): KSerializer<*>
-    abstract fun lens(writable: Writable<C>): Writable<List<Any?>>
-    abstract fun lens(readable: Readable<C>): Readable<List<Any?>>
+    abstract fun lens(mutable: MutableReactive<C>): MutableReactive<List<Any?>>
+    abstract fun lens(readable: Reactive<C>): Reactive<List<Any?>>
     abstract fun remove(collection: C, item: Any?, index: Int): C
     abstract fun add(collection: C, item: Any?): C
 
@@ -53,17 +58,17 @@ abstract class ListRenderer<C> : FormRenderer.Generator, ViewRenderer.Generator 
     @Suppress("UNCHECKED_CAST")
     override fun <T> form(module: FormModule, selector: FormSelector<T>): FormRenderer<T> {
         val inner = module.form(inner(module, selector)) as FormRenderer<Any?>
-        return FormRenderer(module, this, selector as FormSelector<C>) { _, writable ->
+        return FormRenderer(module, this, selector as FormSelector<C>) { _, mutable ->
             row {
                 vertical = this@ListRenderer.vertical
                 if (!vertical) expanding - scrollsHorizontally
                 text {
-                    ::exists { (writable() as Collection<*>).isEmpty() }
+                    ::exists { (mutable() as Collection<*>).isEmpty() }
                     content = "Empty"
                 }
                 row {
                     vertical = this@ListRenderer.vertical
-                    forEachUpdating(lens(writable).lensByElementAssumingSetNeverManipulates()) {
+                    forEachUpdating(lens(mutable).lensByElementAssumingSetNeverManipulates()) {
                         card - row {
                             gap = 0.px
                             if (this@ListRenderer.vertical) expanding
@@ -71,7 +76,7 @@ abstract class ListRenderer<C> : FormRenderer.Generator, ViewRenderer.Generator 
                             centered - button {
                                 icon(Icon.close.copy(width = 1.rem, height = 1.rem), "Delete")
                                 onClick {
-                                    writable set remove(writable(), it()(), it().index.value)
+                                    mutable set remove(mutable(), it()(), it().index.value)
                                 }
                             }
                         }
@@ -87,7 +92,7 @@ abstract class ListRenderer<C> : FormRenderer.Generator, ViewRenderer.Generator 
                         centered - icon(Icon.add.copy(width = 1.rem, height = 1.rem), "Add")
                     }
                     onClick {
-                        writable set (add(writable(), inner.selector.serializer.default()))
+                        mutable set (add(mutable(), inner.selector.serializer.default()))
                     }
                 }
             }
@@ -121,8 +126,8 @@ object HorizontalListRenderer : ListRenderer<List<Any?>>() {
     override val type: String = ListSerializer(Unit.serializer()).descriptor.serialName
     override fun add(collection: List<Any?>, item: Any?): List<Any?> = collection + item
     override fun remove(collection: List<Any?>, item: Any?, index: Int): List<Any?> = collection.toMutableList().apply { this.removeAt(index) }
-    override fun lens(readable: Readable<List<Any?>>): Readable<List<Any?>> = readable
-    override fun lens(writable: Writable<List<Any?>>): Writable<List<Any?>> = writable
+    override fun lens(readable: Reactive<List<Any?>>): Reactive<List<Any?>> = readable
+    override fun lens(mutable: MutableReactive<List<Any?>>): MutableReactive<List<Any?>> = mutable
     override fun inner(serializer: KSerializer<List<Any?>>): KSerializer<*> = serializer.listElement()!!
 }
 
@@ -132,8 +137,8 @@ object VerticalListRenderer : ListRenderer<List<Any?>>() {
     override val type: String = ListSerializer(Unit.serializer()).descriptor.serialName
     override fun add(collection: List<Any?>, item: Any?): List<Any?> = collection + item
     override fun remove(collection: List<Any?>, item: Any?, index: Int): List<Any?> = collection.toMutableList().apply { this.removeAt(index) }
-    override fun lens(readable: Readable<List<Any?>>): Readable<List<Any?>> = readable
-    override fun lens(writable: Writable<List<Any?>>): Writable<List<Any?>> = writable
+    override fun lens(readable: Reactive<List<Any?>>): Reactive<List<Any?>> = readable
+    override fun lens(mutable: MutableReactive<List<Any?>>): MutableReactive<List<Any?>> = mutable
     override fun inner(serializer: KSerializer<List<Any?>>): KSerializer<*> = serializer.listElement()!!
 }
 
@@ -143,8 +148,8 @@ object HorizontalSetRenderer : ListRenderer<Set<Any?>>() {
     override val type: String = SetSerializer(Unit.serializer()).descriptor.serialName
     override fun add(collection: Set<Any?>, item: Any?): Set<Any?> = collection + item
     override fun remove(collection: Set<Any?>, item: Any?, index: Int): Set<Any?> = collection.toMutableSet().apply { this.remove(item) }
-    override fun lens(readable: Readable<Set<Any?>>): Readable<List<Any?>> = readable.lens { it.toList() }
-    override fun lens(writable: Writable<Set<Any?>>): Writable<List<Any?>> = writable.lens(get = { it.toList() }, set = { it.toSet() })
+    override fun lens(readable: Reactive<Set<Any?>>): Reactive<List<Any?>> = readable.lens { it.toList() }
+    override fun lens(mutable: MutableReactive<Set<Any?>>): MutableReactive<List<Any?>> = mutable.lens(get = { it.toList() }, set = { it.toSet() })
     override fun inner(serializer: KSerializer<Set<Any?>>): KSerializer<*> = serializer.listElement()!!
 }
 
@@ -154,7 +159,7 @@ object VerticalSetRenderer : ListRenderer<Set<Any?>>() {
     override val type: String = SetSerializer(Unit.serializer()).descriptor.serialName
     override fun add(collection: Set<Any?>, item: Any?): Set<Any?> = collection + item
     override fun remove(collection: Set<Any?>, item: Any?, index: Int): Set<Any?> = collection.toMutableSet().apply { this.remove(item) }
-    override fun lens(readable: Readable<Set<Any?>>): Readable<List<Any?>> = readable.lens { it.toList() }
-    override fun lens(writable: Writable<Set<Any?>>): Writable<List<Any?>> = writable.lens(get = { it.toList() }, set = { it.toSet() })
+    override fun lens(readable: Reactive<Set<Any?>>): Reactive<List<Any?>> = readable.lens { it.toList() }
+    override fun lens(mutable: MutableReactive<Set<Any?>>): MutableReactive<List<Any?>> = mutable.lens(get = { it.toList() }, set = { it.toSet() })
     override fun inner(serializer: KSerializer<Set<Any?>>): KSerializer<*> = serializer.listElement()!!
 }

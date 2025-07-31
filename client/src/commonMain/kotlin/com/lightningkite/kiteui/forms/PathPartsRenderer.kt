@@ -1,12 +1,19 @@
 package com.lightningkite.kiteui.forms
 
-import com.lightningkite.readable.*
-import com.lightningkite.kiteui.views.ViewWriter
 import com.lightningkite.kiteui.views.direct.col
 import com.lightningkite.kiteui.views.direct.row
 import com.lightningkite.kiteui.views.direct.select
 import com.lightningkite.kiteui.views.fieldTheme
 import com.lightningkite.kiteui.views.forEachUpdating
+import com.lightningkite.reactive.context.invoke
+import com.lightningkite.reactive.core.Constant
+import com.lightningkite.reactive.core.ReactiveValue
+import com.lightningkite.reactive.core.remember
+import com.lightningkite.reactive.extensions.flatten
+import com.lightningkite.reactive.extensions.withWrite
+import com.lightningkite.reactive.lensing.MutableReactiveElement
+import com.lightningkite.reactive.lensing.lens
+import com.lightningkite.reactive.lensing.lensByElementAssumingSetNeverManipulates
 import com.lightningkite.serialization.*
 import kotlinx.serialization.builtins.serializer
 
@@ -17,8 +24,8 @@ object PathPartsRenderer : FormRenderer.Generator {
     @Suppress("UNCHECKED_CAST")
     override fun <T> form(module: FormModule, selector: FormSelector<T>): FormRenderer<T> {
         val serializer = selector.serializer as DataClassPathSerializer<Any??>
-        return FormRenderer(module, this, selector as FormSelector<DataClassPathPartial<Any?>>){ field, writable ->
-            val properties = writable.lens(
+        return FormRenderer(module, this, selector as FormSelector<DataClassPathPartial<Any?>>){ field, mutable ->
+            val properties = mutable.lens(
                 get = { it.properties },
                 set = {
                     var out: DataClassPath<Any?, Any?> = DataClassPathSelf(serializer.inner)
@@ -45,8 +52,8 @@ object PathPartsRenderer : FormRenderer.Generator {
 //                    text { ::content { properties().joinToString(", ") { it.name} }}
                 row {
                     forEachUpdating(properties.lensByElementAssumingSetNeverManipulates().lens {
-                        it + object : ListItemWritable<SerializableProperty<*, *>?> {
-                            override val index: ImmediateReadable<Int> get() = Constant(it.size)
+                        it + object : MutableReactiveElement<SerializableProperty<*, *>?> {
+                            override val index: ReactiveValue<Int> get() = Constant(it.size)
                             override val value: SerializableProperty<*, *>? = null
                             override fun addListener(listener: () -> Unit): () -> Unit = {}
                             override suspend fun set(value: SerializableProperty<*, *>?) {
@@ -57,7 +64,7 @@ object PathPartsRenderer : FormRenderer.Generator {
                         }
                     }) {
                         fieldTheme - select {
-                            val options = shared {
+                            val options = remember {
                                 (properties().getOrNull(it().index() - 1)
                                     ?.let {
                                         it.serializer.let { it.nullElement() ?: it }.serializableProperties

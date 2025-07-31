@@ -10,7 +10,7 @@ import com.lightningkite.lightningdb.gt
 import com.lightningkite.lightningdb.lt
 import com.lightningkite.prepareModelsClientTest
 import com.lightningkite.prepareModelsShared
-import com.lightningkite.readable.onRemove
+import com.lightningkite.reactive.context.onRemove
 import kotlinx.coroutines.delay
 import kotlin.test.Test
 import kotlin.test.assertContains
@@ -27,7 +27,7 @@ class SharedCollectionUpdatesSocketTest {
     @Test
     fun test() = runTest2 {
         val mock = ClientModelRestEndpointsPlusUpdatesWebsocketMock<LargeTestModel, UUID>(this)
-        val shared = SharedCollectionUpdatesSocket(
+        val remember = SharedCollectionUpdatesSocket(
             scope = this,
             socket = mock.updates(),
             onChange = { println("Got changes $it") },
@@ -35,25 +35,25 @@ class SharedCollectionUpdatesSocketTest {
         )
         println("OK")
         run {
-            val req = shared.require(condition { it.int gt 4 })
+            val req = remember.require(condition { it.int gt 4 })
             onRemove(req.beginUse())
             println("Req created")
             delay(1000)
-            assertContains(shared.listeningStatus.value.requirements, req)
+            assertContains(remember.listeningStatus.value.requirements, req)
         }
         run {
-            val req = shared.require(condition { it.int gt 9 })
+            val req = remember.require(condition { it.int gt 9 })
             onRemove(req.beginUse())
             println("Req created")
             delay(1000)
-            assertContains(shared.listeningStatus.value.requirements, req)
+            assertContains(remember.listeningStatus.value.requirements, req)
         }
         run {
-            val req = shared.require(condition { it.int lt 2 })
+            val req = remember.require(condition { it.int lt 2 })
             onRemove(req.beginUse())
             println("Req created")
             delay(1000)
-            assertContains(shared.listeningStatus.value.requirements, req)
+            assertContains(remember.listeningStatus.value.requirements, req)
         }
     }
 }

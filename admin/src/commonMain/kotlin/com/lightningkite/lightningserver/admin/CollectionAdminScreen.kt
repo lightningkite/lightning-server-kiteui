@@ -2,64 +2,48 @@ package com.lightningkite.lightningserver.admin
 
 import com.lightningkite.IsRawString
 import com.lightningkite.TrimmedString
-import com.lightningkite.kiteui.Blob
-import com.lightningkite.kiteui.DownloadLocation
-import com.lightningkite.kiteui.ExternalServices
-import com.lightningkite.kiteui.QueryParameter
-import com.lightningkite.kiteui.Routable
-import com.lightningkite.kiteui.fetch
+import com.lightningkite.kiteui.*
 import com.lightningkite.kiteui.forms.*
 import com.lightningkite.kiteui.models.Icon
 import com.lightningkite.kiteui.models.SelectedSemantic
-import com.lightningkite.kiteui.models.rem
 import com.lightningkite.kiteui.navigation.DefaultJson
 import com.lightningkite.kiteui.navigation.Page
 import com.lightningkite.kiteui.navigation.UrlProperties
 import com.lightningkite.kiteui.navigation.encodeToString
-import com.lightningkite.readable.*
-import com.lightningkite.kiteui.requestFile
-import com.lightningkite.kiteui.text
-import com.lightningkite.kiteui.toBlob
-import com.lightningkite.kiteui.views.ViewModifiable
-import com.lightningkite.kiteui.views.ViewWriter
-import com.lightningkite.kiteui.views.card
-import com.lightningkite.kiteui.views.centered
-import com.lightningkite.kiteui.views.dialog
+import com.lightningkite.kiteui.reactive.Action
+import com.lightningkite.kiteui.views.*
 import com.lightningkite.kiteui.views.direct.*
-import com.lightningkite.kiteui.views.dynamicTheme
-import com.lightningkite.kiteui.views.expanding
-import com.lightningkite.kiteui.views.fieldTheme
-import com.lightningkite.kiteui.views.important
 import com.lightningkite.kiteui.views.l2.dialog
 import com.lightningkite.kiteui.views.l2.icon
 import com.lightningkite.kotlinx.serialization.csv.CsvFormat
 import com.lightningkite.kotlinx.serialization.csv.StringDeferringConfig
 import com.lightningkite.lightningdb.*
 import com.lightningkite.lightningserver.db.ModelCache
+import com.lightningkite.reactive.context.ReactiveContext
+import com.lightningkite.reactive.context.invoke
+import com.lightningkite.reactive.context.reactive
+import com.lightningkite.reactive.core.*
+import com.lightningkite.reactive.extensions.debounce
 import com.lightningkite.serialization.*
 import kotlinx.serialization.builtins.ListSerializer
-import com.lightningkite.lightningdb.simplify
-import com.lightningkite.lightningserver.files.ServerFile
-import com.lightningkite.lightningserver.files.ServerFileSerializer
-import kotlinx.serialization.builtins.nullable
 
 
 @Routable("collections/{collectionName}")
 class CollectionAdminPage(val collectionName: String) : Page {
 
     @QueryParameter("query")
-    val textSearch: Property<String> = Property("")
+    val textSearch: Signal<String> = Signal("")
 
     @QueryParameter("condition")
-    val conditionString: Property<String?> = Property(null)
+    val conditionString: Signal<String?> = Signal(null)
 
     @QueryParameter("sort")
-    val sortString: Property<String?> = Property(null)
+    val sortString: Signal<String?> = Signal(null)
 
     @QueryParameter("columns")
-    val columnsString: Property<String?> = Property(null)
+    val columnsString: Signal<String?> = Signal(null)
 
-    val mc = shared {
+    val mc = remember {
         adminServer().models[collectionName]?.cache(adminAuthentication())!!
                 as ModelCache<UnknownModel, UnknownId>
     }
@@ -81,7 +65,7 @@ class CollectionAdminPage(val collectionName: String) : Page {
                 }
             }
             important - button {
-                val success = Property(false)
+                val success = Signal(false)
                 row {
                     expanding - stack()
                     centered - text("Copy CSV to Clipboard")
@@ -131,7 +115,7 @@ class CollectionAdminPage(val collectionName: String) : Page {
                 clearChildren()
                 val mc = mc()
                 val condition = conditionWritable(mc)
-                val itemCount = sharedSuspending {
+                val itemCount = rememberSuspending {
                     val c = condition()
                     mc.skipCache.count(c)
                 }
@@ -181,7 +165,7 @@ class CollectionAdminPage(val collectionName: String) : Page {
         val sort = sortWritable(mc)
 
         @Suppress("UNCHECKED_CAST")
-        val columns: ImmediateWritable<List<DataClassPath<UnknownModel, *>>> =
+        val columns: MutableReactiveValue<List<DataClassPath<UnknownModel, *>>> =
             columnsWritable(mc)
         val query = queryReadable(mc)
         row {
@@ -227,7 +211,7 @@ class CollectionAdminPage(val collectionName: String) : Page {
                         }
                         col {
                             h3("My Permissions")
-                            val p = shared { loadedPermissions().get(collectionName) ?: ModelPermissions() }
+                            val p = remember { loadedPermissions().get(collectionName) ?: ModelPermissions() }
                             fun ViewWriter.kv(
                                 key: String,
                                 visibleIf: ReactiveContext.() -> Boolean = { true },
@@ -271,7 +255,7 @@ class CollectionAdminPage(val collectionName: String) : Page {
             }
         }
         subtext {
-            val itemCount = sharedSuspending {
+            val itemCount = rememberSuspending {
                 val c = condition()
                 mc.skipCache.count(c)
             }
@@ -300,7 +284,7 @@ class CollectionAdminPage(val collectionName: String) : Page {
             writer = this@renderContents,
             innerSer = mc.serializer,
             columns = columns,
-            readable = shared {
+            readable = remember {
                 mc.watch(query())
             },
             linkTo = {
@@ -310,7 +294,7 @@ class CollectionAdminPage(val collectionName: String) : Page {
         )
     }
 
-    private fun columnsWritable(mc: ModelCache<UnknownModel, UnknownId>): ImmediateWritable<List<DataClassPath<UnknownModel, *>>> =
+    private fun columnsWritable(mc: ModelCache<UnknownModel, UnknownId>): MutableReactiveValue<List<DataClassPath<UnknownModel, *>>> =
         columnsString.lens(
             get = {
                 it?.let {
@@ -332,7 +316,7 @@ class CollectionAdminPage(val collectionName: String) : Page {
             }
         )
 
-    private fun sortWritable(mc: ModelCache<UnknownModel, UnknownId>): ImmediateWritable<List<SortPart<UnknownModel>>> =
+    private fun sortWritable(mc: ModelCache<UnknownModel, UnknownId>): MutableReactiveValue<List<SortPart<UnknownModel>>> =
         sortString.lens(
             get = {
                 it?.let {
@@ -346,7 +330,7 @@ class CollectionAdminPage(val collectionName: String) : Page {
             set = { DefaultJson.encodeToString(ListSerializer(SortPartSerializer(mc.serializer)), it) }
         )
 
-    private fun conditionWritable(mc: ModelCache<UnknownModel, UnknownId>): ImmediateWritable<Condition<UnknownModel>> =
+    private fun conditionWritable(mc: ModelCache<UnknownModel, UnknownId>): MutableReactiveValue<Condition<UnknownModel>> =
         conditionString.lens(
             get = {
                 it?.let {
@@ -360,12 +344,12 @@ class CollectionAdminPage(val collectionName: String) : Page {
             set = { DefaultJson.encodeToString(Condition.serializer(mc.serializer), it) }
         )
 
-    private fun queryReadable(mc: ModelCache<UnknownModel, UnknownId>): Readable<Query<UnknownModel>> {
+    private fun queryReadable(mc: ModelCache<UnknownModel, UnknownId>): Reactive<Query<UnknownModel>> {
         val sort = sortWritable(mc)
         val condition = conditionWritable(mc)
         val columns = columnsWritable(mc)
         val hasTextIndex = mc.serializer.serializableAnnotations.any { it.fqn.endsWith("TextIndex") }
-        return shared {
+        return remember {
             Query(
                 Condition.And<UnknownModel>(
                     listOfNotNull(
@@ -432,9 +416,9 @@ fun Condition<*>.friendly(): String {
 //class CollectionAdminReportPage(val collectionName: String) : Page {
 //
 //    @QueryParameter("condition")
-//    val conditionString: Property<String?> = Property(null)
+//    val conditionString: Signal<String?> = Signal(null)
 //
-//    val mc = shared {
+//    val mc = remember {
 //        adminServer().models[collectionName]?.cache(adminAuthentication())!!
 //                as ModelCache<UnknownModel, UnknownId>
 //    }
@@ -451,7 +435,7 @@ fun Condition<*>.friendly(): String {
 //                    form(
 //                        context = forms,
 //                        serializer = Condition.serializer(mc.serializer),
-//                        writable = condition
+//                        mutable = condition
 //                    )
 //                }
 //                card - col {
@@ -459,14 +443,14 @@ fun Condition<*>.friendly(): String {
 //                    form(
 //                        context = forms,
 //                        serializer = Condition.serializer(mc.serializer),
-//                        writable = condition
+//                        mutable = condition
 //                    )
 //                }
 //            }
 //        }
 //    }
 //
-//    private fun conditionWritable(mc: ModelCache<UnknownModel, UnknownId>): ImmediateWritable<Condition<UnknownModel>> =
+//    private fun conditionWritable(mc: ModelCache<UnknownModel, UnknownId>): MutableReactiveValue<Condition<UnknownModel>> =
 //        conditionString.lens(
 //            get = {
 //                it?.let {

@@ -2,7 +2,6 @@ package com.lightningkite.kiteui.auth
 
 import com.lightningkite.kiteui.ClientAuthenticator
 import com.lightningkite.kiteui.Platform
-import com.lightningkite.kiteui.WebAuthNMediationType
 import com.lightningkite.kiteui.current
 import com.lightningkite.kiteui.forms.KnownDeviceSecretInfoStuff
 import com.lightningkite.kiteui.models.ErrorSemantic
@@ -10,45 +9,29 @@ import com.lightningkite.kiteui.models.Icon
 import com.lightningkite.kiteui.models.KeyboardHints
 import com.lightningkite.kiteui.models.rem
 import com.lightningkite.kiteui.printStackTrace2
+import com.lightningkite.kiteui.reactive.Action
 import com.lightningkite.kiteui.reactive.PersistentProperty
-import com.lightningkite.kiteui.views.ViewModifiable
-import com.lightningkite.kiteui.views.ViewWriter
-import com.lightningkite.kiteui.views.buttonTheme
-import com.lightningkite.kiteui.views.card
-import com.lightningkite.kiteui.views.centered
+import com.lightningkite.kiteui.views.*
 import com.lightningkite.kiteui.views.direct.*
-import com.lightningkite.kiteui.views.expanding
-import com.lightningkite.kiteui.views.forEachAnimated
-import com.lightningkite.kiteui.views.important
 import com.lightningkite.kiteui.views.l2.field
 import com.lightningkite.kiteui.views.l2.icon
 import com.lightningkite.lightningserver.auth.AuthClientEndpoints
 import com.lightningkite.lightningserver.auth.LightningServerAuthentication
 import com.lightningkite.lightningserver.auth.UserAuthClientEndpoints
-import com.lightningkite.lightningserver.auth.proof.Identification
 import com.lightningkite.lightningserver.auth.proof.Proof
-import com.lightningkite.lightningserver.auth.proof.WebAuthN
 import com.lightningkite.lightningserver.auth.subject.LogInRequest
 import com.lightningkite.lightningserver.auth.subject.ProofsCheckResult
 import com.lightningkite.now
-import com.lightningkite.readable.Action
-import com.lightningkite.readable.AppScope
-import com.lightningkite.readable.Property
-import com.lightningkite.readable.Readable
-import com.lightningkite.readable.await
-import com.lightningkite.readable.debounce
-import com.lightningkite.readable.invoke
-import com.lightningkite.readable.lens
-import com.lightningkite.readable.reactive
-import com.lightningkite.readable.shared
-import com.lightningkite.readable.sharedSuspending
+import com.lightningkite.reactive.context.await
+import com.lightningkite.reactive.context.invoke
+import com.lightningkite.reactive.context.reactive
+import com.lightningkite.reactive.core.*
+import com.lightningkite.reactive.extensions.debounce
 import com.lightningkite.toEmailAddress
 import com.lightningkite.toPhoneNumber
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.plus
-import kotlin.collections.plus
-import kotlin.let
 import kotlin.math.roundToInt
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.days
@@ -87,15 +70,15 @@ open class AuthComponent2(
     val filterMethods: suspend (UserIdentification?, List<ProofComponent>) -> List<ProofComponent> = { _, it -> it },
     val onAuthentication: suspend (token: String) -> Unit,
 ) {
-    val primaryIdentifier = Property<UserIdentification?>(null)
-    val proofs = Property(listOf<Proof>())
-    val currentProof = Property<ProofComponent?>(null)
+    val primaryIdentifier = Signal<UserIdentification?>(null)
+    val proofs = Signal(listOf<Proof>())
+    val currentProof = Signal<ProofComponent?>(null)
 
-    val authResult: Readable<ProofsCheckResult<out Comparable<*>>?> = sharedSuspending {
-        subject.checkProofs(proofs().also { if (it.isEmpty()) return@sharedSuspending null })
+    val authResult: Reactive<ProofsCheckResult<out Comparable<*>>?> = rememberSuspending {
+        subject.checkProofs(proofs().also { if (it.isEmpty()) return@rememberSuspending null })
     }
 
-    val proofOptions = sharedSuspending {
+    val proofOptions = rememberSuspending {
         val primaryIdentifier = primaryIdentifier()
         val result = authResult()
         val solved = proofs.value.mapTo(HashSet()) { it.via }
@@ -128,7 +111,7 @@ open class AuthComponent2(
         renderPrimaryIdentifier(this)
 
         val progress =
-            shared { authResult()?.let { proofs().sumOf { it.strength } / it.strengthRequired.toFloat() } ?: 0.00f }
+            remember { authResult()?.let { proofs().sumOf { it.strength } / it.strengthRequired.toFloat() } ?: 0.00f }
         shownWhen {
             progress() in 0.01f..0.99f
         } - card - progressBar {
@@ -137,13 +120,13 @@ open class AuthComponent2(
 
         centered - shownWhen { !authResult.state().ready } - activityIndicator()
         shownWhen { authResult.state().exception != null } - ErrorSemantic.onNext - col {
-            val msg = shared { authResult.state().exception?.let { exceptionToMessage(it) } }
+            val msg = remember { authResult.state().exception?.let { exceptionToMessage(it) } }
             text { ::content { msg()?.title ?: "Error" } }
             subtext { ::content { msg()?.body ?: "" } }
         }
         shownWhen { authResult()?.readyToLogIn != true && currentProof() == null } - pickProof(this@col)
         shownWhen { currentProof() != null } - col {
-            forEachAnimated(shared { listOfNotNull(currentProof()).map { it to authResult() } }.debounce(10.milliseconds)) { (it, authResult) ->
+            forEachAnimated(remember { listOfNotNull(currentProof()).map { it to authResult() } }.debounce(10.milliseconds)) { (it, authResult) ->
                 it.render(this@forEachAnimated, primaryIdentifier.value, authResult) {
                     if (it != null) {
                         proofs.value += it
@@ -169,7 +152,7 @@ open class AuthComponent2(
             }
         ) {
             val autoFillAvailable =
-                sharedSuspending { ClientAuthenticator.getClientAuthenticator().autofillAvailable() }
+                rememberSuspending { ClientAuthenticator.getClientAuthenticator().autofillAvailable() }
             textInput {
                 hint = when {
                     endpoints.emailProof != null && endpoints.smsProof != null -> "me@email.com OR 800-123-4567"
@@ -191,7 +174,7 @@ open class AuthComponent2(
                         else it
                     }
                 }
-                val primaryIdentifier2 = Property("")
+                val primaryIdentifier2 = Signal("")
                 content bind primaryIdentifier2
                 reactive {
                     val p = primaryIdentifier()
@@ -251,7 +234,7 @@ open class AuthComponent2(
 
         endpoints.webAuthNProof?.let { webAuthn ->
             if (endpoints.webAuthNIncludePasskeyUI) {
-                val webAuthAvailable = sharedSuspending { ClientAuthenticator.getClientAuthenticator().webAuthNAvailable() }
+                val webAuthAvailable = rememberSuspending { ClientAuthenticator.getClientAuthenticator().webAuthNAvailable() }
                 shownWhen { primaryIdentifier() == null && currentProof() == null && proofs().isEmpty() && webAuthAvailable() } - col {
 
                     centered - text("Or")
@@ -272,11 +255,11 @@ open class AuthComponent2(
     }
 
     open fun renderFinalize(to: ViewWriter): ViewModifiable = to.col {
-        val desiredSessionLength = Property<Duration?>(1.days)
-        val rememberDevice = Property(Platform.current != Platform.Web)
+        val desiredSessionLength = Signal<Duration?>(1.days)
+        val rememberDevice = Signal(Platform.current != Platform.Web)
         val knownDevice =
             knownDeviceLocalStorageName?.let { PersistentProperty<KnownDeviceSecretInfoStuff?>(it, null) }
-        val knownDeviceOptions = sharedSuspending {
+        val knownDeviceOptions = rememberSuspending {
             endpoints.knownDeviceProof?.knownDeviceOptions()
         }
         centered - h5("Ready to login")

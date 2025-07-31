@@ -1,7 +1,7 @@
 package com.lightningkite.lightningserver.db
 
 import com.lightningkite.lightningdb.*
-import com.lightningkite.serialization.*
+import com.lightningkite.serialization.Partial
 
 interface ClientModelRestEndpoints<T : HasId<ID>, ID : Comparable<ID>> {
     suspend fun default(): T = throw IllegalArgumentException()

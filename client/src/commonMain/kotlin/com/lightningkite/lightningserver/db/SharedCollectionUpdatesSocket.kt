@@ -6,19 +6,15 @@ import com.lightningkite.lightningdb.CollectionUpdates
 import com.lightningkite.lightningdb.Condition
 import com.lightningkite.lightningdb.HasId
 import com.lightningkite.lightningdb.simplify
-import com.lightningkite.readable.Property
-import com.lightningkite.readable.ResourceUse
-import com.lightningkite.readable.debounce
-import com.lightningkite.readable.lens
-import com.lightningkite.readable.reactive
-import com.lightningkite.readable.use
+import com.lightningkite.reactive.context.reactive
+import com.lightningkite.reactive.core.Signal
+import com.lightningkite.reactive.extensions.use
+import com.lightningkite.reactive.lensing.lens
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock.System.now
 import kotlinx.datetime.Instant
-import kotlin.collections.minus
-import kotlin.collections.plus
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
@@ -33,7 +29,7 @@ class SharedCollectionUpdatesSocket<T : HasId<ID>, ID : Comparable<ID>>(
     /**
      * The conditions that we want the socket to inform us about.
      */
-    val desiredRequirements = Property<Set<Req>>(setOf()).also {
+    val desiredRequirements = Signal<Set<Req>>(setOf()).also {
         it.addListener {
             log?.log("desiredRequirements is now ${it.value.joinToString { it.condition.toString() }}")
         }
@@ -49,7 +45,7 @@ class SharedCollectionUpdatesSocket<T : HasId<ID>, ID : Comparable<ID>>(
     /**
      * The conditions that the socket is currently listening for.
      */
-    val listeningStatus = Property<ListeningStatus<T>>(ListeningStatus()).also {
+    val listeningStatus = Signal<ListeningStatus<T>>(ListeningStatus()).also {
         it.addListener {
             log?.log("listeningStatus is now ${it.value.fullCondition} / ${it.value.requirements.joinToString { it.condition.toString() }}")
         }

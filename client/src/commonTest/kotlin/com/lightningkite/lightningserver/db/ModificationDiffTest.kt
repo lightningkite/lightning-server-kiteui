@@ -1,12 +1,13 @@
 package com.lightningkite.lightningserver.db
 
 import com.lightningkite.UUID
-import com.lightningkite.lightningdb.*
-import com.lightningkite.serialization.*
+import com.lightningkite.lightningdb.Modification
+import com.lightningkite.lightningdb.lt
+import com.lightningkite.lightningdb.modification
 import com.lightningkite.now
 import com.lightningkite.prepareModelsClientTest
 import com.lightningkite.prepareModelsShared
-import com.lightningkite.uuid
+import com.lightningkite.serialization.notNull
 import kotlin.test.Test
 import kotlin.test.assertEquals
 

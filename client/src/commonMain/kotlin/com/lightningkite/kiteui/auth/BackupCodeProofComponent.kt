@@ -13,13 +13,12 @@ import com.lightningkite.kiteui.views.direct.text
 import com.lightningkite.kiteui.views.direct.textInput
 import com.lightningkite.kiteui.views.important
 import com.lightningkite.kiteui.views.l2.errorText
-import com.lightningkite.kiteui.views.l2.field
 import com.lightningkite.lightningserver.auth.BackupCodeProofClientEndpoints
 import com.lightningkite.lightningserver.auth.proof.IdentificationAndPassword
 import com.lightningkite.lightningserver.auth.proof.Proof
 import com.lightningkite.lightningserver.auth.proof.ProofOption
-import com.lightningkite.readable.Property
-import com.lightningkite.readable.await
+import com.lightningkite.reactive.context.await
+import com.lightningkite.reactive.core.Signal
 
 data class BackupCodeProofComponent(val p: BackupCodeProofClientEndpoints, val type: String) : ProofComponent {
     override val name: String = "Enter Backup Code"
@@ -33,7 +32,7 @@ data class BackupCodeProofComponent(val p: BackupCodeProofClientEndpoints, val t
         option: ProofOption,
         onResult: (Proof?) -> Unit
     ): ViewModifiable = to.col {
-        val code = Property("")
+        val code = Signal("")
         val provePasswordOwnership = Action("Submit", Icon.Companion.done) {
             onResult(
                 p.proveBackupCode(

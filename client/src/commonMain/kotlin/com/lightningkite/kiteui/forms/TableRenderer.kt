@@ -2,13 +2,15 @@ package com.lightningkite.kiteui.forms
 
 import com.lightningkite.kiteui.models.*
 import com.lightningkite.kiteui.navigation.Page
-import com.lightningkite.readable.*
 import com.lightningkite.kiteui.views.*
 import com.lightningkite.kiteui.views.direct.*
 import com.lightningkite.kiteui.views.l2.children
 import com.lightningkite.kiteui.views.l2.icon
 import com.lightningkite.lightningdb.HasId
 import com.lightningkite.lightningserver.db.LimitReadable
+import com.lightningkite.reactive.context.invoke
+import com.lightningkite.reactive.context.reactive
+import com.lightningkite.reactive.core.*
 import com.lightningkite.serialization.*
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.builtins.ListSerializer
@@ -45,7 +47,7 @@ object TableRenderer : FormRenderer.Generator, ViewRenderer.Generator {
     override fun <T> form(module: FormModule, selector: FormSelector<T>): FormRenderer<T> {
         val innerSer = selector.serializer.listElement()!!
         val inner = module.form(selector.copy(innerSer, desiredSize = flp)) as FormRenderer<Any?>
-        return FormRenderer(module, this, selector as FormSelector<List<Any?>>) { _, writable ->
+        return FormRenderer(module, this, selector as FormSelector<List<Any?>>) { _, mutable ->
             text("TODO")
         } as FormRenderer<T>
     }
@@ -62,14 +64,14 @@ object TableRenderer : FormRenderer.Generator, ViewRenderer.Generator {
         writer: ViewWriter,
         formModule: FormModule,
         innerSer: KSerializer<T>,
-        readable: Readable<Readable<List<T>>>,
-        columns: ImmediateWritable<List<DataClassPath<T, *>>> = Property(innerSer.defaultColumns()),
+        readable: Reactive<Reactive<List<T>>>,
+        columns: MutableReactiveValue<List<DataClassPath<T, *>>> = Signal(innerSer.defaultColumns()),
         linkTo: ((T) -> () -> Page)? = null,
         action: (suspend (T) -> Unit)? = null,
     ) = with(writer) {
         val properties = innerSer.serializableProperties!! as Array<SerializableProperty<T, Any?>>
         val rendererCache = HashMap<DataClassPath<T, Any?>, ViewRenderer<Any?>>()
-        val anyCols = columns as ImmediateWritable<List<DataClassPath<T, Any?>>>
+        val anyCols = columns as MutableReactiveValue<List<DataClassPath<T, Any?>>>
         fun renderer(path: DataClassPath<T, Any?>) = rendererCache.getOrPut(path) {
             formModule.view(
                 FormSelector(
@@ -106,7 +108,7 @@ object TableRenderer : FormRenderer.Generator, ViewRenderer.Generator {
                         preferredDirection = PopoverPreferredDirection.belowLeft
                         requireClick = true
                         opensMenu {
-                            val newField = Property<DataClassPathPartial<T>>(DataClassPathSelf(innerSer))
+                            val newField = Signal<DataClassPathPartial<T>>(DataClassPathSelf(innerSer))
                             col {
                                 form(formModule, DataClassPathSerializer(innerSer), newField)
                                 button {
@@ -130,7 +132,7 @@ object TableRenderer : FormRenderer.Generator, ViewRenderer.Generator {
                             }
                         }
                     }
-                    children(shared { readable()() }, id = { (it as? HasId<*>)?._id ?: it }) {
+                    children(remember { readable()() }, id = { (it as? HasId<*>)?._id ?: it }) {
                         fun ViewWriter.content() = row {
                             forEach(anyCols) { col ->
                                 val render = renderer(col)

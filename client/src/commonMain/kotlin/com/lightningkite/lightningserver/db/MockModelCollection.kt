@@ -1,13 +1,14 @@
 package com.lightningkite.lightningserver.db
 
 import com.lightningkite.lightningdb.*
-import com.lightningkite.readable.Constant
-import com.lightningkite.readable.LateInitProperty
-import com.lightningkite.readable.Readable
-import com.lightningkite.readable.ReadableState
-import kotlinx.serialization.KSerializer
+import com.lightningkite.reactive.core.Constant
+import com.lightningkite.reactive.core.LateInitSignal
+import com.lightningkite.reactive.core.Reactive
+import com.lightningkite.reactive.core.ReactiveState
+import com.lightningkite.reactive.extensions.value
 import kotlinx.datetime.Clock.System.now
 import kotlinx.datetime.Instant
+import kotlinx.serialization.KSerializer
 import kotlin.time.Duration
 
 class MockModelCollection<T : HasId<ID>, ID : Comparable<ID>>(val serializer: KSerializer<T>) : ModelCacheLike<T, ID> {
@@ -19,14 +20,14 @@ class MockModelCollection<T : HasId<ID>, ID : Comparable<ID>>(val serializer: KS
     }
 
     inner class MockWritableModel(val id: ID) : ModelCacheItemReadable<T> {
-        override val lastUpdatedAt: Readable<Instant?> = Constant(now())
-        val property = LateInitProperty<T?>()
+        override val lastUpdatedAt: Reactive<Instant?> = Constant(now())
+        val property = LateInitSignal<T?>()
         val value: T? get() = property.state.let { if(it.success) it.raw else null }
 
         override suspend fun modify(modification: Modification<T>): T? {
-            property.value = property.value?.let { modification(it) }
+            property.value = property.state.getOrNull()?.let { modification(it) }
             actionPerformed()
-            return property.value
+            return property.state.getOrNull()
         }
 
         override suspend fun delete() {
@@ -40,7 +41,7 @@ class MockModelCollection<T : HasId<ID>, ID : Comparable<ID>>(val serializer: KS
         }
 
         override fun addListener(listener: () -> Unit): () -> Unit = property.addListener(listener)
-        override val state: ReadableState<T?>
+        override val state: ReactiveState<T?>
             get() = property.state
         override suspend fun set(value: T?) {
             if(value == null) delete()
@@ -70,9 +71,9 @@ class MockModelCollection<T : HasId<ID>, ID : Comparable<ID>>(val serializer: KS
     override fun list(query: Query<T>, maximumAge: Duration, pullFrequency: Duration): ModelCacheLimitReadable<T> = object : ModelCacheLimitReadable<T> {
         override fun addListener(listener: () -> Unit): () -> Unit = this@MockModelCollection.addListener(listener)
         override var limit: Int = query.limit
-        override val state: ReadableState<List<T>>
-            get() = ReadableState(models.values.asSequence()
-            .mapNotNull { if (it.property.state.ready) it.property.value else null }
+        override val state: ReactiveState<List<T>>
+            get() = ReactiveState(models.values.asSequence()
+            .mapNotNull { if (it.property.state.ready) it.property.state.getOrNull() else null }
             .filter { query.condition(it) }
             .let {
                 query.orderBy.comparator?.let { c ->
@@ -81,7 +82,7 @@ class MockModelCollection<T : HasId<ID>, ID : Comparable<ID>>(val serializer: KS
             }
             .take(limit)
             .toList())
-        override val lastUpdatedAt: Readable<Instant?> = Constant(now())
+        override val lastUpdatedAt: Reactive<Instant?> = Constant(now())
     }
 
     override suspend fun add(item: T): T {

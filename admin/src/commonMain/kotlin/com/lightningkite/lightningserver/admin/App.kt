@@ -1,27 +1,30 @@
 package com.lightningkite.lightningserver.admin
 
-import com.lightningkite.*
 import com.lightningkite.kiteui.auth.authComponent2
-import com.lightningkite.kiteui.exceptions.ExceptionMessage
-import com.lightningkite.kiteui.exceptions.ExceptionToMessage
 import com.lightningkite.kiteui.exceptions.ExceptionToMessages
 import com.lightningkite.kiteui.exceptions.installLsError
 import com.lightningkite.kiteui.forms.displayName
-import com.lightningkite.kiteui.forms.login
 import com.lightningkite.kiteui.models.*
-import com.lightningkite.kiteui.navigation.*
-import com.lightningkite.readable.*
-import com.lightningkite.kiteui.views.*
+import com.lightningkite.kiteui.navigation.DefaultSerializersModule
+import com.lightningkite.kiteui.navigation.PageNavigator
+import com.lightningkite.kiteui.navigation.pageNavigator
+import com.lightningkite.kiteui.views.ViewWriter
+import com.lightningkite.kiteui.views.card
+import com.lightningkite.kiteui.views.centered
+import com.lightningkite.kiteui.views.compact
 import com.lightningkite.kiteui.views.direct.*
 import com.lightningkite.kiteui.views.l2.*
-import com.lightningkite.lightningdb.*
-import com.lightningkite.lightningserver.auth.AuthenticatedUserAuthClientEndpoints
+import com.lightningkite.lightningdb.Condition
 import com.lightningkite.lightningserver.auth.AuthenticatedUserAuthClientEndpointsLive
-import com.lightningkite.lightningserver.schema.*
+import com.lightningkite.reactive.context.invoke
+import com.lightningkite.reactive.context.reactive
+import com.lightningkite.reactive.core.remember
+import com.lightningkite.reactive.core.rememberSuspending
+import com.lightningkite.reactive.extensions.debounceWrite
 import com.lightningkite.serialization.ClientModule
 import com.lightningkite.serialization.SerializableProperty
 import com.lightningkite.serialization.serializableProperties
-import kotlinx.datetime.TimeZone
+import com.lightningkite.titleCase
 import kotlin.time.Duration.Companion.milliseconds
 
 @JsModule("@js-joda/timezone")
@@ -72,7 +75,7 @@ fun ViewWriter.app(navigator: PageNavigator, dialog: PageNavigator) {
                     hidden = { false },
                     square = {
                         compact - menuButton {
-                            val me = sharedSuspending label@{
+                            val me = rememberSuspending label@{
                                 try {
                                     val creds = adminAuthentication() ?: return@label "Anonymous"
                                     val sub = adminServer().auth.authenticatedSubjects[adminCredentials()?.userType
@@ -117,7 +120,7 @@ fun ViewWriter.app(navigator: PageNavigator, dialog: PageNavigator) {
                                         select {
                                             bind(
                                                 userType,
-                                                shared {
+                                                remember {
                                                     listOf(null) + try {
                                                         adminServer().auth.subjects.keys.toList()
                                                     } catch (e: Exception) {

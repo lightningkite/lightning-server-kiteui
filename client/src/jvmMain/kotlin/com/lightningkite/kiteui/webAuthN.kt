@@ -1,8 +1,6 @@
 package com.lightningkite.kiteui
 
 import com.lightningkite.lightningserver.auth.proof.WebAuthN
-import com.lightningkite.readable.Constant
-import com.lightningkite.readable.Readable
 
 @Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
 actual class ClientAuthenticator {

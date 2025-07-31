@@ -1,27 +1,24 @@
 package com.lightningkite.kiteui.forms
 
-import com.lightningkite.*
-import com.lightningkite.kiteui.ExternalServices
-import com.lightningkite.kiteui.FileReference
+import com.lightningkite.IsRawString
+import com.lightningkite.TrimmedString
 import com.lightningkite.kiteui.load
 import com.lightningkite.kiteui.models.*
-import com.lightningkite.kiteui.navigation.Page
-import com.lightningkite.kiteui.navigation.UrlProperties
-import com.lightningkite.kiteui.navigation.encodeToString
-import com.lightningkite.readable.*
-import com.lightningkite.kiteui.views.direct.*
+import com.lightningkite.kiteui.reactive.Action
 import com.lightningkite.kiteui.views.*
+import com.lightningkite.kiteui.views.direct.*
 import com.lightningkite.kiteui.views.l2.children
 import com.lightningkite.kiteui.views.l2.icon
 import com.lightningkite.lightningdb.*
-import com.lightningkite.lightningserver.db.ModelCache
-import com.lightningkite.lightningserver.files.ServerFile
+import com.lightningkite.reactive.context.invoke
+import com.lightningkite.reactive.context.reactiveSuspending
+import com.lightningkite.reactive.core.MutableReactiveValue
+import com.lightningkite.reactive.core.Signal
+import com.lightningkite.reactive.core.remember
+import com.lightningkite.reactive.extensions.debounce
 import com.lightningkite.serialization.*
 import kotlinx.coroutines.delay
-import kotlinx.serialization.ContextualSerializer
-import kotlinx.serialization.KSerializer
 import kotlinx.serialization.builtins.ListSerializer
-import kotlinx.serialization.builtins.serializer
 import kotlin.time.Duration.Companion.milliseconds
 
 object ForeignKeyRenderer : FormRenderer.Generator, ViewRenderer.Generator {
@@ -53,33 +50,33 @@ object ForeignKeyRenderer : FormRenderer.Generator, ViewRenderer.Generator {
         val typeName = anno.get("references")!!.let { it as SerializableAnnotationValue.ClassValue }.fqn
         val typeInfo =
             module.typeInfo(typeName)!! as FormTypeInfo<HasId<Comparable<Comparable<*>>>, Comparable<Comparable<*>>>
-        return FormRenderer(module, this, selector as FormSelector<Comparable<Comparable<*>>?>) { field, writable ->
+        return FormRenderer(module, this, selector as FormSelector<Comparable<Comparable<*>>?>) { field, mutable ->
             fieldTheme - row {
                 gap = 0.px
                 expanding - menuButton {
                     requireClick = true
                     gravity(Align.Start, Align.Center) - text {
                         reactiveSuspending {
-                            content = writable()?.let { typeInfo.renderToString(it) } ?: "None"
+                            content = mutable()?.let { typeInfo.renderToString(it) } ?: "None"
                         }
                     }
                     opensMenu {
                         if (selector.serializer.descriptor.isNullable) {
-                            load { writable set null }
+                            load { mutable set null }
                         }
                         preferredDirection = PopoverPreferredDirection.belowLeft
-                        val full = Property(false)
+                        val full = Signal(false)
                         sizeConstraints(width = 25.rem, height = 25.rem) - col {
-                            val textSearch = Property("")
-                            val condition = Property<Condition<HasId<Comparable<Comparable<*>>>>>(Condition.Always)
-                            val sort = Property<List<SortPart<HasId<Comparable<Comparable<*>>>>>>(listOf())
+                            val textSearch = Signal("")
+                            val condition = Signal<Condition<HasId<Comparable<Comparable<*>>>>>(Condition.Always)
+                            val sort = Signal<List<SortPart<HasId<Comparable<Comparable<*>>>>>>(listOf())
                             val hasTextIndex =
                                 typeInfo.serializer.serializableAnnotations.any { it.fqn.endsWith("TextIndex") }
-                            val columns: ImmediateWritable<List<DataClassPath<HasId<Comparable<Comparable<*>>>, *>>> =
-                                Property(run {
+                            val columns: MutableReactiveValue<List<DataClassPath<HasId<Comparable<Comparable<*>>>, *>>> =
+                                Signal(run {
                                     typeInfo.serializer.defaultColumns()
                                 })
-                            val itemsMeta = shared {
+                            val itemsMeta = remember {
                                 typeInfo.cache().watch(
                                     Query(
                                         Condition.And<HasId<Comparable<Comparable<*>>>>(
@@ -122,7 +119,7 @@ object ForeignKeyRenderer : FormRenderer.Generator, ViewRenderer.Generator {
                                     )
                                 )
                             }
-                            val items = shared { itemsMeta()() }
+                            val items = remember { itemsMeta()() }
                             row {
                                 expanding - fieldTheme - textInput {
                                     content bind textSearch
@@ -160,7 +157,7 @@ object ForeignKeyRenderer : FormRenderer.Generator, ViewRenderer.Generator {
                                                 readable = itemsMeta,
                                                 linkTo = null,
                                                 action = {
-                                                    writable.set(it._id)
+                                                    mutable.set(it._id)
                                                     closePopovers()
                                                 }
                                             )
@@ -177,7 +174,7 @@ object ForeignKeyRenderer : FormRenderer.Generator, ViewRenderer.Generator {
                                                             }
                                                         }
                                                         action = Action("Select", Icon.done) {
-                                                            writable.set(it()._id)
+                                                            mutable.set(it()._id)
                                                             closePopovers()
                                                         }
                                                     }
@@ -193,7 +190,7 @@ object ForeignKeyRenderer : FormRenderer.Generator, ViewRenderer.Generator {
                 link {
                     icon(Icon.externalLink.copy(width = 1.rem, height = 1.rem), "Open")
                     ::to label@{
-                        val id = writable() ?: return@label null
+                        val id = mutable() ?: return@label null
                         return@label typeInfo.page(id)
                     }
                 }

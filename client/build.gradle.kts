@@ -1,4 +1,7 @@
-import com.lightningkite.deployhelpers.*
+import com.lightningkite.deployhelpers.brady
+import com.lightningkite.deployhelpers.github
+import com.lightningkite.deployhelpers.joseph
+import com.lightningkite.deployhelpers.mit
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 group = "com.lightningkite.lightningserver"

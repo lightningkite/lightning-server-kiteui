@@ -6,20 +6,11 @@ import com.lightningkite.kiteui.models.Icon
 import com.lightningkite.kiteui.models.dp
 import com.lightningkite.kiteui.views.ViewWriter
 import com.lightningkite.kiteui.views.centered
-import com.lightningkite.kiteui.views.direct.button
-import com.lightningkite.kiteui.views.direct.col
-import com.lightningkite.kiteui.views.direct.confirmDanger
-import com.lightningkite.kiteui.views.direct.onClick
-import com.lightningkite.kiteui.views.direct.recyclerView
-import com.lightningkite.kiteui.views.direct.row
-import com.lightningkite.kiteui.views.direct.space
-import com.lightningkite.kiteui.views.direct.subtext
-import com.lightningkite.kiteui.views.direct.text
+import com.lightningkite.kiteui.views.direct.*
 import com.lightningkite.kiteui.views.expanding
 import com.lightningkite.kiteui.views.l2.children
 import com.lightningkite.kiteui.views.l2.icon
 import com.lightningkite.lightningdb.Query
-import com.lightningkite.lightningdb.and
 import com.lightningkite.lightningdb.condition
 import com.lightningkite.lightningdb.eq
 import com.lightningkite.lightningdb.modification
@@ -29,23 +20,23 @@ import com.lightningkite.lightningserver.auth.proof.subjectId
 import com.lightningkite.lightningserver.db.LimitReadable
 import com.lightningkite.lightningserver.db.ModelCache
 import com.lightningkite.now
-import com.lightningkite.readable.Readable
-import com.lightningkite.readable.await
-import com.lightningkite.readable.shared
+import com.lightningkite.reactive.context.await
+import com.lightningkite.reactive.core.Reactive
+import com.lightningkite.reactive.core.remember
 
 
 fun ViewWriter.manageWebAuthNCredentialsComponent(
-    webAuthNCCredentials: Readable<ModelCache<WebAuthNCredential, String>?>,
-    subjectName: Readable<String>,
-    subjectId: Readable<String>,
+    webAuthNCCredentials: Reactive<ModelCache<WebAuthNCredential, String>?>,
+    subjectName: Reactive<String>,
+    subjectId: Reactive<String>,
 ) {
-    val credentials: Readable<LimitReadable<WebAuthNCredential>> = shared {
+    val credentials: Reactive<LimitReadable<WebAuthNCredential>> = remember {
         webAuthNCCredentials.awaitNotNull()
             .query(Query(condition { it.subjectId.eq(subjectId()) }))
     }
 
     recyclerView {
-        children (shared{ credentials()() }, { it._id }) { credential ->
+        children (remember{ credentials()() }, { it._id }) { credential ->
             row {
                 col {
                     spacing = 0.dp

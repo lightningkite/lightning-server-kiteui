@@ -1,14 +1,13 @@
 package com.lightningkite.lightningserver.db
 
 import com.lightningkite.kiteui.*
-import com.lightningkite.readable.Constant
-import com.lightningkite.readable.Property
-import com.lightningkite.readable.Readable
 import com.lightningkite.lightningdb.*
 import com.lightningkite.now
-import com.lightningkite.readable.AppScope
+import com.lightningkite.reactive.core.AppScope
+import com.lightningkite.reactive.core.Constant
+import com.lightningkite.reactive.core.Reactive
+import com.lightningkite.reactive.core.Signal
 import com.lightningkite.serialization.Partial
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Instant
 import kotlin.coroutines.CoroutineContext
@@ -195,7 +194,7 @@ class MockClientModelRestEndpoints<T : HasId<ID>, ID : Comparable<ID>>(val log: 
     val holdWsMessage = WaitGate(true)
     override fun updates(): TypedWebSocket<Condition<T>, CollectionUpdates<T, ID>> {
         return object : TypedWebSocket<Condition<T>, CollectionUpdates<T, ID>> {
-            override val connected: Readable<Boolean> get() = Constant(true)
+            override val connected: Reactive<Boolean> get() = Constant(true)
             override fun close(code: Short, reason: String) {}
             override fun onClose(action: (Short) -> Unit) {
             }
@@ -266,7 +265,7 @@ class ConnectivityGate(val delay: suspend (ms: Long) -> Unit = { ms -> kotlinx.c
     val baseRetry = 5.seconds
     var nextRetry = baseRetry
     val maxRetry = 5.minutes
-    val retryAt = Property<Instant?>(null)
+    val retryAt = Signal<Instant?>(null)
 
     fun retryNow() {
         retryAt.value = null

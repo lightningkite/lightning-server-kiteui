@@ -1,14 +1,7 @@
 package com.lightningkite.lightningserver.admin
 
 import com.lightningkite.kiteui.models.*
-import com.lightningkite.kiteui.models.turns
-import com.lightningkite.readable.Constant
-import com.lightningkite.readable.PersistentProperty
-import com.lightningkite.readable.lens
-import com.lightningkite.readable.shared
-import kotlinx.serialization.Serializable
-import kotlin.math.abs
-import kotlin.math.absoluteValue
+import com.lightningkite.reactive.core.Constant
 
 //fun default(color: Color?): Theme {
 //    val baseColor = Color.fromHex(0x2D3237).toHSP()
@@ -689,6 +682,6 @@ fun lk(): Theme {
 //    set = { it?.toInt() }
 //)
 //val themePreference = PersistentProperty("theme-preference", ThemePreference.Default, ThemePreference.serializer())
-//val appTheme = shared { themePreference().theme(themePreferenceColor()) }
+//val appTheme = remember { themePreference().theme(themePreferenceColor()) }
 //val appTheme = Constant(Theme.clean(null))
 val appTheme = Constant(lk())

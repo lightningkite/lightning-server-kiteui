@@ -4,9 +4,6 @@ import com.lightningkite.kiteui.FileReference
 import com.lightningkite.kiteui.models.SubtextSemantic
 import com.lightningkite.kiteui.models.px
 import com.lightningkite.kiteui.models.rem
-import com.lightningkite.readable.Constant
-import com.lightningkite.readable.Property
-import com.lightningkite.readable.reactive
 import com.lightningkite.kiteui.views.atTopEnd
 import com.lightningkite.kiteui.views.direct.row
 import com.lightningkite.kiteui.views.direct.select
@@ -14,6 +11,9 @@ import com.lightningkite.kiteui.views.direct.sizeConstraints
 import com.lightningkite.kiteui.views.direct.stack
 import com.lightningkite.kiteui.views.expanding
 import com.lightningkite.lightningserver.files.ServerFile
+import com.lightningkite.reactive.context.reactive
+import com.lightningkite.reactive.core.Constant
+import com.lightningkite.reactive.core.Signal
 import com.lightningkite.serialization.ClientModule
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.descriptors.SerialKind
@@ -87,15 +87,15 @@ class FormModule {
     fun <T> view(key: FormSelector<T>): ViewRenderer<T> = viewCache(key) {
         val options = viewCandidates(key).filter { it.matches(this, key) }.sortedByDescending { it.priority(this, key) }.map { it.view(this, key) }.toList()
         if (!showTypePicker) options.first()
-        else ViewRenderer(this, null, key, size = options.first().size, handlesField = options.first().handlesField) { field, writable ->
-            val selected = Property(options.first())
+        else ViewRenderer(this, null, key, size = options.first().size, handlesField = options.first().handlesField) { field, mutable ->
+            val selected = Signal(options.first())
             row {
 //                gap = 0.px
                 expanding - stack {
                     reactive {
                         val sel = selected()
                         clearChildren()
-                        sel.render(this@stack, field, writable)
+                        sel.render(this@stack, field, mutable)
                     }
                 }
                 sizeConstraints(width = 0.75.rem, height = 0.75.rem) - SubtextSemantic.onNext - atTopEnd - select {
@@ -128,15 +128,15 @@ class FormModule {
     fun <T> form(key: FormSelector<T>): FormRenderer<T> = formCache(key) {
         val options = formCandidates(key).filter { it.matches(this, key) }.sortedByDescending { it.priority(this, key) }.map { it.form(this, key) }.toList()
         if (!showTypePicker) options.first()
-        else FormRenderer(this, null, key, size = options.first().size, handlesField = options.first().handlesField) { field, writable ->
-            val selected = Property(options.first())
+        else FormRenderer(this, null, key, size = options.first().size, handlesField = options.first().handlesField) { field, mutable ->
+            val selected = Signal(options.first())
             row {
 //                gap = 0.px
                 expanding - stack {
                     reactive {
                         val sel = selected()
                         clearChildren()
-                        sel.render(this@stack, field, writable)
+                        sel.render(this@stack, field, mutable)
                     }
                 }
                 sizeConstraints(width = 0.75.rem, height = 0.75.rem) - SubtextSemantic.onNext - atTopEnd - select {

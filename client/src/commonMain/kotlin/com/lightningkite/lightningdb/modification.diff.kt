@@ -2,10 +2,12 @@
 
 package com.lightningkite.lightningdb
 
+import com.lightningkite.serialization.SerializableProperty
+import com.lightningkite.serialization.nullElement
+import com.lightningkite.serialization.serializableProperties
+import com.lightningkite.serialization.serializerOrContextual
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
-import kotlinx.serialization.serializer
-import com.lightningkite.serialization.*
 
 inline fun <reified T> modification(old: T, new: T): Modification<T>? = modification(serializerOrContextual(), old, new)
 fun <T> modification(serializer: KSerializer<T>, old: T, new: T): Modification<T>? = run {

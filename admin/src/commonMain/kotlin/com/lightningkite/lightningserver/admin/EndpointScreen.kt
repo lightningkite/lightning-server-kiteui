@@ -7,18 +7,14 @@ import com.lightningkite.kiteui.forms.FormModule
 import com.lightningkite.kiteui.forms.form
 import com.lightningkite.kiteui.forms.view
 import com.lightningkite.kiteui.models.px
-import com.lightningkite.kiteui.navigation.DefaultJson
 import com.lightningkite.kiteui.navigation.Page
 import com.lightningkite.kiteui.navigation.UrlProperties
 import com.lightningkite.kiteui.navigation.encodeToString
-import com.lightningkite.kiteui.views.ViewModifiable
-import com.lightningkite.readable.*
-import com.lightningkite.kiteui.views.ViewWriter
-import com.lightningkite.kiteui.views.atEnd
-import com.lightningkite.kiteui.views.card
+import com.lightningkite.kiteui.views.*
 import com.lightningkite.kiteui.views.direct.*
-import com.lightningkite.kiteui.views.important
 import com.lightningkite.kiteui.views.l2.errorText
+import com.lightningkite.reactive.context.reactive
+import com.lightningkite.reactive.core.*
 import com.lightningkite.serialization.default
 import com.lightningkite.serialization.nullable2
 import kotlinx.serialization.KSerializer
@@ -27,7 +23,7 @@ import kotlinx.serialization.builtins.serializer
 @Routable("endpoints/{method}/{path}")
 class EndpointPage(val path: String, val method: String) : Page {
 
-    class RoutePage<T>(val formModule: FormModule, val name: String, val type: KSerializer<T>, val value: Property<T> = Property(type.default())) {
+    class RoutePage<T>(val formModule: FormModule, val name: String, val type: KSerializer<T>, val value: Signal<T> = Signal(type.default())) {
         fun render(viewWriter: ViewWriter) = with(viewWriter) {
             col {
                 gap = 0.px
@@ -35,27 +31,27 @@ class EndpointPage(val path: String, val method: String) : Page {
                 form(formModule, type, value)
             }
         }
-        val stringValue = shared {
+        val stringValue = remember {
             UrlProperties.encodeToString(type, value())
         }
     }
 
     override fun ViewWriter.render(): ViewModifiable {
         val server = adminServer
-        val endpoint = shared { adminServer().schema.endpoints.find { it.path == this@EndpointPage.path && it.method == method }!! }
+        val endpoint = remember { adminServer().schema.endpoints.find { it.path == this@EndpointPage.path && it.method == method }!! }
         return scrolling - col {
             reactive {
                 clearChildren()
                 val forms = adminFormModule()
                 val inputSerializer = endpoint().input.serializer(server().registry, mapOf())
                 val outputSerializer = endpoint().output.serializer(server().registry, mapOf())
-                val input = Property<Any?>(inputSerializer.default())
-                val output = RawReadable<Any?>(ReadableState(null))
+                val input = Signal<Any?>(inputSerializer.default())
+                val output = RawReactive<Any?>(ReactiveState(null))
                 val parameters = endpoint().routes.mapValues {
                     val type = it.value.serializer(server().registry, mapOf())
                     RoutePage(forms, it.key, type)
                 }
-                val path = shared {
+                val path = remember {
                     var s = endpoint().path
                     for ((name, value) in parameters) {
                         s = s.replace("{$name}", encodeURIComponent(value.stringValue()))
@@ -77,8 +73,8 @@ class EndpointPage(val path: String, val method: String) : Page {
                 atEnd - important - button {
                     text("Submit")
                     onClick {
-                        output.state = ReadableState.notReady
-                        output.state = readableState {
+                        output.state = ReactiveState.notReady
+                        output.state = reactiveState {
                             server().fetcher(adminAuthentication()).invoke(
                                 url = path(),
                                 method = HttpMethod.valueOf(endpoint().method),

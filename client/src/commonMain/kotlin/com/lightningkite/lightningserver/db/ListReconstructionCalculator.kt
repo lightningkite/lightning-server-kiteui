@@ -2,7 +2,7 @@ package com.lightningkite.lightningserver.db
 
 import com.lightningkite.lightningdb.HasId
 import com.lightningkite.lightningdb.Query
-import com.lightningkite.readable.Listenable
+import com.lightningkite.reactive.core.Listenable
 
 interface ListReconstructionCalculator<T : HasId<ID>, ID : Comparable<ID>> {
     fun updates(query: Query<T>): Listenable

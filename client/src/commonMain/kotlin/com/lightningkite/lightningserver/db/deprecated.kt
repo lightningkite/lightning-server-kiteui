@@ -1,12 +1,8 @@
 package com.lightningkite.lightningserver.db
 
 import com.lightningkite.kiteui.TypedWebSocket
-import com.lightningkite.lightningdb.CollectionUpdates
-import com.lightningkite.lightningdb.Condition
-import com.lightningkite.lightningdb.HasId
-import com.lightningkite.lightningdb.ListChange
-import com.lightningkite.lightningdb.Query
-import com.lightningkite.readable.Readable
+import com.lightningkite.lightningdb.*
+import com.lightningkite.reactive.core.Reactive
 
 
 interface ClientModelRestEndpointsPlusWs<T : HasId<ID>, ID : Comparable<ID>> {
@@ -18,7 +14,7 @@ interface ClientModelRestEndpointsPlusUpdatesWebsocket<T : HasId<ID>, ID : Compa
 }
 
 typealias WritableModel<T> = ModelCacheItemReadable<T>
-interface LimitReadable<T>: Readable<List<T>> {
+interface LimitReadable<T>: Reactive<List<T>> {
     var limit: Int
 }
 

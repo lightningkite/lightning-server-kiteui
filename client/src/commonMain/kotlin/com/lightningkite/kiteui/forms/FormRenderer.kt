@@ -6,8 +6,6 @@ import com.lightningkite.kiteui.models.ErrorSemantic
 import com.lightningkite.kiteui.navigation.Page
 import com.lightningkite.kiteui.navigation.UrlProperties
 import com.lightningkite.kiteui.navigation.decodeFromString
-import com.lightningkite.readable.Readable
-import com.lightningkite.readable.Writable
 import com.lightningkite.kiteui.views.ViewModifiable
 import com.lightningkite.kiteui.views.ViewWriter
 import com.lightningkite.kiteui.views.centered
@@ -16,7 +14,9 @@ import com.lightningkite.kiteui.views.direct.text
 import com.lightningkite.lightningdb.HasId
 import com.lightningkite.lightningdb.SortPart
 import com.lightningkite.lightningserver.db.ModelCache
-import com.lightningkite.readable.ReactiveContext
+import com.lightningkite.reactive.context.ReactiveContext
+import com.lightningkite.reactive.core.MutableReactive
+import com.lightningkite.reactive.core.Reactive
 import com.lightningkite.serialization.*
 import kotlinx.datetime.Instant
 import kotlinx.serialization.ExperimentalSerializationApi
@@ -65,7 +65,7 @@ interface Renderer<T> {
 
 interface ViewRenderer<T> : Renderer<T> {
     val module: FormModule
-    val render: ViewWriter.(field: SerializableProperty<*, *>?, readable: Readable<T>) -> ViewModifiable
+    val render: ViewWriter.(field: SerializableProperty<*, *>?, readable: Reactive<T>) -> ViewModifiable
 
     interface Generator : RendererGenerator {
         fun <T> view(module: FormModule, selector: FormSelector<T>): ViewRenderer<T>
@@ -78,7 +78,7 @@ interface ViewRenderer<T> : Renderer<T> {
             selector: FormSelector<T>,
             size: FormSize = generator!!.size(module, selector),
             handlesField: Boolean = generator!!.handlesField,
-            render: ViewWriter.(field: SerializableProperty<*, *>?, readable: Readable<T>) -> ViewModifiable
+            render: ViewWriter.(field: SerializableProperty<*, *>?, readable: Reactive<T>) -> ViewModifiable
         ) = Standard(module, generator, selector, size, handlesField, render)
     }
 
@@ -88,7 +88,7 @@ interface ViewRenderer<T> : Renderer<T> {
         override val selector: FormSelector<T>,
         override val size: FormSize = generator!!.size(module, selector),
         override val handlesField: Boolean = generator!!.handlesField,
-        override val render: ViewWriter.(field: SerializableProperty<*, *>?, readable: Readable<T>) -> ViewModifiable
+        override val render: ViewWriter.(field: SerializableProperty<*, *>?, readable: Reactive<T>) -> ViewModifiable
     ) : ViewRenderer<T>
 
     data class Blank<T>(
@@ -98,7 +98,7 @@ interface ViewRenderer<T> : Renderer<T> {
         override val generator: RendererGenerator? = null
         override val handlesField: Boolean = false
         override val size: FormSize = FormSize.Block
-        override val render: ViewWriter.(field: SerializableProperty<*, *>?, readable: Readable<T>) -> ViewModifiable = { _, _ ->
+        override val render: ViewWriter.(field: SerializableProperty<*, *>?, readable: Reactive<T>) -> ViewModifiable = { _, _ ->
             ErrorSemantic.onNext - stack {
                 centered - text("Blank for ${selector.serializer.displayName}")
             }
@@ -126,14 +126,14 @@ interface ViewRenderer<T> : Renderer<T> {
         override val handlesField: Boolean get() = current.handlesField
         override val selector: FormSelector<T> get() = current.selector
         override val size: FormSize get() = current.size
-        override val render: ViewWriter.(field: SerializableProperty<*, *>?, readable: Readable<T>) -> ViewModifiable
+        override val render: ViewWriter.(field: SerializableProperty<*, *>?, readable: Reactive<T>) -> ViewModifiable
             get() = current.render
     }
 }
 
 interface FormRenderer<T> : Renderer<T> {
     val module: FormModule
-    val render: ViewWriter.(field: SerializableProperty<*, *>?, writable: Writable<T>) -> ViewModifiable
+    val render: ViewWriter.(field: SerializableProperty<*, *>?, mutable: MutableReactive<T>) -> ViewModifiable
 
     interface Generator : RendererGenerator {
         fun <T> form(module: FormModule, selector: FormSelector<T>): FormRenderer<T>
@@ -146,7 +146,7 @@ interface FormRenderer<T> : Renderer<T> {
             selector: FormSelector<T>,
             size: FormSize = generator!!.size(module, selector),
             handlesField: Boolean = generator!!.handlesField,
-            render: ViewWriter.(field: SerializableProperty<*, *>?, writable: Writable<T>) -> ViewModifiable
+            render: ViewWriter.(field: SerializableProperty<*, *>?, mutable: MutableReactive<T>) -> ViewModifiable
         ) = Standard(module, generator, selector, size, handlesField, render)
     }
 
@@ -156,7 +156,7 @@ interface FormRenderer<T> : Renderer<T> {
         override val selector: FormSelector<T>,
         override val size: FormSize = generator!!.size(module, selector),
         override val handlesField: Boolean = generator!!.handlesField,
-        override val render: ViewWriter.(field: SerializableProperty<*, *>?, writable: Writable<T>) -> ViewModifiable
+        override val render: ViewWriter.(field: SerializableProperty<*, *>?, mutable: MutableReactive<T>) -> ViewModifiable
     ) : FormRenderer<T>
 
     data class Blank<T>(
@@ -166,7 +166,7 @@ interface FormRenderer<T> : Renderer<T> {
         override val generator: RendererGenerator? = null
         override val handlesField: Boolean = false
         override val size: FormSize = FormSize.Block
-        override val render: ViewWriter.(field: SerializableProperty<*, *>?, writable: Writable<T>) -> ViewModifiable = { _, _ ->
+        override val render: ViewWriter.(field: SerializableProperty<*, *>?, mutable: MutableReactive<T>) -> ViewModifiable = { _, _ ->
             ErrorSemantic.onNext - stack {
                 centered - text("Blank for ${selector.serializer.displayName}")
             }
@@ -194,7 +194,7 @@ interface FormRenderer<T> : Renderer<T> {
         override val handlesField: Boolean get() = current.handlesField
         override val selector: FormSelector<T> get() = current.selector
         override val size: FormSize get() = current.size
-        override val render: ViewWriter.(field: SerializableProperty<*, *>?, writable: Writable<T>) -> ViewModifiable
+        override val render: ViewWriter.(field: SerializableProperty<*, *>?, mutable: MutableReactive<T>) -> ViewModifiable
             get() = current.render
     }
 }
@@ -295,19 +295,19 @@ class FormTypeInfo<T : HasId<ID>, ID : Comparable<ID>>(
 fun <T> ViewWriter.form(
     context: FormModule,
     serializer: KSerializer<T>,
-    writable: Writable<T>,
+    mutable: MutableReactive<T>,
     annotations: List<SerializableAnnotation> = serializer.serializableAnnotations,
     desiredSize: FormLayoutPreferences = FormLayoutPreferences.ScreenBound,
     field: SerializableProperty<*, *>? = null,
 ): ViewModifiable {
     val sel = FormSelector<T>(serializer, annotations, desiredSize)
-    return context.form(sel).render(this, field, writable)
+    return context.form(sel).render(this, field, mutable)
 }
 
 fun <T> ViewWriter.view(
     context: FormModule,
     serializer: KSerializer<T>,
-    readable: Readable<T>,
+    readable: Reactive<T>,
     annotations: List<SerializableAnnotation> = serializer.serializableAnnotations,
     desiredSize: FormLayoutPreferences = FormLayoutPreferences.ScreenBound,
     field: SerializableProperty<*, *>? = null,

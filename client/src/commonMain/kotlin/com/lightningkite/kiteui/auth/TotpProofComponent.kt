@@ -17,8 +17,8 @@ import com.lightningkite.lightningserver.auth.OneTimePasswordProofClientEndpoint
 import com.lightningkite.lightningserver.auth.proof.IdentificationAndPassword
 import com.lightningkite.lightningserver.auth.proof.Proof
 import com.lightningkite.lightningserver.auth.proof.ProofOption
-import com.lightningkite.readable.Property
-import com.lightningkite.readable.await
+import com.lightningkite.reactive.context.await
+import com.lightningkite.reactive.core.Signal
 
 data class TotpProofComponent(val p: OneTimePasswordProofClientEndpoints, val type: String) : ProofComponent {
     override val name: String = "Use Authenticator App"
@@ -31,7 +31,7 @@ data class TotpProofComponent(val p: OneTimePasswordProofClientEndpoints, val ty
         option: ProofOption,
         onResult: (Proof?) -> Unit
     ): ViewModifiable = to.col {
-        val code = Property("")
+        val code = Signal("")
         val provePasswordOwnership = Action("Submit", Icon.Companion.done) {
             onResult(
                 p.proveOTP(

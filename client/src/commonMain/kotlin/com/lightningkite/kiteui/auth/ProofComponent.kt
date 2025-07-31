@@ -9,12 +9,6 @@ import com.lightningkite.lightningserver.auth.proof.Proof
 import com.lightningkite.lightningserver.auth.proof.ProofMethodInfo
 import com.lightningkite.lightningserver.auth.proof.ProofOption
 import com.lightningkite.lightningserver.auth.subject.ProofsCheckResult
-import com.lightningkite.readable.Constant
-import com.lightningkite.readable.Readable
-import com.lightningkite.toEmailAddress
-import com.lightningkite.toPhoneNumber
-import kotlinx.coroutines.Deferred
-import kotlinx.coroutines.Job
 
 interface ProofComponent {
     val property: String? get() = null
