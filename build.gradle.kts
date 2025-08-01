@@ -1,4 +1,5 @@
 import org.jetbrains.kotlin.gradle.targets.js.yarn.YarnLockMismatchReport
+import org.jetbrains.kotlin.gradle.targets.js.yarn.YarnPlugin
 import org.jetbrains.kotlin.gradle.targets.js.yarn.YarnRootExtension
 
 buildscript {
@@ -36,7 +37,7 @@ plugins {
     alias(libs.plugins.dokka) apply false
 }
 
-plugins.withType<org.jetbrains.kotlin.gradle.targets.js.yarn.YarnPlugin> {
+plugins.withType<YarnPlugin> {
     the<YarnRootExtension>().yarnLockMismatchReport = YarnLockMismatchReport.NONE
     the<YarnRootExtension>().reportNewYarnLock = false
     the<YarnRootExtension>().yarnLockAutoReplace = true

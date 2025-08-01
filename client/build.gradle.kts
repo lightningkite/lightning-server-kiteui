@@ -1,6 +1,4 @@
 import com.lightningkite.deployhelpers.*
-import com.lightningkite.deployhelpers.useGitBasedVersion
-import com.lightningkite.deployhelpers.useLocalDependencies
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 group = "com.lightningkite.lightningserver"
@@ -10,21 +8,18 @@ plugins {
     alias(libs.plugins.androidLibrary)
     alias(libs.plugins.ksp)
     alias(libs.plugins.serialization)
-//    signing
+    signing
     alias(libs.plugins.vanniktechPublishing)
-//    alias(libs.plugins.dokka)
+    alias(libs.plugins.dokka)
 }
 
-//dokka {
-//    // Dokka generates a new process managed by Gradle
-//    dokkaGeneratorIsolation = ProcessIsolation {
-//        // Configures heap size
-//        maxHeapSize = "4g"
-//    }
-//}
-
-useGitBasedVersion()
-useLocalDependencies()
+dokka {
+    // Dokka generates a new process managed by Gradle
+    dokkaGeneratorIsolation = ProcessIsolation {
+        // Configures heap size
+        maxHeapSize = "4g"
+    }
+}
 
 kotlin {
     applyDefaultHierarchyTemplate()
@@ -65,14 +60,6 @@ kotlin {
     }
 }
 
-android {
-    namespace = "com.lightningkite.lightningserver"
-    compileSdk = 35
-    defaultConfig {
-        minSdk = 24
-    }
-}
-
 dependencies {
     configurations.filter { it.name.startsWith("ksp") && it.name != "ksp" }.forEach {
         add(it.name, libs.comLightningkiteLightningserverProcessor)
@@ -96,7 +83,7 @@ android {
     }
 }
 
-//lkLibrary("lightningkite", "lightning-server-kiteui") {
-//    description.set("The client side of communication between server and client.")
-//    name.set("Lightning-Server-Client")
-//}
+lkLibrary("lightningkite", "lightning-server-kiteui") {
+    description.set("The client side of communication between server and client.")
+    name.set("Lightning-Server-Client")
+}
