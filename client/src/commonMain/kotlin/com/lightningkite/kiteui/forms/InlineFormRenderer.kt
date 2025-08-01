@@ -1,13 +1,6 @@
 package com.lightningkite.kiteui.forms
 
-import com.lightningkite.readable.*
-import com.lightningkite.kiteui.views.ViewWriter
-import com.lightningkite.kiteui.views.atTopStart
-import com.lightningkite.kiteui.views.direct.*
-import com.lightningkite.kiteui.views.expanding
-import com.lightningkite.serialization.SerializableProperty
-import com.lightningkite.serialization.default
-import com.lightningkite.serialization.nullElement
+import com.lightningkite.reactive.lensing.lens
 import com.lightningkite.serialization.tryChildSerializers
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.descriptors.SerialKind
@@ -35,11 +28,11 @@ object InlineFormRenderer : FormRenderer.Generator, ViewRenderer.Generator {
         val innerSerializer = selector.serializer.tryChildSerializers()!![0]!! as KSerializer<Any>
         val innerSelector = selector.copy(innerSerializer)
         val inner = module.form(innerSelector)
-        return FormRenderer(module, this, selector as FormSelector<Any?>) { field, writable ->
+        return FormRenderer(module, this, selector as FormSelector<Any?>) { field, mutable ->
             inner.render(
                 this,
                 field,
-                writable.lens(
+                mutable.lens(
                     get = { v -> selector.serializer.serializationCast(v, innerSerializer) },
                     set = { v ->
                         innerSerializer.serializationCast(v, selector.serializer)

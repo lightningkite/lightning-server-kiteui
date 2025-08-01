@@ -1,11 +1,12 @@
 package com.lightningkite.kiteui.forms
 
-import com.lightningkite.readable.*
-import com.lightningkite.kiteui.views.ViewWriter
 import com.lightningkite.kiteui.views.atTopStart
 import com.lightningkite.kiteui.views.direct.*
 import com.lightningkite.kiteui.views.expanding
-import com.lightningkite.serialization.SerializableProperty
+import com.lightningkite.reactive.context.reactive
+import com.lightningkite.reactive.context.reactiveScope
+import com.lightningkite.reactive.core.remember
+import com.lightningkite.reactive.lensing.lens
 import com.lightningkite.serialization.default
 import com.lightningkite.serialization.nullElement
 import kotlinx.serialization.KSerializer
@@ -32,12 +33,12 @@ object NullableFormRenderer : FormRenderer.Generator, ViewRenderer.Generator {
         val innerSerializer = selector.serializer.nullElement()!! as KSerializer<Any>
         val innerSelector by lazy { selector.copy(innerSerializer) }
         val inner by lazy { module.form(innerSelector) }
-        return FormRenderer(module, this, selector as FormSelector<Any?>) { field, writable ->
+        return FormRenderer(module, this, selector as FormSelector<Any?>) { field, mutable ->
             row {
-                var ifNotNull: Any = writable.state.getOrNull() ?: innerSerializer.default()
+                var ifNotNull: Any = mutable.state.getOrNull() ?: innerSerializer.default()
                 padded - stack {
                     atTopStart - checkbox {
-                        checked bind writable.lens(
+                        checked bind mutable.lens(
                             get = { v -> v != null },
                             modify = { e, v ->
                                 if (v) ifNotNull else null
@@ -46,13 +47,13 @@ object NullableFormRenderer : FormRenderer.Generator, ViewRenderer.Generator {
                     }
                 }
                 expanding - stack {
-                    val isNull = shared { writable() == null }
+                    val isNull = remember { mutable() == null }
                     reactive {
                         clearChildren()
                         if (!isNull()) inner.render(
                             this@stack,
                             field,
-                            writable.lens(
+                            mutable.lens(
                                 get = { v -> v ?: innerSerializer.default() },
                                 modify = { e, v ->
                                     ifNotNull = v
@@ -73,7 +74,7 @@ object NullableFormRenderer : FormRenderer.Generator, ViewRenderer.Generator {
         val inner by lazy { module.view(innerSelector) }
         return ViewRenderer(module, this, selector as FormSelector<Any?>) { field, readable ->
             stack {
-                val isNull = shared { readable() == null }
+                val isNull = remember { readable() == null }
                 reactiveScope {
                     clearChildren()
                     if (isNull()) {

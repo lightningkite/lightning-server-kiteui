@@ -2,15 +2,16 @@
 
 package com.lightningkite.lightningserver.admin
 
-import com.lightningkite.kiteui.*
+import com.lightningkite.kiteui.HttpMethod
+import com.lightningkite.kiteui.RequestBodyFile
+import com.lightningkite.kiteui.connectivityFetch
 import com.lightningkite.kiteui.forms.FormModule
 import com.lightningkite.kiteui.forms.FormTypeInfo
 import com.lightningkite.kiteui.forms.defaultTitleFields
 import com.lightningkite.kiteui.navigation.DefaultJson
 import com.lightningkite.kiteui.navigation.Page
 import com.lightningkite.kiteui.navigation.UrlProperties
-import com.lightningkite.readable.invoke
-import com.lightningkite.lightningdb.*
+import com.lightningkite.lightningdb.HasId
 import com.lightningkite.lightningserver.auth.*
 import com.lightningkite.lightningserver.db.*
 import com.lightningkite.lightningserver.files.ServerFile
@@ -21,7 +22,9 @@ import com.lightningkite.lightningserver.networking.Fetcher
 import com.lightningkite.lightningserver.schema.LightningServerKSchema
 import com.lightningkite.lightningserver.schema.LightningServerKSchemaEndpoint
 import com.lightningkite.lightningserver.schema.LightningServerKSchemaInterface
-import com.lightningkite.serialization.*
+import com.lightningkite.reactive.context.invoke
+import com.lightningkite.serialization.SerializationRegistry
+import com.lightningkite.serialization.serializableProperties
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.builtins.serializer
@@ -37,12 +40,14 @@ fun SerializationRegistry.register(schema: LightningServerKSchema) {
 private fun LightningServerKSchema.uploadEarlyEndpoint() = endpoints.find {
     it.output.serialName == "com.lightningkite.lightningserver.files.UploadInformation"
 }
+
 private fun LightningServerKSchema.uploadEarlyVerifyEndpoint(): LightningServerKSchemaEndpoint? {
     val expected = uploadEarlyEndpoint()?.path?.plus("/verify") ?: return null
     return endpoints.find {
         it.path == expected
     }
 }
+
 private fun LightningServerKSchema.healthEndpoint(): LightningServerKSchemaEndpoint? {
     return endpoints.find {
         it.output.serialName == "com.lightningkite.lightningserver.serverhealth.ServerHealth"
@@ -76,13 +81,18 @@ class ExternalLightningServer(
     val file = schema.uploadEarlyEndpoint()
     val fileVerify = schema.uploadEarlyVerifyEndpoint()
     val health = schema.healthEndpoint()
-    
+
     private val nullToken: suspend () -> List<Pair<String, String>> = { listOf() }
     fun authlessFetcher(): Fetcher = fetcher(null)
     private val cachedbyLsa = HashMap<LightningServerAuthentication?, Fetcher>()
     fun fetcher(auth: LightningServerAuthentication?): Fetcher = cachedbyLsa.getOrPut(auth) {
         bulk?.let {
-            BulkFetcher(schema.baseUrl + it.path, schema.baseWsUrl + "/multiplex", json, calculator = auth?.accessToken ?: nullToken)
+            BulkFetcher(
+                schema.baseUrl + it.path,
+                schema.baseWsUrl + "/multiplex",
+                json,
+                calculator = auth?.accessToken ?: nullToken
+            )
         } ?: ConnectivityFetcher(schema.baseUrl, schema.baseWsUrl, json, calculator = auth?.accessToken ?: nullToken)
     }
 
@@ -94,64 +104,83 @@ class ExternalLightningServer(
                 idSerializer = it.matches.arguments[0].serializer(registry, mapOf()) as KSerializer<Comparable<Any>>,
             )
         },
-        authenticatedSubjects = schema.interfaces.filter { it.matches.serialName == "AuthenticatedUserAuthClientEndpoints" }.associate {
-            it.path to { auth ->
-                AuthenticatedUserAuthClientEndpointsLive(
-                    fetcher = fetcher(auth),
-                    subpath = it.path,
-                    idSerializer = it.matches.arguments[1].serializer(registry, mapOf()) as KSerializer<Comparable<Any>>,
-                    userSerializer = it.matches.arguments[0].serializer(registry, mapOf()) as KSerializer<HasId<Comparable<Any>>>,
-                )
-            }
-        },
+        authenticatedSubjects = schema.interfaces.filter { it.matches.serialName == "AuthenticatedUserAuthClientEndpoints" }
+            .associate {
+                it.path to { auth ->
+                    AuthenticatedUserAuthClientEndpointsLive(
+                        fetcher = fetcher(auth),
+                        subpath = it.path,
+                        idSerializer = it.matches.arguments[1].serializer(
+                            registry,
+                            mapOf()
+                        ) as KSerializer<Comparable<Any>>,
+                        userSerializer = it.matches.arguments[0].serializer(
+                            registry,
+                            mapOf()
+                        ) as KSerializer<HasId<Comparable<Any>>>,
+                    )
+                }
+            },
         smsProof = schema.interfaces.find { it.matches.serialName == "SmsProofClientEndpoints" }?.let {
             val httpPath = it.path
-            SmsProofClientEndpointsLive(fetcher = authlessFetcher(), subpath = httpPath,)
+            SmsProofClientEndpointsLive(fetcher = authlessFetcher(), subpath = httpPath)
         },
         emailProof = schema.interfaces.find { it.matches.serialName == "EmailProofClientEndpoints" }?.let {
             val httpPath = it.path
-            EmailProofClientEndpointsLive(fetcher = authlessFetcher(), subpath = httpPath,)
+            EmailProofClientEndpointsLive(fetcher = authlessFetcher(), subpath = httpPath)
         },
-        oneTimePasswordProof = schema.interfaces.find { it.matches.serialName == "OneTimePasswordProofClientEndpoints" }?.let {
-            val httpPath = it.path
-            OneTimePasswordProofClientEndpointsLive(fetcher = authlessFetcher(), subpath = httpPath,)
-        },
+        oneTimePasswordProof = schema.interfaces.find { it.matches.serialName == "OneTimePasswordProofClientEndpoints" }
+            ?.let {
+                val httpPath = it.path
+                OneTimePasswordProofClientEndpointsLive(fetcher = authlessFetcher(), subpath = httpPath)
+            },
         passwordProof = schema.interfaces.find { it.matches.serialName == "PasswordProofClientEndpoints" }?.let {
             val httpPath = it.path
-            PasswordProofClientEndpointsLive(fetcher = authlessFetcher(), subpath = httpPath,)
+            PasswordProofClientEndpointsLive(fetcher = authlessFetcher(), subpath = httpPath)
         },
         webAuthNProof = schema.interfaces.find { it.matches.serialName == "WebAuthNProofEndpoints" }?.let {
             val httpPath = it.path
-            WebAuthNProofEndpointsLive(fetcher = authlessFetcher(), subpath = httpPath,)
+            WebAuthNProofEndpointsLive(fetcher = authlessFetcher(), subpath = httpPath)
         },
         knownDeviceProof = schema.interfaces.find { it.matches.serialName == "KnownDeviceProofClientEndpoints" }?.let {
             val httpPath = it.path
-            KnownDeviceProofClientEndpointsLive(fetcher = authlessFetcher(), subpath = httpPath,)
+            KnownDeviceProofClientEndpointsLive(fetcher = authlessFetcher(), subpath = httpPath)
         },
-        authenticatedOneTimePasswordProof = schema.interfaces.find { it.matches.serialName == "AuthenticatedOneTimePasswordProofClientEndpoints" }?.let {
-            { auth ->
-                val httpPath = it.path
-                AuthenticatedOneTimePasswordProofClientEndpointsLive(fetcher = fetcher(auth), subpath = httpPath,)
-            }
-        },
-        authenticatedPasswordProof = schema.interfaces.find { it.matches.serialName == "AuthenticatedPasswordProofClientEndpoints" }?.let {
-            { auth ->
-                val httpPath = it.path
-                AuthenticatedPasswordProofClientEndpointsLive(fetcher = fetcher(auth), subpath = httpPath,)
-            }
-        },
-        webAuthNRegistration = schema.interfaces.find { it.matches.serialName == "WebAuthNRegistrationEndpoints" }?.let {
-            { auth ->
-                val httpPath = it.path
-                WebAuthNRegistrationEndpointsLive(fetcher = fetcher(auth), subpath = httpPath,)
-            }
-        },
-        authenticatedKnownDeviceProof = schema.interfaces.find { it.matches.serialName == "AuthenticatedKnownDeviceProofClientEndpoints" }?.let {
-            { auth ->
-                val httpPath = it.path
-                AuthenticatedKnownDeviceProofClientEndpointsLive(fetcher = fetcher(auth), subpath = httpPath,)
-            }
-        },
+        authenticatedOneTimePasswordProof = schema.interfaces.find { it.matches.serialName == "AuthenticatedOneTimePasswordProofClientEndpoints" }
+            ?.let {
+                { auth ->
+                    val httpPath = it.path
+                    AuthenticatedOneTimePasswordProofClientEndpointsLive(fetcher = fetcher(auth), subpath = httpPath)
+                }
+            },
+        authenticatedPasswordProof = schema.interfaces.find { it.matches.serialName == "AuthenticatedPasswordProofClientEndpoints" }
+            ?.let {
+                { auth ->
+                    val httpPath = it.path
+                    AuthenticatedPasswordProofClientEndpointsLive(fetcher = fetcher(auth), subpath = httpPath)
+                }
+            },
+        authenticatedKnownDeviceProof = schema.interfaces.find { it.matches.serialName == "AuthenticatedKnownDeviceProofClientEndpoints" }
+            ?.let {
+                { auth ->
+                    val httpPath = it.path
+                    AuthenticatedKnownDeviceProofClientEndpointsLive(fetcher = fetcher(auth), subpath = httpPath)
+                }
+            },
+        authenticatedBackupCodeProof = schema.interfaces.find { it.matches.serialName == "AuthenticatedBackupCodeProofClientEndpoints" }
+            ?.let {
+                { auth ->
+                    val httpPath = it.path
+                    AuthenticatedBackupCodeProofClientEndpointsLive(fetcher = fetcher(auth), subpath = httpPath)
+                }
+            },
+        webAuthNRegistration = schema.interfaces.find { it.matches.serialName == "WebAuthNRegistrationEndpoints" }
+            ?.let {
+                { auth ->
+                    val httpPath = it.path
+                    WebAuthNRegistrationEndpointsLive(fetcher = fetcher(auth), subpath = httpPath)
+                }
+            },
     )
 
     inner class ModelInfo<T : HasId<ID>, ID : Comparable<ID>>(val inter: LightningServerKSchemaInterface) {
@@ -159,7 +188,8 @@ class ExternalLightningServer(
         val serializer = inter.matches.arguments[0].serializer(registry, mapOf()) as KSerializer<T>
         val idserializer = serializer.serializableProperties!!.find { it.name == "_id" }!!.serializer as KSerializer<ID>
         val vserializer = inter.matches.arguments[0].serializer(registry, mapOf()) as KSerializer<UnknownModel>
-        val vidserializer = serializer.serializableProperties!!.find { it.name == "_id" }!!.serializer as KSerializer<UnknownId>
+        val vidserializer =
+            serializer.serializableProperties!!.find { it.name == "_id" }!!.serializer as KSerializer<UnknownId>
         val httpPath = inter.path
         val hasWs =
             schema.endpoints.any { it.path == inter.path && it.method == "WEBSOCKET" && it.input.serialName == "com.lightningkite.lightningdb.Query" && it.output.serialName == "com.lightningkite.lightningdb.ListChange" }
@@ -172,24 +202,27 @@ class ExternalLightningServer(
 
         private var cacheCache = PerAuthCache { auth ->
             when {
-                !useLiveData -> object: ClientModelRestEndpoints<T, ID> by ClientModelRestEndpointsLive<T, ID>(
+                !useLiveData -> object : ClientModelRestEndpoints<T, ID> by ClientModelRestEndpointsLive<T, ID>(
                     fetcher = auth?.let { fetcher(it) } ?: authlessFetcher(),
                     subpath = httpPath,
                     serializer = serializer,
                     idSerializer = idserializer,
                 ) {}
-                hasUpdatesWs -> object: ClientModelRestEndpoints<T, ID> by ClientModelRestEndpointsLive<T, ID>(
+
+                hasUpdatesWs -> object : ClientModelRestEndpoints<T, ID> by ClientModelRestEndpointsLive<T, ID>(
                     fetcher = auth?.let { fetcher(it) } ?: authlessFetcher(),
                     subpath = httpPath,
                     serializer = serializer,
                     idSerializer = idserializer,
-                ), ClientModelRestEndpointsPlusUpdatesWebsocket<T, ID> by ClientModelRestEndpointsPlusUpdatesWebsocketLive<T, ID>(
-                    fetcher = auth?.let { fetcher(it) } ?: authlessFetcher(),
-                    subpath = httpPath,
-                    serializer = serializer,
-                    idSerializer = idserializer,
-                ) {}
-                hasWs -> object: ClientModelRestEndpoints<T, ID> by ClientModelRestEndpointsLive<T, ID>(
+                ),
+                    ClientModelRestEndpointsPlusUpdatesWebsocket<T, ID> by ClientModelRestEndpointsPlusUpdatesWebsocketLive<T, ID>(
+                        fetcher = auth?.let { fetcher(it) } ?: authlessFetcher(),
+                        subpath = httpPath,
+                        serializer = serializer,
+                        idSerializer = idserializer,
+                    ) {}
+
+                hasWs -> object : ClientModelRestEndpoints<T, ID> by ClientModelRestEndpointsLive<T, ID>(
                     fetcher = auth?.let { fetcher(it) } ?: authlessFetcher(),
                     subpath = httpPath,
                     serializer = serializer,
@@ -200,7 +233,8 @@ class ExternalLightningServer(
                     serializer = serializer,
                     idSerializer = idserializer,
                 ) {}
-                else -> object: ClientModelRestEndpoints<T, ID> by ClientModelRestEndpointsLive<T, ID>(
+
+                else -> object : ClientModelRestEndpoints<T, ID> by ClientModelRestEndpointsLive<T, ID>(
                     fetcher = auth?.let { fetcher(it) } ?: authlessFetcher(),
                     subpath = httpPath,
                     serializer = serializer,
@@ -222,7 +256,13 @@ class ExternalLightningServer(
     fun formModule(auth: LightningServerAuthentication?) = FormModule().apply {
         fileUpload = file?.let {
             { file ->
-                val req = fetcher(auth).invoke(it.path, HttpMethod.GET, Unit.serializer(), Unit, UploadInformation.serializer())
+                val req = fetcher(auth).invoke(
+                    it.path,
+                    HttpMethod.GET,
+                    Unit.serializer(),
+                    Unit,
+                    UploadInformation.serializer()
+                )
                 val r = connectivityFetch(req.uploadUrl, HttpMethod.PUT, body = RequestBodyFile(file))
                 if (!r.ok) throw IllegalStateException("File upload to ${req.uploadUrl.substringBefore('?')} failed")
                 val safe = fileVerify?.let { verify ->
@@ -238,7 +278,9 @@ class ExternalLightningServer(
             }
         }
         typeInfo = label@{ name ->
-            val m = models.values.find { it.serializer.descriptor.serialName == name } as? ModelInfo<UnknownModel, UnknownId> ?: return@label null
+            val m =
+                models.values.find { it.serializer.descriptor.serialName == name } as? ModelInfo<UnknownModel, UnknownId>
+                    ?: return@label null
             FormTypeInfo(
                 serializer = m.serializer,
                 cache = { m.cache(auth) },
@@ -264,7 +306,7 @@ class PerAuthCache<T>(val calculate: (LightningServerAuthentication?) -> T) {
     var lastKnown: LightningServerAuthentication? = null
     var lastValue: T? = null
     operator fun invoke(auth: LightningServerAuthentication?): T {
-        if(auth == null) return forNull
+        if (auth == null) return forNull
         val lastValue = lastValue
         if (lastValue == null || auth != lastKnown) {
             val v = calculate(auth)

@@ -1,14 +1,7 @@
 package com.lightningkite.specialtest
 
-import com.lightningkite.*
-import com.lightningkite.lightningdb.*
-import com.lightningkite.kiteui.*
-import kotlinx.datetime.*
-import com.lightningkite.serialization.*
-import com.lightningkite.lightningserver.db.*
-import com.lightningkite.lightningserver.auth.*
-import kotlinx.serialization.builtins.*
-import kotlinx.serialization.*
+import com.lightningkite.lightningserver.db.ModelCache
+import kotlinx.serialization.ContextualSerializer
 
 open class CachedApi2(val uncached: Api2) {
 val funnelInstance: ModelCache<com.lightningkite.lightningserver.monitoring.FunnelInstance, com.lightningkite.UUID> = ModelCache(uncached.funnelInstance, com.lightningkite.lightningserver.monitoring.FunnelInstance.serializer())

@@ -5,13 +5,18 @@ import com.lightningkite.kiteui.forms.FieldVisibility
 import com.lightningkite.kiteui.navigation.DefaultJson
 import com.lightningkite.kiteui.navigation.UrlProperties
 import com.lightningkite.kiteui.navigation.encodeToString
-import com.lightningkite.readable.*
+import com.lightningkite.kiteui.reactive.PersistentProperty
 import com.lightningkite.lightningdb.HasId
 import com.lightningkite.lightningdb.ModelPermissions
 import com.lightningkite.lightningserver.LsErrorException
 import com.lightningkite.lightningserver.auth.LightningServerAuthentication
 import com.lightningkite.lightningserver.schema.LightningServerKSchema
 import com.lightningkite.now
+import com.lightningkite.reactive.context.invoke
+import com.lightningkite.reactive.core.Reactive
+import com.lightningkite.reactive.core.reactiveProcess
+import com.lightningkite.reactive.core.remember
+import com.lightningkite.reactive.core.rememberSuspending
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.delay
@@ -28,15 +33,15 @@ data class AdminCredentials(
 
 val serverUrl = PersistentProperty("url", "http://localhost:8080")
 val adminCredentials = PersistentProperty<AdminCredentials?>("credentials", null)
-val adminAuthentication = shared {
-    val c = adminCredentials() ?: return@shared null
+val adminAuthentication = remember {
+    val c = adminCredentials() ?: return@remember null
     LightningServerAuthentication(
-        subject = adminServer().auth.subjects[c.userType ?: return@shared null]!!,
-        subjectPath = c.userType ?: return@shared null,
-        c.session ?: return@shared null
+        subject = adminServer().auth.subjects[c.userType ?: return@remember null]!!,
+        subjectPath = c.userType ?: return@remember null,
+        c.session ?: return@remember null
     )
 }
-val serverSchema = sharedSuspending {
+val serverSchema = rememberSuspending {
     fetch(serverUrl() + "/meta/kschema")
         .text()
         .let { DefaultJson.decodeFromString(LightningServerKSchema.serializer(), it) }
@@ -51,16 +56,16 @@ data class AdminSettings(
     val liveData: Boolean = true,
 )
 val adminSettings = PersistentProperty("adminSettings", AdminSettings())
-val nowByMinute = sharedProcess {
+val nowByMinute = reactiveProcess {
     while(true) {
         emit(now())
         delay(1.minutes)
     }
 }
-val unlockDestructiveActions = shared {
+val unlockDestructiveActions = remember {
     nowByMinute() < (adminSettings().unlockDestructiveActions ?: Instant.DISTANT_PAST) + 30.minutes
 }
-val loadedPermissions: Readable<Map<String, ModelPermissions<out HasId<out Comparable<*>>>>> = sharedSuspending {
+val loadedPermissions: Reactive<Map<String, ModelPermissions<out HasId<out Comparable<*>>>>> = rememberSuspending {
     val auth = adminAuthentication()
     adminServer().models.entries.map {
         async {
@@ -75,7 +80,7 @@ val loadedPermissions: Readable<Map<String, ModelPermissions<out HasId<out Compa
     }.awaitAll().associate { it }
 //    mapOf()
 }
-val adminServer = shared {
+val adminServer = remember {
     println("Refetching ")
     try {
         val s = ExternalLightningServer(serverSchema(), adminSettings().liveData)
@@ -95,7 +100,7 @@ val adminServer = shared {
         throw e
     }
 }
-val adminFormModule = shared {
+val adminFormModule = remember {
     adminServer().formModule(adminAuthentication()).also {
         val settings = adminSettings()
         if(settings.showHiddenFields) {

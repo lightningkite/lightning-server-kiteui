@@ -5,32 +5,21 @@ import com.lightningkite.kiteui.Console
 import com.lightningkite.kiteui.TypedWebSocket
 import com.lightningkite.kiteui.identityHashCode
 import com.lightningkite.lightningdb.SortPart
-import com.lightningkite.readable.AppScope
-import com.lightningkite.readable.BasicListenable
-import com.lightningkite.readable.Listenable
-import com.lightningkite.readable.Readable
-import com.lightningkite.readable.ReadableState
-import com.lightningkite.readable.ResourceUse
-import com.lightningkite.readable.lens
+import com.lightningkite.reactive.core.*
+import com.lightningkite.reactive.lensing.lens
 import com.lightningkite.serialization.DataClassPathAccess
 import com.lightningkite.serialization.DataClassPathSelf
 import com.lightningkite.serialization.SerializableProperty
 import com.lightningkite.serialization.serializableProperties
-import kotlinx.coroutines.CancellableContinuation
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Job
+import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.BufferOverflow
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.serialization.KSerializer
-import kotlin.Unit
 import kotlin.coroutines.resume
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
@@ -93,7 +82,7 @@ abstract class BaseResourceUse : ResourceUse {
     }
 }
 
-suspend fun <T> Readable<T>.waitFor(matching: (T)->Boolean) {
+suspend fun <T> Reactive<T>.waitFor(matching: (T)->Boolean) {
     state.onSuccess {
         if(matching(it)) return
     }
@@ -112,8 +101,8 @@ suspend fun <T> Readable<T>.waitFor(matching: (T)->Boolean) {
 }
 
 
-data class DebounceReadable<T>(val source: Readable<T>, val scope: CoroutineScope, val duration: Duration) : Readable<T>, Listenable by DebounceListenable(source, scope, duration) {
-    override val state: ReadableState<T> get() = source.state
+data class DebounceReactive<T>(val source: Reactive<T>, val scope: CoroutineScope, val duration: Duration) : Reactive<T>, Listenable by DebounceListenable(source, scope, duration) {
+    override val state: ReactiveState<T> get() = source.state
 }
 data class DebounceListenable(val source: Listenable, val scope:CoroutineScope, val duration: Duration) : Listenable {
     private var changeCount = 0
@@ -128,13 +117,13 @@ data class DebounceListenable(val source: Listenable, val scope:CoroutineScope, 
     }
 }
 
-fun <T> Readable<T>.debounce(scope: CoroutineScope, timeMs: Long): Readable<T> = DebounceReadable(this, scope, timeMs.milliseconds)
-fun <T> Readable<T>.debounce(scope: CoroutineScope, duration: Duration): Readable<T> = DebounceReadable(this, scope, duration)
+fun <T> Reactive<T>.debounce(scope: CoroutineScope, timeMs: Long): Reactive<T> = DebounceReactive(this, scope, timeMs.milliseconds)
+fun <T> Reactive<T>.debounce(scope: CoroutineScope, duration: Duration): Reactive<T> = DebounceReactive(this, scope, duration)
 
-fun <T> Readable<T>.requireDifferenceForListener(): Readable<T> = lens { it }
-fun <T> Readable<T>.uses(resource: ResourceUse): Readable<T> {
-    return object : Readable<T> {
-        override val state: ReadableState<T>
+fun <T> Reactive<T>.requireDifferenceForListener(): Reactive<T> = lens { it }
+fun <T> Reactive<T>.uses(resource: ResourceUse): Reactive<T> {
+    return object : Reactive<T> {
+        override val state: ReactiveState<T>
             get() = this@uses.state
 
         var uses = 0
@@ -173,7 +162,7 @@ class InterruptibleDelay(val parent: InterruptibleDelay? = null) {
         val toRace = listOf(suspend { kotlinx.coroutines.delay(duration) })
             .plus(generateSequence(this) { it.parent }.map { inter ->
                 suspend {
-                    var closer: () -> Unit
+                    var closer: () -> Unit = {}
                     suspendCancellableCoroutine { cont ->
                         closer = inter.listenable.addListener {
                             cont.resume(Unit)

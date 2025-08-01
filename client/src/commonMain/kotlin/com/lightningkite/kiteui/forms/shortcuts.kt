@@ -2,15 +2,14 @@
 
 package com.lightningkite.kiteui.forms
 
-import com.lightningkite.readable.Readable
-import com.lightningkite.readable.Writable
 import com.lightningkite.kiteui.views.ViewModifiable
 import com.lightningkite.kiteui.views.ViewWriter
+import com.lightningkite.reactive.core.MutableReactive
+import com.lightningkite.reactive.core.Reactive
 import com.lightningkite.serialization.SerializableProperty
 import com.lightningkite.titleCase
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
-import kotlinx.serialization.descriptors.SerialKind
 import kotlinx.serialization.descriptors.nonNullOriginal
 import kotlinx.serialization.serializer
 
@@ -20,7 +19,7 @@ inline fun <reified V> FormModule.viewForType(
     name: String = (if(serializer.descriptor.isNullable) "Optional " else "") + serializer.descriptor.serialName.substringBefore('/').substringAfterLast('.').titleCase(),
     annotation: String? = null,
     priority: Float = 1f,
-    crossinline generate: ViewWriter.(prop: Readable<V>)->ViewModifiable
+    crossinline generate: ViewWriter.(prop: Reactive<V>)->ViewModifiable
 ) {
     plusAssign(object: ViewRenderer.Generator {
         override val annotation: String? = annotation
@@ -41,7 +40,7 @@ inline fun <reified V> FormModule.formForType(
     name: String = (if(serializer.descriptor.isNullable) "Optional " else "") + serializer.descriptor.serialName.substringBefore('/').substringAfterLast('.').titleCase(),
     annotation: String? = null,
     priority: Float = 1f,
-    crossinline generate: ViewWriter.(prop: Writable<V>)->ViewModifiable
+    crossinline generate: ViewWriter.(prop: MutableReactive<V>)->ViewModifiable
 ) {
     plusAssign(object: FormRenderer.Generator {
         override val annotation: String? = annotation
@@ -51,8 +50,8 @@ inline fun <reified V> FormModule.formForType(
         override val basePriority: Float = priority
         override fun size(module: FormModule, selector: FormSelector<*>): FormSize = size
         @Suppress("UNCHECKED_CAST")
-        override fun <T> form(module: FormModule, selector: FormSelector<T>): FormRenderer<T> = FormRenderer<V>(module, this, selector as FormSelector<V>) { field, writable ->
-            generate(this, writable)
+        override fun <T> form(module: FormModule, selector: FormSelector<T>): FormRenderer<T> = FormRenderer<V>(module, this, selector as FormSelector<V>) { field, mutable ->
+            generate(this, mutable)
         } as FormRenderer<T>
     })
 }
@@ -63,7 +62,7 @@ inline fun <reified V> FormModule.viewForType(
     name: String = (if(serializer.descriptor.isNullable) "Optional " else "") + serializer.descriptor.serialName.substringBefore('/').substringAfterLast('.').titleCase(),
     annotation: String? = null,
     priority: Float = 1f,
-    crossinline generate: ViewWriter.(prop: Readable<V>)->ViewModifiable
+    crossinline generate: ViewWriter.(prop: Reactive<V>)->ViewModifiable
 ) {
     plusAssign(object: ViewRenderer.Generator {
         override val annotation: String? = annotation
@@ -84,7 +83,7 @@ inline fun <reified V> FormModule.formForType(
     name: String = (if(serializer.descriptor.isNullable) "Optional " else "") + serializer.descriptor.serialName.substringBefore('/').substringAfterLast('.').titleCase(),
     annotation: String? = null,
     priority: Float = 1f,
-    crossinline generate: ViewWriter.(prop: Writable<V>)->ViewModifiable
+    crossinline generate: ViewWriter.(prop: MutableReactive<V>)->ViewModifiable
 ) {
     plusAssign(object: FormRenderer.Generator {
         override val annotation: String? = annotation
@@ -94,8 +93,8 @@ inline fun <reified V> FormModule.formForType(
         override val basePriority: Float = priority
         override fun size(module: FormModule, selector: FormSelector<*>): FormSize = size(selector)
         @Suppress("UNCHECKED_CAST")
-        override fun <T> form(module: FormModule, selector: FormSelector<T>): FormRenderer<T> = FormRenderer<V>(module, this, selector as FormSelector<V>) { field, writable ->
-            generate(this, writable)
+        override fun <T> form(module: FormModule, selector: FormSelector<T>): FormRenderer<T> = FormRenderer<V>(module, this, selector as FormSelector<V>) { field, mutable ->
+            generate(this, mutable)
         } as FormRenderer<T>
     })
 }
@@ -106,7 +105,7 @@ inline fun <reified V> FormModule.viewForTypeWithField(
     name: String = (if(serializer.descriptor.isNullable) "Optional " else "") + serializer.descriptor.serialName.substringBefore('/').substringAfterLast('.').titleCase(),
     annotation: String? = null,
     priority: Float = 1f,
-    crossinline generate: ViewWriter.(field: SerializableProperty<*, *>?, prop: Readable<V>)->ViewModifiable
+    crossinline generate: ViewWriter.(field: SerializableProperty<*, *>?, prop: Reactive<V>)->ViewModifiable
 ) {
     plusAssign(object: ViewRenderer.Generator {
         override val annotation: String? = annotation
@@ -128,7 +127,7 @@ inline fun <reified V> FormModule.formForTypeWithField(
     name: String = (if(serializer.descriptor.isNullable) "Optional " else "") + serializer.descriptor.serialName.substringBefore('/').substringAfterLast('.').titleCase(),
     annotation: String? = null,
     priority: Float = 1f,
-    crossinline generate: ViewWriter.(field: SerializableProperty<*, *>?, prop: Writable<V>)->ViewModifiable
+    crossinline generate: ViewWriter.(field: SerializableProperty<*, *>?, prop: MutableReactive<V>)->ViewModifiable
 ) {
     plusAssign(object: FormRenderer.Generator {
         override val annotation: String? = annotation
@@ -138,8 +137,8 @@ inline fun <reified V> FormModule.formForTypeWithField(
         override val basePriority: Float = priority
         override fun size(module: FormModule, selector: FormSelector<*>): FormSize = size
         @Suppress("UNCHECKED_CAST")
-        override fun <T> form(module: FormModule, selector: FormSelector<T>): FormRenderer<T> = FormRenderer<V>(module, this, selector as FormSelector<V>) { field, writable ->
-            generate(this, field, writable)
+        override fun <T> form(module: FormModule, selector: FormSelector<T>): FormRenderer<T> = FormRenderer<V>(module, this, selector as FormSelector<V>) { field, mutable ->
+            generate(this, field, mutable)
         } as FormRenderer<T>
         override val handlesField: Boolean = true
     })

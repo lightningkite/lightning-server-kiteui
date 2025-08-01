@@ -8,16 +8,21 @@ plugins {
     alias(libs.plugins.androidLibrary)
     alias(libs.plugins.ksp)
     alias(libs.plugins.serialization)
-//    alias(libs.plugins.dokka)
-    alias(libs.plugins.vanniktechMavenPublish)
-    id("signing")
+    signing
+    alias(libs.plugins.vanniktechPublishing)
+    alias(libs.plugins.dokka)
 }
 
-val lk = project.lk {
+dokka {
+    // Dokka generates a new process managed by Gradle
+    dokkaGeneratorIsolation = ProcessIsolation {
+        // Configures heap size
+        maxHeapSize = "4g"
+    }
 }
 
 kotlin {
-    targetHierarchy.default()
+    applyDefaultHierarchyTemplate()
     androidTarget {
         publishLibraryVariants("release", "debug")
         compilerOptions {
@@ -36,8 +41,8 @@ kotlin {
     sourceSets {
         val commonMain by getting {
             dependencies {
-                api(lk.lightningServer("shared", 4))
-                api(lk.kiteUi(5))
+                api(libs.comLightningkiteLightningserverShared)
+                api(libs.comLightningkiteKiteuiLibrary)
             }
             kotlin {
                 srcDir(file("build/generated/ksp/common/commonMain/kotlin"))
@@ -55,42 +60,15 @@ kotlin {
     }
 }
 
-android {
-    namespace = "com.lightningkite.lightningserver"
-    compileSdk = 34
-    defaultConfig {
-        minSdk = 24
-    }
-}
-
 dependencies {
     configurations.filter { it.name.startsWith("ksp") && it.name != "ksp" }.forEach {
-        add(it.name, lk.lightningServer("processor", 4))
+        add(it.name, libs.comLightningkiteLightningserverProcessor)
     }
 }
 
-mavenPublishing {
-    // publishToMavenCentral(SonatypeHost.CENTRAL_PORTAL)
-    signAllPublications()
-    coordinates(group.toString(), name, version.toString())
-    pom {
-        name.set("Lightning-server-Client")
-        description.set("The client side of communication between server and client.")
-        github("lightningkite", "lightning-server-kiteui")
-
-        licenses {
-            mit()
-        }
-
-        developers {
-            joseph()
-            brady()
-        }
-    }
-}
 android {
     namespace = "com.lightningkite.lightningserver.client"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         minSdk = 21
@@ -103,4 +81,9 @@ android {
     dependencies {
         coreLibraryDesugaring(libs.androidDesugaring)
     }
+}
+
+lkLibrary("lightningkite", "lightning-server-kiteui") {
+    description.set("The client side of communication between server and client.")
+    name.set("Lightning-Server-Client")
 }

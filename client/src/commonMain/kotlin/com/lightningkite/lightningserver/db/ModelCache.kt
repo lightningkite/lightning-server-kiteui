@@ -1,45 +1,20 @@
 package com.lightningkite.lightningserver.db
 
 import com.lightningkite.kiteui.Console
-import com.lightningkite.kiteui.ConsoleRoot
-import com.lightningkite.lightningdb.CollectionUpdates
-import com.lightningkite.lightningdb.Condition
-import com.lightningkite.lightningdb.HasId
-import com.lightningkite.lightningdb.MassModification
-import com.lightningkite.lightningdb.Modification
-import com.lightningkite.lightningdb.Query
-import com.lightningkite.lightningdb._id
-import com.lightningkite.lightningdb.modification
+import com.lightningkite.lightningdb.*
 import com.lightningkite.now
-import com.lightningkite.readable.AppScope
-import com.lightningkite.readable.BasicListenable
-import com.lightningkite.readable.LateInitProperty
-import com.lightningkite.readable.Property
-import com.lightningkite.readable.Readable
-import com.lightningkite.readable.ReadableState
-import com.lightningkite.readable.awaitOnce
-import com.lightningkite.readable.lens
-import com.lightningkite.readable.lensListenable
-import com.lightningkite.readable.onRemove
-import com.lightningkite.readable.shared
-import com.lightningkite.readable.sharedProcess
-import com.lightningkite.readable.sharedProcessRaw
-import com.lightningkite.readable.use
-import kotlinx.coroutines.CancellableContinuation
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
+import com.lightningkite.reactive.context.awaitOnce
+import com.lightningkite.reactive.context.onRemove
+import com.lightningkite.reactive.core.*
+import com.lightningkite.reactive.extensions.use
+import com.lightningkite.reactive.extensions.value
+import com.lightningkite.reactive.lensing.lens
+import com.lightningkite.reactive.lensing.lensListenable
+import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.BufferOverflow
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.datetime.Instant
 import kotlinx.serialization.KSerializer
-import kotlin.Unit
-import kotlin.random.Random
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
@@ -55,7 +30,7 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
     private val idProp = serializer._id()
 
     // The main pipeline for all data changes in the system
-    val newData = Property<CacheUpdate<T, ID>>(CacheUpdate.SocketOverload())
+    val newData = Signal<CacheUpdate<T, ID>>(CacheUpdate.SocketOverload())
     val interrupt = InterruptibleDelay()
 
     // sockets
@@ -102,25 +77,25 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
         }
     }
 
-    val lastIndividualValues = HashMap<ID, LateInitProperty<WithTimestamp<T?>>>()
+    val lastIndividualValues = HashMap<ID, LateInitSignal<WithTimestamp<T?>>>()
 
     init {
         newData.addListener {
             when (val update = newData.value) {
                 is CacheUpdate.DeletionResult -> update.deletedIds.forEach { id ->
-                    lastIndividualValues.getOrPut(id, ::LateInitProperty).value = WithTimestamp(null)
+                    lastIndividualValues.getOrPut(id, ::LateInitSignal).value = WithTimestamp(null)
                 }
                 is CacheUpdate.MultiGetResult -> {
                     update.items.forEach { item ->
-                        lastIndividualValues.getOrPut(item._id, ::LateInitProperty).value = WithTimestamp(item)
+                        lastIndividualValues.getOrPut(item._id, ::LateInitSignal).value = WithTimestamp(item)
                     }
                     update.missing.forEach { id ->
-                        lastIndividualValues.getOrPut(id, ::LateInitProperty).value = WithTimestamp(null)
+                        lastIndividualValues.getOrPut(id, ::LateInitSignal).value = WithTimestamp(null)
                     }
                 }
                 is CacheUpdate.SocketOverload -> lastIndividualValues.values.forEach { it.unset() }
                 else -> update.items?.forEach { item ->
-                    lastIndividualValues.getOrPut(item._id, ::LateInitProperty).value = WithTimestamp(item)
+                    lastIndividualValues.getOrPut(item._id, ::LateInitSignal).value = WithTimestamp(item)
                 }
             }
         }
@@ -157,7 +132,7 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
     ) : ModelCacheItemReadable<T> {
         val log = this@ModelCache.log?.tag("$id")
         val interrupt = this@ModelCache.interrupt.child()
-        val basis = lastIndividualValues.getOrPut(id, ::LateInitProperty)
+        val basis = lastIndividualValues.getOrPut(id, ::LateInitSignal)
         val processWhileRunning = ResourceUse(scope) {
             onRemove { log?.log("No longer needed") }
 
@@ -224,22 +199,22 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
             }
         }
 
-        override val state: ReadableState<T?>
+        override val state: ReactiveState<T?>
             get() {
                 return basis.state.handle(
                     success = {
-                        if (it.isLive || now() - it.at < maximumAge) ReadableState(it.item)
-                        else ReadableState.notReady
+                        if (it.isLive || now() - it.at < maximumAge) ReactiveState(it.item)
+                        else ReactiveState.notReady
                     },
-                    exception = { ReadableState.exception(it) },
-                    notReady = { ReadableState.notReady }
+                    exception = { ReactiveState.exception(it) },
+                    notReady = { ReactiveState.notReady }
                 )
             }
 
         val diff = basis.lens { it.item }.uses(processWhileRunning)
         override fun addListener(listener: () -> Unit): () -> Unit = diff.addListener(listener)
-        override val lastUpdatedAt: Readable<Instant?> = basis.lens { it.at }
-        val live = shared(coroutineContext = scope.coroutineContext) {
+        override val lastUpdatedAt: Reactive<Instant?> = basis.lens { it.at }
+        val live = remember(coroutineContext = scope.coroutineContext) {
             sockets?.listeningStatus?.let(::rerunOn)
             basis().isLive
         }
@@ -380,13 +355,13 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
             }
         }
 
-        override val state: ReadableState<List<T>>
+        override val state: ReactiveState<List<T>>
             get() {
                 return cache.cached(currentQuery)?.let { lastKnown ->
                     if (currentQuery.condition.isLiveAt(lastKnown.at) || now() - lastKnown.at < maximumAge) {
-                        ReadableState(lastKnown.item)
-                    } else ReadableState.notReady
-                } ?: ReadableState.notReady
+                        ReactiveState(lastKnown.item)
+                    } else ReactiveState.notReady
+                } ?: ReactiveState.notReady
             }
 
         val diff = cache.updates(query).lensListenable {
@@ -405,8 +380,8 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
         }.uses(processWhileRunning)
 
         override fun addListener(listener: () -> Unit): () -> Unit = diff.addListener(listener)
-        override val lastUpdatedAt: Readable<Instant?> = diffWithTs.lens { it?.at }
-        val live = shared(coroutineContext = scope.coroutineContext) {
+        override val lastUpdatedAt: Reactive<Instant?> = diffWithTs.lens { it?.at }
+        val live = remember(coroutineContext = scope.coroutineContext) {
             sockets?.listeningStatus?.let(::rerunOn)
             cache.cached(currentQuery)?.at?.let { time ->
                 currentQuery.condition.isLiveAt(time)
@@ -469,7 +444,7 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
         val updates = HashSet<T>()
         val removals = HashSet<ID>()
         lastIndividualValues.values.asSequence()
-            .mapNotNull { it.value.item }
+            .mapNotNull { it.state.getOrNull()?.item }
             .filter(matching)
             .forEach {
                 modify(it)?.let { updates.add(it) }

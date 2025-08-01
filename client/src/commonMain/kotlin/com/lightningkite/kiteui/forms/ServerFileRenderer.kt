@@ -1,25 +1,14 @@
 package com.lightningkite.kiteui.forms
 
-import com.lightningkite.CaselessStringSerializer
-import com.lightningkite.TrimmedCaselessStringSerializer
-import com.lightningkite.TrimmedStringSerializer
 import com.lightningkite.kiteui.ExternalServices
-import com.lightningkite.kiteui.FileReference
 import com.lightningkite.kiteui.models.Icon
 import com.lightningkite.kiteui.models.ImageRemote
 import com.lightningkite.kiteui.models.rem
-import com.lightningkite.readable.Constant
-import com.lightningkite.readable.invoke
+import com.lightningkite.kiteui.views.centered
 import com.lightningkite.kiteui.views.direct.*
-import com.lightningkite.kiteui.views.*
+import com.lightningkite.kiteui.views.expanding
 import com.lightningkite.kiteui.views.l2.icon
-import com.lightningkite.lightningdb.SortPart
-import com.lightningkite.lightningdb.SortPartSerializer
 import com.lightningkite.lightningserver.files.ServerFile
-import com.lightningkite.serialization.*
-import kotlinx.serialization.ContextualSerializer
-import kotlinx.serialization.KSerializer
-import kotlinx.serialization.builtins.serializer
 
 object ServerFileRenderer  : FormRenderer.Generator, ViewRenderer.Generator {
     override val name: String = "File"
@@ -27,20 +16,20 @@ object ServerFileRenderer  : FormRenderer.Generator, ViewRenderer.Generator {
 
     @Suppress("UNCHECKED_CAST")
     override fun <T> form(module: FormModule, selector: FormSelector<T>): FormRenderer<T> {
-        return FormRenderer<ServerFile?>(module, this, selector as FormSelector<ServerFile?>) { field, writable ->
+        return FormRenderer<ServerFile?>(module, this, selector as FormSelector<ServerFile?>) { field, mutable ->
             row {
                 expanding - externalLink {
                     newTab = true
-                    ::enabled { writable() != null }
-                    ::to { writable()?.location }
+                    ::enabled { mutable() != null }
+                    ::to { mutable()?.location }
                     row {
                         sizeConstraints(width = 3.rem, height = 3.rem) - image {
-                            ::source { writable()?.location?.let(::ImageRemote) }
+                            ::source { mutable()?.location?.let(::ImageRemote) }
                         }
                         centered - expanding - text {
                             ellipsis = true
                             wraps = false
-                            ::content { writable()?.location?.substringAfterLast('/')?.substringBefore('?')?.takeUnless { it.isBlank() } ?: "None" }
+                            ::content { mutable()?.location?.substringAfterLast('/')?.substringBefore('?')?.takeUnless { it.isBlank() } ?: "None" }
                         }
                     }
                 }
@@ -49,7 +38,7 @@ object ServerFileRenderer  : FormRenderer.Generator, ViewRenderer.Generator {
                     icon(Icon.upload, "Upload")
                     onClick {
                         ExternalServices.requestFile()?.let {
-                            writable set module.fileUpload!!.invoke(it)
+                            mutable set module.fileUpload!!.invoke(it)
                         }
                     }
                 }

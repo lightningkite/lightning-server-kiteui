@@ -1,11 +1,6 @@
 package com.lightningkite.kiteui.forms
 
 import com.lightningkite.kiteui.models.rem
-import com.lightningkite.readable.Constant
-import com.lightningkite.readable.Writable
-import com.lightningkite.readable.lens
-import com.lightningkite.readable.reactive
-import com.lightningkite.kiteui.views.ViewWriter
 import com.lightningkite.kiteui.views.atTop
 import com.lightningkite.kiteui.views.direct.row
 import com.lightningkite.kiteui.views.direct.select
@@ -14,8 +9,8 @@ import com.lightningkite.kiteui.views.direct.stack
 import com.lightningkite.kiteui.views.expanding
 import com.lightningkite.kiteui.views.fieldTheme
 import com.lightningkite.lightningdb.MySealedClassSerializerInterface
-import com.lightningkite.serialization.PartialSerializer
-import com.lightningkite.serialization.SerializableProperty
+import com.lightningkite.reactive.context.reactive
+import com.lightningkite.reactive.core.Constant
 import com.lightningkite.serialization.default
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.descriptors.SerialKind
@@ -32,8 +27,8 @@ object MySealedFormRenderer : FormRenderer.Generator {
 
     override fun <T> form(module: FormModule, selector: FormSelector<T>): FormRenderer<T> {
         val serializer = selector.serializer as MySealedClassSerializerInterface<Any>
-        return FormRenderer(module, this, selector as FormSelector<Any>) { _, writable ->
-            val type = writable.lens(
+        return FormRenderer(module, this, selector as FormSelector<Any>) { _, mutable ->
+            val type = mutable.lens(
                 get = { serializer.options.find { o -> o.isInstance(it) } ?: serializer.options.first() },
                 set = { it.serializer.default() }
             )
@@ -46,7 +41,7 @@ object MySealedFormRenderer : FormRenderer.Generator {
                         val type = type()
                         clearChildren()
                         @Suppress("UNCHECKED_CAST")
-                        (form(module, type.serializer as KSerializer<Any>, writable.lens(
+                        (form(module, type.serializer as KSerializer<Any>, mutable.lens(
                             get = { if (type.isInstance(it)) it else type.serializer.default() },
                             set = { it }
                         )))

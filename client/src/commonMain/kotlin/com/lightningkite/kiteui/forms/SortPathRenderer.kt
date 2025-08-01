@@ -3,16 +3,12 @@ package com.lightningkite.kiteui.forms
 import com.lightningkite.CaselessStringSerializer
 import com.lightningkite.TrimmedCaselessStringSerializer
 import com.lightningkite.TrimmedStringSerializer
-import com.lightningkite.readable.Constant
-import com.lightningkite.readable.Readable
-import com.lightningkite.readable.Writable
-import com.lightningkite.readable.invoke
-import com.lightningkite.kiteui.views.ViewWriter
 import com.lightningkite.kiteui.views.direct.select
 import com.lightningkite.kiteui.views.direct.text
 import com.lightningkite.kiteui.views.fieldTheme
 import com.lightningkite.lightningdb.SortPart
 import com.lightningkite.lightningdb.SortPartSerializer
+import com.lightningkite.reactive.core.Constant
 import com.lightningkite.serialization.*
 import kotlinx.serialization.ContextualSerializer
 import kotlinx.serialization.ExperimentalSerializationApi
@@ -108,9 +104,9 @@ object SortPathRenderer : FormRenderer.Generator, ViewRenderer.Generator {
     override fun <T> form(module: FormModule, selector: FormSelector<T>): FormRenderer<T> {
         val serializer = selector.serializer as SortPartSerializer<Any?>
         val info = TypeInfo<SortPart<Any?>>(module, serializer)
-        return FormRenderer<SortPart<Any?>>(module, this, selector as FormSelector<SortPart<Any?>>) { field, writable ->
+        return FormRenderer<SortPart<Any?>>(module, this, selector as FormSelector<SortPart<Any?>>) { field, mutable ->
             fieldTheme - select {
-                bind(writable, Constant(info.options), info::toString)
+                bind(mutable, Constant(info.options), info::toString)
             }
         } as FormRenderer<T>
     }

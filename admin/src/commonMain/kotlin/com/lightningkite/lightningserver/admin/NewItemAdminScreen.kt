@@ -5,16 +5,19 @@ import com.lightningkite.kiteui.Routable
 import com.lightningkite.kiteui.forms.form
 import com.lightningkite.kiteui.navigation.*
 import com.lightningkite.kiteui.views.ViewModifiable
-import com.lightningkite.readable.*
 import com.lightningkite.kiteui.views.ViewWriter
 import com.lightningkite.kiteui.views.atEnd
-import com.lightningkite.kiteui.views.card
 import com.lightningkite.kiteui.views.direct.*
 import com.lightningkite.kiteui.views.important
 import com.lightningkite.lightningdb.Condition
-import com.lightningkite.lightningdb.HasId
 import com.lightningkite.lightningdb._id
 import com.lightningkite.lightningserver.db.ModelCache
+import com.lightningkite.reactive.context.invoke
+import com.lightningkite.reactive.context.reactive
+import com.lightningkite.reactive.core.Signal
+import com.lightningkite.reactive.core.remember
+import com.lightningkite.reactive.extensions.asyncReactive
+import com.lightningkite.reactive.extensions.flatten
 import com.lightningkite.serialization.SerializableProperty
 import com.lightningkite.serialization.default
 
@@ -22,11 +25,11 @@ import com.lightningkite.serialization.default
 class NewItemAdminPage(val collectionName: String) : Page {
 
     @QueryParameter("condition")
-    val conditionString: Property<String?> = Property(null)
+    val conditionString: Signal<String?> = Signal(null)
 
     override fun ViewWriter.render(): ViewModifiable {
-        val mc = shared { adminServer().models[collectionName]?.cache(adminAuthentication()) as ModelCache<UnknownModel, UnknownId> }
-        val item = asyncReadable {
+        val mc = remember { adminServer().models[collectionName]?.cache(adminAuthentication()) as ModelCache<UnknownModel, UnknownId> }
+        val item = asyncReactive {
             val coerceCondition = conditionString.value?.let {
                 try {
                     DefaultJson.decodeFromString(Condition.serializer(mc().serializer), it)
@@ -34,7 +37,7 @@ class NewItemAdminPage(val collectionName: String) : Page {
                     null
                 }
             } ?: Condition.Always
-            Property(
+            Signal(
                 try {
                     mc().skipCache.default().coerce(coerceCondition)
                 } catch (e: Exception) {

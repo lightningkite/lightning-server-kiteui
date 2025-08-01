@@ -1,15 +1,12 @@
 package com.lightningkite.kiteui
 
-import com.lightningkite.lightningserver.auth.proof.WebAuthN
 import com.lightningkite.kiteui.exceptions.PlainTextException
-import com.lightningkite.readable.Readable
-import com.lightningkite.readable.sharedProcess
+import com.lightningkite.lightningserver.auth.proof.WebAuthN
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.serialization.ExperimentalSerializationApi
 import org.khronos.webgl.Int8Array
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
-import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
 
 

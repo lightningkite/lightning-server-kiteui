@@ -1,10 +1,14 @@
 package com.lightningkite.admin
 
-import com.lightningkite.kiteui.*
 import com.lightningkite.kiteui.navigation.DefaultJson
 import com.lightningkite.kiteui.navigation.PageNavigator
-import com.lightningkite.kiteui.views.*
-import com.lightningkite.lightningserver.admin.*
+import com.lightningkite.kiteui.printStackTrace2
+import com.lightningkite.kiteui.root
+import com.lightningkite.kiteui.views.RView
+import com.lightningkite.lightningserver.admin.AutoRoutes
+import com.lightningkite.lightningserver.admin.app
+import com.lightningkite.lightningserver.admin.appTheme
+import com.lightningkite.lightningserver.admin.serverUrl
 import kotlinx.browser.document
 import kotlinx.browser.window
 import kotlinx.serialization.Serializable

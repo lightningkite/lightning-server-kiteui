@@ -7,9 +7,7 @@ import com.lightningkite.kiteui.locale.renderToString
 import com.lightningkite.kiteui.models.Align
 import com.lightningkite.kiteui.models.Icon
 import com.lightningkite.kiteui.models.rem
-import com.lightningkite.readable.*
 import com.lightningkite.kiteui.views.ViewWriter
-import com.lightningkite.kiteui.views.canvas.TextAlign
 import com.lightningkite.kiteui.views.centered
 import com.lightningkite.kiteui.views.direct.*
 import com.lightningkite.kiteui.views.expanding
@@ -17,11 +15,16 @@ import com.lightningkite.kiteui.views.fieldTheme
 import com.lightningkite.kiteui.views.l2.errorText
 import com.lightningkite.kiteui.views.l2.icon
 import com.lightningkite.lightningdb.Condition
-import com.lightningkite.lightningserver.files.ServerFile
+import com.lightningkite.reactive.context.invoke
+import com.lightningkite.reactive.core.Constant
+import com.lightningkite.reactive.core.MutableReactive
+import com.lightningkite.reactive.core.Signal
+import com.lightningkite.reactive.core.remember
+import com.lightningkite.reactive.extensions.nullable
+import com.lightningkite.reactive.extensions.withWrite
 import com.lightningkite.serialization.SerializableAnnotationValue
 import com.lightningkite.serialization.UUIDSerializer
 import kotlinx.datetime.*
-import kotlin.time.Duration
 
 fun FormModule.defaults() {
     viewForTypeWithField<Boolean>(FormSize.Inline) { field, it ->
@@ -595,12 +598,12 @@ fun FormModule.defaults() {
 //        )
 //    ) { prop -> text { ::content { prop().renderToString() } } }
 
-    fun ViewWriter.temperatureInput(writable: Writable<Temperature?>) = row {
-        val celsius = Property(false)
+    fun ViewWriter.temperatureInput(mutable: MutableReactive<Temperature?>) = row {
+        val celsius = Signal(false)
         expanding - numberInput {
             align = Align.End
-            content bind shared { if (celsius()) writable()?.celsius else writable()?.fahrenheit }.withWrite {
-                writable.set(if (celsius()) it?.celsius else it?.fahrenheit)
+            content bind remember { if (celsius()) mutable()?.celsius else mutable()?.fahrenheit }.withWrite {
+                mutable.set(if (celsius()) it?.celsius else it?.fahrenheit)
             }
         }
         select {

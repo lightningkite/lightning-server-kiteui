@@ -1,8 +1,6 @@
 package com.lightningkite.kiteui
 
 import com.lightningkite.lightningserver.auth.proof.WebAuthN
-import com.lightningkite.readable.Constant
-import com.lightningkite.readable.Readable
 
 
 @Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
@@ -13,7 +11,7 @@ actual class ClientAuthenticator {
     actual suspend fun getWebAuthNCredentials(request: WebAuthN.Authentication.PublicKeyCredentialRequestOptions, mediation: WebAuthNMediationType): WebAuthN.Authentication.AssertedPublicKeyCredential = TODO()
 
     actual companion object {
-        actual fun getClientAuthenticator(): ClientAuthenticator = TODO()
+        actual fun getClientAuthenticator(): ClientAuthenticator = ClientAuthenticator()
     }
 }
 
@@ -31,7 +29,7 @@ actual class ClientAuthenticator {
 //    ) {
 //    var fidoClient: Fido2ApiClient = Fido2ApiClient(activity)
 //
-//    //    val authResult: LateInitProperty
+//    //    val authResult: LateInitSignal
 //    var authenticatorHandler: ActivityResultLauncher<IntentSenderRequest?> = activity.registerForActivityResult(
 //        ActivityResultContracts.StartIntentSenderForResult(),
 //        { result: ActivityResult ->
@@ -118,7 +116,7 @@ actual class ClientAuthenticator {
 //        actual fun getClientAuthenticator(): ClientAuthenticator = default
 //    }
 //
-//    actual val webAuthNAvailable: Readable<Boolean> = sharedSuspending {
+//    actual val webAuthNAvailable: Reactive<Boolean> = rememberSuspending {
 //        val result = fidoClient.isUserVerifyingPlatformAuthenticatorAvailable
 //
 //        suspendCancellableCoroutine<Boolean> { cont ->
@@ -130,7 +128,7 @@ actual class ClientAuthenticator {
 //            }
 //        }
 //    }
-//    actual val autofillAvailable: Readable<Boolean> = Constant(false)
+//    actual val autofillAvailable: Reactive<Boolean> = Constant(false)
 //
 //    actual suspend fun createWebAuthNCredentials(request: WebAuthN.Registration.PublicKeyCredentialCreationOptions): WebAuthN.Registration.AttestedPublicKeyCredential {
 //        val intent = fidoClient.getRegisterPendingIntent(

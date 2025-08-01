@@ -6,87 +6,44 @@ import com.lightningkite.kiteui.forms.FormModule
 import com.lightningkite.kiteui.forms.displayName
 import com.lightningkite.kiteui.forms.form
 import com.lightningkite.kiteui.forms.view
-import com.lightningkite.kiteui.models.Align
-import com.lightningkite.kiteui.models.FieldLabelSemantic
-import com.lightningkite.kiteui.models.Icon
-import com.lightningkite.kiteui.models.ListSemantic
-import com.lightningkite.kiteui.models.SelectedSemantic
-import com.lightningkite.kiteui.models.px
+import com.lightningkite.kiteui.models.*
 import com.lightningkite.kiteui.navigation.DefaultJson
 import com.lightningkite.kiteui.navigation.Page
-import com.lightningkite.kiteui.views.ViewModifiable
-import com.lightningkite.kiteui.views.ViewWriter
-import com.lightningkite.kiteui.views.atEnd
-import com.lightningkite.kiteui.views.card
-import com.lightningkite.kiteui.views.centered
-import com.lightningkite.kiteui.views.direct.RowOrCol
-import com.lightningkite.kiteui.views.direct.col
-import com.lightningkite.kiteui.views.direct.frame
-import com.lightningkite.kiteui.views.direct.link
-import com.lightningkite.kiteui.views.direct.menuButton
-import com.lightningkite.kiteui.views.direct.recyclerView
-import com.lightningkite.kiteui.views.direct.row
-import com.lightningkite.kiteui.views.direct.select
-import com.lightningkite.kiteui.views.direct.shownWhen
-import com.lightningkite.kiteui.views.direct.swapView
-import com.lightningkite.kiteui.views.direct.swapping
-import com.lightningkite.kiteui.views.direct.text
-import com.lightningkite.kiteui.views.direct.weight
-import com.lightningkite.kiteui.views.dynamicTheme
-import com.lightningkite.kiteui.views.expanding
+import com.lightningkite.kiteui.views.*
+import com.lightningkite.kiteui.views.direct.*
 import com.lightningkite.kiteui.views.l2.children
 import com.lightningkite.kiteui.views.l2.field
 import com.lightningkite.kiteui.views.l2.icon
-import com.lightningkite.lightningdb.Aggregate
-import com.lightningkite.lightningdb.Condition
-import com.lightningkite.lightningdb.GroupAggregateQuery
-import com.lightningkite.lightningdb.GroupCountQuery
-import com.lightningkite.lightningdb.HasId
-import com.lightningkite.lightningdb.and
-import com.lightningkite.lightningdb.eq
-import com.lightningkite.lightningdb.simplify
+import com.lightningkite.lightningdb.*
 import com.lightningkite.lightningserver.StringArrayFormat
-import com.lightningkite.lightningserver.db.*
-import com.lightningkite.readable.Constant
-import com.lightningkite.readable.ImmediateWritable
-import com.lightningkite.readable.Property
-import com.lightningkite.readable.invoke
-import com.lightningkite.readable.lens
-import com.lightningkite.readable.reactive
-import com.lightningkite.readable.shared
-import com.lightningkite.readable.sharedSuspending
-import com.lightningkite.serialization.DataClassPath
-import com.lightningkite.serialization.DataClassPathAccess
-import com.lightningkite.serialization.DataClassPathNotNull
-import com.lightningkite.serialization.DataClassPathPartial
-import com.lightningkite.serialization.DataClassPathSelf
-import com.lightningkite.serialization.SerializableProperty
-import com.lightningkite.serialization.nullElement
-import com.lightningkite.serialization.serializableProperties
-import kotlinx.coroutines.selects.select
+import com.lightningkite.lightningserver.db.ModelCache
+import com.lightningkite.reactive.context.invoke
+import com.lightningkite.reactive.context.reactive
+import com.lightningkite.reactive.core.*
+import com.lightningkite.reactive.lensing.lens
+import com.lightningkite.serialization.*
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.builtins.nullable
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.descriptors.PrimitiveKind
-import kotlinx.serialization.encodeToString
 import kotlin.time.Duration.Companion.milliseconds
 
 @Routable("collections/{collectionName}/stats")
 class CollectionStatsPage(val collectionName: String) : Page {
 
     @QueryParameter("condition")
-    val conditionString: Property<String?> = Property(null)
+    val conditionString: Signal<String?> = Signal(null)
 
     @QueryParameter("groupBy")
-    val groupByString: Property<String?> = Property(null)
+    val groupByString: Signal<String?> = Signal(null)
 
     @QueryParameter("aggregate")
-    val aggregateString: Property<String?> = Property(null)
+    val aggregateString: Signal<String?> = Signal(null)
 
     @QueryParameter("aggregationType")
-    val aggregationType: Property<Aggregate> = Property(Aggregate.Sum)
+    val aggregationType: Signal<Aggregate> = Signal(Aggregate.Sum)
 
-    val mc = shared {
+    val mc = remember {
         adminServer().models[collectionName]?.cache(adminAuthentication())!!
                 as ModelCache<UnknownModel, UnknownId>
     }
@@ -190,7 +147,7 @@ class CollectionStatsPage(val collectionName: String) : Page {
                         }
 
                         aggregateProperty == null -> {
-                            val counts = sharedSuspending {
+                            val counts = rememberSuspending {
                                 mc.skipCache.groupCount2(
                                     GroupCountQuery(
                                         condition = condition(),
@@ -199,7 +156,7 @@ class CollectionStatsPage(val collectionName: String) : Page {
                                 )
                             }
                             ListSemantic.onNext - recyclerView {
-                                children(shared { counts().entries.sortedByDescending { it.value } }, id = { it.key }) {
+                                children(remember { counts().entries.sortedByDescending { it.value } }, id = { it.key }) {
                                     card - row {
                                         val ser = groupBy.serializerAny as KSerializer<Any?>
                                         expanding - centered - view(
@@ -239,7 +196,7 @@ class CollectionStatsPage(val collectionName: String) : Page {
                         }
 
                         else -> {
-                            val aggregation = sharedSuspending {
+                            val aggregation = rememberSuspending {
                                 mc.skipCache.groupAggregate2(
                                     GroupAggregateQuery(
                                         aggregate = aggregationType(),
@@ -251,7 +208,7 @@ class CollectionStatsPage(val collectionName: String) : Page {
                             }
                             ListSemantic.onNext - recyclerView {
                                 children(
-                                    shared { aggregation().entries.sortedByDescending { it.value } },
+                                    remember { aggregation().entries.sortedByDescending { it.value } },
                                     id = { it.key }) {
                                     card - row {
                                         val ser = groupBy.serializerAny as KSerializer<Any?>
@@ -318,7 +275,7 @@ class CollectionStatsPage(val collectionName: String) : Page {
         }
     }
 
-    private fun aggregateWritable(mc: ModelCache<UnknownModel, UnknownId>): ImmediateWritable<DataClassPathPartial<UnknownModel>?> =
+    private fun aggregateWritable(mc: ModelCache<UnknownModel, UnknownId>): MutableReactiveValue<DataClassPathPartial<UnknownModel>?> =
         aggregateString.lens(
             get = {
                 it?.let {
@@ -332,7 +289,7 @@ class CollectionStatsPage(val collectionName: String) : Page {
             set = { DefaultJson.encodeToString(DataClassPathPartial.serializer(mc.serializer).nullable, it) }
         )
 
-    private fun groupByWritable(mc: ModelCache<UnknownModel, UnknownId>): ImmediateWritable<DataClassPathPartial<UnknownModel>?> =
+    private fun groupByWritable(mc: ModelCache<UnknownModel, UnknownId>): MutableReactiveValue<DataClassPathPartial<UnknownModel>?> =
         groupByString.lens(
             get = {
                 it?.let {
@@ -346,7 +303,7 @@ class CollectionStatsPage(val collectionName: String) : Page {
             set = { DefaultJson.encodeToString(DataClassPathPartial.serializer(mc.serializer).nullable, it) }
         )
 
-    private fun conditionWritable(mc: ModelCache<UnknownModel, UnknownId>): ImmediateWritable<Condition<UnknownModel>> =
+    private fun conditionWritable(mc: ModelCache<UnknownModel, UnknownId>): MutableReactiveValue<Condition<UnknownModel>> =
         conditionString.lens(
             get = {
                 it?.let {

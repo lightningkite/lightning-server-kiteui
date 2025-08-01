@@ -1,19 +1,16 @@
 package com.lightningkite.kiteui.forms
 
-import com.lightningkite.kiteui.exceptions.ExceptionMessage
-import com.lightningkite.kiteui.exceptions.ExceptionToMessage
-import com.lightningkite.kiteui.models.HeaderSizeSemantic
-import com.lightningkite.kiteui.models.SubtextSemantic
 import com.lightningkite.kiteui.models.px
 import com.lightningkite.kiteui.models.rem
-import com.lightningkite.readable.AppState
-import com.lightningkite.readable.Readable
-import com.lightningkite.readable.Writable
-import com.lightningkite.readable.lens
-import com.lightningkite.kiteui.views.*
+import com.lightningkite.kiteui.reactive.AppState
+import com.lightningkite.kiteui.views.ViewWriter
+import com.lightningkite.kiteui.views.card
+import com.lightningkite.kiteui.views.centered
 import com.lightningkite.kiteui.views.direct.*
-import com.lightningkite.kiteui.views.l2.field
 import com.lightningkite.lightningdb.MySealedClassSerializerInterface
+import com.lightningkite.reactive.core.MutableReactive
+import com.lightningkite.reactive.core.Reactive
+import com.lightningkite.reactive.lensing.lens
 import com.lightningkite.serialization.*
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.InternalSerializationApi
@@ -42,18 +39,18 @@ object ByFieldRenderer : FormRenderer.Generator, ViewRenderer.Generator {
     }
     override fun <T> form(module: FormModule, selector: FormSelector<T>): FormRenderer<T> {
         val info = TypeInfo(module, selector.serializer)
-        return FormRenderer<T>(module, this, selector) { field, writable ->
+        return FormRenderer<T>(module, this, selector) { field, mutable ->
             if (field != null) card
             col {
 //                text("Available width: ${info.availableWidth} ${info.formGroup.map { it.size }}")
                 info.formGroup.forEach {
                     if (it.size == 1) {
-                        it[0].form(this, writable)
+                        it[0].form(this, mutable)
                     } else {
                         row {
                             it.forEach {
                                 weight(it.formSize.approximateWidth.toFloat())
-                                it.form(this, writable)
+                                it.form(this, mutable)
                             }
                         }
                     }
@@ -130,8 +127,8 @@ object ByFieldRenderer : FormRenderer.Generator, ViewRenderer.Generator {
                     }
                 }
             }
-            fun form(writer: ViewWriter, writable: Writable<T>) {
-                val w = writable.lensPath(
+            fun form(writer: ViewWriter, mutable: MutableReactive<T>) {
+                val w = mutable.lensPath(
                     DataClassPathAccess<T, T, S>(
                         DataClassPathSelf(serializer),
                         field
@@ -147,7 +144,7 @@ object ByFieldRenderer : FormRenderer.Generator, ViewRenderer.Generator {
                     }
             }
 
-            fun view(writer: ViewWriter, readable: Readable<T>) {
+            fun view(writer: ViewWriter, readable: Reactive<T>) {
                 val r = readable.lens { field.get(it) }
                 f(writer, view) { view.render(this@f, field, r) }
             }
@@ -173,7 +170,7 @@ object ByFieldRenderer : FormRenderer.Generator, ViewRenderer.Generator {
 
         @Suppress("UNCHECKED_CAST")
         val subs = (serializer.serializableProperties ?: bestPropertiesAttempt()).map {
-            val sel = FormSelector(it.serializer, it.serializableAnnotations, FormLayoutPreferences.Inline) as FormSelector<Any?>
+            val sel = FormSelector(it.serializer, it.serializableAnnotations, FormLayoutPreferences.Block) as FormSelector<Any?>
             Sub(
                 it as SerializableProperty<T, Any?>,
                 module.form(sel),

@@ -1,14 +1,13 @@
 package com.lightningkite.kiteui.forms
 
-import com.lightningkite.readable.Constant
-import com.lightningkite.readable.Readable
-import com.lightningkite.readable.Writable
-import com.lightningkite.readable.invoke
-import com.lightningkite.kiteui.views.ViewWriter
 import com.lightningkite.kiteui.views.direct.select
 import com.lightningkite.kiteui.views.direct.text
 import com.lightningkite.kiteui.views.fieldTheme
-import com.lightningkite.serialization.*
+import com.lightningkite.reactive.core.Constant
+import com.lightningkite.serialization.SerializableAnnotationValue
+import com.lightningkite.serialization.VirtualEnumValue
+import com.lightningkite.serialization.getElementSerializableAnnotations
+import com.lightningkite.serialization.nullElement
 import com.lightningkite.titleCase
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.descriptors.SerialKind
@@ -40,11 +39,11 @@ object EnumFormRenderer: FormRenderer.Generator, ViewRenderer.Generator {
     }
     override fun <T> form(module: FormModule, selector: FormSelector<T>): FormRenderer<T> {
         val info = TypeInfo(selector.serializer)
-        return FormRenderer(module, this, selector) { _, writable ->
+        return FormRenderer(module, this, selector) { _, mutable ->
             fieldTheme - select {
                 @Suppress("UNCHECKED_CAST")
                 bind(
-                    edits = writable,
+                    edits = mutable,
                     data = info.options,
                     render = info::toDisplayName
                 )

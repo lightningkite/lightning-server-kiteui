@@ -4,7 +4,6 @@ import com.lightningkite.lightningdb.Condition
 import com.lightningkite.lightningdb.SortPart
 import com.lightningkite.serialization.DataClassPath
 import com.lightningkite.serialization.DataClassPathNotNull
-import com.lightningkite.serialization.notNull
 
 fun <T> List<SortPart<T>>.after(after: T): Condition<T> {
     return Condition.Or<T>((1..this.size).map { count ->

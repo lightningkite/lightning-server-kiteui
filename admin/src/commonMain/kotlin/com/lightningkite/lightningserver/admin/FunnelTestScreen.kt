@@ -5,12 +5,12 @@ import com.lightningkite.kiteui.monitoring.Funnels
 import com.lightningkite.kiteui.monitoring.funnel
 import com.lightningkite.kiteui.navigation.Page
 import com.lightningkite.kiteui.views.ViewModifiable
-import com.lightningkite.readable.reactive
 import com.lightningkite.kiteui.views.ViewWriter
 import com.lightningkite.kiteui.views.direct.button
 import com.lightningkite.kiteui.views.direct.col
 import com.lightningkite.kiteui.views.direct.onClick
 import com.lightningkite.kiteui.views.direct.text
+import com.lightningkite.reactive.context.reactive
 
 @Routable("funnel")
 class FunnelTestPage: Page {

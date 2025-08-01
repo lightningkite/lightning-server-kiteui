@@ -1,14 +1,7 @@
 package com.lightningkite.lightningserver.admin
 
 import com.lightningkite.kiteui.models.*
-import com.lightningkite.kiteui.models.turns
-import com.lightningkite.readable.Constant
-import com.lightningkite.readable.PersistentProperty
-import com.lightningkite.readable.lens
-import com.lightningkite.readable.shared
-import kotlinx.serialization.Serializable
-import kotlin.math.abs
-import kotlin.math.absoluteValue
+import com.lightningkite.reactive.core.Constant
 
 //fun default(color: Color?): Theme {
 //    val baseColor = Color.fromHex(0x2D3237).toHSP()
@@ -132,61 +125,61 @@ import kotlin.math.absoluteValue
 //    )
 //}
 //
-//fun lk(): Theme {
-//    val background = Color.fromHex(0x08181D)
-//    val foreground = Color.white
-//    val card = Color.fromHex(0x133C4A)
-//    val titleColor = Color.fromHex(0xF4B61B)
-//    val title: FontAndStyle = FontAndStyle(Resources.barlow, allCaps = true)
-//    val title2: FontAndStyle = FontAndStyle(Resources.barlow, weight = 600, allCaps = true)
-//    val body: FontAndStyle = FontAndStyle(Resources.lato)
-//
-//    return Theme(
-//        id = "lk",
-//        font = body,
-//        elevation = 0.dp,
-//        cornerRadii = CornerRadii.Constant(0.5.rem),
-//        gap = 0.75.rem,
-//        outlineWidth = 0.px,
-//        iconOverride = titleColor,
-//        foreground = foreground,
-//        background = background,
-//        outline = foreground,
-//        derivations = mapOf(
-//            BarSemantic to { it.withBack },
-//            NavSemantic to { it.withBack },
-//            OuterSemantic to { it.withBack(cascading = false, gap = 1.px, padding = Edges.ZERO, background = Color.gray(0.3f)) },
-//            MainContentSemantic to { it.withBack },
-//            HeaderSemantic to {
-//                it.withoutBack(font = title, foreground = titleColor)
-//            },
-//            CardSemantic to {
-//                it.withBack(
-//                    background = if(it.background == background) card else it.background.lighten(0.05f),
-//                    foreground = foreground
-//                )
-//            },
-//            ImportantSemantic to {
-//                it.withBack(
-//                    background = if(it.background == background) card else it.background.lighten(0.05f),
-//                    foreground = foreground
-//                )
-//            },
-//            CriticalSemantic to {
-//                it.withBack(
-//                    background = titleColor,
-//                    foreground = titleColor.highlight(1f)
-//                )
-//            },
-//            DialogSemantic to {
-//                it.withBack(outlineWidth = 1.dp, gap = 2.rem, cascading = false)
-//            },
-//            ListSemantic to {
-//                it.withoutBack(gap = 2.dp, cascading = false)
-//            }
-//        )
-//    )
-//}
+fun lk(): Theme {
+    val background = Color.fromHex(0x08181D)
+    val foreground = Color.white
+    val card = Color.fromHex(0x133C4A)
+    val titleColor = Color.fromHex(0xF4B61B)
+    val title: FontAndStyle = FontAndStyle(Resources.barlow, allCaps = true)
+    val title2: FontAndStyle = FontAndStyle(Resources.barlow, weight = 600, allCaps = true)
+    val body: FontAndStyle = FontAndStyle(Resources.lato)
+
+    return Theme(
+        id = "lk",
+        font = body,
+        elevation = 0.dp,
+        cornerRadii = CornerRadii.Constant(0.5.rem),
+        gap = 0.75.rem,
+        outlineWidth = 0.px,
+        iconOverride = titleColor,
+        foreground = foreground,
+        background = background,
+        outline = foreground,
+        derivations = mapOf(
+            BarSemantic to { it.withBack },
+            NavSemantic to { it.withBack },
+            OuterSemantic to { it.withBack(cascading = false, gap = 1.px, padding = Edges.ZERO, background = Color.gray(0.3f)) },
+            MainContentSemantic to { it.withBack },
+            HeaderSemantic to {
+                it.withoutBack(font = title, foreground = titleColor)
+            },
+            CardSemantic to {
+                it.withBack(
+                    background = if(it.background == background) card else it.background.lighten(0.05f),
+                    foreground = foreground
+                )
+            },
+            ImportantSemantic to {
+                it.withBack(
+                    background = if(it.background == background) card else it.background.lighten(0.05f),
+                    foreground = foreground
+                )
+            },
+            CriticalSemantic to {
+                it.withBack(
+                    background = titleColor,
+                    foreground = titleColor.highlight(1f)
+                )
+            },
+            DialogSemantic to {
+                it.withBack(outlineWidth = 1.dp, gap = 2.rem, cascading = false)
+            },
+            ListSemantic to {
+                it.withoutBack(gap = 2.dp, cascading = false)
+            }
+        )
+    )
+}
 //
 //fun elsie(): Theme {
 //    val baseColor = Color.fromHex(0x446A6A)
@@ -689,6 +682,6 @@ import kotlin.math.absoluteValue
 //    set = { it?.toInt() }
 //)
 //val themePreference = PersistentProperty("theme-preference", ThemePreference.Default, ThemePreference.serializer())
-//val appTheme = shared { themePreference().theme(themePreferenceColor()) }
+//val appTheme = remember { themePreference().theme(themePreferenceColor()) }
 //val appTheme = Constant(Theme.clean(null))
-val appTheme = Constant(Theme.flat2("default", 0.6.turns))
+val appTheme = Constant(lk())

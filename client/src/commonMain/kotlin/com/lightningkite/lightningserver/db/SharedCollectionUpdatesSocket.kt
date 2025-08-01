@@ -6,19 +6,15 @@ import com.lightningkite.lightningdb.CollectionUpdates
 import com.lightningkite.lightningdb.Condition
 import com.lightningkite.lightningdb.HasId
 import com.lightningkite.lightningdb.simplify
-import com.lightningkite.readable.Property
-import com.lightningkite.readable.ResourceUse
-import com.lightningkite.readable.debounce
-import com.lightningkite.readable.lens
-import com.lightningkite.readable.reactive
-import com.lightningkite.readable.use
+import com.lightningkite.reactive.context.reactive
+import com.lightningkite.reactive.core.Signal
+import com.lightningkite.reactive.extensions.use
+import com.lightningkite.reactive.lensing.lens
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock.System.now
 import kotlinx.datetime.Instant
-import kotlin.collections.minus
-import kotlin.collections.plus
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
@@ -26,14 +22,14 @@ class SharedCollectionUpdatesSocket<T : HasId<ID>, ID : Comparable<ID>>(
     val scope: CoroutineScope,
     val socket: TypedWebSocket<Condition<T>, CollectionUpdates<T, ID>>,
     val onChange: (CollectionUpdates<T, ID>) -> Unit,
-    val log: Console? = null,
+    val log: Console? = null,  // TODO: log this somewhere that I can access later
 ) {
     fun require(condition: Condition<T>) = Req(condition)
 
     /**
      * The conditions that we want the socket to inform us about.
      */
-    val desiredRequirements = Property<Set<Req>>(setOf()).also {
+    val desiredRequirements = Signal<Set<Req>>(setOf()).also {
         it.addListener {
             log?.log("desiredRequirements is now ${it.value.joinToString { it.condition.toString() }}")
         }
@@ -49,7 +45,7 @@ class SharedCollectionUpdatesSocket<T : HasId<ID>, ID : Comparable<ID>>(
     /**
      * The conditions that the socket is currently listening for.
      */
-    val listeningStatus = Property<ListeningStatus<T>>(ListeningStatus()).also {
+    val listeningStatus = Signal<ListeningStatus<T>>(ListeningStatus()).also {
         it.addListener {
             log?.log("listeningStatus is now ${it.value.fullCondition} / ${it.value.requirements.joinToString { it.condition.toString() }}")
         }
@@ -78,14 +74,17 @@ class SharedCollectionUpdatesSocket<T : HasId<ID>, ID : Comparable<ID>>(
             // Build the total condition
             val willSend = run {
                 val r = desiredRequirements.value
-                if (r === listeningStatus.value.requirements) return
+                if (r === listeningStatus.value.requirements) {
+                    log?.log("No need to update condition; already satisfied by exact requirements")
+                    return
+                }
                 ListeningStatus(Condition.Or(r.map { it.condition }.distinct()).simplify(), r)
             }
 
             // Don't bother sending it if the net condition is equivalent.  Just mark it as fulfilled.
             if (listeningStatus.value.fullCondition == willSend.fullCondition) {
                 listeningStatus.value = willSend
-                log?.log("No need to update condition; already satisfied")
+                log?.log("No need to update condition; already satisfied by condition match")
                 return
             }
             lastSent = willSend
@@ -94,6 +93,7 @@ class SharedCollectionUpdatesSocket<T : HasId<ID>, ID : Comparable<ID>>(
 
             // If we don't get the message in 5 seconds, we need to try again.
             scope.launch {
+                // TODO: Is this retry logic actually working?
                 delay(4.seconds)
                 if (lastSent == willSend) {
                     log?.log("Update condition to ${lastSent.fullCondition} failed.")
@@ -135,7 +135,10 @@ class SharedCollectionUpdatesSocket<T : HasId<ID>, ID : Comparable<ID>>(
         scope.reactive {
             val requirements = debouncedRequirements()
             // Only keep the socket open if we have something to listen for.
-            if (requirements.isEmpty()) return@reactive
+            if (requirements.isEmpty()) {
+                listeningStatus.value = ListeningStatus()
+                return@reactive
+            }
             use(socket)
             updateCondition()
         }

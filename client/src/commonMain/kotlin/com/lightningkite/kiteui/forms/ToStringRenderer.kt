@@ -1,10 +1,6 @@
 package com.lightningkite.kiteui.forms
 
-import com.lightningkite.readable.Readable
-import com.lightningkite.readable.invoke
-import com.lightningkite.kiteui.views.ViewWriter
 import com.lightningkite.kiteui.views.direct.text
-import com.lightningkite.serialization.SerializableProperty
 
 object ToStringRenderer: ViewRenderer.Generator {
     override fun <T> view(module: FormModule, selector: FormSelector<T>): ViewRenderer<T> = ViewRenderer(module, this, selector) { _, readable ->

@@ -4,9 +4,6 @@ import com.lightningkite.kiteui.models.ThemeDerivation
 import com.lightningkite.kiteui.models.rem
 import com.lightningkite.kiteui.models.systemDefaultFixedWidthFont
 import com.lightningkite.kiteui.navigation.DefaultJson
-import com.lightningkite.readable.bind
-import com.lightningkite.readable.invoke
-import com.lightningkite.readable.lens
 import com.lightningkite.kiteui.views.direct.sizeConstraints
 import com.lightningkite.kiteui.views.direct.text
 import com.lightningkite.kiteui.views.direct.textArea

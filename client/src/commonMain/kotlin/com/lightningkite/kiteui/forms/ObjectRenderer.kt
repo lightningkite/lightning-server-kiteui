@@ -1,11 +1,6 @@
 package com.lightningkite.kiteui.forms
 
-import com.lightningkite.readable.Readable
-import com.lightningkite.readable.Writable
-import com.lightningkite.kiteui.views.ViewWriter
 import com.lightningkite.kiteui.views.direct.stack
-import com.lightningkite.serialization.SerializableProperty
-import kotlinx.serialization.KSerializer
 import kotlinx.serialization.descriptors.StructureKind
 
 object ObjectRenderer: FormRenderer.Generator, ViewRenderer.Generator {

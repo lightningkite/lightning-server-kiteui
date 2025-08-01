@@ -1,12 +1,7 @@
 import com.lightningkite.kiteui.KiteUiPlugin
 import com.lightningkite.kiteui.KiteUiPluginExtension
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-import org.jetbrains.kotlin.gradle.plugin.mpp.BitcodeEmbeddingMode
-import org.jetbrains.kotlin.gradle.plugin.mpp.NativeBuildType
-import org.jetbrains.kotlin.gradle.targets.js.webpack.KotlinWebpackConfig
 import java.util.*
-import com.lightningkite.deployhelpers.*
 
 plugins {
     signing
@@ -20,11 +15,6 @@ plugins {
 apply<KiteUiPlugin>()
 
 group = "com.lightningkite"
-version = "1.0-SNAPSHOT"
-
-val lk = project.lk {
-    kiteUiPlugin(5)
-}
 
 @OptIn(ExperimentalKotlinGradlePluginApi::class)
 kotlin {
@@ -64,13 +54,7 @@ kotlin {
         val commonMain by getting {
             dependencies {
                 api(project(":client"))
-                api(lk.mavenOrLocal(
-                    gitUrl = "git@github.com:lightningkite/kotlinx-serialization-csv-durable.git",
-                    group = "com.lightningkite",
-                    artifact = "kotlinx-serialization-csv-durable",
-                    major = 0,
-                    minor = 2
-                ))
+                api(libs.comLightningkiteKotlinxSerializationCsvDurable)
             }
             kotlin {
                 srcDir(file("build/generated/ksp/common/commonMain/kotlin"))
@@ -95,28 +79,13 @@ ksp {
 
 dependencies {
     configurations.filter { it.name.startsWith("ksp") && it.name != "ksp" }.forEach {
-        add(it.name, lk.lightningServer("processor", 4))
+        add(it.name, libs.comLightningkiteLightningserverProcessor)
     }
 }
 
 configure<KiteUiPluginExtension> {
     this.packageName = "com.lightningkite.lightningserver.admin"
     this.iosProjectRoot = project.file("../example-app-ios/KiteUI Example App")
-}
-
-kotlin {
-    targets
-        .matching { it is org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget }
-        .configureEach {
-            this as org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
-
-            compilations.getByName("main") {
-                this.kotlinOptions {
-//                    this.freeCompilerArgs += "-Xruntime-logs=gc=info"
-//                    this.freeCompilerArgs += "-Xallocator=mimalloc"
-                }
-            }
-        }
 }
 
 fun env(name: String, profile: String) {
@@ -143,4 +112,5 @@ fun env(name: String, profile: String) {
         this.workingDir = file("terraform/$name")
     }
 }
-env("lk", "lk")
+env("prod", "lk")
+env("beta", "lk")
