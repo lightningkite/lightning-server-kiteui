@@ -4,7 +4,6 @@ import com.lightningkite.UUID
 import com.lightningkite.kiteui.ConsoleRoot
 import com.lightningkite.kiteui.Platform
 import com.lightningkite.kiteui.current
-import com.lightningkite.kiteui.forms.prepareModelsClient
 import com.lightningkite.lightningdb.*
 import com.lightningkite.prepareModelsClientTest
 import com.lightningkite.prepareModelsShared
@@ -22,7 +21,6 @@ class ModelCacheTest {
     val testLog = if(Platform.current == Platform.Desktop) ConsoleRoot else null
     init {
         prepareModelsShared()
-        prepareModelsClient()
         prepareModelsClientTest()
     }
 

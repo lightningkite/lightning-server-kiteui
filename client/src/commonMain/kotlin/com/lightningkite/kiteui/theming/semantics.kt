@@ -4,6 +4,7 @@ import com.lightningkite.kiteui.models.Paint
 import com.lightningkite.kiteui.models.Semantic
 import com.lightningkite.kiteui.models.Theme
 import com.lightningkite.kiteui.models.ThemeAndBack
+import com.lightningkite.kiteui.models.px
 import kotlinx.serialization.Serializable
 import kotlin.time.Duration
 
@@ -13,26 +14,37 @@ data class ThemeOperation(
     val key: String,
     val withBackground: Boolean = false,
     val withPadding: Boolean = false,
+    val cascading: Boolean = true,
     val font: Operation<FontStyle>? = null,
-    val elevation: FieldOperator<DimensionRem>? = null,
+    val elevation: DimensionOperation? = null,
     val cornerRadii: Operation<CornerRadiiSerializable>? = null, // TODO
-    val gap: FieldOperator<DimensionRem>? = null,
+    val gap: DimensionOperation? = null,
     val padding: Operation<Padding>? = null,
-    val foreground: FieldOperator<Paint>? = null,
-    val background: FieldOperator<Paint>? = null,
-    val iconOverride: FieldOperator<Paint>? = null,
-    val seperatorOverride: FieldOperator<Paint>? = null,
-    val outline: FieldOperator<Paint>? = null,
-    val outlineWidth: FieldOperator<DimensionRem>? = null,
+    val foreground: PaintOperation? = null,
+    val background: PaintOperation? = null,
+    val iconOverride: PaintOperation? = null,
+    val seperatorOverride: PaintOperation? = null,
+    val outline: PaintOperation? = null,
+    val outlineWidth: DimensionOperation? = null,
     val transitionDuration: Operation<Duration>? = null,
-    val derivations: List<ThemeOperation> = emptyList()
+    val derivations: Map<String, ThemeOperation> = emptyMap()
 ) : Operation<ThemeData> {
     @Serializable
-    data class FieldOperator<T>(
-        val value: ThemeData.Getter<T>,
-        val operation: Operation<T> = Operation.Identity()
+    data class DimensionOperation(
+        val value: DimensionGetter,
+        val operation: Operation<DimensionPx> = Operation.Identity()
     ) {
         operator fun invoke(on: ThemeData) = operation(on[value])
+        operator fun invoke(on: Theme) = operation(on[value].px).toDimension()
+    }
+
+    @Serializable
+    data class PaintOperation(
+        val value: PaintGetter,
+        val operation: Operation<Paint> = Operation.Identity()
+    ) {
+        operator fun invoke(on: ThemeData) = operation(on[value])
+        operator fun invoke(on: Theme) = operation(on[value])
     }
 
     override fun invoke(on: ThemeData): ThemeData = ThemeData(
@@ -47,32 +59,33 @@ data class ThemeOperation(
         separatorOverride = seperatorOverride?.invoke(on) ?: on.separatorOverride,
         outline = outline?.invoke(on) ?: on.outline,
         outlineWidth = outlineWidth?.invoke(on) ?: on.outlineWidth,
-        transitionDuration = transitionDuration?.invoke(on.transitionDuration) ?: on.transitionDuration
+        transitionDuration = transitionDuration?.invoke(on.transitionDuration) ?: on.transitionDuration,
+        derivations = on.derivations + derivations
     )
 
-    fun invoke(on: Theme): ThemeAndBack = ThemeAndBack(
-        on.copy(
-            id = key,
-            font = font?.invoke(on.font) ?: on.font,
-            elevation = elevation?.invoke()
-        )
-    )
+    operator fun invoke(on: Theme): ThemeAndBack = on.copy(
+        id = key,
+        cascading = cascading,
+        font = font?.invoke(on.font),
+        elevation = elevation?.invoke(on),
+        cornerRadii = cornerRadii?.invoke(on.cornerRadii.serializable())?.toCornerRadii(),
+        gap = gap?.invoke(on),
+        padding = padding?.invoke(Padding(on.padding))?.toEdges(),
+        foreground = foreground?.invoke(on),
+        iconOverride = iconOverride?.invoke(on),
+        outline = outline?.invoke(on),
+        outlineWidth = outlineWidth?.invoke(on),
+        separatorOverride = seperatorOverride?.invoke(on),
+        background = background?.invoke(on),
+        transitionDuration = transitionDuration?.invoke(on.transitionDuration),
+        derivations = derivations.values.toSemanticMap()
+    ).with(withBackground, withPadding)
 }
 
-fun List<ThemeOperation>.toSemanticMap(): Map<Semantic, Semantic.(Theme) -> ThemeAndBack> = associate { operation ->
-    val semantic = SemanticRegistry[operation.key]
+fun Collection<ThemeOperation>.toSemanticMap(): Map<Semantic, Semantic.(Theme) -> ThemeAndBack> =
+    associate { operation ->
+        val semantic = Semantic.Registry[operation.key]
+            ?: object : Semantic(operation.key) {}
 
-    semantic to { theme ->
-        val altered = theme.alter(
-            font =
-        )
+        semantic to { operation(it) }
     }
-}
-
-object SemanticRegistry {
-    private val registry = HashMap<String, Semantic>()
-    fun register(semantic: Semantic) {
-        registry[semantic.key] = semantic
-    }
-    operator fun get(key: String) = registry[key] ?: object : Semantic(key)
-}

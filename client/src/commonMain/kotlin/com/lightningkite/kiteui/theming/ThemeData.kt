@@ -7,8 +7,6 @@ import com.lightningkite.kiteui.models.Paint
 import com.lightningkite.kiteui.models.Theme
 import com.lightningkite.kiteui.models.rem
 import com.lightningkite.kiteui.models.systemDefaultFont
-import com.lightningkite.lightningdb.MySealedClassSerializer
-import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
@@ -17,9 +15,9 @@ import kotlin.time.Duration.Companion.seconds
 @Serializable
 data class ThemeData(
     val font: FontStyle = FontStyle(),
-    val elevation: DimensionRem = 0.0,
+    val elevation: DimensionPx = 0.0,
     val cornerRadii: CornerRadiiSerializable = CornerRadiiSerializable.RatioOfSpacing(1f),
-    val gap: DimensionRem = 1.0,
+    val gap: DimensionPx = 1.0,
     val padding: Padding = Padding(gap),
 
     @Serializable(PaintSerializer::class) val foreground: Paint = Color.black,
@@ -29,11 +27,11 @@ data class ThemeData(
     @Serializable(PaintSerializer::class) val separatorOverride: Paint? = null,
 
     @Serializable(PaintSerializer::class) val outline: Paint = Color.black,
-    val outlineWidth: DimensionRem = 0.0,
+    val outlineWidth: DimensionPx = 0.0,
 
     val transitionDuration: Duration = 0.25.seconds,
 
-    val derivations: List<ThemeOperation> = emptyList()
+    val derivations: Map<String, ThemeOperation> = emptyMap()
 ) {
     interface Getter<D, S> {
         val displayName: String
@@ -57,9 +55,11 @@ data class ThemeData(
         separatorOverride,
         background,
         transitionDuration = transitionDuration,
-        derivations = emptyMap()
+        derivations = derivations.values.toSemanticMap()
     )
 }
+
+operator fun <T> Theme.get(getter: ThemeData.Getter<*, T>): T = getter.rawTheme(this)
 
 @Serializable
 enum class PaintGetter(
@@ -77,9 +77,9 @@ enum class PaintGetter(
 @Serializable
 enum class DimensionGetter(
     override val displayName: String,
-    override val themeData: (ThemeData) -> DimensionRem,
+    override val themeData: (ThemeData) -> DimensionPx,
     override val rawTheme: (Theme) -> Dimension
-) : ThemeData.Getter<DimensionRem, Dimension> {
+) : ThemeData.Getter<DimensionPx, Dimension> {
     Elevation("Elevation", ThemeData::elevation, Theme::elevation),
     Gap("Gap", ThemeData::gap, Theme::gap),
     OutlineWidth("Outline Width", ThemeData::outlineWidth, Theme::outlineWidth)

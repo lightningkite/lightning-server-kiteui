@@ -34,7 +34,7 @@ object MySealedFormRenderer : FormRenderer.Generator {
             )
             row {
                 atTop - sizeConstraints(width = 10.rem) - fieldTheme - select {
-                    bind(type, Constant(serializer.options)) { it.displayName ?: it.serializer.displayName }
+                    bind(type, Constant(serializer.options)) { it.serializer.displayName }
                 }
                 expanding - stack {
                     reactive {

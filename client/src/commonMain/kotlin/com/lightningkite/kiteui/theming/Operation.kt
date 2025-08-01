@@ -1,5 +1,6 @@
 package com.lightningkite.kiteui.theming
 
+import com.lightningkite.kiteui.models.FontAndStyle
 import com.lightningkite.kiteui.models.Paint
 import com.lightningkite.kiteui.models.applyAlpha
 import com.lightningkite.kiteui.models.darken
@@ -106,7 +107,7 @@ internal data object DoubleOperations {
 internal data object FontStyleOperations {
     @Serializable
     @DisplayName("Set Size")
-    data class SetSize(val size: DimensionRem) : Operation<FontStyle> {
+    data class SetSize(val size: DimensionPx) : Operation<FontStyle> {
         override fun invoke(on: FontStyle): FontStyle = on.copy(size = size)
     }
 
@@ -137,6 +138,11 @@ internal data object FontStyleOperations {
         )
 }
 
+operator fun Operation<FontStyle>.invoke(font: FontAndStyle): FontAndStyle {
+    val style = FontStyle(font)
+    val modifiedStyle = this.invoke(style)
+    return modifiedStyle(font)
+}
 
 class OperationSerializer<T>(val inner: KSerializer<T>) : MySealedClassSerializerInterface<Operation<T>> by MySealedClassSerializer<Operation<T>>(
     serialName = "com.lightningkite.kiteui.theming.Operation",

@@ -2,24 +2,21 @@ package com.lightningkite.kiteui.theming
 
 import com.lightningkite.kiteui.models.Color
 import com.lightningkite.kiteui.models.CornerRadii
-import com.lightningkite.kiteui.models.Dimension
 import com.lightningkite.kiteui.models.Edges
 import com.lightningkite.kiteui.models.FontAndStyle
 import com.lightningkite.kiteui.models.LinearGradient
 import com.lightningkite.kiteui.models.Paint
 import com.lightningkite.kiteui.models.RadialGradient
-import com.lightningkite.kiteui.models.Theme
 import com.lightningkite.kiteui.models.px
 import com.lightningkite.kiteui.models.rem
-import com.lightningkite.kiteui.models.systemDefaultFont
 import com.lightningkite.lightningdb.MySealedClassSerializer
 import com.lightningkite.lightningdb.MySealedClassSerializerInterface
-import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
-import kotlin.time.Duration
-import kotlin.time.Duration.Companion.seconds
+import kotlin.math.roundToInt
 
-typealias DimensionRem = Double
+typealias DimensionPx = Double
+
+fun DimensionPx.toDimension() = this.roundToInt().px
 
 // I'm not even going to try to serialize a font.
 @Serializable
@@ -28,8 +25,9 @@ data class FontStyle(
     val italic: Boolean = false,
     val underlined: Boolean = false,
     val strikethrough: Boolean = false,
-    val size: DimensionRem = 1.0
+    val size: DimensionPx = 1.0
 ) {
+    constructor(font: FontAndStyle) : this(font.bold, font.italic, font.underline, font.strikethrough, font.size.px)
     operator fun invoke(font: FontAndStyle) = font.copy(
         weight = if (bold) 700 else 400,
         italic = italic,
@@ -56,7 +54,7 @@ sealed interface CornerRadiiSerializable {
     fun toCornerRadii(): CornerRadii
 
     @Serializable
-    data class Constant(val value: DimensionRem) : CornerRadiiSerializable {
+    data class Constant(val value: DimensionPx) : CornerRadiiSerializable {
         override fun toCornerRadii() = CornerRadii.Constant(value.rem)
     }
     @Serializable
@@ -64,7 +62,7 @@ sealed interface CornerRadiiSerializable {
         override fun toCornerRadii() = CornerRadii.RatioOfSpacing(value)
     }
     @Serializable
-    data class ForceConstant(val value: DimensionRem) : CornerRadiiSerializable {
+    data class ForceConstant(val value: DimensionPx) : CornerRadiiSerializable {
         override fun toCornerRadii() = CornerRadii.ForceConstant(value.rem)
     }
     @Serializable
@@ -73,7 +71,7 @@ sealed interface CornerRadiiSerializable {
     }
     @Serializable
     data class PerCorner(
-        val value: DimensionRem,
+        val value: DimensionPx,
         val topLeft: Boolean = false,
         val topRight: Boolean = false,
         val bottomLeft: Boolean = false,
@@ -96,15 +94,24 @@ sealed interface CornerRadiiSerializable {
     )
 }
 
+fun CornerRadii.serializable(): CornerRadiiSerializable = when(this) {
+    is CornerRadii.Constant -> CornerRadiiSerializable.Constant(value.px)
+    is CornerRadii.ForceConstant -> CornerRadiiSerializable.ForceConstant(value.px)
+    is CornerRadii.PerCorner -> CornerRadiiSerializable.PerCorner(value.px, topLeft, topRight, bottomLeft, bottomRight)
+    is CornerRadii.RatioOfSize -> CornerRadiiSerializable.RatioOfSize(ratio)
+    is CornerRadii.RatioOfSpacing -> CornerRadiiSerializable.RatioOfSpacing(value)
+}
+
 @Serializable
 data class Padding(
-    val left: DimensionRem = 1.0,
-    val top: DimensionRem = 1.0,
-    val right: DimensionRem = 1.0,
-    val bottom: DimensionRem = 1.0
+    val left: DimensionPx = 1.0,
+    val top: DimensionPx = 1.0,
+    val right: DimensionPx = 1.0,
+    val bottom: DimensionPx = 1.0
 ) {
-    constructor(horizontal: DimensionRem, vertical: DimensionRem) : this(left = horizontal, right = horizontal, top = vertical, bottom = vertical)
-    constructor(dimension: DimensionRem) : this(dimension, dimension)
+    constructor(horizontal: DimensionPx, vertical: DimensionPx) : this(left = horizontal, right = horizontal, top = vertical, bottom = vertical)
+    constructor(dimension: DimensionPx) : this(dimension, dimension)
+    constructor(edges: Edges) : this(edges.left.px, edges.top.px, edges.right.px, edges.bottom.px)
 
     operator fun minus(other: Padding) = Padding(left - other.left, top - other.top, right - other.right, bottom - other.bottom)
     operator fun times(other: Int) = Padding(left * other, top * other, right * other, bottom * other)
@@ -114,5 +121,5 @@ data class Padding(
     operator fun times(other: Double) = Padding(left * other, top * other, right * other, bottom * other)
     operator fun div(other: Double) = Padding(left / other, top / other, right / other, bottom / other)
 
-    fun toEdges() = Edges(left.rem, top.rem, right.rem, bottom.rem)
+    fun toEdges() = Edges(left.toDimension(), top.toDimension(), right.toDimension(), bottom.toDimension())
 }
