@@ -12,7 +12,7 @@ jobs:
 
       - uses: actions/checkout@v4
         with:
-          fetch-tags: true
+          fetch-depth: 0
 
       - uses: actions/setup-java@v4
         with:
@@ -32,8 +32,11 @@ jobs:
             ~/.konan
           key: ${{ runner.os }}-${{ hashFiles('**/.lock') }}
 
+      - name: Clean
+        run: ./gradlew clean
+
       - name: Run Tests
-        run: ./gradlew test
+        run: ./gradlew allTests
 
       - uses: actions/upload-artifact@v4
         if: failure()
