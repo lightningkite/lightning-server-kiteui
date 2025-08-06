@@ -430,8 +430,8 @@ class ReAuthComponent(
 
                 endpoints.oneTimePasswordProof?.let { p ->
                     shownWhen {
-                        proofs().none { it.via == p.via } &&
-                                requirements().options.any { it.method.via == p.via }
+                        proofs().none { it.via == p.via || it.via == "otp"  } &&
+                                requirements().options.any { it.method.via == p.via || it.method.via == "otp"  }
                     } - important - buttonTheme - button {
                         centered - text("Use Authenticator App")
                         this.action = Action("Use Authenticator App", Icon.chevronRight) {
@@ -771,8 +771,8 @@ class AuthComponent(
                         )
                     }
                     shownWhen {
-                        proofs().none { it.via == p.via } &&
-                                (authResult()?.options?.any { it.method.via == p.via } ?: true) &&
+                        proofs().none { it.via == p.via || it.via == "otp" } &&
+                                (authResult()?.options?.any { it.method.via == p.via || it.method.via == "otp"  } ?: true) &&
                                 validId()
                     } - important - buttonTheme - button {
                         this.action = action
@@ -886,7 +886,7 @@ class AuthComponent(
                         proofs().none { it.via == endpoints.smsProof?.via } && phone() != null && smsStartAction != null -> smsStartAction
                         proofs().none { it.via == endpoints.passwordProof?.via } && validId && passwordStartAction != null -> passwordStartAction
                         proofs().none { it.via == endpoints.backupCodeProof?.via } && validId && backupCodeAction != null -> backupCodeAction
-                        proofs().none { it.via == endpoints.oneTimePasswordProof?.via } && validId && totpAction != null -> totpAction
+                        proofs().none { it.via == endpoints.oneTimePasswordProof?.via || it.via == "otp"  } && validId && totpAction != null -> totpAction
                         else -> null
                     }
                 }
