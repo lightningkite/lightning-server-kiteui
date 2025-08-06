@@ -122,30 +122,30 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
         isCoreLibraryDesugaringEnabled = true
     }
-    val props = project.rootProject.file("local.properties").takeIf { it.exists() }?.inputStream()?.use { stream ->
-        Properties().apply { load(stream) }
-    }
-    if (props != null && props.getProperty("signingKeystore") != null) {
-        signingConfigs {
-            this.create("release") {
-                storeFile = project.rootProject.file(props.getProperty("signingKeystore"))
-                storePassword = props.getProperty("signingPassword")
-                keyAlias = props.getProperty("signingAlias")
-                keyPassword = props.getProperty("signingAliasPassword")
-            }
-        }
-        buildTypes {
-            this.getByName("release") {
-                this.isMinifyEnabled = false
-                this.proguardFiles(getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro")
-                this.signingConfig = signingConfigs.getByName("release")
-            }
-        }
-    }
+//    val props = project.rootProject.file("local.properties").takeIf { it.exists() }?.inputStream()?.use { stream ->
+//        Properties().apply { load(stream) }
+//    }
+//    if (props != null && props.getProperty("signingKeystore") != null) {
+//        signingConfigs {
+//            this.create("release") {
+//                storeFile = project.rootProject.file(props.getProperty("signingKeystore"))
+//                storePassword = props.getProperty("signingPassword")
+//                keyAlias = props.getProperty("signingAlias")
+//                keyPassword = props.getProperty("signingAliasPassword")
+//            }
+//        }
+//        buildTypes {
+//            this.getByName("release") {
+//                this.isMinifyEnabled = false
+//                this.proguardFiles(getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro")
+//                this.signingConfig = signingConfigs.getByName("release")
+//            }
+//        }
+//    }
 }
 
 dependencies {
-    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+    coreLibraryDesugaring(libs.androidDesugaring)
 }
 
 configure<KiteUiPluginExtension> {
