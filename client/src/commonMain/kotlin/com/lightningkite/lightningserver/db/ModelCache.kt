@@ -19,8 +19,8 @@ import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
 
-class ModelCache<T : HasId<ID>, ID : Comparable<ID>, API : ClientModelRestEndpoints<T, ID>>(
-    val skipCache: API,
+class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
+    val skipCache: ClientModelRestEndpoints<T, ID>,
     val serializer: KSerializer<T>,
 //    val newest: (T?, T?) -> T? = { _, it -> it },
     val onUpdate: ((CollectionUpdates<T, ID>) -> Unit)? = null,
@@ -255,7 +255,7 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>, API : ClientModelRestEndpoi
             }
         }
 
-        override fun equals(other: Any?): Boolean = other is ModelCache<T, ID, API>.ModelCacheItemReadableImpl
+        override fun equals(other: Any?): Boolean = other is ModelCache<T, ID>.ModelCacheItemReadableImpl
                 && id == other.id
                 && maximumAge == other.maximumAge
                 && pullFrequency == other.pullFrequency
@@ -395,7 +395,7 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>, API : ClientModelRestEndpoi
                 interrupt.interrupt()
             }
 
-        override fun equals(other: Any?): Boolean = other is ModelCache<T, ID, API>.ModelCacheLimitReadableImpl
+        override fun equals(other: Any?): Boolean = other is ModelCache<T, ID>.ModelCacheLimitReadableImpl
                 && query == other.query
                 && maximumAge == other.maximumAge
                 && pullFrequency == other.pullFrequency
