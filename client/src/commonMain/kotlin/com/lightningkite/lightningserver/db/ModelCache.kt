@@ -1,6 +1,6 @@
 package com.lightningkite.lightningserver.db
 
-import com.lightningkite.kiteui.Console
+import com.lightningkite.kiteui.Log
 import com.lightningkite.lightningdb.*
 import com.lightningkite.now
 import com.lightningkite.reactive.context.awaitOnce
@@ -19,13 +19,13 @@ import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
 
-class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
-    val skipCache: ClientModelRestEndpoints<T, ID>,
+class ModelCache<T : HasId<ID>, ID : Comparable<ID>, API : ClientModelRestEndpoints<T, ID>>(
+    val skipCache: API,
     val serializer: KSerializer<T>,
 //    val newest: (T?, T?) -> T? = { _, it -> it },
     val onUpdate: ((CollectionUpdates<T, ID>) -> Unit)? = null,
     val scope: CoroutineScope = AppScope,
-    val log: Console? = null
+    val log: Log? = null
 ) : ModelCacheLike<T, ID> {
     private val idProp = serializer._id()
 
@@ -255,7 +255,7 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
             }
         }
 
-        override fun equals(other: Any?): Boolean = other is ModelCache<T, ID>.ModelCacheItemReadableImpl
+        override fun equals(other: Any?): Boolean = other is ModelCache<T, ID, API>.ModelCacheItemReadableImpl
                 && id == other.id
                 && maximumAge == other.maximumAge
                 && pullFrequency == other.pullFrequency
@@ -395,7 +395,7 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
                 interrupt.interrupt()
             }
 
-        override fun equals(other: Any?): Boolean = other is ModelCache<T, ID>.ModelCacheLimitReadableImpl
+        override fun equals(other: Any?): Boolean = other is ModelCache<T, ID, API>.ModelCacheLimitReadableImpl
                 && query == other.query
                 && maximumAge == other.maximumAge
                 && pullFrequency == other.pullFrequency
