@@ -1,6 +1,6 @@
 package com.lightningkite.kiteui.forms
 
-import com.lightningkite.serialization.WrappingSerializer
+import com.lightningkite.services.database.WrappingSerializer
 
 object WrapperFormRenderer: FormRenderer.Generator {
     override val name: String = "Wrapper"

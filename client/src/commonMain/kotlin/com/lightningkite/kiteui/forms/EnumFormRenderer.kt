@@ -4,10 +4,10 @@ import com.lightningkite.kiteui.views.direct.select
 import com.lightningkite.kiteui.views.direct.text
 import com.lightningkite.kiteui.views.fieldTheme
 import com.lightningkite.reactive.core.Constant
-import com.lightningkite.serialization.SerializableAnnotationValue
-import com.lightningkite.serialization.VirtualEnumValue
-import com.lightningkite.serialization.getElementSerializableAnnotations
-import com.lightningkite.serialization.nullElement
+import com.lightningkite.services.database.SerializableAnnotationValue
+import com.lightningkite.services.database.VirtualEnumValue
+import com.lightningkite.services.database.getElementSerializableAnnotations
+import com.lightningkite.services.database.nullElement
 import com.lightningkite.titleCase
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.descriptors.SerialKind

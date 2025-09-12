@@ -2,11 +2,11 @@ package com.lightningkite.lightningserver.db
 
 import com.lightningkite.kiteui.HttpMethod
 import com.lightningkite.kiteui.TypedWebSocket
-import com.lightningkite.lightningdb.*
+import com.lightningkite.services.database.*
 import com.lightningkite.lightningserver.networking.Fetcher
 import com.lightningkite.serialization.DefaultStringArrayFormat
-import com.lightningkite.serialization.Partial
-import com.lightningkite.serialization.PartialSerializer
+import com.lightningkite.services.database.Partial
+import com.lightningkite.services.database.PartialSerializer
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.MapSerializer

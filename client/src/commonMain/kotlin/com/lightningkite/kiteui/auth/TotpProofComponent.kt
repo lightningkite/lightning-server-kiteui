@@ -14,9 +14,9 @@ import com.lightningkite.kiteui.views.direct.textInput
 import com.lightningkite.kiteui.views.important
 import com.lightningkite.kiteui.views.l2.errorText
 import com.lightningkite.lightningserver.auth.OneTimePasswordProofClientEndpoints
-import com.lightningkite.lightningserver.auth.proof.IdentificationAndPassword
-import com.lightningkite.lightningserver.auth.proof.Proof
-import com.lightningkite.lightningserver.auth.proof.ProofOption
+import com.lightningkite.lightningserver.sessions.proofs.IdentificationAndPassword
+import com.lightningkite.lightningserver.sessions.proofs.Proof
+import com.lightningkite.lightningserver.sessions.proofs.ProofOption
 import com.lightningkite.reactive.context.await
 import com.lightningkite.reactive.core.Signal
 

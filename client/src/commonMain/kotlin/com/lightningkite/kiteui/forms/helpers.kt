@@ -9,7 +9,7 @@ import com.lightningkite.kiteui.views.direct.col
 import com.lightningkite.kiteui.views.direct.row
 import com.lightningkite.kiteui.views.direct.subtext
 import com.lightningkite.kiteui.views.direct.text
-import com.lightningkite.serialization.SerializableProperty
+import com.lightningkite.services.database.SerializableProperty
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.descriptors.PrimitiveKind

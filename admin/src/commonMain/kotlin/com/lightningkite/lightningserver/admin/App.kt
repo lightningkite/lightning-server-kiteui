@@ -14,16 +14,16 @@ import com.lightningkite.kiteui.views.centered
 import com.lightningkite.kiteui.views.compact
 import com.lightningkite.kiteui.views.direct.*
 import com.lightningkite.kiteui.views.l2.*
-import com.lightningkite.lightningdb.Condition
+import com.lightningkite.services.database.Condition
 import com.lightningkite.lightningserver.auth.AuthenticatedUserAuthClientEndpointsLive
 import com.lightningkite.reactive.context.invoke
 import com.lightningkite.reactive.context.reactive
 import com.lightningkite.reactive.core.remember
 import com.lightningkite.reactive.core.rememberSuspending
 import com.lightningkite.reactive.extensions.debounceWrite
-import com.lightningkite.serialization.ClientModule
-import com.lightningkite.serialization.SerializableProperty
-import com.lightningkite.serialization.serializableProperties
+import com.lightningkite.services.database.ClientModule
+import com.lightningkite.services.database.SerializableProperty
+import com.lightningkite.services.database.serializableProperties
 import com.lightningkite.titleCase
 import kotlin.time.Duration.Companion.milliseconds
 

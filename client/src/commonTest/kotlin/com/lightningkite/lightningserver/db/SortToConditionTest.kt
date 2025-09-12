@@ -1,8 +1,8 @@
 package com.lightningkite.lightningserver.db
 
-import com.lightningkite.lightningdb.comparator
-import com.lightningkite.lightningdb.sort
-import com.lightningkite.serialization.notNull
+import com.lightningkite.services.database.comparator
+import com.lightningkite.services.database.sort
+import com.lightningkite.services.database.notNull
 import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals

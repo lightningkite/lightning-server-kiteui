@@ -2,10 +2,11 @@
 
 package com.lightningkite.lightningdb
 
-import com.lightningkite.serialization.SerializableProperty
-import com.lightningkite.serialization.nullElement
-import com.lightningkite.serialization.serializableProperties
-import com.lightningkite.serialization.serializerOrContextual
+import com.lightningkite.services.database.Modification
+import com.lightningkite.services.database.SerializableProperty
+import com.lightningkite.services.database.nullElement
+import com.lightningkite.services.database.serializableProperties
+import com.lightningkite.services.database.serializerOrContextual
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 

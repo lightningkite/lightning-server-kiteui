@@ -6,12 +6,12 @@ import com.lightningkite.kiteui.navigation.DefaultJson
 import com.lightningkite.kiteui.navigation.UrlProperties
 import com.lightningkite.kiteui.navigation.encodeToString
 import com.lightningkite.kiteui.reactive.PersistentProperty
-import com.lightningkite.lightningdb.HasId
-import com.lightningkite.lightningdb.ModelPermissions
+import com.lightningkite.services.database.HasId
+import com.lightningkite.services.database.ModelPermissions
 import com.lightningkite.lightningserver.LsErrorException
 import com.lightningkite.lightningserver.auth.LightningServerAuthentication
 import com.lightningkite.lightningserver.schema.LightningServerKSchema
-import com.lightningkite.now
+import kotlin.time.Clock.System.now
 import com.lightningkite.reactive.context.invoke
 import com.lightningkite.reactive.core.Reactive
 import com.lightningkite.reactive.core.reactiveProcess
@@ -20,7 +20,7 @@ import com.lightningkite.reactive.core.rememberSuspending
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.delay
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.serialization.Serializable
 import kotlin.time.Duration.Companion.minutes
 

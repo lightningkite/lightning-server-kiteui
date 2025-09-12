@@ -1,9 +1,10 @@
 package com.lightningkite.lightningserver.db
 
-import com.lightningkite.lightningdb.Condition
-import com.lightningkite.lightningdb.HasId
-import com.lightningkite.lightningdb.Query
-import kotlinx.datetime.Instant
+import com.lightningkite.services.database.Condition
+import com.lightningkite.services.database.HasId
+import com.lightningkite.services.database.Query
+import kotlin.time.Instant
+
 
 sealed class CacheUpdate<T : HasId<ID>, ID : Comparable<ID>> {
     abstract val items: Collection<T>?

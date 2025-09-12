@@ -8,7 +8,7 @@ import com.lightningkite.kiteui.views.*
 import com.lightningkite.kiteui.views.direct.*
 import com.lightningkite.lightningserver.serverhealth.HealthStatus
 import com.lightningkite.lightningserver.serverhealth.ServerHealth
-import com.lightningkite.now
+import kotlin.time.Clock.System.now
 import com.lightningkite.reactive.context.invoke
 import com.lightningkite.reactive.core.remember
 import com.lightningkite.reactive.extensions.asyncReactive

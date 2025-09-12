@@ -1,11 +1,11 @@
 package com.lightningkite.lightningserver.db
 
-import com.lightningkite.UUID
+import kotlin.uuid.Uuid
 import com.lightningkite.kiteui.ConsoleRoot
 import com.lightningkite.kiteui.Platform
 import com.lightningkite.kiteui.current
 import com.lightningkite.kiteui.forms.prepareModelsClient
-import com.lightningkite.lightningdb.*
+import com.lightningkite.services.database.*
 import com.lightningkite.prepareModelsClientTest
 import com.lightningkite.prepareModelsShared
 import com.lightningkite.reactive.context.reactive
@@ -27,10 +27,10 @@ class ModelCacheTest {
     }
 
     @Test fun connectivityIssue() = runTest2 {
-        val mock = ClientModelRestEndpointsPlusUpdatesWebsocketMock<LargeTestModel, UUID>(this)
+        val mock = ClientModelRestEndpointsPlusUpdatesWebsocketMock<LargeTestModel, Uuid>(this)
         var currentValue = LargeTestModel(int = 0)
         mock.data[currentValue._id] = currentValue
-        val cache = ModelCache<LargeTestModel, UUID>(
+        val cache = ModelCache<LargeTestModel, Uuid>(
             mock,
             LargeTestModel.serializer(),
             scope = backgroundScope,
@@ -62,8 +62,8 @@ class ModelCacheTest {
     }
 
     @Test fun listLimitIncrease() = runTest2 {
-        val mock = ClientModelRestEndpointsMock<LargeTestModel, UUID>(this)
-//        val mock = ClientModelRestEndpointsPlusUpdatesWebsocketMock<LargeTestModel, UUID>(this)
+        val mock = ClientModelRestEndpointsMock<LargeTestModel, Uuid>(this)
+//        val mock = ClientModelRestEndpointsPlusUpdatesWebsocketMock<LargeTestModel, Uuid>(this)
         val dataToInsert = listOf(
             LargeTestModel(int = 1),
             LargeTestModel(int = 2),
@@ -72,7 +72,7 @@ class ModelCacheTest {
             LargeTestModel(int = 5),
         )
         mock.data.putAll(dataToInsert.associateBy { it._id })
-        val cache = ModelCache<LargeTestModel, UUID>(
+        val cache = ModelCache<LargeTestModel, Uuid>(
             mock,
             LargeTestModel.serializer(),
             scope = backgroundScope,
@@ -94,8 +94,8 @@ class ModelCacheTest {
 
     @Test
     fun listChangesWs() = runTest2 {
-//        val mock = ClientModelRestEndpointsMock<LargeTestModel, UUID>(this)
-        val mock = ClientModelRestEndpointsPlusUpdatesWebsocketMock<LargeTestModel, UUID>(this)
+//        val mock = ClientModelRestEndpointsMock<LargeTestModel, Uuid>(this)
+        val mock = ClientModelRestEndpointsPlusUpdatesWebsocketMock<LargeTestModel, Uuid>(this)
         val dataToInsert = listOf(
             LargeTestModel(int = 1),
             LargeTestModel(int = 2),
@@ -104,7 +104,7 @@ class ModelCacheTest {
             LargeTestModel(int = 5),
         )
         mock.data.putAll(dataToInsert.associateBy { it._id })
-        val cache = ModelCache<LargeTestModel, UUID>(
+        val cache = ModelCache<LargeTestModel, Uuid>(
             mock,
             LargeTestModel.serializer(),
             scope = backgroundScope,
@@ -130,8 +130,8 @@ class ModelCacheTest {
 
     @Test
     fun listChangesPull() = runTest2 {
-        val mock = ClientModelRestEndpointsMock<LargeTestModel, UUID>(this)
-//        val mock = ClientModelRestEndpointsPlusUpdatesWebsocketMock<LargeTestModel, UUID>(this)
+        val mock = ClientModelRestEndpointsMock<LargeTestModel, Uuid>(this)
+//        val mock = ClientModelRestEndpointsPlusUpdatesWebsocketMock<LargeTestModel, Uuid>(this)
         val dataToInsert = listOf(
             LargeTestModel(int = 1),
             LargeTestModel(int = 2),
@@ -140,7 +140,7 @@ class ModelCacheTest {
             LargeTestModel(int = 5),
         )
         mock.data.putAll(dataToInsert.associateBy { it._id })
-        val cache = ModelCache<LargeTestModel, UUID>(
+        val cache = ModelCache<LargeTestModel, Uuid>(
             mock,
             LargeTestModel.serializer(),
             scope = backgroundScope,
@@ -171,11 +171,11 @@ class ModelCacheTest {
 
     @Test
     fun individualChangesWs() = runTest2 {
-//        val mock = ClientModelRestEndpointsMock<LargeTestModel, UUID>(this)
-        val mock = ClientModelRestEndpointsPlusUpdatesWebsocketMock<LargeTestModel, UUID>(this)
+//        val mock = ClientModelRestEndpointsMock<LargeTestModel, Uuid>(this)
+        val mock = ClientModelRestEndpointsPlusUpdatesWebsocketMock<LargeTestModel, Uuid>(this)
         var currentValue = LargeTestModel(int = 0)
         mock.data[currentValue._id] = currentValue
-        val cache = ModelCache<LargeTestModel, UUID>(
+        val cache = ModelCache<LargeTestModel, Uuid>(
             mock,
             LargeTestModel.serializer(),
             scope = backgroundScope,
@@ -199,12 +199,12 @@ class ModelCacheTest {
 
     @Test
     fun individualChangesPull() = runTest2 {
-        val mock = ClientModelRestEndpointsMock<LargeTestModel, UUID>(this)
-//        val mock = ClientModelRestEndpointsPlusUpdatesWebsocketMock<LargeTestModel, UUID>(this)
+        val mock = ClientModelRestEndpointsMock<LargeTestModel, Uuid>(this)
+//        val mock = ClientModelRestEndpointsPlusUpdatesWebsocketMock<LargeTestModel, Uuid>(this)
         var currentValue = LargeTestModel(int = 0)
         var lastRead: LargeTestModel? = null
         mock.data[currentValue._id] = currentValue
-        val cache = ModelCache<LargeTestModel, UUID>(
+        val cache = ModelCache<LargeTestModel, Uuid>(
             mock,
             LargeTestModel.serializer(),
             scope = backgroundScope,
@@ -234,8 +234,8 @@ class ModelCacheTest {
 
     @Test
     fun reactiveKeepId() = runTest2 {
-        val mock = ClientModelRestEndpointsMock<LargeTestModel, UUID>(this)
-//        val mock = ClientModelRestEndpointsPlusUpdatesWebsocketMock<LargeTestModel, UUID>(this)
+        val mock = ClientModelRestEndpointsMock<LargeTestModel, Uuid>(this)
+//        val mock = ClientModelRestEndpointsPlusUpdatesWebsocketMock<LargeTestModel, Uuid>(this)
         val dataToInsert = listOf(
             LargeTestModel(int = 1),
             LargeTestModel(int = 2),
@@ -244,7 +244,7 @@ class ModelCacheTest {
             LargeTestModel(int = 5),
         )
         mock.data.putAll(dataToInsert.associateBy { it._id })
-        val cache = ModelCache<LargeTestModel, UUID>(
+        val cache = ModelCache<LargeTestModel, Uuid>(
             mock,
             LargeTestModel.serializer(),
             scope = backgroundScope,
@@ -266,8 +266,8 @@ class ModelCacheTest {
 
     @Test
     fun repullingGet() = runTest2 {
-        val mock = ClientModelRestEndpointsMock<LargeTestModel, UUID>(this)
-//        val mock = ClientModelRestEndpointsPlusUpdatesWebsocketMock<LargeTestModel, UUID>(this)
+        val mock = ClientModelRestEndpointsMock<LargeTestModel, Uuid>(this)
+//        val mock = ClientModelRestEndpointsPlusUpdatesWebsocketMock<LargeTestModel, Uuid>(this)
         val dataToInsert = listOf(
             LargeTestModel(int = 1),
             LargeTestModel(int = 2),
@@ -276,7 +276,7 @@ class ModelCacheTest {
             LargeTestModel(int = 5),
         )
         mock.data.putAll(dataToInsert.associateBy { it._id })
-        val cache = ModelCache<LargeTestModel, UUID>(
+        val cache = ModelCache<LargeTestModel, Uuid>(
             mock,
             LargeTestModel.serializer(),
             scope = backgroundScope,
@@ -295,8 +295,8 @@ class ModelCacheTest {
 
     @Test
     fun wsGet() = runTest2 {
-//        val mock = ClientModelRestEndpointsMock<LargeTestModel, UUID>(this)
-        val mock = ClientModelRestEndpointsPlusUpdatesWebsocketMock<LargeTestModel, UUID>(this)
+//        val mock = ClientModelRestEndpointsMock<LargeTestModel, Uuid>(this)
+        val mock = ClientModelRestEndpointsPlusUpdatesWebsocketMock<LargeTestModel, Uuid>(this)
         val dataToInsert = listOf(
             LargeTestModel(int = 1),
             LargeTestModel(int = 2),
@@ -305,7 +305,7 @@ class ModelCacheTest {
             LargeTestModel(int = 5),
         )
         mock.data.putAll(dataToInsert.associateBy { it._id })
-        val cache = ModelCache<LargeTestModel, UUID>(
+        val cache = ModelCache<LargeTestModel, Uuid>(
             mock,
             LargeTestModel.serializer(),
             scope = backgroundScope,
@@ -324,8 +324,8 @@ class ModelCacheTest {
 
     @Test
     fun repullingList() = runTest2 {
-        val mock = ClientModelRestEndpointsMock<LargeTestModel, UUID>(this)
-//        val mock = ClientModelRestEndpointsPlusUpdatesWebsocketMock<LargeTestModel, UUID>(this)
+        val mock = ClientModelRestEndpointsMock<LargeTestModel, Uuid>(this)
+//        val mock = ClientModelRestEndpointsPlusUpdatesWebsocketMock<LargeTestModel, Uuid>(this)
         val dataToInsert = listOf(
             LargeTestModel(int = 1),
             LargeTestModel(int = 2),
@@ -334,7 +334,7 @@ class ModelCacheTest {
             LargeTestModel(int = 5),
         )
         mock.data.putAll(dataToInsert.associateBy { it._id })
-        val cache = ModelCache<LargeTestModel, UUID>(
+        val cache = ModelCache<LargeTestModel, Uuid>(
             mock,
             LargeTestModel.serializer(),
             scope = backgroundScope,
@@ -353,8 +353,8 @@ class ModelCacheTest {
 
     @Test
     fun reactivityKeepList() = runTest2 {
-        val mock = ClientModelRestEndpointsMock<LargeTestModel, UUID>(this)
-//        val mock = ClientModelRestEndpointsPlusUpdatesWebsocketMock<LargeTestModel, UUID>(this)
+        val mock = ClientModelRestEndpointsMock<LargeTestModel, Uuid>(this)
+//        val mock = ClientModelRestEndpointsPlusUpdatesWebsocketMock<LargeTestModel, Uuid>(this)
         val dataToInsert = listOf(
             LargeTestModel(int = 1),
             LargeTestModel(int = 2),
@@ -363,7 +363,7 @@ class ModelCacheTest {
             LargeTestModel(int = 5),
         )
         mock.data.putAll(dataToInsert.associateBy { it._id })
-        val cache = ModelCache<LargeTestModel, UUID>(
+        val cache = ModelCache<LargeTestModel, Uuid>(
             mock,
             LargeTestModel.serializer(),
             scope = backgroundScope,
@@ -385,8 +385,8 @@ class ModelCacheTest {
 
     @Test
     fun wsList() = runTest2 {
-//        val mock = ClientModelRestEndpointsMock<LargeTestModel, UUID>(this)
-        val mock = ClientModelRestEndpointsPlusUpdatesWebsocketMock<LargeTestModel, UUID>(this)
+//        val mock = ClientModelRestEndpointsMock<LargeTestModel, Uuid>(this)
+        val mock = ClientModelRestEndpointsPlusUpdatesWebsocketMock<LargeTestModel, Uuid>(this)
         val dataToInsert = listOf(
             LargeTestModel(int = 1),
             LargeTestModel(int = 2),
@@ -395,7 +395,7 @@ class ModelCacheTest {
             LargeTestModel(int = 5),
         )
         mock.data.putAll(dataToInsert.associateBy { it._id })
-        val cache = ModelCache<LargeTestModel, UUID>(
+        val cache = ModelCache<LargeTestModel, Uuid>(
             mock,
             LargeTestModel.serializer(),
             scope = backgroundScope,
@@ -414,8 +414,8 @@ class ModelCacheTest {
 
     @Test
     fun getGone() = runTest2 {
-        val mock = ClientModelRestEndpointsMock<LargeTestModel, UUID>(this)
-//        val mock = ClientModelRestEndpointsPlusUpdatesWebsocketMock<LargeTestModel, UUID>(this)
+        val mock = ClientModelRestEndpointsMock<LargeTestModel, Uuid>(this)
+//        val mock = ClientModelRestEndpointsPlusUpdatesWebsocketMock<LargeTestModel, Uuid>(this)
         val dataToInsert = listOf(
             LargeTestModel(int = 1),
             LargeTestModel(int = 2),
@@ -424,7 +424,7 @@ class ModelCacheTest {
             LargeTestModel(int = 5),
         )
         mock.data.putAll(dataToInsert.associateBy { it._id })
-        val cache = ModelCache<LargeTestModel, UUID>(
+        val cache = ModelCache<LargeTestModel, Uuid>(
             mock,
             LargeTestModel.serializer(),
             scope = backgroundScope,
@@ -432,7 +432,7 @@ class ModelCacheTest {
         )
 
         var runs = 0
-        val ref = cache.item(UUID.random())
+        val ref = cache.item(Uuid.random())
         reactive {
             assertEquals(
                 null,
@@ -446,14 +446,14 @@ class ModelCacheTest {
 
         @Test
     fun listenStopAddReconnect() = runTest2 {
-        val mock = ClientModelRestEndpointsPlusUpdatesWebsocketMock<LargeTestModel, UUID>(this)
+        val mock = ClientModelRestEndpointsPlusUpdatesWebsocketMock<LargeTestModel, Uuid>(this)
         val dataToInsert = listOf(
             LargeTestModel(int = 1),
             LargeTestModel(int = 2),
             LargeTestModel(int = 3),
         )
         mock.data.putAll(dataToInsert.associateBy { it._id })
-        val cache = ModelCache<LargeTestModel, UUID>(
+        val cache = ModelCache<LargeTestModel, Uuid>(
             mock,
             LargeTestModel.serializer(),
             scope = backgroundScope,
@@ -487,14 +487,14 @@ class ModelCacheTest {
 
     @Test
     fun localModifications() = runTest2 {
-        val mock = ClientModelRestEndpointsMock<LargeTestModel, UUID>(this)
+        val mock = ClientModelRestEndpointsMock<LargeTestModel, Uuid>(this)
         val dataToInsert = listOf(
             LargeTestModel(int = 1),
             LargeTestModel(int = 2),
             LargeTestModel(int = 3),
         )
         mock.data.putAll(dataToInsert.associateBy { it._id })
-        val cache = ModelCache<LargeTestModel, UUID>(
+        val cache = ModelCache<LargeTestModel, Uuid>(
             mock,
             LargeTestModel.serializer(),
             scope = backgroundScope,
@@ -540,10 +540,10 @@ class ModelCacheTest {
 
     @Test
     fun totalInvalidation() = runTest2 {
-        val mock = ClientModelRestEndpointsMock<LargeTestModel, UUID>(this)
+        val mock = ClientModelRestEndpointsMock<LargeTestModel, Uuid>(this)
         val initialItem = LargeTestModel(int = 1)
         mock.data[initialItem._id] = initialItem
-        val cache = ModelCache<LargeTestModel, UUID>(
+        val cache = ModelCache<LargeTestModel, Uuid>(
             mock,
             LargeTestModel.serializer(),
             scope = backgroundScope,
@@ -573,8 +573,8 @@ class ModelCacheTest {
 
     @Test
     fun upsertTest() = runTest2 {
-        val mock = ClientModelRestEndpointsMock<LargeTestModel, UUID>(this)
-        val cache = ModelCache<LargeTestModel, UUID>(
+        val mock = ClientModelRestEndpointsMock<LargeTestModel, Uuid>(this)
+        val cache = ModelCache<LargeTestModel, Uuid>(
             mock,
             LargeTestModel.serializer(),
             scope = backgroundScope,
@@ -607,14 +607,14 @@ class ModelCacheTest {
 
     @Test
     fun bulkModifyTest() = runTest2 {
-        val mock = ClientModelRestEndpointsMock<LargeTestModel, UUID>(this)
+        val mock = ClientModelRestEndpointsMock<LargeTestModel, Uuid>(this)
         val dataToInsert = listOf(
             LargeTestModel(int = 1),
             LargeTestModel(int = 2),
             LargeTestModel(int = 3),
         )
         mock.data.putAll(dataToInsert.associateBy { it._id })
-        val cache = ModelCache<LargeTestModel, UUID>(
+        val cache = ModelCache<LargeTestModel, Uuid>(
             mock,
             LargeTestModel.serializer(),
             scope = backgroundScope,
@@ -648,8 +648,8 @@ class ModelCacheTest {
     @Test
     fun emptyDataAddElements() = runTest2 {
         // Start with an empty mock data source
-        val mock = ClientModelRestEndpointsMock<LargeTestModel, UUID>(this)
-        val cache = ModelCache<LargeTestModel, UUID>(
+        val mock = ClientModelRestEndpointsMock<LargeTestModel, Uuid>(this)
+        val cache = ModelCache<LargeTestModel, Uuid>(
             mock,
             LargeTestModel.serializer(),
             scope = backgroundScope,
@@ -701,8 +701,8 @@ class ModelCacheTest {
     @Test
     fun emptyDataAddElementsSocket() = runTest2 {
         // Start with an empty mock data source using websocket
-        val mock = ClientModelRestEndpointsPlusUpdatesWebsocketMock<LargeTestModel, UUID>(this)
-        val cache = ModelCache<LargeTestModel, UUID>(
+        val mock = ClientModelRestEndpointsPlusUpdatesWebsocketMock<LargeTestModel, Uuid>(this)
+        val cache = ModelCache<LargeTestModel, Uuid>(
             mock,
             LargeTestModel.serializer(),
             scope = backgroundScope,

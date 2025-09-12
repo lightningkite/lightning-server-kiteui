@@ -1,11 +1,11 @@
-@file:UseContextualSerialization(UUID::class, ServerFile::class)
+@file:UseContextualSerialization(Uuid::class, ServerFile::class)
 package com.lightningkite.lightningserver.demo
 
-import com.lightningkite.UUID
-import com.lightningkite.lightningdb.*
-import com.lightningkite.lightningserver.files.ServerFile
-import com.lightningkite.now
-import kotlinx.datetime.Instant
+import kotlin.uuid.Uuid
+import com.lightningkite.services.database.*
+import com.lightningkite.services.files.ServerFile
+import kotlin.time.Clock.System.now
+import kotlin.time.Instant
 import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.UseContextualSerialization
@@ -15,18 +15,18 @@ import kotlinx.serialization.UseContextualSerialization
 @AdminTableColumns(["name", "number", "status"])
 @Description("A model for testing Lightning Server.")
 data class TestModel(
-    override val _id: UUID = UUID.random(),
+    override val _id: Uuid = Uuid.random(),
     @Contextual val timestamp: Instant = now(),
     val name: String = "No Name",
     @Description("The number") val number: Int = 3123,
     @MimeType("text/html") @Multiline val content: String = "",
     @MimeType("image/*") val file: ServerFile? = null,
-    @References(TestModel::class) val replyTo: UUID? = null,
-    @MultipleReferences(TestModel::class) val comments: List<UUID> = listOf(),
+    @References(TestModel::class) val replyTo: Uuid? = null,
+    @MultipleReferences(TestModel::class) val comments: List<Uuid> = listOf(),
     val privateInfo: String? = null,
     val status: Status = Status.DRAFT,
     @AdminHidden val hiddenField: Boolean = false
-) : HasId<UUID>
+) : HasId<Uuid>
 
 @Serializable
 enum class Status {
@@ -37,8 +37,8 @@ enum class Status {
 @Serializable
 @GenerateDataClassPaths
 data class User(
-    override val _id: UUID = UUID.random(),
+    override val _id: Uuid = Uuid.random(),
     override val email: String,
     override val hashedPassword: String = "",
     val isSuperUser: Boolean = false,
-) : HasId<UUID>, HasEmail, HasPassword
+) : HasId<Uuid>, HasEmail, HasPassword

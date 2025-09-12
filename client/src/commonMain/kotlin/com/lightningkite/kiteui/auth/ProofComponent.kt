@@ -5,10 +5,8 @@ import com.lightningkite.kiteui.views.ViewModifiable
 import com.lightningkite.kiteui.views.ViewWriter
 import com.lightningkite.kiteui.views.direct.frame
 import com.lightningkite.kiteui.views.direct.text
-import com.lightningkite.lightningserver.auth.proof.Proof
-import com.lightningkite.lightningserver.auth.proof.ProofMethodInfo
-import com.lightningkite.lightningserver.auth.proof.ProofOption
-import com.lightningkite.lightningserver.auth.subject.ProofsCheckResult
+import com.lightningkite.lightningserver.sessions.proofs.*
+import com.lightningkite.lightningserver.sessions.*
 
 interface ProofComponent {
     val property: String? get() = null

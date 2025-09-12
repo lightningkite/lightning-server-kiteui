@@ -1,13 +1,13 @@
 package com.lightningkite.lightningserver.db
 
-import com.lightningkite.UUID
-import com.lightningkite.lightningdb.Modification
-import com.lightningkite.lightningdb.lt
-import com.lightningkite.lightningdb.modification
-import com.lightningkite.now
+import kotlin.uuid.Uuid
+import com.lightningkite.services.database.Modification
+import com.lightningkite.services.database.lt
+import com.lightningkite.services.database.modification
+import kotlin.time.Clock.System.now
 import com.lightningkite.prepareModelsClientTest
 import com.lightningkite.prepareModelsShared
-import com.lightningkite.serialization.notNull
+import com.lightningkite.services.database.notNull
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -58,7 +58,7 @@ class ModificationDiffTest {
                     doubleNullable = 1.0,
                     charNullable = 'A',
                     stringNullable = "A",
-                    uuidNullable = UUID.random(),
+                    UuidNullable = Uuid.random(),
                     instantNullable = now(),
                     listNullable = listOf(),
                     mapNullable = mapOf(),
@@ -82,7 +82,7 @@ class ModificationDiffTest {
             modification { it.double assign 1.0 },
             modification { it.char assign 'A' },
             modification { it.string assign "A" },
-            modification { it.uuid assign UUID.random() },
+            modification { it.Uuid assign Uuid.random() },
             modification { it.instant assign now() },
             modification { it.list assign listOf(1, 2, 3) },
             modification { it.listEmbedded assign listOf(ClassUsedForEmbedding("test", 42)) },
@@ -105,7 +105,7 @@ class ModificationDiffTest {
             modification { it.doubleNullable assign 1.0 },
             modification { it.charNullable assign 'A' },
             modification { it.stringNullable assign "A" },
-            modification { it.uuidNullable assign UUID.random() },
+            modification { it.UuidNullable assign Uuid.random() },
             modification { it.instantNullable assign now() },
             modification { it.listNullable assign listOf(1, 2, 3) },
             modification { it.mapNullable assign mapOf("a" to 1) },

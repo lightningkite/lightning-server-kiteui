@@ -1,11 +1,10 @@
 package com.lightningkite.kiteui.monitoring
 
-import com.lightningkite.UUID
+import kotlin.uuid.Uuid
 import com.lightningkite.kiteui.*
-import com.lightningkite.lightningserver.monitoring.FunnelStart
 import com.lightningkite.lightningserver.networking.Fetcher
+import com.lightningkite.lightningserver.typed.FunnelStart
 import com.lightningkite.reactive.core.AppScope
-import com.lightningkite.serialization.UUIDSerializer
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
@@ -34,7 +33,7 @@ private suspend fun <I, T> funnelHit(path: String, inSerializer: KSerializer<I>,
 //step
 //success
 
-class FunnelControl(val id: Deferred<UUID?>) {
+class FunnelControl(val id: Deferred<Uuid?>) {
     fun error(error: String) = AppScope.async {
         id.await()?.let {
             funnelHit("error/$it", String.serializer(), error, Unit.serializer())
@@ -54,7 +53,7 @@ class FunnelControl(val id: Deferred<UUID?>) {
 
 object Funnels {
     var fetcher: Fetcher? = null
-    val completableDeferredNull = CompletableDeferred<UUID?>(null)
+    val completableDeferredNull = CompletableDeferred<Uuid?>(null)
 }
 fun funnel(name: String, expirationMinutes: Int = 20): FunnelControl {
     return FunnelControl(AppScope.async {
@@ -63,6 +62,6 @@ fun funnel(name: String, expirationMinutes: Int = 20): FunnelControl {
             userAgent = Platform.userAgent,
             version = Build.version,
             expireAfterMinutes = expirationMinutes
-        ), UUIDSerializer)
+        ), Uuid.serializer())
     })
 }

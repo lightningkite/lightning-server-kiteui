@@ -1,7 +1,7 @@
 package com.lightningkite.lightningserver.db
 
-import com.lightningkite.lightningdb.HasId
-import com.lightningkite.lightningdb.Query
+import com.lightningkite.services.database.HasId
+import com.lightningkite.services.database.Query
 import com.lightningkite.reactive.core.Listenable
 
 interface ListReconstructionCalculator<T : HasId<ID>, ID : Comparable<ID>> {

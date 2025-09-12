@@ -1,31 +1,30 @@
 package com.lightningkite.lightningserver.db
 
-import com.lightningkite.default
-import com.lightningkite.kiteui.Console
+import com.lightningkite.kiteui.Log
 import com.lightningkite.kiteui.TypedWebSocket
 import com.lightningkite.kiteui.identityHashCode
-import com.lightningkite.lightningdb.SortPart
+import com.lightningkite.services.database.SortPart
 import com.lightningkite.reactive.core.*
 import com.lightningkite.reactive.lensing.lens
-import com.lightningkite.serialization.DataClassPathAccess
-import com.lightningkite.serialization.DataClassPathSelf
-import com.lightningkite.serialization.SerializableProperty
-import com.lightningkite.serialization.serializableProperties
+import com.lightningkite.services.database.DataClassPathAccess
+import com.lightningkite.services.database.DataClassPathSelf
+import com.lightningkite.services.database.SerializableProperty
+import com.lightningkite.services.database.serializableProperties
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.first
-import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.serialization.KSerializer
 import kotlin.coroutines.resume
+import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 
 
-fun synchronizingDelay(clock: Clock = Clock.default): suspend (duration: Duration) -> Unit {
+fun synchronizingDelay(clock: Clock = Clock.System): suspend (duration: Duration) -> Unit {
     return {
         val inMillis = it.inWholeMilliseconds
         val n = clock.now()
@@ -37,7 +36,7 @@ interface CloseableFlow<T> : AutoCloseable {
     val flow: Flow<T>
 }
 
-fun <SEND, RECEIVE> TypedWebSocket<SEND, RECEIVE>.toFlow(scope: CoroutineScope, log: Console? = null): Flow<Flow<RECEIVE>?> {
+fun <SEND, RECEIVE> TypedWebSocket<SEND, RECEIVE>.toFlow(scope: CoroutineScope, log: Log? = null): Flow<Flow<RECEIVE>?> {
     val out = MutableSharedFlow<Flow<RECEIVE>?>(replay = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST, extraBufferCapacity = 1)
     var current: MutableSharedFlow<RECEIVE> = MutableSharedFlow(replay = 0, onBufferOverflow = BufferOverflow.DROP_OLDEST, extraBufferCapacity = 1)
     onOpen {
@@ -59,7 +58,10 @@ fun <SEND, RECEIVE> TypedWebSocket<SEND, RECEIVE>.toFlow(scope: CoroutineScope, 
 fun <T> List<SortPart<T>>.ensureTotal(serializer: KSerializer<T>): List<SortPart<T>> {
     if (lastOrNull()?.field?.properties?.singleOrNull()?.name == "_id") return this
     @Suppress("UNCHECKED_CAST")
-    return this + SortPart(DataClassPathAccess(DataClassPathSelf<T>(serializer), serializer.serializableProperties!!.find { it.name == "_id" } as SerializableProperty<T, Comparable<*>>))
+    return this + SortPart(
+        DataClassPathAccess(
+            DataClassPathSelf<T>(serializer),
+            serializer.serializableProperties!!.find { it.name == "_id" } as SerializableProperty<T, Comparable<*>>))
 }
 
 

@@ -6,7 +6,7 @@ import com.lightningkite.kiteui.views.ViewModifiable
 import com.lightningkite.kiteui.views.ViewWriter
 import com.lightningkite.reactive.core.MutableReactive
 import com.lightningkite.reactive.core.Reactive
-import com.lightningkite.serialization.SerializableProperty
+import com.lightningkite.services.database.SerializableProperty
 import com.lightningkite.titleCase
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer

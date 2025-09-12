@@ -11,11 +11,11 @@ import com.lightningkite.kiteui.forms.defaultTitleFields
 import com.lightningkite.kiteui.navigation.DefaultJson
 import com.lightningkite.kiteui.navigation.Page
 import com.lightningkite.kiteui.navigation.UrlProperties
-import com.lightningkite.lightningdb.HasId
+import com.lightningkite.services.database.HasId
 import com.lightningkite.lightningserver.auth.*
 import com.lightningkite.lightningserver.db.*
-import com.lightningkite.lightningserver.files.ServerFile
-import com.lightningkite.lightningserver.files.UploadInformation
+import com.lightningkite.services.files.ServerFile
+import com.lightningkite.services.files.UploadInformation
 import com.lightningkite.lightningserver.networking.BulkFetcher
 import com.lightningkite.lightningserver.networking.ConnectivityFetcher
 import com.lightningkite.lightningserver.networking.Fetcher
@@ -23,8 +23,8 @@ import com.lightningkite.lightningserver.schema.LightningServerKSchema
 import com.lightningkite.lightningserver.schema.LightningServerKSchemaEndpoint
 import com.lightningkite.lightningserver.schema.LightningServerKSchemaInterface
 import com.lightningkite.reactive.context.invoke
-import com.lightningkite.serialization.SerializationRegistry
-import com.lightningkite.serialization.serializableProperties
+import com.lightningkite.services.database.SerializationRegistry
+import com.lightningkite.services.database.serializableProperties
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.builtins.serializer

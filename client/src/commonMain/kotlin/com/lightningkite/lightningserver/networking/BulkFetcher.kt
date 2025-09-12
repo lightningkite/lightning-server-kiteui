@@ -1,13 +1,10 @@
 package com.lightningkite.lightningserver.networking
 
-import com.lightningkite.UUID
 import com.lightningkite.kiteui.*
 import com.lightningkite.kiteui.navigation.DefaultJson
-import com.lightningkite.lightningserver.LSError
-import com.lightningkite.lightningserver.LsErrorException
+import com.lightningkite.lightningserver.*
 import com.lightningkite.lightningserver.typed.BulkRequest
 import com.lightningkite.lightningserver.typed.BulkResponse
-import com.lightningkite.lightningserver.websocket.MultiplexMessage
 import com.lightningkite.reactive.context.reactiveScope
 import com.lightningkite.reactive.core.AppScope
 import com.lightningkite.reactive.core.Reactive
@@ -22,6 +19,7 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.uuid.Uuid
 
 @OptIn(ExperimentalSerializationApi::class)
 class BulkFetcher(
@@ -45,7 +43,7 @@ class BulkFetcher(
         body: I,
         outSerializer: KSerializer<O>,
     ): O {
-        val id = UUID.Companion.random().toString()
+        val id = Uuid.random().toString()
         val req = BulkRequest(
             url,
             method = method.name,
@@ -66,7 +64,7 @@ class BulkFetcher(
             if (it.error == null && outSerializer.descriptor.serialName == Unit.serializer().descriptor.serialName) Unit as O
             else if (it.result != null) json.decodeFromString(outSerializer, it.result!!)
             else {
-                throw LsErrorException(it.error?.http?.toShort() ?: 0.toShort(), it.error ?: LSError(0))
+                throw LsErrorException(it.error ?: LSError(it.error?.http ?: 0))
             }
         }
     }
@@ -142,7 +140,7 @@ class BulkFetcher(
             .map { it.substringBefore('=') to it.substringAfter('=') }
             .groupBy({ it.first }, { it.second })
         val channelOpen = Signal(false)
-        val channel = UUID.Companion.random().toString()
+        val channel = Uuid.Companion.random().toString()
 
         init {
             remember.onMessage { message ->

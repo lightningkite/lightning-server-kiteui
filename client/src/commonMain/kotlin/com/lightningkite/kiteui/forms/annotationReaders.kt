@@ -1,8 +1,8 @@
 package com.lightningkite.kiteui.forms
 
-import com.lightningkite.serialization.SerializableAnnotationValue
-import com.lightningkite.serialization.SerializableProperty
-import com.lightningkite.serialization.serializableAnnotations
+import com.lightningkite.services.database.SerializableAnnotationValue
+import com.lightningkite.services.database.SerializableProperty
+import com.lightningkite.services.database.serializableAnnotations
 import com.lightningkite.titleCase
 import kotlinx.serialization.KSerializer
 
@@ -51,7 +51,7 @@ val SerializableProperty<*, *>.importance
     }?.values?.values?.first()?.let {
         it as? SerializableAnnotationValue.ByteValue
     }?.value?.toInt() ?: when (name) {
-        "_id" -> if (serializer.descriptor.serialName == "com.lightningkite.UUID") 8 else 1
+        "_id" -> if (serializer.descriptor.serialName == "com.lightningkite.Uuid") 8 else 1
         "title", "subject" -> 1
         "name", "email", "phone" -> 2
         else -> 7
@@ -69,7 +69,7 @@ fun SerializableProperty<*, *>.visibility(module: FormModule): FieldVisibility =
     serializableAnnotations.mapNotNull { module.visibilitySettings[it.fqn] }.minOrNull()
         ?: when {
             name == "_id" &&
-                    serializer.descriptor.serialName.substringBefore('/') == ("com.lightningkite.UUID") &&
+                    serializer.descriptor.serialName.substringBefore('/') == ("com.lightningkite.Uuid") &&
                     serializableAnnotations.none { it.fqn == "com.lightningkite.lightningdb.References" } &&
                     serializableAnnotations.none { it.fqn == "com.lightningkite.lightningdb.MultipleReferences" }
                      -> module.visibilitySettings["com.lightningkite.lightningdb.AdminHidden"]!!

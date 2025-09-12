@@ -1,7 +1,7 @@
 package com.lightningkite.lightningserver.db
 
 import com.lightningkite.kiteui.TypedWebSocket
-import com.lightningkite.lightningdb.*
+import com.lightningkite.services.database.*
 import com.lightningkite.reactive.core.Reactive
 
 

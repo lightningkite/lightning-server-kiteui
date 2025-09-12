@@ -9,8 +9,8 @@ import com.lightningkite.kiteui.views.ViewWriter
 import com.lightningkite.kiteui.views.atEnd
 import com.lightningkite.kiteui.views.direct.*
 import com.lightningkite.kiteui.views.important
-import com.lightningkite.lightningdb.Condition
-import com.lightningkite.lightningdb._id
+import com.lightningkite.services.database.Condition
+import com.lightningkite.services.database._id
 import com.lightningkite.lightningserver.db.ModelCache
 import com.lightningkite.reactive.context.invoke
 import com.lightningkite.reactive.context.reactive
@@ -18,8 +18,8 @@ import com.lightningkite.reactive.core.Signal
 import com.lightningkite.reactive.core.remember
 import com.lightningkite.reactive.extensions.asyncReactive
 import com.lightningkite.reactive.extensions.flatten
-import com.lightningkite.serialization.SerializableProperty
-import com.lightningkite.serialization.default
+import com.lightningkite.services.database.SerializableProperty
+import com.lightningkite.services.database.default
 
 @Routable("collections/{collectionName}/new-item")
 class NewItemAdminPage(val collectionName: String) : Page {

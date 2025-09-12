@@ -14,7 +14,7 @@ import com.lightningkite.kiteui.views.expanding
 import com.lightningkite.kiteui.views.fieldTheme
 import com.lightningkite.kiteui.views.l2.errorText
 import com.lightningkite.kiteui.views.l2.icon
-import com.lightningkite.lightningdb.Condition
+import com.lightningkite.services.database.Condition
 import com.lightningkite.reactive.context.invoke
 import com.lightningkite.reactive.core.Constant
 import com.lightningkite.reactive.core.MutableReactive
@@ -22,9 +22,10 @@ import com.lightningkite.reactive.core.Signal
 import com.lightningkite.reactive.core.remember
 import com.lightningkite.reactive.extensions.nullable
 import com.lightningkite.reactive.extensions.withWrite
-import com.lightningkite.serialization.SerializableAnnotationValue
-import com.lightningkite.serialization.UUIDSerializer
+import com.lightningkite.services.database.SerializableAnnotationValue
+import kotlinx.serialization.builtins.serializer
 import kotlinx.datetime.*
+import kotlin.uuid.Uuid
 
 fun FormModule.defaults() {
     viewForTypeWithField<Boolean>(FormSize.Inline) { field, it ->
@@ -461,12 +462,12 @@ fun FormModule.defaults() {
             }
         }
     )
-    formForType<UUID>(FormSize(24.0, 1.0), UUIDSerializer) {
+    formForType<Uuid>(FormSize(24.0, 1.0), Uuid.serializer()) {
         fieldTheme - row {
             expanding - textInput {
                 content bind it.lens(get = { it.toString() }, modify = { o, it ->
                     try {
-                        UUID.parse(it)
+                        Uuid.parse(it)
                     } catch (e: Exception) {
                         o
                     }
@@ -474,16 +475,16 @@ fun FormModule.defaults() {
             }
             button {
                 icon(Icon.sync, "Regenerate")
-                onClick { it set UUID.random() }
+                onClick { it set Uuid.random() }
             }
         }
     }
-    formForType<UUID>(FormSize(24.0, 1.0)) {
+    formForType<Uuid>(FormSize(24.0, 1.0)) {
         fieldTheme - row {
             expanding - textInput {
                 content bind it.lens(get = { it.toString() }, modify = { o, it ->
                     try {
-                        UUID.parse(it)
+                        Uuid.parse(it)
                     } catch (e: Exception) {
                         o
                     }
@@ -491,14 +492,14 @@ fun FormModule.defaults() {
             }
             button {
                 icon(Icon.sync, "Regenerate")
-                onClick { it set UUID.random() }
+                onClick { it set Uuid.random() }
             }
         }
     }
-    viewForType<UUID>(FormSize(24.0, 1.0), UUIDSerializer) {
+    viewForType<Uuid>(FormSize(24.0, 1.0), Uuid.serializer()) {
         text { ::content { it().toString() } }
     }
-    viewForType<UUID>(FormSize(24.0, 1.0)) {
+    viewForType<Uuid>(FormSize(24.0, 1.0)) {
         text { ::content { it().toString() } }
     }
 

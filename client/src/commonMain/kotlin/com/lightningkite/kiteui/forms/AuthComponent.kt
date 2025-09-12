@@ -16,10 +16,10 @@ import com.lightningkite.kiteui.views.l2.field
 import com.lightningkite.kiteui.views.l2.icon
 import com.lightningkite.lightningserver.LsErrorException
 import com.lightningkite.lightningserver.auth.*
-import com.lightningkite.lightningserver.auth.proof.*
-import com.lightningkite.lightningserver.auth.subject.LogInRequest
-import com.lightningkite.lightningserver.auth.subject.ProofsCheckResult
-import com.lightningkite.now
+import com.lightningkite.lightningserver.sessions.proofs.*
+import com.lightningkite.lightningserver.sessions.LogInRequest
+import com.lightningkite.lightningserver.sessions.ProofsCheckResult
+import kotlin.time.Clock.System.now
 import com.lightningkite.reactive.context.*
 import com.lightningkite.reactive.core.*
 import kotlinx.coroutines.*
@@ -350,8 +350,8 @@ class ReAuthComponent(
                 )
             )
 
-            result.session?.also { onAuthentication(it) }
 
+            result.refreshToken?.also { onAuthentication(it) }
         }
 
         return col {
@@ -947,7 +947,7 @@ class AuthComponent(
                                 expires = desiredSessionLength.await()?.let { now() + it }
                             ))
 
-                        result.session?.let {
+                        result.refreshToken?.let {
                             onAuthentication(it)
                             (AppScope + Dispatchers.Main).launch {
                                 if (rememberDevice.await()) {
@@ -997,7 +997,7 @@ fun ViewWriter.sessionLengthComponent(
         }
         centered - text {
             ::content {
-                val days = authResult()?.maxExpiration?.let { it - now() }?.toDouble(DurationUnit.DAYS)
+                val days = authResult()?.expires?.let { it - now() }?.toDouble(DurationUnit.DAYS)
                     ?.roundToInt()
                 if (days != null) "Keep me logged in for $days days" else "Keep me logged in"
             }

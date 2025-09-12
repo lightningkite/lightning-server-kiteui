@@ -2,31 +2,34 @@
 
 package com.lightningkite.lightningserver.auth
 
-import com.lightningkite.UUID
+import kotlin.uuid.Uuid
 import com.lightningkite.kiteui.HttpMethod
-import com.lightningkite.lightningdb.HasId
+import com.lightningkite.services.database.HasId
 import com.lightningkite.lightningserver.LSError
 import com.lightningkite.lightningserver.LsErrorException
-import com.lightningkite.lightningserver.auth.oauth.OauthResponse
-import com.lightningkite.lightningserver.auth.oauth.OauthTokenRequest
-import com.lightningkite.lightningserver.auth.proof.*
-import com.lightningkite.lightningserver.auth.subject.IdAndAuthMethods
-import com.lightningkite.lightningserver.auth.subject.LogInRequest
-import com.lightningkite.lightningserver.auth.subject.ProofsCheckResult
-import com.lightningkite.lightningserver.auth.subject.SubSessionRequest
+import com.lightningkite.lightningserver.sessions.proofs.*
+import com.lightningkite.lightningserver.sessions.IdAndAuthMethods
+import com.lightningkite.lightningserver.sessions.LogInRequest
+import com.lightningkite.lightningserver.sessions.ProofsCheckResult
+import com.lightningkite.lightningserver.sessions.SubSessionRequest
 import com.lightningkite.lightningserver.networking.Fetcher
-import com.lightningkite.now
+import com.lightningkite.lightningserver.sessions.EstablishOtp
+import com.lightningkite.lightningserver.sessions.EstablishPassword
+import com.lightningkite.lightningserver.sessions.proofs.oauth.OauthResponse
+import com.lightningkite.lightningserver.sessions.proofs.oauth.OauthTokenRequest
+import kotlin.time.Clock.System.now
 import com.lightningkite.reactive.core.AppScope
 import com.lightningkite.reactive.core.Listenable
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.datetime.Clock.System
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.serializer
+import kotlin.time.Clock
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.minutes
 
@@ -106,13 +109,14 @@ data class AuthClientEndpoints(
                     val id = proofs.find { it.property == "email" }?.value?.substringBefore('@')?.substringBefore('+')
                     return methodLookup[id] ?: methodLookup["all"]!!
                 }
+
                 override suspend fun logIn(input: List<Proof>): IdAndAuthMethods<String> {
                     delay(1000)
                     return IdAndAuthMethods(
                         id = "id",
                         options = get(input).filter { it.method.via !in input.map { it.via } },
                         strengthRequired = 3,
-                        session = if (input.sumOf { it.strength } >= 3) "" else null
+                        refreshToken = if (input.sumOf { it.strength } >= 3) "" else null
                     )
                 }
 
@@ -122,7 +126,7 @@ data class AuthClientEndpoints(
                         id = "id",
                         options = get(input.proofs).filter { it.method.via !in input.proofs.map { it.via } },
                         strengthRequired = 3,
-                        session = if (input.proofs.sumOf { it.strength } >= 3) "" else null
+                        refreshToken = if (input.proofs.sumOf { it.strength } >= 3) "" else null
                     )
                 }
 
@@ -132,7 +136,7 @@ data class AuthClientEndpoints(
                         id = "id",
                         options = get(input).filter { it.method.via !in input.map { it.via } },
                         strengthRequired = 3,
-                        maxExpiration = now() + 7.days,
+                        expires = now() + 7.days,
                         readyToLogIn = input.sumOf { it.strength } >= 3
                     )
                 }
@@ -149,7 +153,6 @@ data class AuthClientEndpoints(
                 override suspend fun provePhoneOwnership(input: FinishProof): Proof {
                     delay(1000)
                     if (input.password == "wrong") throw LsErrorException(
-                        400,
                         LSError(400, "", "Code incorrect. 4 attempts remain", "")
                     )
                     return Proof("sms", property = "phone", value = input.key, at = now(), signature = "")
@@ -164,7 +167,6 @@ data class AuthClientEndpoints(
                 override suspend fun proveEmailOwnership(input: FinishProof): Proof {
                     delay(1000)
                     if (input.password == "wrong") throw LsErrorException(
-                        400,
                         LSError(400, "", "Code incorrect. 4 attempts remain", "")
                     )
                     return Proof("email", property = "email", value = input.key, at = now(), signature = "")
@@ -174,7 +176,7 @@ data class AuthClientEndpoints(
                 override suspend fun provePasswordOwnership(input: IdentificationAndPassword): Proof {
                     delay(1000)
                     if (input.password == "wrong") throw LsErrorException(
-                        400,
+
                         LSError(400, "", "Password and user do not match", "")
                     )
                     return Proof("password", property = "password", value = "id", at = now(), signature = "")
@@ -184,7 +186,7 @@ data class AuthClientEndpoints(
                 override suspend fun proveOTP(input: IdentificationAndPassword): Proof {
                     delay(1000)
                     if (input.password == "wrong") throw LsErrorException(
-                        400,
+
                         LSError(400, "", "OTP and user do not match", "")
                     )
                     return Proof("otp", property = "otp", value = "id", at = now(), signature = "")
@@ -193,7 +195,7 @@ data class AuthClientEndpoints(
             knownDeviceProof = object : KnownDeviceProofClientEndpoints {
                 override suspend fun proveKnownDevice(input: String): Proof {
                     delay(1000)
-                    if (input == "wrong") throw LsErrorException(400, LSError(400, "", "", ""))
+                    if (input == "wrong") throw LsErrorException(LSError(400, "", "", ""))
                     return Proof("known-device", 1, "id", "value", now(), "")
                 }
 
@@ -207,9 +209,13 @@ data class AuthClientEndpoints(
                     delay(1000)
                     return WebAuthN.Authentication.StartResponse(
                         "sfhfhfsghdgjdghjfsgsgbbcnkfhkjrtshgdzfgv",
-                        options = WebAuthN.Authentication.PublicKeyCredentialRequestOptions(challenge ="sfhfhfsghdgjdghjfsgsgbbcnkfhkjrtshgdzfgv", rpId = "com.test")
+                        options = WebAuthN.Authentication.PublicKeyCredentialRequestOptions(
+                            challenge = "sfhfhfsghdgjdghjfsgsgbbcnkfhkjrtshgdzfgv",
+                            rpId = "com.test"
+                        )
                     )
                 }
+
                 override suspend fun prove(input: WebAuthN.Authentication.ProveRequest): Proof {
                     delay(1000)
                     return Proof(via = "WebAuthN", property = "WebAuthN", value = "id", at = now(), signature = "")
@@ -219,7 +225,6 @@ data class AuthClientEndpoints(
                 override suspend fun proveBackupCode(input: IdentificationAndPassword): Proof {
                     delay(1000)
                     if (input.password == "wrong") throw LsErrorException(
-                        400,
                         LSError(400, "", "OTP and user do not match", "")
                     )
                     return Proof("backupcode", property = "backupcode", value = "id", at = now(), signature = "")
@@ -566,9 +571,13 @@ open class AuthenticatedBackupCodeProofClientEndpointsLive(
     )
 }
 
-fun <ID : Comparable<ID>> UserAuthClientEndpoints<ID>.accessToken(sessionToken: String): suspend () -> List<Pair<String, String>>
-    = accessToken(sessionToken, null)
-fun <ID : Comparable<ID>> UserAuthClientEndpoints<ID>.accessToken(sessionToken: String, forceInvalidate: Listenable?): suspend () -> List<Pair<String, String>> {
+fun <ID : Comparable<ID>> UserAuthClientEndpoints<ID>.accessToken(sessionToken: String): suspend () -> List<Pair<String, String>> =
+    accessToken(sessionToken, null)
+
+fun <ID : Comparable<ID>> UserAuthClientEndpoints<ID>.accessToken(
+    sessionToken: String,
+    forceInvalidate: Listenable?
+): suspend () -> List<Pair<String, String>> {
     var lastRefresh: Instant = Instant.DISTANT_PAST
     var token: Deferred<String>? = null
     forceInvalidate?.let {
@@ -579,8 +588,8 @@ fun <ID : Comparable<ID>> UserAuthClientEndpoints<ID>.accessToken(sessionToken: 
     }
     return {
         var toUse = token
-        if (System.now() - lastRefresh > 4.minutes || toUse == null) {
-            lastRefresh = System.now()
+        if (Clock.System.now() - lastRefresh > 4.minutes || toUse == null) {
+            lastRefresh = Clock.System.now()
             val out = AppScope.async {
                 getTokenSimple(sessionToken)
             }
@@ -659,7 +668,7 @@ interface AuthenticatedUserAuthClientEndpoints<User : HasId<ID>, ID : Comparable
     suspend fun createSubSession(input: SubSessionRequest): String
     suspend fun getSelf(): User
     suspend fun terminateSession(): Unit
-    suspend fun terminateOtherSession(sessionId: UUID): Unit
+    suspend fun terminateOtherSession(sessionId: Uuid): Unit
 
 }
 
@@ -703,7 +712,7 @@ open class AuthenticatedUserAuthClientEndpointsLive<USER : HasId<ID>, ID : Compa
         outSerializer = Unit.serializer()
     )
 
-    override suspend fun terminateOtherSession(sessionId: UUID): Unit = fetcher(
+    override suspend fun terminateOtherSession(sessionId: Uuid): Unit = fetcher(
         url = "$subpath/${sessionId}/terminate",
         method = HttpMethod.POST,
         inSerializer = Unit.serializer(),

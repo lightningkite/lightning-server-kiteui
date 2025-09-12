@@ -41,7 +41,12 @@ kotlin {
     sourceSets {
         val commonMain by getting {
             dependencies {
-                api(libs.comLightningkiteLightningserverShared)
+                api(libs.comLightningKiteServices.database)
+                api(libs.comLightningKiteServices.stringArrayFormat)
+                api(libs.comLightningkiteLightningserver.core.shared)
+                api(libs.comLightningkiteLightningserver.files.shared)
+                api(libs.comLightningkiteLightningserver.typed.shared)
+                api(libs.comLightningkiteLightningserver.sessions.shared)
                 api(libs.comLightningkiteKiteuiLibrary)
             }
             kotlin {
@@ -58,11 +63,16 @@ kotlin {
             }
         }
     }
+    compilerOptions {
+        optIn.add("kotlin.time.ExperimentalTime")
+        optIn.add("kotlin.uuid.ExperimentalUuidApi")
+        freeCompilerArgs.add("-Xcontext-parameters")
+    }
 }
 
 dependencies {
     configurations.filter { it.name.startsWith("ksp") && it.name != "ksp" }.forEach {
-        add(it.name, libs.comLightningkiteLightningserverProcessor)
+        add(it.name, libs.comLightningKiteServices.database.processor)
     }
 }
 

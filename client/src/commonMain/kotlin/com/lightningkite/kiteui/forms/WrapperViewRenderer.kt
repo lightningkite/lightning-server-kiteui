@@ -1,7 +1,7 @@
 package com.lightningkite.kiteui.forms
 
 import com.lightningkite.reactive.lensing.lens
-import com.lightningkite.serialization.WrappingSerializer
+import com.lightningkite.services.database.WrappingSerializer
 
 
 object WrapperViewRenderer: ViewRenderer.Generator {

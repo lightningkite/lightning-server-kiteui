@@ -11,14 +11,14 @@ import com.lightningkite.kiteui.views.ViewWriter
 import com.lightningkite.kiteui.views.centered
 import com.lightningkite.kiteui.views.direct.stack
 import com.lightningkite.kiteui.views.direct.text
-import com.lightningkite.lightningdb.HasId
-import com.lightningkite.lightningdb.SortPart
+import com.lightningkite.services.database.HasId
+import com.lightningkite.services.database.SortPart
 import com.lightningkite.lightningserver.db.ModelCache
 import com.lightningkite.reactive.context.ReactiveContext
 import com.lightningkite.reactive.core.MutableReactive
 import com.lightningkite.reactive.core.Reactive
-import com.lightningkite.serialization.*
-import kotlinx.datetime.Instant
+import com.lightningkite.services.database.*
+import kotlin.time.Instant
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.builtins.serializer
@@ -279,7 +279,7 @@ fun <T> KSerializer<T>.defaultTitleFields(): List<DataClassPath<T, *>> {
         ?: it.find { it.name == "title" }?.let { DataClassPathAccess(DataClassPathSelf(serializer), it) }?.let(::listOf)
         ?: it.find { it.name == "subject" }?.let { DataClassPathAccess(DataClassPathSelf(serializer), it) }?.let(::listOf)
         ?: it.find { it.name == "label" }?.let { DataClassPathAccess(DataClassPathSelf(serializer), it) }?.let(::listOf)
-        ?: it.find { it.name == "_id" && !it.serializer.descriptor.serialName.contains("UUID") }?.let { DataClassPathAccess(DataClassPathSelf(serializer), it) }?.let(::listOf)
+        ?: it.find { it.name == "_id" && !it.serializer.descriptor.serialName.contains("Uuid") }?.let { DataClassPathAccess(DataClassPathSelf(serializer), it) }?.let(::listOf)
         ?: it.map { DataClassPathAccess(DataClassPathSelf(serializer), it) }.take(3)
     return nameFields
 }

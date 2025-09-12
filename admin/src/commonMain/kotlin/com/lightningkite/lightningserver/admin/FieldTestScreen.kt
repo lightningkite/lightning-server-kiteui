@@ -12,8 +12,8 @@ import com.lightningkite.kiteui.views.direct.scrolling
 import com.lightningkite.kiteui.views.direct.text
 import com.lightningkite.kiteui.views.l2.field
 import com.lightningkite.reactive.core.Signal
-import com.lightningkite.serialization.SerializationRegistry
-import com.lightningkite.serialization.default
+import com.lightningkite.services.database.SerializationRegistry
+import com.lightningkite.services.database.default
 import kotlinx.serialization.KSerializer
 
 @Routable("field-test-screen")

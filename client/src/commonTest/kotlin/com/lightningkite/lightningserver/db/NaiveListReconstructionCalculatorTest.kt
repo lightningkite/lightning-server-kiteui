@@ -1,15 +1,15 @@
 package com.lightningkite.lightningserver.db
 
-import com.lightningkite.UUID
+import kotlin.uuid.Uuid
 import com.lightningkite.kiteui.ConsoleRoot
 import com.lightningkite.kiteui.Platform
 import com.lightningkite.kiteui.current
 import com.lightningkite.kiteui.forms.prepareModelsClient
-import com.lightningkite.lightningdb.*
-import com.lightningkite.now
+import com.lightningkite.services.database.*
+import kotlin.time.Clock.System.now
 import com.lightningkite.prepareModelsClientTest
 import com.lightningkite.prepareModelsShared
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -25,8 +25,8 @@ class NaiveListReconstructionCalculatorTest {
 
     @Test
     fun basic() = runTest2 {
-        val mock = ClientModelRestEndpointsMock<LargeTestModel, UUID>(this)
-//        val mock = ClientModelRestEndpointsPlusUpdatesWebsocketMock<LargeTestModel, UUID>()
+        val mock = ClientModelRestEndpointsMock<LargeTestModel, Uuid>(this)
+//        val mock = ClientModelRestEndpointsPlusUpdatesWebsocketMock<LargeTestModel, Uuid>()
         val dataToInsert = listOf(
             LargeTestModel(int = 1),
             LargeTestModel(int = 2),
@@ -158,7 +158,7 @@ class NaiveListReconstructionCalculatorTest {
     }
 
     @Test fun queryWithLimit() = runTest2 {
-        val mock = ClientModelRestEndpointsMock<LargeTestModel, UUID>(this)
+        val mock = ClientModelRestEndpointsMock<LargeTestModel, Uuid>(this)
         val dataToInsert = listOf(
             LargeTestModel(int = 1),
             LargeTestModel(int = 2),
@@ -180,7 +180,7 @@ class NaiveListReconstructionCalculatorTest {
     }
 
     @Test fun queryWithSorting() = runTest2 {
-        val mock = ClientModelRestEndpointsMock<LargeTestModel, UUID>(this)
+        val mock = ClientModelRestEndpointsMock<LargeTestModel, Uuid>(this)
         val dataToInsert = listOf(
             LargeTestModel(int = 5),
             LargeTestModel(int = 3),

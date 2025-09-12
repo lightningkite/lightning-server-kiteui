@@ -10,11 +10,11 @@ import com.lightningkite.kiteui.views.direct.select
 import com.lightningkite.kiteui.views.direct.sizeConstraints
 import com.lightningkite.kiteui.views.direct.stack
 import com.lightningkite.kiteui.views.expanding
-import com.lightningkite.lightningserver.files.ServerFile
 import com.lightningkite.reactive.context.reactive
 import com.lightningkite.reactive.core.Constant
 import com.lightningkite.reactive.core.Signal
-import com.lightningkite.serialization.ClientModule
+import com.lightningkite.services.database.ClientModule
+import com.lightningkite.services.files.ServerFile
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.descriptors.SerialKind
 

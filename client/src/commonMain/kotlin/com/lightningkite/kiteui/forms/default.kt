@@ -1,7 +1,7 @@
 package com.lightningkite.kiteui.forms
 
 import com.lightningkite.kiteui.navigation.DefaultSerializersModule
-import com.lightningkite.serialization.DefaultDecoder
+import com.lightningkite.services.database.DefaultDecoder
 import kotlinx.serialization.ContextualSerializer
 import kotlinx.serialization.DeserializationStrategy
 import kotlinx.serialization.ExperimentalSerializationApi

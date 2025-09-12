@@ -7,10 +7,10 @@ import com.lightningkite.kiteui.views.ViewWriter
 import com.lightningkite.kiteui.views.direct.col
 import com.lightningkite.kiteui.views.direct.text
 import com.lightningkite.kiteui.views.fieldTheme
-import com.lightningkite.now
+import kotlin.time.Clock.System.now
 import com.lightningkite.reactive.core.reactiveProcess
 import kotlinx.coroutines.delay
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract

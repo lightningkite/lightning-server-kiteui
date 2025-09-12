@@ -1,13 +1,13 @@
 package com.lightningkite.lightningserver.db
 
 import com.lightningkite.Temperature
-import com.lightningkite.UUID
+import kotlin.uuid.Uuid
 import com.lightningkite.kiteui.forms.get
 import com.lightningkite.kiteui.forms.serializationCast
 import com.lightningkite.kiteui.forms.set
-import com.lightningkite.lightningdb.Query
-import com.lightningkite.serialization.default
-import kotlinx.datetime.Instant
+import com.lightningkite.services.database.Query
+import com.lightningkite.services.database.default
+import kotlin.time.Instant
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.serializer
@@ -18,11 +18,11 @@ import kotlin.time.Duration
 class HelpersKtTest {
     @Serializable
     data class TestModel(
-        val _id: UUID = UUID.random(),
+        val _id: Uuid = Uuid.random(),
         val x: Int = 0,
         val y: String,
         val z: Duration?,
-        val uhoh: UUID,
+        val uhoh: Uuid,
         val nah: Instant
     )
 

@@ -15,9 +15,9 @@ import com.lightningkite.reactive.core.Reactive
 import com.lightningkite.reactive.extensions.flatten
 import com.lightningkite.reactive.lensing.lens
 import com.lightningkite.reactive.lensing.lensByElementAssumingSetNeverManipulates
-import com.lightningkite.serialization.SerializableAnnotation
-import com.lightningkite.serialization.default
-import com.lightningkite.serialization.listElement
+import com.lightningkite.services.database.SerializableAnnotation
+import com.lightningkite.services.database.default
+import com.lightningkite.services.database.listElement
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.SetSerializer

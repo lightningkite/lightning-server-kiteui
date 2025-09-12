@@ -1,10 +1,10 @@
 package com.lightningkite.lightningserver.db
 
-import com.lightningkite.UUID
-import com.lightningkite.lightningdb.GenerateDataClassPaths
-import com.lightningkite.lightningdb.HasId
-import com.lightningkite.lightningdb.Index
-import kotlinx.datetime.Instant
+import kotlin.uuid.Uuid
+import com.lightningkite.services.database.GenerateDataClassPaths
+import com.lightningkite.services.database.HasId
+import com.lightningkite.services.database.Index
+import kotlin.time.Instant
 import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
 
@@ -16,7 +16,7 @@ data class Item(override val _id: Int, val creation: Int = 0) : HasId<Int>
 @GenerateDataClassPaths
 @Serializable
 data class LargeTestModel(
-    override val _id: UUID = UUID.random(),
+    override val _id: Uuid = Uuid.random(),
     var boolean: Boolean = false,
     var byte: Byte = 0,
     var short: Short = 0,
@@ -26,7 +26,7 @@ data class LargeTestModel(
     var double: Double = 0.0,
     var char: Char = ' ',
     var string: String = "",
-    var uuid: UUID = UUID.random(),
+    var Uuid: Uuid = Uuid.random(),
     @Contextual var instant: Instant = Instant.fromEpochMilliseconds(0L),
     var list: List<Int> = listOf(),
     var listEmbedded: List<ClassUsedForEmbedding> = listOf(),
@@ -43,12 +43,12 @@ data class LargeTestModel(
     var doubleNullable: Double? = null,
     var charNullable: Char? = null,
     var stringNullable: String? = null,
-    var uuidNullable: UUID? = null,
+    var UuidNullable: Uuid? = null,
     @Contextual var instantNullable: Instant? = null,
     var listNullable: List<Int>? = null,
     var mapNullable: Map<String, Int>? = null,
     var embeddedNullable: ClassUsedForEmbedding? = null,
-) : HasId<UUID> {
+) : HasId<Uuid> {
     companion object
 }
 @GenerateDataClassPaths

@@ -1,10 +1,10 @@
 package com.lightningkite.lightningserver.db
 
 import com.lightningkite.kiteui.TypedWebSocket
-import com.lightningkite.lightningdb.CollectionUpdates
-import com.lightningkite.lightningdb.Condition
-import com.lightningkite.lightningdb.EntryChange
-import com.lightningkite.lightningdb.HasId
+import com.lightningkite.services.database.CollectionUpdates
+import com.lightningkite.services.database.Condition
+import com.lightningkite.services.database.EntryChange
+import com.lightningkite.services.database.HasId
 import com.lightningkite.reactive.core.Constant
 import com.lightningkite.reactive.core.Reactive
 import com.lightningkite.reactive.core.Signal

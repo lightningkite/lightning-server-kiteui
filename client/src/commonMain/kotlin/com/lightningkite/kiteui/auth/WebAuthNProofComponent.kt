@@ -10,10 +10,10 @@ import com.lightningkite.kiteui.views.centered
 import com.lightningkite.kiteui.views.direct.activityIndicator
 import com.lightningkite.kiteui.views.direct.frame
 import com.lightningkite.lightningserver.auth.WebAuthNProofEndpoints
-import com.lightningkite.lightningserver.auth.proof.Identification
-import com.lightningkite.lightningserver.auth.proof.Proof
-import com.lightningkite.lightningserver.auth.proof.WebAuthN
-import com.lightningkite.lightningserver.auth.subject.ProofsCheckResult
+import com.lightningkite.lightningserver.sessions.proofs.Identification
+import com.lightningkite.lightningserver.sessions.proofs.Proof
+import com.lightningkite.lightningserver.sessions.proofs.WebAuthN
+import com.lightningkite.lightningserver.sessions.ProofsCheckResult
 import kotlinx.coroutines.launch
 
 data class WebAuthNProofComponent(

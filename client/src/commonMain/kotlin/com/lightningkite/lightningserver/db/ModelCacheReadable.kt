@@ -1,6 +1,6 @@
 package com.lightningkite.lightningserver.db
 
-import com.lightningkite.lightningdb.Modification
+import com.lightningkite.services.database.Modification
 import com.lightningkite.reactive.context.awaitOnce
 import com.lightningkite.reactive.context.invoke
 import com.lightningkite.reactive.core.AppScope
@@ -8,7 +8,7 @@ import com.lightningkite.reactive.core.MutableReactive
 import com.lightningkite.reactive.core.Reactive
 import com.lightningkite.reactive.core.remember
 import kotlinx.coroutines.launch
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 
 interface ModelCacheReadable<T> : Reactive<T> {
 //    val disconnectedAt: Reactive<Instant?>

@@ -1,7 +1,7 @@
 package com.lightningkite.kiteui
 
 import com.lightningkite.kiteui.exceptions.PlainTextException
-import com.lightningkite.lightningserver.auth.proof.WebAuthN
+import com.lightningkite.lightningserver.sessions.proofs.WebAuthN
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.serialization.ExperimentalSerializationApi
 import org.khronos.webgl.Int8Array

@@ -10,20 +10,20 @@ import com.lightningkite.kiteui.views.*
 import com.lightningkite.kiteui.views.direct.*
 import com.lightningkite.kiteui.views.l2.icon
 import com.lightningkite.kiteui.views.l2.toast
-import com.lightningkite.lightningdb.Condition
-import com.lightningkite.lightningdb.ConditionSerializer
-import com.lightningkite.lightningdb.HasId
-import com.lightningkite.lightningdb._id
+import com.lightningkite.services.database.Condition
+import com.lightningkite.services.database.ConditionSerializer
+import com.lightningkite.services.database.HasId
+import com.lightningkite.services.database._id
 import com.lightningkite.lightningserver.db.ModelCache
 import com.lightningkite.reactive.context.reactive
 import com.lightningkite.reactive.core.Draft
 import com.lightningkite.reactive.core.remember
 import com.lightningkite.reactive.extensions.flatten
 import com.lightningkite.reactive.extensions.notNull
-import com.lightningkite.serialization.SerializableAnnotationValue
-import com.lightningkite.serialization.SerializableProperty
-import com.lightningkite.serialization.default
-import com.lightningkite.serialization.serializableProperties
+import com.lightningkite.services.database.SerializableAnnotationValue
+import com.lightningkite.services.database.SerializableProperty
+import com.lightningkite.services.database.default
+import com.lightningkite.services.database.serializableProperties
 
 @Routable("collections/{collectionName}/detail/{itemId}")
 class DetailAdminPage(val collectionName: String, val itemId: String) : Page {

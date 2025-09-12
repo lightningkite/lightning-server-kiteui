@@ -1,15 +1,15 @@
 package com.lightningkite.lightningserver.db
 
-import com.lightningkite.lightningdb.*
+import com.lightningkite.services.database.*
 import com.lightningkite.reactive.core.Constant
 import com.lightningkite.reactive.core.LateInitSignal
 import com.lightningkite.reactive.core.Reactive
 import com.lightningkite.reactive.core.ReactiveState
 import com.lightningkite.reactive.extensions.value
-import kotlinx.datetime.Clock.System.now
-import kotlinx.datetime.Instant
 import kotlinx.serialization.KSerializer
+import kotlin.time.Clock
 import kotlin.time.Duration
+import kotlin.time.Instant
 
 class MockModelCollection<T : HasId<ID>, ID : Comparable<ID>>(val serializer: KSerializer<T>) : ModelCacheLike<T, ID> {
     val models = HashMap<ID, MockWritableModel>()
@@ -20,7 +20,7 @@ class MockModelCollection<T : HasId<ID>, ID : Comparable<ID>>(val serializer: KS
     }
 
     inner class MockWritableModel(val id: ID) : ModelCacheItemReadable<T> {
-        override val lastUpdatedAt: Reactive<Instant?> = Constant(now())
+        override val lastUpdatedAt: Reactive<Instant?> = Constant(Clock.System.now())
         val property = LateInitSignal<T?>()
         val value: T? get() = property.state.let { if(it.success) it.raw else null }
 
@@ -82,7 +82,7 @@ class MockModelCollection<T : HasId<ID>, ID : Comparable<ID>>(val serializer: KS
             }
             .take(limit)
             .toList())
-        override val lastUpdatedAt: Reactive<Instant?> = Constant(now())
+        override val lastUpdatedAt: Reactive<Instant?> = Constant(Clock.System.now())
     }
 
     override suspend fun add(item: T): T {

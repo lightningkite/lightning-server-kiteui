@@ -18,10 +18,10 @@ import com.lightningkite.kiteui.views.l2.icon
 import com.lightningkite.lightningserver.auth.AuthClientEndpoints
 import com.lightningkite.lightningserver.auth.LightningServerAuthentication
 import com.lightningkite.lightningserver.auth.UserAuthClientEndpoints
-import com.lightningkite.lightningserver.auth.proof.Proof
-import com.lightningkite.lightningserver.auth.subject.LogInRequest
-import com.lightningkite.lightningserver.auth.subject.ProofsCheckResult
-import com.lightningkite.now
+import com.lightningkite.lightningserver.sessions.proofs.Proof
+import com.lightningkite.lightningserver.sessions.LogInRequest
+import com.lightningkite.lightningserver.sessions.ProofsCheckResult
+import kotlin.time.Clock.System.now
 import com.lightningkite.reactive.context.await
 import com.lightningkite.reactive.context.invoke
 import com.lightningkite.reactive.context.reactive
@@ -278,7 +278,7 @@ open class AuthComponent2(
             }
             centered - text {
                 ::content {
-                    val days = authResult()?.maxExpiration?.let { it - now() }?.toDouble(DurationUnit.DAYS)
+                    val days = authResult()?.expires?.let { it - now() }?.toDouble(DurationUnit.DAYS)
                         ?.roundToInt()
                     if (days != null) "Keep me logged in for $days days" else "Keep me logged in"
                 }
@@ -295,7 +295,7 @@ open class AuthComponent2(
                         expires = desiredSessionLength.await()?.let { now() + it }
                     ))
 
-                result.session?.let {
+                result.refreshToken?.let {
                     onAuthentication(it)
                     (AppScope + Dispatchers.Main).launch {
                         if (rememberDevice.await()) {

@@ -43,9 +43,9 @@ class ConnectivityFetcher(
                 val text = it.text()
                 throw try {
                     val e = json.decodeFromString(LSError.Companion.serializer(), text)
-                    LsErrorException(it.status, e)
+                    LsErrorException(e)
                 } catch (e: Exception) {
-                    LsErrorException(it.status, LSError(it.status.toInt(), "Unknown", message = text))
+                    LsErrorException(LSError(it.status.toInt(), "Unknown", message = text))
                 }
             } else {
                 @Suppress("UNCHECKED_CAST")

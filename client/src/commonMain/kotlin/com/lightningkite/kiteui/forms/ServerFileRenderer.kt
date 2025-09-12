@@ -8,7 +8,7 @@ import com.lightningkite.kiteui.views.centered
 import com.lightningkite.kiteui.views.direct.*
 import com.lightningkite.kiteui.views.expanding
 import com.lightningkite.kiteui.views.l2.icon
-import com.lightningkite.lightningserver.files.ServerFile
+import com.lightningkite.services.files.ServerFile
 
 object ServerFileRenderer  : FormRenderer.Generator, ViewRenderer.Generator {
     override val name: String = "File"

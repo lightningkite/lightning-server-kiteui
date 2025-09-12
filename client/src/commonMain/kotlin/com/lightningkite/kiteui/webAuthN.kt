@@ -1,6 +1,6 @@
 package com.lightningkite.kiteui
 
-import com.lightningkite.lightningserver.auth.proof.WebAuthN
+import com.lightningkite.lightningserver.sessions.proofs.WebAuthN
 
 @Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
 expect class ClientAuthenticator {

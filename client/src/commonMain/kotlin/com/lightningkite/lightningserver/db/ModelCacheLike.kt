@@ -1,8 +1,8 @@
 package com.lightningkite.lightningserver.db
 
-import com.lightningkite.lightningdb.HasId
-import com.lightningkite.lightningdb.MassModification
-import com.lightningkite.lightningdb.Query
+import com.lightningkite.services.database.HasId
+import com.lightningkite.services.database.MassModification
+import com.lightningkite.services.database.Query
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds

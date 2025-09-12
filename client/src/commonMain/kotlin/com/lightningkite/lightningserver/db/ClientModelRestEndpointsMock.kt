@@ -2,10 +2,10 @@ package com.lightningkite.lightningserver.db
 
 import com.lightningkite.kiteui.ConnectionException
 import com.lightningkite.kiteui.Console
-import com.lightningkite.lightningdb.*
+import com.lightningkite.services.database.*
 import com.lightningkite.lightningserver.LSError
 import com.lightningkite.lightningserver.LsErrorException
-import com.lightningkite.serialization.Partial
+import com.lightningkite.services.database.Partial
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlin.time.Duration
@@ -49,7 +49,7 @@ open class ClientModelRestEndpointsMock<T : HasId<ID>, ID : Comparable<ID>>(
         if(connectivityFailure) throw ConnectionException("Dead")
         log?.log("detail")
         delay(delayAmount)
-        return data[id] ?: throw LsErrorException(404, LSError(404, "not-found", "", ""))
+        return data[id] ?: throw LsErrorException(LSError(404, "not-found", "", ""))
     }
     override suspend fun insertBulk(input: List<T>): List<T> {
         if(connectivityFailure) throw ConnectionException("Dead")
@@ -110,7 +110,6 @@ open class ClientModelRestEndpointsMock<T : HasId<ID>, ID : Comparable<ID>>(
         delay(delayAmount)
         return data[id]?.let { input(it) }?.also { change(CollectionUpdates(updates = setOf(it))) }
             ?: throw LsErrorException(
-                404,
                 LSError(404, "not-found", "", "")
             )
     }

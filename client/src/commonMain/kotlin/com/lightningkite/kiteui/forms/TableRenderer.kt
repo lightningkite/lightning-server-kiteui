@@ -6,12 +6,13 @@ import com.lightningkite.kiteui.views.*
 import com.lightningkite.kiteui.views.direct.*
 import com.lightningkite.kiteui.views.l2.children
 import com.lightningkite.kiteui.views.l2.icon
-import com.lightningkite.lightningdb.HasId
+import com.lightningkite.services.database.HasId
 import com.lightningkite.lightningserver.db.LimitReadable
 import com.lightningkite.reactive.context.invoke
 import com.lightningkite.reactive.context.reactive
 import com.lightningkite.reactive.core.*
-import com.lightningkite.serialization.*
+import com.lightningkite.serialization.lensPath
+import com.lightningkite.services.database.*
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.serializer

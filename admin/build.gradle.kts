@@ -79,7 +79,7 @@ ksp {
 
 dependencies {
     configurations.filter { it.name.startsWith("ksp") && it.name != "ksp" }.forEach {
-        add(it.name, libs.comLightningkiteLightningserverProcessor)
+        add(it.name, libs.comLightningKiteServices.database.processor)
     }
 }
 

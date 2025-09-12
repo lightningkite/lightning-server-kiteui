@@ -9,10 +9,10 @@ fun ExceptionToMessages.installLsError() {
         ExceptionMessage(
             title = "Error",
             body = it.error.message.takeUnless { it.isBlank() } ?: when(it.status) {
-                400.toShort() -> "Incorrectly formed information was sent."
-                401.toShort() -> "You're not authenticated properly."
-                403.toShort() -> "You're not allowed to do this."
-                500.toShort() -> "Something's wrong with the server."
+                400 -> "Incorrectly formed information was sent."
+                401 -> "You're not authenticated properly."
+                403 -> "You're not allowed to do this."
+                500 -> "Something's wrong with the server."
                 else -> "Got a code ${it.status} from the server."
             }
         )

@@ -10,9 +10,9 @@ import com.lightningkite.kiteui.views.direct.*
 import com.lightningkite.kiteui.views.l2.errorText
 import com.lightningkite.kiteui.views.l2.icon
 import com.lightningkite.lightningserver.auth.EmailProofClientEndpoints
-import com.lightningkite.lightningserver.auth.proof.FinishProof
-import com.lightningkite.lightningserver.auth.proof.Proof
-import com.lightningkite.lightningserver.auth.proof.ProofOption
+import com.lightningkite.lightningserver.sessions.proofs.FinishProof
+import com.lightningkite.lightningserver.sessions.proofs.Proof
+import com.lightningkite.lightningserver.sessions.proofs.ProofOption
 import com.lightningkite.reactive.context.await
 import com.lightningkite.reactive.context.invoke
 import com.lightningkite.reactive.context.reactive

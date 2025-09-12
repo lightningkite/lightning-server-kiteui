@@ -2,12 +2,12 @@
 //
 //import com.lightningkite.kiteui.TypedWebSocket
 //import com.lightningkite.readable.*
-//import com.lightningkite.lightningdb.*
-//import com.lightningkite.now
+//import com.lightningkite.services.database.*
+//import kotlin.time.Clock.System.now
 //import com.lightningkite.prepareModelsClientTest
 //import com.lightningkite.prepareModelsShared
 //import kotlinx.coroutines.launch
-//import kotlinx.datetime.Instant
+//import kotlin.time.Instant
 //import kotlin.test.Test
 //import kotlin.test.assertEquals
 //import kotlin.test.assertFalse

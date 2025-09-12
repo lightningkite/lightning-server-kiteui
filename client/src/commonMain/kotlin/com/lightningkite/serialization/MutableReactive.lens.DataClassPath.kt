@@ -1,12 +1,13 @@
 package com.lightningkite.serialization
 
-import com.lightningkite.lightningdb.path
 import com.lightningkite.reactive.core.MutableReactive
 import com.lightningkite.reactive.core.MutableReactiveValue
 import com.lightningkite.reactive.core.Reactive
 import com.lightningkite.reactive.lensing.lens
 import com.lightningkite.reactive.lensing.validation.MutableValidated
 import com.lightningkite.reactive.lensing.validation.MutableValidatedValue
+import com.lightningkite.services.database.DataClassPath
+import com.lightningkite.services.database.path
 
 fun <O, T> MutableReactive<O>.lensPath(path: DataClassPath<O, T>): MutableReactive<T> {
     return lens(

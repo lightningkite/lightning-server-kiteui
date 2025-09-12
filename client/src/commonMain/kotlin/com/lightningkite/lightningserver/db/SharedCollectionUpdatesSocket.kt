@@ -2,10 +2,10 @@ package com.lightningkite.lightningserver.db
 
 import com.lightningkite.kiteui.Console
 import com.lightningkite.kiteui.TypedWebSocket
-import com.lightningkite.lightningdb.CollectionUpdates
-import com.lightningkite.lightningdb.Condition
-import com.lightningkite.lightningdb.HasId
-import com.lightningkite.lightningdb.simplify
+import com.lightningkite.services.database.CollectionUpdates
+import com.lightningkite.services.database.Condition
+import com.lightningkite.services.database.HasId
+import com.lightningkite.services.database.simplify
 import com.lightningkite.reactive.context.reactive
 import com.lightningkite.reactive.core.Signal
 import com.lightningkite.reactive.extensions.use
@@ -13,8 +13,8 @@ import com.lightningkite.reactive.lensing.lens
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.datetime.Clock.System.now
-import kotlinx.datetime.Instant
+import kotlin.time.Clock.System.now
+import kotlin.time.Instant
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 

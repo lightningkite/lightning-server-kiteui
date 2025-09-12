@@ -8,10 +8,10 @@ import com.lightningkite.kiteui.views.direct.sizeConstraints
 import com.lightningkite.kiteui.views.direct.stack
 import com.lightningkite.kiteui.views.expanding
 import com.lightningkite.kiteui.views.fieldTheme
-import com.lightningkite.lightningdb.MySealedClassSerializerInterface
+import com.lightningkite.services.database.MySealedClassSerializerInterface
 import com.lightningkite.reactive.context.reactive
 import com.lightningkite.reactive.core.Constant
-import com.lightningkite.serialization.default
+import com.lightningkite.services.database.default
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.descriptors.SerialKind
 import kotlinx.serialization.descriptors.StructureKind

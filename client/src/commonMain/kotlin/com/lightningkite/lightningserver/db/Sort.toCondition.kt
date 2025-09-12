@@ -1,9 +1,9 @@
 package com.lightningkite.lightningserver.db
 
-import com.lightningkite.lightningdb.Condition
-import com.lightningkite.lightningdb.SortPart
-import com.lightningkite.serialization.DataClassPath
-import com.lightningkite.serialization.DataClassPathNotNull
+import com.lightningkite.services.database.Condition
+import com.lightningkite.services.database.SortPart
+import com.lightningkite.services.database.DataClassPath
+import com.lightningkite.services.database.DataClassPathNotNull
 
 fun <T> List<SortPart<T>>.after(after: T): Condition<T> {
     return Condition.Or<T>((1..this.size).map { count ->
