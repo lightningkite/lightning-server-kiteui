@@ -38,9 +38,9 @@ private object Regexes {
 
 @ViewDsl
 fun ViewWriter.login(
-    endpoints: AuthClientEndpoints,
+    endpoints: AuthEndpoints,
     subjectPath: String = endpoints.subjects.keys.single(),
-    subject: UserAuthClientEndpoints<*> = endpoints.subjects[subjectPath]!!,
+    subject: AuthClientEndpoints<*, *> = endpoints.subjects[subjectPath]!!,
     knownDeviceLocalStorageName: String? = "known-device",
     onAuthentication: suspend (String) -> Unit,
 ) {
@@ -62,7 +62,7 @@ data class KnownDeviceSecretInfoStuff(
 )
 
 
-class EmailProof(val p: EmailProofClientEndpoints, val id: String, var codeKey: String) : CurrentProof {
+class EmailProof(val p: ProofClientEndpoints.Email, val id: String, var codeKey: String) : CurrentProof {
     val code = Signal("")
     val resendTime = 15.seconds
     override fun ViewWriter.render(onProof: (Proof) -> Unit, onException: (Exception) -> Unit) {
@@ -112,7 +112,7 @@ class EmailProof(val p: EmailProofClientEndpoints, val id: String, var codeKey: 
 }
 
 
-class SmsProof(val p: SmsProofClientEndpoints, val id: String, var codeKey: String) : CurrentProof {
+class SmsProof(val p: ProofClientEndpoints.Sms, val id: String, var codeKey: String) : CurrentProof {
     val code = Signal("")
     val resendTime = 15.seconds
     override fun ViewWriter.render(onProof: (Proof) -> Unit, onException: (Exception) -> Unit) {
@@ -161,7 +161,7 @@ class SmsProof(val p: SmsProofClientEndpoints, val id: String, var codeKey: Stri
 }
 
 class PasswordProof(
-    val p: PasswordProofClientEndpoints,
+    val p: ProofClientEndpoints.Password,
     val type: String,
     val key: String,
     val value: String,
@@ -191,7 +191,7 @@ class PasswordProof(
 }
 
 class TotpProof(
-    val p: OneTimePasswordProofClientEndpoints,
+    val p: ProofClientEndpoints.TimeBasedOTP,
     val type: String,
     val key: String,
     val value: String,
@@ -220,7 +220,7 @@ class TotpProof(
 }
 
 class BackupCodeProof(
-    val p: BackupCodeProofClientEndpoints,
+    val p: ProofClientEndpoints.BackupCode,
     val type: String,
     val key: String,
     val value: String,
@@ -248,7 +248,7 @@ class BackupCodeProof(
 }
 
 class WebAuthNProof(
-    val p: WebAuthNProofEndpoints,
+    val p: ProofClientEndpoints.WebAuthN,
     val type: String,
     val property: String?,
     val key: String?,
@@ -305,10 +305,9 @@ interface CurrentProof {
 
 class ReAuthComponent(
     val subjectId: String,
-    val endpoints: AuthClientEndpoints,
+    val endpoints: AuthEndpoints,
     val subjectType: String,
-    val subject: UserAuthClientEndpoints<*>,
-    val authenticationSubject: AuthenticatedUserAuthClientEndpoints<*, *>,
+    val subject: AuthClientEndpoints<*, *>,
     val knownDeviceLocalStorageName: String? = "known-device",
     val newSessionDuration: Duration = 15.minutes,
     val onAuthentication: suspend (String) -> Unit,
@@ -317,9 +316,7 @@ class ReAuthComponent(
     val currentProof = Signal<CurrentProof?>(null)
     val authenticating = Signal(false)
     val knownDevice = knownDeviceLocalStorageName?.let { PersistentProperty<KnownDeviceSecretInfoStuff?>(it, null) }
-    val requirements = rememberSuspending {
-        authenticationSubject.authRequirements()
-    }
+    val requirements = rememberSuspending { subject.authRequirements() }
     val readyToLogin = Signal(false)
 
     fun ViewWriter.render(): ViewModifiable {
@@ -558,9 +555,9 @@ class ReAuthComponent(
 
 
 class AuthComponent(
-    val endpoints: AuthClientEndpoints,
+    val endpoints: AuthEndpoints,
     val subjectPath: String = endpoints.subjects.keys.single(),
-    val subject: UserAuthClientEndpoints<*> = endpoints.subjects[subjectPath]!!,
+    val subject: AuthClientEndpoints<*, *> = endpoints.subjects[subjectPath]!!,
     val knownDeviceLocalStorageName: String? = "known-device",
     val onAuthentication: suspend (String) -> Unit,
 ) {
@@ -951,13 +948,13 @@ class AuthComponent(
                             onAuthentication(it)
                             (AppScope + Dispatchers.Main).launch {
                                 if (rememberDevice.await()) {
-                                    endpoints.authenticatedKnownDeviceProof?.invoke(
+                                    endpoints.withAuth(
                                         LightningServerAuthentication(
                                             subject,
                                             subjectPath,
                                             it
                                         )
-                                    )?.establishKnownDeviceV2()?.let {
+                                    ).knownDeviceProof?.establishKnownDeviceV2()?.let {
                                         knownDevice?.value = KnownDeviceSecretInfoStuff(
                                             info = it,
                                             primaryIdentifier = primaryIdentifier.value

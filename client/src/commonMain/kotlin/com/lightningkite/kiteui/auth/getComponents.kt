@@ -1,9 +1,9 @@
 package com.lightningkite.kiteui.auth
 
-import com.lightningkite.lightningserver.auth.AuthClientEndpoints
+import com.lightningkite.lightningserver.auth.AuthEndpoints
 
 
-fun AuthClientEndpoints.components(
+fun AuthEndpoints.components(
     subjectType: String = subjects.keys.single()
 ): List<ProofComponent> = listOfNotNull(
     smsProof?.let { SmsProofComponent(it) },

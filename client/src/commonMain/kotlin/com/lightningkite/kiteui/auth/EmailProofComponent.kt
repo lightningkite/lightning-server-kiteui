@@ -9,9 +9,9 @@ import com.lightningkite.kiteui.views.*
 import com.lightningkite.kiteui.views.direct.*
 import com.lightningkite.kiteui.views.l2.errorText
 import com.lightningkite.kiteui.views.l2.icon
-import com.lightningkite.lightningserver.auth.EmailProofClientEndpoints
 import com.lightningkite.lightningserver.sessions.proofs.FinishProof
 import com.lightningkite.lightningserver.sessions.proofs.Proof
+import com.lightningkite.lightningserver.sessions.proofs.ProofClientEndpoints
 import com.lightningkite.lightningserver.sessions.proofs.ProofOption
 import com.lightningkite.reactive.context.await
 import com.lightningkite.reactive.context.invoke
@@ -22,7 +22,7 @@ import com.lightningkite.reactive.core.Signal
 import com.lightningkite.reactive.core.rememberSuspending
 import kotlin.time.Duration.Companion.seconds
 
-data class EmailProofComponent(val p: EmailProofClientEndpoints) : ProofComponent {
+data class EmailProofComponent(val p: ProofClientEndpoints.Email) : ProofComponent {
     override val name: String = "Email Code"
     override val icon: Icon = Icon.Companion.email
     override val via: String = p.via

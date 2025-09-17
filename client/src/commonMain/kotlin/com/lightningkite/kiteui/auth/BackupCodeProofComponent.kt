@@ -13,14 +13,14 @@ import com.lightningkite.kiteui.views.direct.text
 import com.lightningkite.kiteui.views.direct.textInput
 import com.lightningkite.kiteui.views.important
 import com.lightningkite.kiteui.views.l2.errorText
-import com.lightningkite.lightningserver.auth.BackupCodeProofClientEndpoints
 import com.lightningkite.lightningserver.sessions.proofs.IdentificationAndPassword
 import com.lightningkite.lightningserver.sessions.proofs.Proof
+import com.lightningkite.lightningserver.sessions.proofs.ProofClientEndpoints
 import com.lightningkite.lightningserver.sessions.proofs.ProofOption
 import com.lightningkite.reactive.context.await
 import com.lightningkite.reactive.core.Signal
 
-data class BackupCodeProofComponent(val p: BackupCodeProofClientEndpoints, val type: String) : ProofComponent {
+data class BackupCodeProofComponent(val p: ProofClientEndpoints.BackupCode, val type: String) : ProofComponent {
     override val name: String = "Enter Backup Code"
     override val icon: Icon = Icon.security
     override val via: String = p.via

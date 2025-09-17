@@ -4,7 +4,7 @@ import com.lightningkite.kiteui.Console
 import com.lightningkite.services.database.HasId
 import com.lightningkite.services.database.Query
 import com.lightningkite.services.database.comparator
-import kotlin.time.Clock.System.now
+
 import com.lightningkite.reactive.core.BasicListenable
 import com.lightningkite.reactive.core.Listenable
 import kotlinx.serialization.KSerializer

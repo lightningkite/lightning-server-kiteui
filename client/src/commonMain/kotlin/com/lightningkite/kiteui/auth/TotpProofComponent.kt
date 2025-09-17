@@ -13,14 +13,14 @@ import com.lightningkite.kiteui.views.direct.text
 import com.lightningkite.kiteui.views.direct.textInput
 import com.lightningkite.kiteui.views.important
 import com.lightningkite.kiteui.views.l2.errorText
-import com.lightningkite.lightningserver.auth.OneTimePasswordProofClientEndpoints
 import com.lightningkite.lightningserver.sessions.proofs.IdentificationAndPassword
 import com.lightningkite.lightningserver.sessions.proofs.Proof
+import com.lightningkite.lightningserver.sessions.proofs.ProofClientEndpoints
 import com.lightningkite.lightningserver.sessions.proofs.ProofOption
 import com.lightningkite.reactive.context.await
 import com.lightningkite.reactive.core.Signal
 
-data class TotpProofComponent(val p: OneTimePasswordProofClientEndpoints, val type: String) : ProofComponent {
+data class TotpProofComponent(val p: ProofClientEndpoints.TimeBasedOTP, val type: String) : ProofComponent {
     override val name: String = "Use Authenticator App"
     override val icon: Icon = Icon.Companion.pinCode
     override val via: String = p.via

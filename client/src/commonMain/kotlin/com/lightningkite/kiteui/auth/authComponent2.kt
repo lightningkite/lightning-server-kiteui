@@ -15,12 +15,12 @@ import com.lightningkite.kiteui.views.*
 import com.lightningkite.kiteui.views.direct.*
 import com.lightningkite.kiteui.views.l2.field
 import com.lightningkite.kiteui.views.l2.icon
-import com.lightningkite.lightningserver.auth.AuthClientEndpoints
+import com.lightningkite.lightningserver.auth.AuthEndpoints
 import com.lightningkite.lightningserver.auth.LightningServerAuthentication
-import com.lightningkite.lightningserver.auth.UserAuthClientEndpoints
 import com.lightningkite.lightningserver.sessions.proofs.Proof
 import com.lightningkite.lightningserver.sessions.LogInRequest
 import com.lightningkite.lightningserver.sessions.ProofsCheckResult
+import com.lightningkite.lightningserver.sessions.proofs.AuthClientEndpoints
 import kotlin.time.Clock.System.now
 import com.lightningkite.reactive.context.await
 import com.lightningkite.reactive.context.invoke
@@ -44,9 +44,9 @@ private val emailRegex = Regex("""[\w\-+._]+@(?:[\w\-]+\w\.)+[\w\-]+\w$""")
 private val phoneRegex = Regex("""\+?[0-9-. ]+$""")
 
 fun ViewWriter.authComponent2(
-    endpoints: AuthClientEndpoints,
+    endpoints: AuthEndpoints,
     subjectType: String = endpoints.subjects.keys.single(),
-    subject: UserAuthClientEndpoints<*> = endpoints.subjects[subjectType]!!,
+    subject: AuthClientEndpoints<*, *> = endpoints.subjects[subjectType]!!,
     supportUsernames: Boolean = false,
     knownDeviceLocalStorageName: String? = "known-device",
     filterMethods: suspend (UserIdentification?, List<ProofComponent>) -> List<ProofComponent> = { _, it -> it },
@@ -62,9 +62,9 @@ fun ViewWriter.authComponent2(
 ).render(to = this)
 
 open class AuthComponent2(
-    val endpoints: AuthClientEndpoints,
+    val endpoints: AuthEndpoints,
     val subjectType: String = endpoints.subjects.keys.single(),
-    val subject: UserAuthClientEndpoints<*> = endpoints.subjects[subjectType]!!,
+    val subject: AuthClientEndpoints<*, *> = endpoints.subjects[subjectType]!!,
     val supportUsernames: Boolean = false,
     val knownDeviceLocalStorageName: String? = "known-device",
     val filterMethods: suspend (UserIdentification?, List<ProofComponent>) -> List<ProofComponent> = { _, it -> it },
@@ -299,13 +299,13 @@ open class AuthComponent2(
                     onAuthentication(it)
                     (AppScope + Dispatchers.Main).launch {
                         if (rememberDevice.await()) {
-                            endpoints.authenticatedKnownDeviceProof?.invoke(
+                            endpoints.withAuth(
                                 LightningServerAuthentication(
                                     subject,
                                     subjectType,
                                     it
                                 )
-                            )?.establishKnownDeviceV2()?.let {
+                            ).knownDeviceProof?.establishKnownDeviceV2()?.let {
                                 knownDevice?.value = KnownDeviceSecretInfoStuff(
                                     info = it,
                                     primaryIdentifier = primaryIdentifier.value?.value ?: ""

@@ -1,7 +1,6 @@
 package com.lightningkite.kiteui.forms
 
 import com.lightningkite.kiteui.navigation.DefaultSerializersModule
-import com.lightningkite.services.database.DefaultDecoder
 import kotlinx.serialization.ContextualSerializer
 import kotlinx.serialization.DeserializationStrategy
 import kotlinx.serialization.ExperimentalSerializationApi
@@ -11,8 +10,7 @@ import kotlinx.serialization.encoding.*
 import kotlinx.serialization.modules.SerializersModule
 
 private class EnumValueGetter(var index: Int = 0): Decoder {
-    override val serializersModule: SerializersModule
-        get() = DefaultDecoder.serializersModule
+    override val serializersModule: SerializersModule get() = DefaultSerializersModule
 
     override fun beginStructure(descriptor: SerialDescriptor): CompositeDecoder {
         TODO("Not yet implemented")

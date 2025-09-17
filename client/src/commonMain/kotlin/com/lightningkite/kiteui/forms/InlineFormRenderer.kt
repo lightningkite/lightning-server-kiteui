@@ -1,10 +1,15 @@
 package com.lightningkite.kiteui.forms
 
 import com.lightningkite.reactive.lensing.lens
-import com.lightningkite.services.database.tryChildSerializers
+import kotlinx.serialization.InternalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.descriptors.SerialKind
 import kotlinx.serialization.descriptors.StructureKind
+import kotlinx.serialization.internal.GeneratedSerializer
+
+
+@OptIn(InternalSerializationApi::class)
+fun KSerializer<*>.tryChildSerializers(): Array<KSerializer<*>>? = (this as? GeneratedSerializer<*>)?.childSerializers()
 
 object InlineFormRenderer : FormRenderer.Generator, ViewRenderer.Generator {
     override val name: String get() = "Inline Wrapper"

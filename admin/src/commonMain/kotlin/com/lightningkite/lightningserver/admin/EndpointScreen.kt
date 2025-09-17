@@ -13,15 +13,18 @@ import com.lightningkite.kiteui.navigation.encodeToString
 import com.lightningkite.kiteui.views.*
 import com.lightningkite.kiteui.views.direct.*
 import com.lightningkite.kiteui.views.l2.errorText
+import com.lightningkite.lightningserver.networking.lightningServer
 import com.lightningkite.reactive.context.reactive
 import com.lightningkite.reactive.core.*
 import com.lightningkite.services.database.default
-import com.lightningkite.services.database.nullable2
 import kotlinx.serialization.KSerializer
+import kotlinx.serialization.builtins.nullable
 import kotlinx.serialization.builtins.serializer
 
 @Routable("endpoints/{method}/{path}")
 class EndpointPage(val path: String, val method: String) : Page {
+    @Suppress("UNCHECKED_CAST")
+    private val <T> KSerializer<T>.nullable2: KSerializer<T?> get() = if (this.descriptor.isNullable) this as KSerializer<T?> else (this as KSerializer<Any>).nullable as KSerializer<T?>
 
     class RoutePage<T>(val formModule: FormModule, val name: String, val type: KSerializer<T>, val value: Signal<T> = Signal(type.default())) {
         fun render(viewWriter: ViewWriter) = with(viewWriter) {
@@ -77,7 +80,7 @@ class EndpointPage(val path: String, val method: String) : Page {
                         output.state = reactiveState {
                             server().fetcher(adminAuthentication()).invoke(
                                 url = path(),
-                                method = HttpMethod.valueOf(endpoint().method),
+                                method = HttpMethod.valueOf(endpoint().method).lightningServer,
                                 inSerializer = inputSerializer,
                                 body = input.value,
                                 outSerializer = outputSerializer,

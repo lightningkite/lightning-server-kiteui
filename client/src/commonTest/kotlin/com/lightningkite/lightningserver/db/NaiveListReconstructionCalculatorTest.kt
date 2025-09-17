@@ -4,11 +4,8 @@ import kotlin.uuid.Uuid
 import com.lightningkite.kiteui.ConsoleRoot
 import com.lightningkite.kiteui.Platform
 import com.lightningkite.kiteui.current
-import com.lightningkite.kiteui.forms.prepareModelsClient
 import com.lightningkite.services.database.*
 import kotlin.time.Clock.System.now
-import com.lightningkite.prepareModelsClientTest
-import com.lightningkite.prepareModelsShared
 import kotlin.time.Instant
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -16,12 +13,6 @@ import kotlin.test.assertNull
 
 class NaiveListReconstructionCalculatorTest {
     val testLog = if(Platform.current == Platform.Desktop) ConsoleRoot else null
-
-    init {
-        prepareModelsShared()
-        prepareModelsClient()
-        prepareModelsClientTest()
-    }
 
     @Test
     fun basic() = runTest2 {

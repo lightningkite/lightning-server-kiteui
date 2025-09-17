@@ -5,15 +5,21 @@ import com.lightningkite.kiteui.navigation.DefaultJson
 import com.lightningkite.lightningserver.*
 import com.lightningkite.lightningserver.typed.BulkRequest
 import com.lightningkite.lightningserver.typed.BulkResponse
+import com.lightningkite.lightningserver.typed.ClientWebSocket
+import com.lightningkite.lightningserver.typed.Fetcher
 import com.lightningkite.reactive.context.reactiveScope
 import com.lightningkite.reactive.core.AppScope
 import com.lightningkite.reactive.core.Reactive
 import com.lightningkite.reactive.core.Signal
+import com.lightningkite.reactive.extensions.invokeAllSafe
+import com.lightningkite.services.data.StringArrayFormat
 import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.builtins.MapSerializer
 import kotlinx.serialization.builtins.serializer
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
@@ -28,29 +34,35 @@ class BulkFetcher(
     val json: Json = DefaultJson,
     val pingTime: Duration = 5_000.milliseconds,
     val delay: Duration = 100.milliseconds,
-    val log: Console? = null,
+    val log: Log? = null,
     val calculator: suspend () -> List<Pair<String, String>> = { listOf() },
 ) : Fetcher {
+    private val stringArrayFormat = StringArrayFormat(json.serializersModule)
+    override fun <T> url(value: T, serializer: KSerializer<T>): String = stringArrayFormat.encodeToString(serializer, value)
+
     override fun withHeaderCalculator(calculator: suspend () -> List<Pair<String, String>>): Fetcher =
         BulkFetcher(httpBulk, wsMultiplex, json, pingTime, delay, log, calculator)
 
     private var fetchQueue = HashMap<String, Pair<BulkRequest, CancellableContinuation<BulkResponse>>>()
     private var scheduled = false
+
     override suspend fun <I, O> invoke(
         url: String,
-        method: HttpMethod,
+        method: com.lightningkite.lightningserver.HttpMethod,
         inSerializer: KSerializer<I>,
         body: I,
         outSerializer: KSerializer<O>,
     ): O {
         val id = Uuid.random().toString()
+
         val req = BulkRequest(
             url,
-            method = method.name,
-            body =  if (inSerializer.descriptor.serialName != "kotlin.Unit")
-                json.encodeToString(inSerializer, body)
-            else null
+            method = method.toString(),
+            body =
+                if (inSerializer.descriptor.serialName == "kotlin.Unit") null
+                else json.encodeToString(inSerializer, body)
         )
+
         if (!scheduled) {
             scheduled = true
             AppScope.launch {
@@ -58,14 +70,13 @@ class BulkFetcher(
                 fetch()
             }
         }
-        return suspendCancellableCoroutine<BulkResponse> { cont ->
-            fetchQueue.put(id, req to cont)
+
+        return suspendCancellableCoroutine { cont ->
+            fetchQueue[id] = req to cont
         }.let { it: BulkResponse ->
             if (it.error == null && outSerializer.descriptor.serialName == Unit.serializer().descriptor.serialName) Unit as O
             else if (it.result != null) json.decodeFromString(outSerializer, it.result!!)
-            else {
-                throw LsErrorException(it.error ?: LSError(it.error?.http ?: 0))
-            }
+            else throw LsErrorException(it.error ?: LSError(it.error?.http ?: 0))
         }
     }
 
@@ -76,12 +87,13 @@ class BulkFetcher(
         try {
             connectivityFetch(
                 url = httpBulk,
-                method = HttpMethod.POST,
+                method = HttpMethod.POST.kiteUi,
                 headers = { httpHeaders(calculator()) },
                 body = RequestBodyText(
                     json.encodeToString(
-                        MapSerializer(String.serializer(), BulkRequest.Companion.serializer()),
-                        todo.mapValues { it.value.first }),
+                        MapSerializer(String.serializer(), BulkRequest.serializer()),
+                        todo.mapValues { it.value.first }
+                    ),
                     "application/json"
                 )
             ).let { it: RequestResponse ->
@@ -102,7 +114,7 @@ class BulkFetcher(
         }
     }
 
-    val remember = retryWebsocket(
+    val wsMuxer = retryWebsocket(
         underlyingSocket = {
             val headers = calculator()
 
@@ -110,18 +122,18 @@ class BulkFetcher(
                 val terminator = if(wsMultiplex.contains('?')) '&' else '?'
                 wsMultiplex + "$terminator${headers.joinToString("&"){ "${it.first}=${it.second}" }}"
             } else wsMultiplex
-            com.lightningkite.kiteui.websocket(url)
+            websocket(url)
         },
         pingTime = pingTime.inWholeMilliseconds,
         log = log
-    ).typedWithDebug(json, MultiplexMessage.Companion.serializer(), MultiplexMessage.Companion.serializer()).also {
-        if(debugMode && log != null) {
-            it.onOpen {
-                it.send(MultiplexMessage(channel = "debug", start = true))
+    ).typedWithDebug(json, MultiplexMessage.serializer(), MultiplexMessage.serializer()).also { mux ->
+        if (debugMode && log != null) {
+            mux.onOpen {
+                mux.send(MultiplexMessage(channel = "debug", start = true))
             }
         }
-        it.onMessage {
-            if(log != null && it.channel == "debug") log.log("Multiplex debug: $it")
+        mux.onMessage {
+            if (log != null && it.channel == "debug") log.log("Multiplex debug: $it")
         }
     }
 
@@ -129,61 +141,59 @@ class BulkFetcher(
         url: String,
         inSerializer: KSerializer<I>,
         outSerializer: KSerializer<O>,
-    ): TypedWebSocket<I, O> {
-        return WebsocketChannel(url).typed(json, inSerializer, outSerializer)
-    }
+    ): ClientWebSocket<I, O> =
+        WebsocketChannel(url).typed(json, inSerializer, outSerializer)
 
-    private inner class WebsocketChannel(url: String) : RetryWebsocket {
+    private inner class WebsocketChannel(url: String) : ClientWebSocket<String, String> {
         val path = url.substringBefore('?')
+
         val params = url.substringAfter('?', "")
             .split('&')
             .map { it.substringBefore('=') to it.substringAfter('=') }
             .groupBy({ it.first }, { it.second })
-        val channelOpen = Signal(false)
-        val channel = Uuid.Companion.random().toString()
+
+
+        override val connected = MutableStateFlow(false)
+
+        val channel = Uuid.random().toString()
 
         init {
-            remember.onMessage { message ->
+            wsMuxer.onMessage { message ->
                 if (message.channel == channel) {
                     if (message.start) {
-                        channelOpen.value = true
-                        onOpenList.forEach { it() }
+                        connected.value = true
+                        onOpenList.invokeAllSafe()
                     }
                     message.data?.let { data ->
-                        onMessageList.forEach { it(data) }
+                        onMessageList.toList().forEach { it(data) }
                     }
                     if (message.end) {
-                        channelOpen.value = false
-                        onCloseList.forEach { it(-1) }
+                        connected.value = false
+                        onCloseList.toList().forEach { it(-1) }
                     }
                 }
             }
-            remember.onClose {
-                channelOpen.value = false
+            wsMuxer.onClose {
+                connected.value = false
                 onCloseList.forEach { it(-1) }
             }
         }
 
-        override val connected: Reactive<Boolean>
-            get() = channelOpen
-        val shouldBeOn = Signal(0)
+        private val shouldBeOn = Signal(false)
+        private var closeChannel: (() -> Unit)? = null
 
-        override fun beginUse(): () -> Unit {
-            shouldBeOn.value++
-            val parent = remember.beginUse()
-            return {
-                parent()
-                shouldBeOn.value--
-            }
+        override fun connect() {
+            shouldBeOn.value = true
+            if (closeChannel == null) closeChannel = wsMuxer.beginUse()
         }
 
         val lifecycle = CoroutineScope(Job()).apply {
             reactiveScope {
-                val shouldBeOn = shouldBeOn() > 0
-                val isOn = channelOpen()
-                val parentConnected = remember.connected()
+                val shouldBeOn = shouldBeOn()
+                val isOn = connected()
+                val parentConnected = wsMuxer.connected()
                 if (shouldBeOn && parentConnected && !isOn) {
-                    remember.send(
+                    wsMuxer.send(
                         MultiplexMessage(
                             channel = channel,
                             path = path,
@@ -192,7 +202,7 @@ class BulkFetcher(
                         )
                     )
                 } else if (!shouldBeOn && parentConnected && isOn) {
-                    remember.send(
+                    wsMuxer.send(
                         MultiplexMessage(
                             channel = channel,
                             path = path,
@@ -205,7 +215,8 @@ class BulkFetcher(
         }
 
         override fun close(code: Short, reason: String) {
-            remember.send(
+            shouldBeOn.value = false
+            wsMuxer.send(
                 MultiplexMessage(
                     channel = channel,
                     path = path,
@@ -213,13 +224,12 @@ class BulkFetcher(
                     end = true
                 )
             )
+            closeChannel?.invoke()
             lifecycle.cancel()
         }
 
-        override fun send(data: Blob) = throw UnsupportedOperationException()
-
         override fun send(data: String) {
-            remember.send(
+            wsMuxer.send(
                 MultiplexMessage(
                     channel = channel,
                     data = data,
@@ -230,6 +240,7 @@ class BulkFetcher(
         val onOpenList = ArrayList<() -> Unit>()
         val onMessageList = ArrayList<(String) -> Unit>()
         val onCloseList = ArrayList<(Short) -> Unit>()
+
         override fun onOpen(action: () -> Unit) {
             onOpenList.add(action)
         }
@@ -238,47 +249,46 @@ class BulkFetcher(
             onMessageList.add(action)
         }
 
-        override fun onBinaryMessage(action: (Blob) -> Unit) = throw UnsupportedOperationException()
         override fun onClose(action: (Short) -> Unit) {
             onCloseList.add(action)
         }
     }
-}
 
-private fun <SEND, RECEIVE> RetryWebsocket.typedWithDebug(
-    json: Json,
-    send: KSerializer<SEND>,
-    receive: KSerializer<RECEIVE>,
-    log: Log? = null,
-): TypedWebSocket<SEND, RECEIVE> = object : TypedWebSocket<SEND, RECEIVE> {
-    override val connected: Reactive<Boolean>
-        get() = this@typedWithDebug.connected
+    private fun <SEND, RECEIVE> RetryWebsocket.typedWithDebug(
+        json: Json,
+        send: KSerializer<SEND>,
+        receive: KSerializer<RECEIVE>,
+        log: Log? = null,
+    ): TypedWebSocket<SEND, RECEIVE> = object : TypedWebSocket<SEND, RECEIVE> {
+        override val connected: Reactive<Boolean>
+            get() = this@typedWithDebug.connected
 
-    override fun beginUse(): () -> Unit = this@typedWithDebug.beginUse()
-    override fun close(code: Short, reason: String) = this@typedWithDebug.close(code, reason)
-    override fun onOpen(action: () -> Unit) = this@typedWithDebug.onOpen(action)
-    override fun onClose(action: (Short) -> Unit) = this@typedWithDebug.onClose(action)
-    override fun onMessage(action: (RECEIVE) -> Unit) {
-        this@typedWithDebug.onMessage {
-            if(log != null && it.startsWith("!!! DEBUG AWS INFO !!! - ")) {
-                log.log("AWS: " + it.substringAfter("!!! DEBUG AWS INFO !!! - "))
-                return@onMessage
-            }
-            try {
-                action(json.decodeFromString(receive, it))
-            } catch (e: CancellationException) {
-                /*squish*/
-            } catch (e: Exception) {
-                @OptIn(ExperimentalSerializationApi::class)
-                Exception(
-                    "Failed to decode message; expected a ${receive.descriptor.serialName} but got '${it.take(150)}'",
-                    e
-                ).report()
+        override fun beginUse(): () -> Unit = this@typedWithDebug.beginUse()
+        override fun close(code: Short, reason: String) = this@typedWithDebug.close(code, reason)
+        override fun onOpen(action: () -> Unit) = this@typedWithDebug.onOpen(action)
+        override fun onClose(action: (Short) -> Unit) = this@typedWithDebug.onClose(action)
+        override fun onMessage(action: (RECEIVE) -> Unit) {
+            this@typedWithDebug.onMessage {
+                if(log != null && it.startsWith("!!! DEBUG AWS INFO !!! - ")) {
+                    log.log("AWS: " + it.substringAfter("!!! DEBUG AWS INFO !!! - "))
+                    return@onMessage
+                }
+                try {
+                    action(json.decodeFromString(receive, it))
+                } catch (e: CancellationException) {
+                    /*squish*/
+                } catch (e: Exception) {
+                    @OptIn(ExperimentalSerializationApi::class)
+                    Exception(
+                        "Failed to decode message; expected a ${receive.descriptor.serialName} but got '${it.take(150)}'",
+                        e
+                    ).report()
+                }
             }
         }
-    }
 
-    override fun send(data: SEND) {
-        this@typedWithDebug.send(json.encodeToString(send, data))
+        override fun send(data: SEND) {
+            this@typedWithDebug.send(json.encodeToString(send, data))
+        }
     }
 }

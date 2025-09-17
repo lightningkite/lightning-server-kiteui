@@ -2,9 +2,11 @@ package com.lightningkite.lightningserver.db
 
 import com.lightningkite.kiteui.ConnectionException
 import com.lightningkite.kiteui.Console
+import com.lightningkite.kiteui.Log
 import com.lightningkite.services.database.*
 import com.lightningkite.lightningserver.LSError
 import com.lightningkite.lightningserver.LsErrorException
+import com.lightningkite.lightningserver.typed.ClientModelRestEndpoints
 import com.lightningkite.services.database.Partial
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
@@ -14,7 +16,7 @@ import kotlin.time.Duration.Companion.seconds
 open class ClientModelRestEndpointsMock<T : HasId<ID>, ID : Comparable<ID>>(
     val scope: CoroutineScope,
     val delayAmount: Duration = 0.1.seconds,
-    val log: Console? = null,
+    val log: Log? = null,
 ) : ClientModelRestEndpoints<T, ID> {
     open var connectivityFailure: Boolean = false
 
@@ -31,7 +33,7 @@ open class ClientModelRestEndpointsMock<T : HasId<ID>, ID : Comparable<ID>>(
 
     override suspend fun default(): T = throw IllegalArgumentException()
     override suspend fun query(input: Query<T>): List<T> {
-        if(connectivityFailure) throw ConnectionException("Dead")
+        if (connectivityFailure) throw ConnectionException("Dead")
         log?.log("query")
         delay(delayAmount)
         return data.values
@@ -46,45 +48,49 @@ open class ClientModelRestEndpointsMock<T : HasId<ID>, ID : Comparable<ID>>(
 
     override suspend fun queryPartial(input: QueryPartial<T>): List<Partial<T>> = TODO()
     override suspend fun detail(id: ID): T {
-        if(connectivityFailure) throw ConnectionException("Dead")
+        if (connectivityFailure) throw ConnectionException("Dead")
         log?.log("detail")
         delay(delayAmount)
         return data[id] ?: throw LsErrorException(LSError(404, "not-found", "", ""))
     }
+
     override suspend fun insertBulk(input: List<T>): List<T> {
-        if(connectivityFailure) throw ConnectionException("Dead")
+        if (connectivityFailure) throw ConnectionException("Dead")
         log?.log("insertBulk")
         delay(delayAmount)
         return input.onEach { change(CollectionUpdates(updates = setOf(it))) }
     }
 
     override suspend fun insert(input: T): T {
-        if(connectivityFailure) throw ConnectionException("Dead")
+        if (connectivityFailure) throw ConnectionException("Dead")
         log?.log("insert")
         delay(delayAmount)
         return input.also { change(CollectionUpdates(updates = setOf(it))) }
     }
+
     override suspend fun upsert(id: ID, input: T): T {
-        if(connectivityFailure) throw ConnectionException("Dead")
+        if (connectivityFailure) throw ConnectionException("Dead")
         log?.log("upsert")
         delay(delayAmount)
         return input.also { change(CollectionUpdates(updates = setOf(it))) }
     }
+
     override suspend fun bulkReplace(input: List<T>): List<T> {
-        if(connectivityFailure) throw ConnectionException("Dead")
+        if (connectivityFailure) throw ConnectionException("Dead")
         log?.log("bulkReplace")
         delay(delayAmount)
         return input.onEach { change(CollectionUpdates(updates = setOf(it))) }
     }
 
     override suspend fun replace(id: ID, input: T): T {
-        if(connectivityFailure) throw ConnectionException("Dead")
+        if (connectivityFailure) throw ConnectionException("Dead")
         log?.log("replace")
         delay(delayAmount)
         return input.also { change(CollectionUpdates(updates = setOf(it))) }
     }
+
     override suspend fun bulkModify(input: MassModification<T>): Int {
-        if(connectivityFailure) throw ConnectionException("Dead")
+        if (connectivityFailure) throw ConnectionException("Dead")
         log?.log("bulkModify")
         delay(delayAmount)
         return data.values.toList().count {
@@ -96,7 +102,7 @@ open class ClientModelRestEndpointsMock<T : HasId<ID>, ID : Comparable<ID>>(
     }
 
     override suspend fun modifyWithDiff(id: ID, input: Modification<T>): EntryChange<T> {
-        if(connectivityFailure) throw ConnectionException("Dead")
+        if (connectivityFailure) throw ConnectionException("Dead")
         log?.log("modifyWithDiff")
         delay(delayAmount)
         return EntryChange(
@@ -105,7 +111,7 @@ open class ClientModelRestEndpointsMock<T : HasId<ID>, ID : Comparable<ID>>(
     }
 
     override suspend fun modify(id: ID, input: Modification<T>): T {
-        if(connectivityFailure) throw ConnectionException("Dead")
+        if (connectivityFailure) throw ConnectionException("Dead")
         log?.log("modify")
         delay(delayAmount)
         return data[id]?.let { input(it) }?.also { change(CollectionUpdates(updates = setOf(it))) }
@@ -115,7 +121,7 @@ open class ClientModelRestEndpointsMock<T : HasId<ID>, ID : Comparable<ID>>(
     }
 
     override suspend fun bulkDelete(input: Condition<T>): Int {
-        if(connectivityFailure) throw ConnectionException("Dead")
+        if (connectivityFailure) throw ConnectionException("Dead")
         log?.log("bulkDelete")
         delay(delayAmount)
         return data.values.toList().count {
@@ -127,14 +133,14 @@ open class ClientModelRestEndpointsMock<T : HasId<ID>, ID : Comparable<ID>>(
     }
 
     override suspend fun delete(id: ID): Unit {
-        if(connectivityFailure) throw ConnectionException("Dead")
+        if (connectivityFailure) throw ConnectionException("Dead")
         log?.log("delete")
         delay(delayAmount)
         change(CollectionUpdates(remove = setOf(id)))
     }
 
     override suspend fun count(input: Condition<T>): Int {
-        if(connectivityFailure) throw ConnectionException("Dead")
+        if (connectivityFailure) throw ConnectionException("Dead")
         log?.log("count")
         delay(delayAmount)
         return data.values.asSequence().filter { input(it) }.count { input(it) }

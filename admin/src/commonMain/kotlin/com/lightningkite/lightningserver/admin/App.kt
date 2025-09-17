@@ -14,13 +14,15 @@ import com.lightningkite.kiteui.views.centered
 import com.lightningkite.kiteui.views.compact
 import com.lightningkite.kiteui.views.direct.*
 import com.lightningkite.kiteui.views.l2.*
+import com.lightningkite.lightningserver.auth.LightningServerAuthentication
+import com.lightningkite.lightningserver.sessions.proofs.LiveAuthClientEndpoints
 import com.lightningkite.services.database.Condition
-import com.lightningkite.lightningserver.auth.AuthenticatedUserAuthClientEndpointsLive
 import com.lightningkite.reactive.context.invoke
 import com.lightningkite.reactive.context.reactive
 import com.lightningkite.reactive.core.remember
 import com.lightningkite.reactive.core.rememberSuspending
 import com.lightningkite.reactive.extensions.debounceWrite
+import com.lightningkite.reactive.extensions.modify
 import com.lightningkite.services.database.ClientModule
 import com.lightningkite.services.database.SerializableProperty
 import com.lightningkite.services.database.serializableProperties
@@ -33,8 +35,6 @@ external object JsJodaTimeZoneModule
 
 fun ViewWriter.app(navigator: PageNavigator, dialog: PageNavigator) {
     val x = JsJodaTimeZoneModule
-    com.lightningkite.prepareModelsShared()
-    prepareModelsAdmin()
     DefaultSerializersModule = ClientModule
 //    rootTheme = { appTheme() }
     ExceptionToMessages.root.installLsError()
@@ -78,11 +78,12 @@ fun ViewWriter.app(navigator: PageNavigator, dialog: PageNavigator) {
                             val me = rememberSuspending label@{
                                 try {
                                     val creds = adminAuthentication() ?: return@label "Anonymous"
-                                    val sub = adminServer().auth.authenticatedSubjects[adminCredentials()?.userType
-                                        ?: return@label "Anonymous"]?.invoke(creds)
+                                    val sub = adminServer().authEndpoints(creds)
+                                        .subjects[adminCredentials()?.userType ?: return@label "Anonymous"]
                                         ?: return@label "Anonymous"
-                                    val serializer =
-                                        (sub as AuthenticatedUserAuthClientEndpointsLive<*, *>).userSerializer
+
+                                    val serializer = (sub as LiveAuthClientEndpoints<*, *>).subjectSerializer
+
                                     val self = sub.getSelf()
                                     serializer.serializableProperties
                                         ?.find { it.name == "email" || it.name == "phone" || it.name == "username" }
@@ -90,6 +91,7 @@ fun ViewWriter.app(navigator: PageNavigator, dialog: PageNavigator) {
                                         ?.get(self)
                                         ?.toString()
                                         ?: self.toString().take(40)
+
                                 } catch (e: Exception) {
                                     "No Server"
                                 }
@@ -122,7 +124,7 @@ fun ViewWriter.app(navigator: PageNavigator, dialog: PageNavigator) {
                                                 userType,
                                                 remember {
                                                     listOf(null) + try {
-                                                        adminServer().auth.subjects.keys.toList()
+                                                        adminServer().authEndpoints(null).subjects.keys.toList()
                                                     } catch (e: Exception) {
                                                         listOf()
                                                     }
@@ -136,8 +138,8 @@ fun ViewWriter.app(navigator: PageNavigator, dialog: PageNavigator) {
                                             content bind adminCredentials.lens(
                                                 get = { it?.session ?: "" },
                                                 modify = { o, v ->
-                                                    o?.copy(session = v.takeUnless { it.isBlank() })
-                                                        ?: AdminCredentials(session = v.takeUnless { it.isBlank() })
+                                                    val session = v.takeUnless { it.isBlank() }
+                                                    o?.copy(session = session) ?: AdminCredentials(session = session)
                                                 }
                                             )
                                         }
@@ -146,11 +148,15 @@ fun ViewWriter.app(navigator: PageNavigator, dialog: PageNavigator) {
                                         reactive {
                                             clearChildren()
                                             try {
-                                                authComponent2(adminServer().auth, userType() ?: return@reactive) { v ->
-                                                    adminCredentials.value =
-                                                        adminCredentials.value?.copy(session = v) ?: AdminCredentials(
+                                                authComponent2(
+                                                    adminServer().authEndpoints(null),
+                                                    userType() ?: return@reactive
+                                                ) { v ->
+                                                    adminCredentials.modify {
+                                                        it?.copy(
                                                             session = v
-                                                        )
+                                                        ) ?: AdminCredentials(session = v)
+                                                    }
                                                 }
                                             } catch (e: Exception) {
                                                 text("Need valid URL")

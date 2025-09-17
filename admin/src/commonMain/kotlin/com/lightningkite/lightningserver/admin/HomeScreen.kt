@@ -1,18 +1,18 @@
 package com.lightningkite.lightningserver.admin
 
-import com.lightningkite.kiteui.HttpMethod
 import com.lightningkite.kiteui.Routable
 import com.lightningkite.kiteui.models.*
 import com.lightningkite.kiteui.navigation.Page
 import com.lightningkite.kiteui.views.*
 import com.lightningkite.kiteui.views.direct.*
-import com.lightningkite.lightningserver.serverhealth.HealthStatus
-import com.lightningkite.lightningserver.serverhealth.ServerHealth
+import com.lightningkite.lightningserver.networking.LsHttpMethod
+import com.lightningkite.lightningserver.typed.ServerHealth
 import kotlin.time.Clock.System.now
 import com.lightningkite.reactive.context.invoke
 import com.lightningkite.reactive.core.remember
 import com.lightningkite.reactive.extensions.asyncReactive
 import com.lightningkite.reactive.extensions.withWrite
+import com.lightningkite.services.HealthStatus
 import kotlinx.serialization.builtins.serializer
 
 @Routable("/")
@@ -117,7 +117,7 @@ class HomePage : Page {
                 val status = asyncReactive {
                     val endpoint = adminServer().health ?: return@asyncReactive null
                     val fetcher = adminServer().fetcher(adminAuthentication() ?: return@asyncReactive null)
-                    val health = fetcher(endpoint.path, HttpMethod.GET, Unit.serializer(), Unit, ServerHealth.serializer())
+                    val health = fetcher(endpoint.path, LsHttpMethod.GET, Unit.serializer(), Unit, ServerHealth.serializer())
                     health
                 }
                 row {

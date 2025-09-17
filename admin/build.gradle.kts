@@ -20,6 +20,10 @@ group = "com.lightningkite"
 kotlin {
     applyDefaultHierarchyTemplate()
 
+    compilerOptions {
+        optIn.add("kotlin.time.ExperimentalTime")
+    }
+
 //    jvm()
 //    androidTarget {
 //        this.compilerOptions {

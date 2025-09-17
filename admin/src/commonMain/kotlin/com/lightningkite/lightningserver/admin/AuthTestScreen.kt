@@ -15,7 +15,7 @@ import com.lightningkite.kiteui.views.direct.col
 import com.lightningkite.kiteui.views.direct.frame
 import com.lightningkite.kiteui.views.direct.sizeConstraints
 import com.lightningkite.kiteui.views.l2.icon
-import com.lightningkite.lightningserver.auth.AuthClientEndpoints
+import com.lightningkite.lightningserver.auth.AuthEndpoints
 import com.lightningkite.reactive.context.reactive
 
 @Routable("/auth")
@@ -26,7 +26,7 @@ class AuthTestPage : Page {
             reactive {
                 clearChildren()
 //                val server = ExternalLightningServer(schema().also { println("SCHEMA: $it") })
-                centered - sizeConstraints(width = 20.rem, height = 25.rem) - card - login(AuthClientEndpoints.dummy) {
+                centered - sizeConstraints(width = 20.rem, height = 25.rem) - card - login(AuthEndpoints.dummy) {
                     mainPageNavigator.navigate(HomePage())
                 }
             }
@@ -43,7 +43,7 @@ class Auth2TestPage : Page {
 //                val server = ExternalLightningServer(schema().also { println("SCHEMA: $it") })
                 centered - sizeConstraints(width = 20.rem) - card - col {
                     centered - icon(Icon.passkey.copy(width = 5.rem, height = 5.rem), "My System")
-                    authComponent2(AuthClientEndpoints.dummy) {
+                    authComponent2(AuthEndpoints.dummy) {
                         mainPageNavigator.navigate(HomePage())
                     }
                 }

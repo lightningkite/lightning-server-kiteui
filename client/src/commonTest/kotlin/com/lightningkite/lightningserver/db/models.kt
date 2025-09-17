@@ -1,9 +1,9 @@
 package com.lightningkite.lightningserver.db
 
+import com.lightningkite.services.data.GenerateDataClassPaths
+import com.lightningkite.services.data.Index
 import kotlin.uuid.Uuid
-import com.lightningkite.services.database.GenerateDataClassPaths
 import com.lightningkite.services.database.HasId
-import com.lightningkite.services.database.Index
 import kotlin.time.Instant
 import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
@@ -26,7 +26,7 @@ data class LargeTestModel(
     var double: Double = 0.0,
     var char: Char = ' ',
     var string: String = "",
-    var Uuid: Uuid = Uuid.random(),
+    var uuid: Uuid = Uuid.random(),
     @Contextual var instant: Instant = Instant.fromEpochMilliseconds(0L),
     var list: List<Int> = listOf(),
     var listEmbedded: List<ClassUsedForEmbedding> = listOf(),

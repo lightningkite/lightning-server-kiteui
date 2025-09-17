@@ -1,6 +1,9 @@
 package com.lightningkite.lightningserver.db
 
 import com.lightningkite.kiteui.TypedWebSocket
+import com.lightningkite.lightningserver.networking.toClientWebSocket
+import com.lightningkite.lightningserver.typed.ClientModelRestEndpointsAndUpdatesWebsocket
+import com.lightningkite.lightningserver.typed.ClientWebSocket
 import com.lightningkite.services.database.CollectionUpdates
 import com.lightningkite.services.database.Condition
 import com.lightningkite.services.database.EntryChange
@@ -11,6 +14,8 @@ import com.lightningkite.reactive.core.Signal
 import com.lightningkite.reactive.extensions.invokeAllSafe
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
@@ -20,7 +25,7 @@ open class ClientModelRestEndpointsPlusUpdatesWebsocketMock<T : HasId<ID>, ID : 
     scope: CoroutineScope,
     delayAmount: Duration = 0.1.seconds,
 ) :
-    ClientModelRestEndpointsMock<T, ID>(scope, delayAmount), ClientModelRestEndpointsPlusUpdatesWebsocket<T, ID> {
+    ClientModelRestEndpointsMock<T, ID>(scope, delayAmount), ClientModelRestEndpointsAndUpdatesWebsocket<T, ID> {
 
     override var connectivityFailure: Boolean
         get() = super.connectivityFailure
@@ -43,17 +48,13 @@ open class ClientModelRestEndpointsPlusUpdatesWebsocketMock<T : HasId<ID>, ID : 
         log?.log("Sending entry changes ${changes}")
         entryChanges.value = changes
     }
-    inner class UpdatesWs : TypedWebSocket<Condition<T>, CollectionUpdates<T, ID>> {
+
+    inner class UpdatesWs : ClientWebSocket<Condition<T>, CollectionUpdates<T, ID>> {
         var filter: Condition<T> = Condition.Never
 
-        override val connected: Reactive<Boolean> = Constant(true)
+        override val connected = MutableStateFlow(true)
 
         val listeners = ArrayList<(CollectionUpdates<T, ID>)->Unit>()
-
-        override fun close(code: Short, reason: String) {
-            entryChanges.value = listOf()
-            filter = Condition.Never
-        }
 
         override fun send(data: Condition<T>) {
             filter = data
@@ -74,46 +75,41 @@ open class ClientModelRestEndpointsPlusUpdatesWebsocketMock<T : HasId<ID>, ID : 
             onCloseList.add(action)
         }
 
-        var myListen: (()->Unit)? = null
-        var uses = 0
-        override fun beginUse(): () -> Unit {
-            uses++
-            if(myListen == null) {
-                myListen = entryChanges.addListener {
-                    if(connectivityFailure) return@addListener
-                    log?.log("Entry changes ${entryChanges.value}")
+        private var myListen: (()->Unit)? = null
 
-                    val v = entryChanges.value.map { EntryChange(it.old?.takeIf { filter(it) }, it.new?.takeIf { filter(it) }) }
-                    val u = CollectionUpdates(
-                        updates = v.mapNotNull { it.new }.toSet(),
-                        remove = v.filter { it.new == null }.mapNotNull { it.old?._id }.toSet() ?: setOf()
-                    )
-                    listeners.forEach { it(u) }
-                }
-                log?.log("Listening started")
-                scope.launch {
-                    delay(10.milliseconds)
-                    if(connectivityFailure) {
+        override fun connect() {
+            myListen = entryChanges.addListener {
+                if(connectivityFailure) return@addListener
+                log?.log("Entry changes ${entryChanges.value}")
+
+                val v = entryChanges.value.map { EntryChange(it.old?.takeIf { filter(it) }, it.new?.takeIf { filter(it) }) }
+                val u = CollectionUpdates(
+                    updates = v.mapNotNull { it.new }.toSet(),
+                    remove = v.filter { it.new == null }.mapNotNull { it.old?._id }.toSet()
+                )
+                listeners.forEach { it(u) }
+            }
+            log?.log("Listening started")
+            scope.launch {
+                delay(10.milliseconds)
+                if(connectivityFailure) {
 //                        onOpenList.invokeAllSafe()
-                        onCloseList.forEach { it.invoke(1000) }
-                    } else {
-                        onOpenList.invokeAllSafe()
-                    }
+                    onCloseList.forEach { it.invoke(1000) }
+                } else {
+                    onOpenList.invokeAllSafe()
                 }
             }
-            var once = false
-            return label@{
-                if(once) return@label
-                once = true
-                if(--uses == 0) {
-                    log?.log("Listening done")
-                    myListen?.invoke()
-                    myListen = null
-                    scope.launch {
-                        delay(10.milliseconds)
-                        onCloseList.forEach { it.invoke(1000) }
-                    }
-                }
+        }
+
+        override fun close(code: Short, reason: String) {
+            log?.log("Listening done")
+            entryChanges.value = emptyList()
+            filter = Condition.Never
+            myListen?.invoke()
+            myListen = null
+            scope.launch {
+                delay(10.milliseconds)
+                onCloseList.forEach { it.invoke(1000) }
             }
         }
     }

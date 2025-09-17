@@ -1,6 +1,15 @@
 @file:UseContextualSerialization(Uuid::class, ServerFile::class)
 package com.lightningkite.lightningserver.demo
 
+import com.lightningkite.services.data.AdminHidden
+import com.lightningkite.services.data.AdminTableColumns
+import com.lightningkite.services.data.Description
+import com.lightningkite.services.data.DisplayName
+import com.lightningkite.services.data.GenerateDataClassPaths
+import com.lightningkite.services.data.MimeType
+import com.lightningkite.services.data.Multiline
+import com.lightningkite.services.data.MultipleReferences
+import com.lightningkite.services.data.References
 import kotlin.uuid.Uuid
 import com.lightningkite.services.database.*
 import com.lightningkite.services.files.ServerFile

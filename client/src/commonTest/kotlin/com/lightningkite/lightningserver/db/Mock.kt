@@ -1,6 +1,8 @@
 package com.lightningkite.lightningserver.db
 
 import com.lightningkite.kiteui.*
+import com.lightningkite.lightningserver.typed.ClientModelRestEndpointsAndUpdatesWebsocket
+import com.lightningkite.lightningserver.typed.ClientWebSocket
 import com.lightningkite.services.database.*
 import kotlin.time.Clock.System.now
 import com.lightningkite.reactive.core.AppScope
@@ -8,16 +10,17 @@ import com.lightningkite.reactive.core.Constant
 import com.lightningkite.reactive.core.Reactive
 import com.lightningkite.reactive.core.Signal
 import com.lightningkite.services.database.Partial
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import kotlin.time.Instant
 import kotlin.coroutines.CoroutineContext
-import kotlin.coroutines.coroutineContext
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
 
 class MockClientModelRestEndpoints<T : HasId<ID>, ID : Comparable<ID>>(val log: (String) -> Unit) :
-    ClientModelRestEndpointsPlusUpdatesWebsocket<T, ID>, ClientModelRestEndpoints<T, ID> {
+    ClientModelRestEndpointsAndUpdatesWebsocket<T, ID> {
 
     val hold = WaitGate(true)
 
@@ -192,10 +195,10 @@ class MockClientModelRestEndpoints<T : HasId<ID>, ID : Comparable<ID>>(val log: 
 
     val holdWsConnect = WaitGate(true)
     val holdWsMessage = WaitGate(true)
-    override fun updates(): TypedWebSocket<Condition<T>, CollectionUpdates<T, ID>> {
-        return object : TypedWebSocket<Condition<T>, CollectionUpdates<T, ID>> {
-            override val connected: Reactive<Boolean> get() = Constant(true)
-            override fun close(code: Short, reason: String) {}
+    override fun updates(): ClientWebSocket<Condition<T>, CollectionUpdates<T, ID>> {
+        return object : ClientWebSocket<Condition<T>, CollectionUpdates<T, ID>> {
+            override val connected = MutableStateFlow(true)
+
             override fun onClose(action: (Short) -> Unit) {
             }
 
@@ -239,20 +242,16 @@ class MockClientModelRestEndpoints<T : HasId<ID>, ID : Comparable<ID>>(val log: 
                 }
                 Unit
             }
-            var count = 0
-            override fun beginUse(): () -> Unit {
-                if (count++ == 0) {
-                    log("updates START")
-                    watchers.add(myListener)
-                }
-                return {
-                    if (--count == 0) {
-                        log("updates STOP")
-                        watchers.remove(myListener)
-                    }
-                }
+
+            override fun connect() {
+                log("updates START")
+                watchers.add(myListener)
             }
 
+            override fun close(code: Short, reason: String) {
+                log("updates STOP")
+                watchers.remove(myListener)
+            }
         }
     }
 }
@@ -309,7 +308,7 @@ suspend fun connectivityFetch(
     headers: suspend () -> HttpHeaders = { httpHeaders() },
     body: RequestBody,
 ): RequestResponse {
-    return if(coroutineContext[ConnectivityIssueSuppress.Key] == null) {
+    return if (currentCoroutineContext()[ConnectivityIssueSuppress.Key] == null) {
         connectivityFetchGate.run("$method $url") {
             val r = fetch(url = url, method = method, headers = headers(), body = body)
             if (r.status in noConnectivityCodes) throw ConnectionException("Status code ${r.status}")

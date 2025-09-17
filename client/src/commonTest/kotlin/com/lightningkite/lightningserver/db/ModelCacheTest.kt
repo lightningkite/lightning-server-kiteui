@@ -1,13 +1,10 @@
 package com.lightningkite.lightningserver.db
 
 import kotlin.uuid.Uuid
-import com.lightningkite.kiteui.ConsoleRoot
+import com.lightningkite.kiteui.LogRoot
 import com.lightningkite.kiteui.Platform
 import com.lightningkite.kiteui.current
-import com.lightningkite.kiteui.forms.prepareModelsClient
 import com.lightningkite.services.database.*
-import com.lightningkite.prepareModelsClientTest
-import com.lightningkite.prepareModelsShared
 import com.lightningkite.reactive.context.reactive
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.test.advanceTimeBy
@@ -19,12 +16,7 @@ import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
 class ModelCacheTest {
-    val testLog = if(Platform.current == Platform.Desktop) ConsoleRoot else null
-    init {
-        prepareModelsShared()
-        prepareModelsClient()
-        prepareModelsClientTest()
-    }
+    val testLog = if (Platform.current == Platform.Desktop) LogRoot else null
 
     @Test fun connectivityIssue() = runTest2 {
         val mock = ClientModelRestEndpointsPlusUpdatesWebsocketMock<LargeTestModel, Uuid>(this)
@@ -130,7 +122,7 @@ class ModelCacheTest {
 
     @Test
     fun listChangesPull() = runTest2 {
-        val mock = ClientModelRestEndpointsMock<LargeTestModel, Uuid>(this)
+        val mock = ClientModelRestEndpointsMock<LargeTestModel, Uuid>(this, log = LogRoot.tag("Rest"))
 //        val mock = ClientModelRestEndpointsPlusUpdatesWebsocketMock<LargeTestModel, Uuid>(this)
         val dataToInsert = listOf(
             LargeTestModel(int = 1),
@@ -147,7 +139,7 @@ class ModelCacheTest {
             log = testLog
         )
 
-        var currentValue = dataToInsert[2]
+        var currentValue = dataToInsert.first { it.int > 2 }
         var lastRead: List<LargeTestModel>? = null
         reactive {
             val ref = cache.list(Query(condition { it.int gt 2 }, sort { it.int.ascending() }))
@@ -159,8 +151,9 @@ class ModelCacheTest {
             currentValue,
         )
 
-        val mod = modification<LargeTestModel> { it.short assign 2 }
+        val mod = modification<LargeTestModel> { it.int assign 2 }
         currentValue = mod(currentValue)
+        println("modifying...")
         mock.modify(currentValue._id, mod)
         delay(80.seconds)
         assertContains(

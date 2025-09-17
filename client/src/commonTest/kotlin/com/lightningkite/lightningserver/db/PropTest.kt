@@ -4,7 +4,7 @@ import com.lightningkite.reactive.context.reactiveScope
 import com.lightningkite.reactive.core.Signal
 import com.lightningkite.reactive.extensions.modify
 import com.lightningkite.reactive.lensing.lensByElementAssumingSetNeverManipulates
-import com.lightningkite.services.database.lensPath
+import com.lightningkite.serialization.lensPath
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.test.Test

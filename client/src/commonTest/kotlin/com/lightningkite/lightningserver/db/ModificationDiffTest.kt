@@ -1,21 +1,16 @@
 package com.lightningkite.lightningserver.db
 
+import com.lightningkite.lightningdb.modification
 import kotlin.uuid.Uuid
 import com.lightningkite.services.database.Modification
 import com.lightningkite.services.database.lt
 import com.lightningkite.services.database.modification
 import kotlin.time.Clock.System.now
-import com.lightningkite.prepareModelsClientTest
-import com.lightningkite.prepareModelsShared
 import com.lightningkite.services.database.notNull
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class ModificationDiffTest {
-    init  {
-        prepareModelsShared()
-        prepareModelsClientTest()
-    }
     @Test
     fun testNullToNot() {
         val old = LargeTestModel(embeddedNullable = null)
@@ -82,7 +77,7 @@ class ModificationDiffTest {
             modification { it.double assign 1.0 },
             modification { it.char assign 'A' },
             modification { it.string assign "A" },
-            modification { it.Uuid assign Uuid.random() },
+            modification { it.uuid assign Uuid.random() },
             modification { it.instant assign now() },
             modification { it.list assign listOf(1, 2, 3) },
             modification { it.listEmbedded assign listOf(ClassUsedForEmbedding("test", 42)) },

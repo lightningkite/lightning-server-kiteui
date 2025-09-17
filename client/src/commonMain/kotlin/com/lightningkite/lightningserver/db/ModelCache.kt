@@ -2,6 +2,9 @@ package com.lightningkite.lightningserver.db
 
 import com.lightningkite.kiteui.Log
 import com.lightningkite.lightningdb.modification
+import com.lightningkite.lightningserver.networking.toTypedWebsocket
+import com.lightningkite.lightningserver.typed.ClientModelRestEndpoints
+import com.lightningkite.lightningserver.typed.ClientModelRestUpdatesWebsocket
 import com.lightningkite.services.database.*
 import kotlin.time.Clock.System.now
 import com.lightningkite.reactive.context.awaitOnce
@@ -11,11 +14,13 @@ import com.lightningkite.reactive.extensions.use
 import com.lightningkite.reactive.extensions.value
 import com.lightningkite.reactive.lensing.lens
 import com.lightningkite.reactive.lensing.lensListenable
+import com.lightningkite.services.default
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlin.time.Instant
 import kotlinx.serialization.KSerializer
+import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
@@ -35,11 +40,12 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
     val interrupt = InterruptibleDelay()
 
     // sockets
+    @Suppress("UNCHECKED_CAST")
     val sockets: SharedCollectionUpdatesSocket<T, ID>? =
-        (skipCache as? ClientModelRestEndpointsPlusUpdatesWebsocket<T, ID>)?.let {
+        (skipCache as? ClientModelRestUpdatesWebsocket<T, ID>)?.let {
             SharedCollectionUpdatesSocket(
                 scope = scope,
-                socket = it.updates(),
+                socket = it.updates().toTypedWebsocket(),
                 log = log?.tag("Sockets"),
                 onChange = { it ->
                     if (it.overload)
@@ -116,9 +122,9 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
         ?.minOfOrNull { it.activatedAt ?: Instant.DISTANT_FUTURE }
         ?.let { timestamp > it } == true
 
-    fun WithTimestamp<T?>.couldExpireAt(recencyRequirement: Duration): Duration = when {
+    suspend fun WithTimestamp<T?>.couldExpireAt(recencyRequirement: Duration): Duration = when {
         isLive -> recencyRequirement
-        else -> recencyRequirement - (now() - at)
+        else -> recencyRequirement - (Clock.default().now() - at)
     }
 
     override fun item(

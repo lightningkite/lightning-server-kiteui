@@ -4,12 +4,10 @@ import kotlin.uuid.Uuid
 import com.lightningkite.kiteui.ConsoleRoot
 import com.lightningkite.kiteui.Platform
 import com.lightningkite.kiteui.current
-import com.lightningkite.kiteui.forms.prepareModelsClient
+import com.lightningkite.lightningserver.networking.toTypedWebsocket
 import com.lightningkite.services.database.condition
 import com.lightningkite.services.database.gt
 import com.lightningkite.services.database.lt
-import com.lightningkite.prepareModelsClientTest
-import com.lightningkite.prepareModelsShared
 import com.lightningkite.reactive.context.onRemove
 import kotlinx.coroutines.delay
 import kotlin.test.Test
@@ -18,18 +16,12 @@ import kotlin.test.assertContains
 class SharedCollectionUpdatesSocketTest {
     val testLog = if(Platform.current == Platform.Desktop) ConsoleRoot else null
 
-    init {
-        prepareModelsShared()
-        prepareModelsClient()
-        prepareModelsClientTest()
-    }
-
     @Test
     fun test() = runTest2 {
         val mock = ClientModelRestEndpointsPlusUpdatesWebsocketMock<LargeTestModel, Uuid>(this)
         val remember = SharedCollectionUpdatesSocket(
             scope = this,
-            socket = mock.updates(),
+            socket = mock.updates().toTypedWebsocket(),
             onChange = { println("Got changes $it") },
             log = testLog,
         )

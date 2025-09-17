@@ -2,7 +2,8 @@ package com.lightningkite.kiteui.monitoring
 
 import kotlin.uuid.Uuid
 import com.lightningkite.kiteui.*
-import com.lightningkite.lightningserver.networking.Fetcher
+import com.lightningkite.lightningserver.networking.lightningServer
+import com.lightningkite.lightningserver.typed.Fetcher
 import com.lightningkite.lightningserver.typed.FunnelStart
 import com.lightningkite.reactive.core.AppScope
 import kotlinx.coroutines.CompletableDeferred
@@ -15,9 +16,9 @@ private suspend fun <I, T> funnelHit(path: String, inSerializer: KSerializer<I>,
     val fetcher = Funnels.fetcher ?: return null
     return try {
         suppressConnectivityIssues {
-            fetcher.invoke(
+            fetcher(
                 url = "meta/funnels/$path",
-                method = HttpMethod.POST,
+                method = HttpMethod.POST.lightningServer,
                 inSerializer = inSerializer,
                 body = body,
                 outSerializer = outSerializer

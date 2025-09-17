@@ -10,7 +10,7 @@ import com.lightningkite.services.database.HasId
 import com.lightningkite.services.database.ModelPermissions
 import com.lightningkite.lightningserver.LsErrorException
 import com.lightningkite.lightningserver.auth.LightningServerAuthentication
-import com.lightningkite.lightningserver.schema.LightningServerKSchema
+import com.lightningkite.lightningserver.typed.LightningServerKSchema
 import kotlin.time.Clock.System.now
 import com.lightningkite.reactive.context.invoke
 import com.lightningkite.reactive.core.Reactive
@@ -20,9 +20,10 @@ import com.lightningkite.reactive.core.rememberSuspending
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.delay
-import kotlin.time.Instant
 import kotlinx.serialization.Serializable
 import kotlin.time.Duration.Companion.minutes
+import kotlin.time.ExperimentalTime
+import kotlin.time.Instant
 
 
 @Serializable
@@ -36,7 +37,7 @@ val adminCredentials = PersistentProperty<AdminCredentials?>("credentials", null
 val adminAuthentication = remember {
     val c = adminCredentials() ?: return@remember null
     LightningServerAuthentication(
-        subject = adminServer().auth.subjects[c.userType ?: return@remember null]!!,
+        subject = adminServer().authEndpoints(null).subjects[c.userType ?: return@remember null]!!,
         subjectPath = c.userType ?: return@remember null,
         c.session ?: return@remember null
     )
@@ -46,6 +47,7 @@ val serverSchema = rememberSuspending {
         .text()
         .let { DefaultJson.decodeFromString(LightningServerKSchema.serializer(), it) }
 }
+
 @Serializable
 data class AdminSettings(
     val showHiddenFields: Boolean = false,
@@ -55,9 +57,10 @@ data class AdminSettings(
     val unlockDestructiveActions: Instant? = null,
     val liveData: Boolean = true,
 )
+
 val adminSettings = PersistentProperty("adminSettings", AdminSettings())
 val nowByMinute = reactiveProcess {
-    while(true) {
+    while (true) {
         emit(now())
         delay(1.minutes)
     }
@@ -71,9 +74,9 @@ val loadedPermissions: Reactive<Map<String, ModelPermissions<out HasId<out Compa
         async {
             it.key to try {
                 it.value.cache(auth).skipCache.permissions()
-            } catch(e: LsErrorException) {
-                if(e.status == 403.toShort()) ModelPermissions()
-                else if(e.status == 401.toShort()) ModelPermissions()
+            } catch (e: LsErrorException) {
+                if (e.status == 403) ModelPermissions()
+                else if (e.status == 401) ModelPermissions()
                 else ModelPermissions.allowAll()
             }
         }
@@ -95,7 +98,7 @@ val adminServer = remember {
             }
         }
         s
-    }catch (e: Exception) {
+    } catch (e: Exception) {
         println("Exception in admin server")
         throw e
     }
@@ -103,17 +106,17 @@ val adminServer = remember {
 val adminFormModule = remember {
     adminServer().formModule(adminAuthentication()).also {
         val settings = adminSettings()
-        if(settings.showHiddenFields) {
+        if (settings.showHiddenFields) {
             it.visibilitySettings.forEach { (fqn, visibility) ->
                 it.visibilitySettings[fqn] = visibility.coerceAtLeast(FieldVisibility.READ)
             }
         }
-        if(settings.editAllFields) {
+        if (settings.editAllFields) {
             it.visibilitySettings.keys.forEach { fqn ->
                 it.visibilitySettings[fqn] = FieldVisibility.EDIT
             }
         }
-        if(settings.showAlternativeEditOptions) {
+        if (settings.showAlternativeEditOptions) {
             it.showTypePicker = true
         }
     }

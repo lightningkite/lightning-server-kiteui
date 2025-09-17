@@ -9,15 +9,15 @@ import com.lightningkite.kiteui.views.ViewWriter
 import com.lightningkite.kiteui.views.centered
 import com.lightningkite.kiteui.views.direct.activityIndicator
 import com.lightningkite.kiteui.views.direct.frame
-import com.lightningkite.lightningserver.auth.WebAuthNProofEndpoints
+import com.lightningkite.lightningserver.sessions.ProofsCheckResult
 import com.lightningkite.lightningserver.sessions.proofs.Identification
 import com.lightningkite.lightningserver.sessions.proofs.Proof
+import com.lightningkite.lightningserver.sessions.proofs.ProofClientEndpoints
 import com.lightningkite.lightningserver.sessions.proofs.WebAuthN
-import com.lightningkite.lightningserver.sessions.ProofsCheckResult
 import kotlinx.coroutines.launch
 
 data class WebAuthNProofComponent(
-    val p: WebAuthNProofEndpoints,
+    val p: ProofClientEndpoints.WebAuthN,
     val type: String,
     val usePasskeyUI: Boolean,
 ) : ProofComponent {
