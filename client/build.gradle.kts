@@ -42,7 +42,6 @@ kotlin {
         val commonMain by getting {
             dependencies {
                 api(libs.comLightningKiteServices.database)
-//                api(libs.comLightningKiteServices.stringArrayFormat)
                 api(libs.comLightningkiteLightningserver.core.shared)
                 api(libs.comLightningkiteLightningserver.files.shared)
                 api(libs.comLightningkiteLightningserver.typed.shared)
