@@ -4,12 +4,14 @@ import kotlin.uuid.Uuid
 import com.lightningkite.kiteui.ConsoleRoot
 import com.lightningkite.kiteui.Platform
 import com.lightningkite.kiteui.current
+import com.lightningkite.services.ClockContextElement
 import com.lightningkite.services.database.*
-import kotlin.time.Clock.System.now
+import com.lightningkite.services.default
 import kotlin.time.Instant
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
+import kotlin.time.Clock
 
 class NaiveListReconstructionCalculatorTest {
     val testLog = if(Platform.current == Platform.Desktop) ConsoleRoot else null
@@ -26,7 +28,7 @@ class NaiveListReconstructionCalculatorTest {
             LargeTestModel(int = 5),
         ).sortedBy { it._id }
         mock.data.putAll(dataToInsert.associateBy { it._id })
-        val cache = NaiveListReconstructionCalculator(LargeTestModel.serializer())
+        val cache = NaiveListReconstructionCalculator(LargeTestModel.serializer(), clock = Clock.default())
 
         val query = Query(condition { it.int gt 4 })
         val recommended = cache.recommendQuery(query)
@@ -36,14 +38,14 @@ class NaiveListReconstructionCalculatorTest {
     }
 
     @Test fun socketChange() = runTest2 {
-        val cache = NaiveListReconstructionCalculator(LargeTestModel.serializer())
+        val cache = NaiveListReconstructionCalculator(LargeTestModel.serializer(), clock = Clock.default())
 
         val before = LargeTestModel(int = 1)
         val after = before.copy(int = 2)
         val query = Query<LargeTestModel>(Condition.Always)
         val activeReq = object: CacheUpdate.SocketChanges.ConditionAndTimestamp<LargeTestModel> {
             override val condition: Condition<LargeTestModel> = query.condition
-            override val activatedAt: Instant? = now()
+            override val activatedAt: Instant? = this@runTest2.coroutineContext[ClockContextElement]?.clock?.now() ?: Clock.System.now()
         }
         cache.update(CacheUpdate.QueryResult(query, listOf(before)))
         cache.update(CacheUpdate.SocketChanges(setOf(after), setOf(), query.condition, setOf(activeReq)))
@@ -51,14 +53,14 @@ class NaiveListReconstructionCalculatorTest {
     }
 
     @Test fun socketChangeRemove() = runTest2 {
-        val cache = NaiveListReconstructionCalculator(LargeTestModel.serializer())
+        val cache = NaiveListReconstructionCalculator(LargeTestModel.serializer(), clock = Clock.default())
 
         val before = LargeTestModel(int = 1)
         val after = before.copy(int = 2)
         val query = Query<LargeTestModel>(condition { it.int.lt(2) })
         val activeReq = object: CacheUpdate.SocketChanges.ConditionAndTimestamp<LargeTestModel> {
             override val condition: Condition<LargeTestModel> = query.condition
-            override val activatedAt: Instant? = now()
+            override val activatedAt: Instant? = this@runTest2.coroutineContext[ClockContextElement]?.clock?.now() ?: Clock.System.now()
         }
         cache.update(CacheUpdate.QueryResult(query, listOf(before)))
         cache.update(CacheUpdate.SocketChanges(setOf(after), setOf(), query.condition, setOf(activeReq)))
@@ -66,7 +68,7 @@ class NaiveListReconstructionCalculatorTest {
     }
 
     @Test fun deletionResult() = runTest2 {
-        val cache = NaiveListReconstructionCalculator(LargeTestModel.serializer())
+        val cache = NaiveListReconstructionCalculator(LargeTestModel.serializer(), clock = Clock.default())
 
         val model1 = LargeTestModel(int = 1)
         val model2 = LargeTestModel(int = 2)
@@ -87,7 +89,7 @@ class NaiveListReconstructionCalculatorTest {
     }
 
     @Test fun multiGetResult() = runTest2 {
-        val cache = NaiveListReconstructionCalculator(LargeTestModel.serializer())
+        val cache = NaiveListReconstructionCalculator(LargeTestModel.serializer(), clock = Clock.default())
 
         val model1 = LargeTestModel(int = 1)
         val model2 = LargeTestModel(int = 2)
@@ -108,7 +110,7 @@ class NaiveListReconstructionCalculatorTest {
     }
 
     @Test fun mutationResult() = runTest2 {
-        val cache = NaiveListReconstructionCalculator(LargeTestModel.serializer())
+        val cache = NaiveListReconstructionCalculator(LargeTestModel.serializer(), clock = Clock.default())
 
         val model1 = LargeTestModel(int = 1)
         val model2 = LargeTestModel(int = 2)
@@ -134,7 +136,7 @@ class NaiveListReconstructionCalculatorTest {
     }
 
     @Test fun socketOverload() = runTest2 {
-        val cache = NaiveListReconstructionCalculator(LargeTestModel.serializer())
+        val cache = NaiveListReconstructionCalculator(LargeTestModel.serializer(), clock = Clock.default())
 
         val model1 = LargeTestModel(int = 1)
         val query = Query<LargeTestModel>(Condition.Always)
@@ -158,7 +160,7 @@ class NaiveListReconstructionCalculatorTest {
             LargeTestModel(int = 5),
         ).sortedBy { it._id }
         mock.data.putAll(dataToInsert.associateBy { it._id })
-        val cache = NaiveListReconstructionCalculator(LargeTestModel.serializer())
+        val cache = NaiveListReconstructionCalculator(LargeTestModel.serializer(), clock = Clock.default())
 
         // Query with limit 2
         val query = Query<LargeTestModel>(Condition.Always, limit = 2)
@@ -180,7 +182,7 @@ class NaiveListReconstructionCalculatorTest {
             LargeTestModel(int = 2),
         )
         mock.data.putAll(dataToInsert.associateBy { it._id })
-        val cache = NaiveListReconstructionCalculator(LargeTestModel.serializer())
+        val cache = NaiveListReconstructionCalculator(LargeTestModel.serializer(), clock = Clock.default())
 
         // Query with sorting by int ascending
         val query = Query<LargeTestModel>(
@@ -197,7 +199,7 @@ class NaiveListReconstructionCalculatorTest {
     }
 
     @Test fun handleDuplicateItems() = runTest2 {
-        val cache = NaiveListReconstructionCalculator(LargeTestModel.serializer())
+        val cache = NaiveListReconstructionCalculator(LargeTestModel.serializer(), clock = Clock.default())
 
         val model1 = LargeTestModel(int = 1)
         val model2 = LargeTestModel(int = 2)
@@ -221,7 +223,7 @@ class NaiveListReconstructionCalculatorTest {
     }
 
     @Test fun totalityIssue() = runTest2 {
-        val cache = NaiveListReconstructionCalculator(LargeTestModel.serializer())
+        val cache = NaiveListReconstructionCalculator(LargeTestModel.serializer(), clock = Clock.default())
 
         // Create models with sequential int values
         val model1 = LargeTestModel(int = 1)

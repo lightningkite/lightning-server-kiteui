@@ -6,6 +6,7 @@ import com.lightningkite.kiteui.identityHashCode
 import com.lightningkite.services.database.SortPart
 import com.lightningkite.reactive.core.*
 import com.lightningkite.reactive.lensing.lens
+import com.lightningkite.services.ClockContextElement
 import com.lightningkite.services.database.DataClassPathAccess
 import com.lightningkite.services.database.DataClassPathSelf
 import com.lightningkite.services.database.SerializableProperty
@@ -184,3 +185,5 @@ suspend fun <R> race(vararg races: suspend () -> R): R {
         }
     }.first()
 }
+
+internal fun CoroutineScope.now(): Instant = coroutineContext[ClockContextElement]?.clock?.now() ?: Clock.System.now()

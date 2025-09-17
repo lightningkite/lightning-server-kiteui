@@ -6,23 +6,22 @@ import com.lightningkite.kiteui.navigation.DefaultJson
 import com.lightningkite.kiteui.navigation.UrlProperties
 import com.lightningkite.kiteui.navigation.encodeToString
 import com.lightningkite.kiteui.reactive.PersistentProperty
-import com.lightningkite.services.database.HasId
-import com.lightningkite.services.database.ModelPermissions
 import com.lightningkite.lightningserver.LsErrorException
 import com.lightningkite.lightningserver.auth.LightningServerAuthentication
 import com.lightningkite.lightningserver.typed.LightningServerKSchema
-import kotlin.time.Clock.System.now
 import com.lightningkite.reactive.context.invoke
 import com.lightningkite.reactive.core.Reactive
 import com.lightningkite.reactive.core.reactiveProcess
 import com.lightningkite.reactive.core.remember
 import com.lightningkite.reactive.core.rememberSuspending
+import com.lightningkite.services.database.HasId
+import com.lightningkite.services.database.ModelPermissions
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.delay
 import kotlinx.serialization.Serializable
+import kotlin.time.Clock
 import kotlin.time.Duration.Companion.minutes
-import kotlin.time.ExperimentalTime
 import kotlin.time.Instant
 
 
@@ -61,7 +60,7 @@ data class AdminSettings(
 val adminSettings = PersistentProperty("adminSettings", AdminSettings())
 val nowByMinute = reactiveProcess {
     while (true) {
-        emit(now())
+        emit(Clock.System.now())
         delay(1.minutes)
     }
 }

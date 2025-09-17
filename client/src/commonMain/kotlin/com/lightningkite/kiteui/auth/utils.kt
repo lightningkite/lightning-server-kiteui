@@ -7,13 +7,14 @@ import com.lightningkite.kiteui.views.ViewWriter
 import com.lightningkite.kiteui.views.direct.col
 import com.lightningkite.kiteui.views.direct.text
 import com.lightningkite.kiteui.views.fieldTheme
-import kotlin.time.Clock.System.now
+import com.lightningkite.lightningserver.db.now
 import com.lightningkite.reactive.core.reactiveProcess
 import kotlinx.coroutines.delay
 import kotlin.time.Instant
 import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
+import kotlin.time.Clock.System.now
 
 
 internal val nowBySecond = reactiveProcess {

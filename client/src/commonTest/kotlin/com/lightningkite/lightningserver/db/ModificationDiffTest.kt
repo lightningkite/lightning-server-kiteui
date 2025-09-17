@@ -5,10 +5,10 @@ import kotlin.uuid.Uuid
 import com.lightningkite.services.database.Modification
 import com.lightningkite.services.database.lt
 import com.lightningkite.services.database.modification
-import kotlin.time.Clock.System.now
 import com.lightningkite.services.database.notNull
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.time.Clock.System.now
 
 class ModificationDiffTest {
     @Test

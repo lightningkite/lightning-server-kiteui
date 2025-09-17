@@ -4,17 +4,18 @@ import com.lightningkite.kiteui.*
 import com.lightningkite.lightningserver.typed.ClientModelRestEndpointsAndUpdatesWebsocket
 import com.lightningkite.lightningserver.typed.ClientWebSocket
 import com.lightningkite.services.database.*
-import kotlin.time.Clock.System.now
 import com.lightningkite.reactive.core.AppScope
 import com.lightningkite.reactive.core.Constant
 import com.lightningkite.reactive.core.Reactive
 import com.lightningkite.reactive.core.Signal
 import com.lightningkite.services.database.Partial
+import com.lightningkite.services.default
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import kotlin.time.Instant
 import kotlin.coroutines.CoroutineContext
+import kotlin.time.Clock
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
@@ -288,7 +289,7 @@ class ConnectivityGate(val delay: suspend (ms: Long) -> Unit = { ms -> kotlinx.c
                 if (retryAt.value == null) {
                     AppScope.launch {
                         val d = nextRetry
-                        retryAt.value = now() + d
+                        retryAt.value = Clock.default().now() + d
                         nextRetry = d.times(2).coerceAtMost(maxRetry)
                         gate.permit = false
                         delay(d.inWholeMilliseconds)

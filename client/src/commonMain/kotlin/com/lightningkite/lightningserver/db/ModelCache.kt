@@ -6,7 +6,6 @@ import com.lightningkite.lightningserver.networking.toTypedWebsocket
 import com.lightningkite.lightningserver.typed.ClientModelRestEndpoints
 import com.lightningkite.lightningserver.typed.ClientModelRestUpdatesWebsocket
 import com.lightningkite.services.database.*
-import kotlin.time.Clock.System.now
 import com.lightningkite.reactive.context.awaitOnce
 import com.lightningkite.reactive.context.onRemove
 import com.lightningkite.reactive.core.*
@@ -14,6 +13,7 @@ import com.lightningkite.reactive.extensions.use
 import com.lightningkite.reactive.extensions.value
 import com.lightningkite.reactive.lensing.lens
 import com.lightningkite.reactive.lensing.lensListenable
+import com.lightningkite.services.ClockContextElement
 import com.lightningkite.services.default
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.BufferOverflow
@@ -90,19 +90,19 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
         newData.addListener {
             when (val update = newData.value) {
                 is CacheUpdate.DeletionResult -> update.deletedIds.forEach { id ->
-                    lastIndividualValues.getOrPut(id, ::LateInitSignal).value = WithTimestamp(null)
+                    lastIndividualValues.getOrPut(id, ::LateInitSignal).value = WithTimestamp(null, scope.now())
                 }
                 is CacheUpdate.MultiGetResult -> {
                     update.items.forEach { item ->
-                        lastIndividualValues.getOrPut(item._id, ::LateInitSignal).value = WithTimestamp(item)
+                        lastIndividualValues.getOrPut(item._id, ::LateInitSignal).value = WithTimestamp(item, scope.now())
                     }
                     update.missing.forEach { id ->
-                        lastIndividualValues.getOrPut(id, ::LateInitSignal).value = WithTimestamp(null)
+                        lastIndividualValues.getOrPut(id, ::LateInitSignal).value = WithTimestamp(null, scope.now())
                     }
                 }
                 is CacheUpdate.SocketOverload -> lastIndividualValues.values.forEach { it.unset() }
                 else -> update.items?.forEach { item ->
-                    lastIndividualValues.getOrPut(item._id, ::LateInitSignal).value = WithTimestamp(item)
+                    lastIndividualValues.getOrPut(item._id, ::LateInitSignal).value = WithTimestamp(item, scope.now())
                 }
             }
         }
@@ -165,7 +165,7 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
 
             // Automatically emit our best known value, if it matches the requirements.
             basis.state.getOrNull()?.let { lastKnown ->
-                if (lastKnown.isLive || now() - lastKnown.at < maximumAge) {
+                if (lastKnown.isLive || Clock.default().now() - lastKnown.at < maximumAge) {
                     log?.log("Found existing value ${lastKnown.at}")
                 } else null
             } ?: run {
@@ -210,7 +210,7 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
             get() {
                 return basis.state.handle(
                     success = {
-                        if (it.isLive || now() - it.at < maximumAge) ReactiveState(it.item)
+                        if (it.isLive || scope.now() - it.at < maximumAge) ReactiveState(it.item)
                         else ReactiveState.notReady
                     },
                     exception = { ReactiveState.exception(it) },
@@ -270,7 +270,11 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
         override fun hashCode(): Int = id.hashCode() + maximumAge.hashCode() + pullFrequency.hashCode()
     }
 
-    val cache: ListReconstructionCalculator<T, ID> = NaiveListReconstructionCalculator<T, ID>(serializer, log = log?.tag("CollectionCache"))
+    val cache: ListReconstructionCalculator<T, ID> = NaiveListReconstructionCalculator<T, ID>(
+        serializer,
+        log = log?.tag("CollectionCache"),
+        clock = scope.coroutineContext[ClockContextElement]?.clock ?: Clock.System
+    )
 
     init {
         newData.addListener { cache.update(newData.value) }
@@ -313,7 +317,7 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
 
             // Automatically emit our best known value, if it matches the requirements.
             cache.cached(currentQuery)?.let { lastKnown ->
-                if (currentQuery.condition.isLiveAt(lastKnown.at) || now() - lastKnown.at < maximumAge) {
+                if (currentQuery.condition.isLiveAt(lastKnown.at) || Clock.default().now() - lastKnown.at < maximumAge) {
                     log?.log("Found existing value ${lastKnown.at} / ${lastKnown.requestedLimit}")
                 } else null
             } ?: run {
@@ -343,7 +347,7 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
                     mostRecent == null -> (-1).seconds
                     mostRecent.requestedLimit < currentQuery.limit -> (-1).seconds
                     currentQuery.condition.isLiveAt(mostRecent.at) -> pullFrequency
-                    else -> pullFrequency - (now() - mostRecent.at)
+                    else -> pullFrequency - (Clock.default().now() - mostRecent.at)
                 }
                 // TODO: if we're up to date otherwise, can we do limit extension to request more items?
                 if (next > 0.seconds) {
@@ -365,7 +369,7 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
         override val state: ReactiveState<List<T>>
             get() {
                 return cache.cached(currentQuery)?.let { lastKnown ->
-                    if (currentQuery.condition.isLiveAt(lastKnown.at) || now() - lastKnown.at < maximumAge) {
+                    if (currentQuery.condition.isLiveAt(lastKnown.at) || scope.now() - lastKnown.at < maximumAge) {
                         ReactiveState(lastKnown.item)
                     } else ReactiveState.notReady
                 } ?: ReactiveState.notReady
@@ -373,14 +377,14 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
 
         val diff = cache.updates(query).lensListenable {
             cache.cached(currentQuery)?.let { lastKnown ->
-                if (currentQuery.condition.isLiveAt(lastKnown.at) || now() - lastKnown.at < maximumAge) {
+                if (currentQuery.condition.isLiveAt(lastKnown.at) || scope.now() - lastKnown.at < maximumAge) {
                     lastKnown.item
                 } else null
             }
         }.uses(processWhileRunning)
         val diffWithTs = cache.updates(query).lensListenable {
             cache.cached(currentQuery)?.let { lastKnown ->
-                if (currentQuery.condition.isLiveAt(lastKnown.at) || now() - lastKnown.at < maximumAge) {
+                if (currentQuery.condition.isLiveAt(lastKnown.at) || scope.now() - lastKnown.at < maximumAge) {
                     lastKnown
                 } else null
             }

@@ -13,11 +13,11 @@ import com.lightningkite.services.data.References
 import kotlin.uuid.Uuid
 import com.lightningkite.services.database.*
 import com.lightningkite.services.files.ServerFile
-import kotlin.time.Clock.System.now
 import kotlin.time.Instant
 import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.UseContextualSerialization
+import kotlin.time.Clock.System.now
 
 @Serializable
 @GenerateDataClassPaths

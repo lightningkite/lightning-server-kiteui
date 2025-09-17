@@ -21,7 +21,6 @@ import com.lightningkite.lightningserver.sessions.proofs.Proof
 import com.lightningkite.lightningserver.sessions.LogInRequest
 import com.lightningkite.lightningserver.sessions.ProofsCheckResult
 import com.lightningkite.lightningserver.sessions.proofs.AuthClientEndpoints
-import kotlin.time.Clock.System.now
 import com.lightningkite.reactive.context.await
 import com.lightningkite.reactive.context.invoke
 import com.lightningkite.reactive.context.reactive
@@ -33,6 +32,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.plus
 import kotlin.math.roundToInt
+import kotlin.time.Clock.System.now
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.milliseconds

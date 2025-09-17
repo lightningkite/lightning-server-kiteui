@@ -151,7 +151,7 @@ class ModelCacheTest {
             currentValue,
         )
 
-        val mod = modification<LargeTestModel> { it.int assign 2 }
+        val mod = modification<LargeTestModel> { it.short assign 2 }
         currentValue = mod(currentValue)
         println("modifying...")
         mock.modify(currentValue._id, mod)
@@ -159,6 +159,7 @@ class ModelCacheTest {
         assertContains(
             lastRead ?: setOf(),
             currentValue,
+            "List: ${(lastRead ?: emptyList()).map { it.int }}, Value: ${currentValue.int}"
         )
     }
 

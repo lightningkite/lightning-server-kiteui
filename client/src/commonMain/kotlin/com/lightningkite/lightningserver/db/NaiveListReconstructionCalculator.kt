@@ -8,6 +8,7 @@ import com.lightningkite.services.database.comparator
 import com.lightningkite.reactive.core.BasicListenable
 import com.lightningkite.reactive.core.Listenable
 import kotlinx.serialization.KSerializer
+import kotlin.time.Clock
 
 /**
  * A simple tool that can reconstruct lists from partial updates.
@@ -17,6 +18,7 @@ import kotlinx.serialization.KSerializer
 class NaiveListReconstructionCalculator<T : HasId<ID>, ID : Comparable<ID>>(
     val serializer: KSerializer<T>,
     val log: Console? = null,
+    val clock: Clock = Clock.System
 ) : ListReconstructionCalculator<T, ID> {
     val byQuery = HashMap<Query<T>, WithTimestampAndLimit<List<T>>>()
     val all = BasicListenable()
@@ -57,7 +59,7 @@ class NaiveListReconstructionCalculator<T : HasId<ID>, ID : Comparable<ID>>(
                 }
             }
 
-            is CacheUpdate.QueryResult -> byQuery[update.query] = WithTimestampAndLimit(update.result, requestedLimit = update.query.limit)
+            is CacheUpdate.QueryResult -> byQuery[update.query] = WithTimestampAndLimit(update.result, requestedLimit = update.query.limit, at = clock.now())
             is CacheUpdate.SocketChanges -> {
                 val iter = byQuery.iterator()
                 while (iter.hasNext()) {
@@ -68,7 +70,7 @@ class NaiveListReconstructionCalculator<T : HasId<ID>, ID : Comparable<ID>>(
                     }
                     if (completeUpdate) {
                         val new = old.item.update(entry.key, update.changed, update.removed)
-                        entry.setValue(old.copy(item = new, at = now()))
+                        entry.setValue(old.copy(item = new, at = clock.now()))
                     } else {
                         // If we can't guarantee this was a full knowledge update, we can't update the timestamp.
                         val new = old.item.update(entry.key, update.changed)

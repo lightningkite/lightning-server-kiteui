@@ -13,7 +13,6 @@ import com.lightningkite.reactive.lensing.lens
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlin.time.Clock.System.now
 import kotlin.time.Instant
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
@@ -36,7 +35,7 @@ class SharedCollectionUpdatesSocket<T : HasId<ID>, ID : Comparable<ID>>(
     }
     inner class Req(override val condition: Condition<T>) : BaseResourceUse(), CacheUpdate.SocketChanges.ConditionAndTimestamp<T> {
         override var activatedAt: Instant? = null
-        override fun activate() { desiredRequirements.value += this; activatedAt = now() }
+        override fun activate() { desiredRequirements.value += this; activatedAt = scope.now() }
         override fun deactivate() { desiredRequirements.value -= this; activatedAt = null }
         val satisfied = listeningStatus.lens { it.requirements.any { it.condition == condition } }
         suspend fun wait() = satisfied.waitFor { it }
@@ -96,7 +95,7 @@ class SharedCollectionUpdatesSocket<T : HasId<ID>, ID : Comparable<ID>>(
                 // TODO: Is this retry logic actually working?
                 delay(4.seconds)
                 if (lastSent == willSend) {
-                    log?.log("Update condition to ${lastSent.fullCondition} failed.")
+                    log?.log("Update condition to ${lastSent?.fullCondition} failed.")
                     lastSent = null
                     updateCondition()
                 }

@@ -16,7 +16,6 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlin.time.Clock
-import kotlin.time.Clock.System.now
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Instant
@@ -129,7 +128,7 @@ data class AuthEndpoints(
                         id = "id",
                         options = get(input).filter { it.method.via !in input.map { it.via } },
                         strengthRequired = 3,
-                        expires = now() + 7.days,
+                        expires = Clock.System.now() + 7.days,
                         readyToLogIn = input.sumOf { it.strength } >= 3
                     )
                 }
@@ -153,7 +152,7 @@ data class AuthEndpoints(
                     if (input.password == "wrong") throw LsErrorException(
                         LSError(400, "", "Code incorrect. 4 attempts remain", "")
                     )
-                    return Proof("sms", property = "phone", value = input.key, at = now(), signature = "")
+                    return Proof("sms", property = "phone", value = input.key, at = Clock.System.now(), signature = "")
                 }
             },
             emailProof = object : ProofClientEndpoints.Email {
@@ -167,7 +166,7 @@ data class AuthEndpoints(
                     if (input.password == "wrong") throw LsErrorException(
                         LSError(400, "", "Code incorrect. 4 attempts remain", "")
                     )
-                    return Proof("email", property = "email", value = input.key, at = now(), signature = "")
+                    return Proof("email", property = "email", value = input.key, at = Clock.System.now(), signature = "")
                 }
             },
             passwordProof = object : ProofClientEndpoints.Password {
@@ -177,7 +176,7 @@ data class AuthEndpoints(
 
                         LSError(400, "", "Password and user do not match", "")
                     )
-                    return Proof("password", property = "password", value = "id", at = now(), signature = "")
+                    return Proof("password", property = "password", value = "id", at = Clock.System.now(), signature = "")
                 }
 
                 override suspend fun establishPassword(input: EstablishPassword) {
@@ -191,7 +190,7 @@ data class AuthEndpoints(
 
                         LSError(400, "", "OTP and user do not match", "")
                     )
-                    return Proof("otp", property = "otp", value = "id", at = now(), signature = "")
+                    return Proof("otp", property = "otp", value = "id", at = Clock.System.now(), signature = "")
                 }
 
                 override suspend fun establishOneTimePassword(input: EstablishOtp): String {
@@ -207,7 +206,7 @@ data class AuthEndpoints(
                 override suspend fun proveKnownDevice(input: String): Proof {
                     delay(1000)
                     if (input == "wrong") throw LsErrorException(LSError(400, "", "", ""))
-                    return Proof("known-device", 1, "id", "value", now(), "")
+                    return Proof("known-device", 1, "id", "value", Clock.System.now(), "")
                 }
 
                 override suspend fun knownDeviceOptions(): KnownDeviceOptions {
@@ -222,7 +221,7 @@ data class AuthEndpoints(
 
                 override suspend fun establishKnownDeviceV2(): KnownDeviceSecretAndExpiration {
                     delay(1000)
-                    return KnownDeviceSecretAndExpiration("ok", now() + 30.days)
+                    return KnownDeviceSecretAndExpiration("ok", Clock.System.now() + 30.days)
                 }
             },
             webAuthNProof = object : ProofClientEndpoints.WebAuthN {
@@ -239,7 +238,7 @@ data class AuthEndpoints(
 
                 override suspend fun prove(input: WebAuthN.Authentication.ProveRequest): Proof {
                     delay(1000)
-                    return Proof(via = "WebAuthN", property = "WebAuthN", value = "id", at = now(), signature = "")
+                    return Proof(via = "WebAuthN", property = "WebAuthN", value = "id", at = Clock.System.now(), signature = "")
                 }
 
                 override suspend fun registerStart(input: WebAuthN.GeneralPreference): WebAuthN.Registration.RegistrationResponse = TODO()
@@ -251,7 +250,7 @@ data class AuthEndpoints(
                     if (input.password == "wrong") throw LsErrorException(
                         LSError(400, "", "OTP and user do not match", "")
                     )
-                    return Proof("backupcode", property = "backupcode", value = "id", at = now(), signature = "")
+                    return Proof("backupcode", property = "backupcode", value = "id", at = Clock.System.now(), signature = "")
                 }
 
                 override suspend fun clearCodes() {
