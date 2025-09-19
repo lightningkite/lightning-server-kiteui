@@ -8,6 +8,7 @@ import com.lightningkite.kiteui.views.centered
 import com.lightningkite.kiteui.views.direct.*
 import com.lightningkite.kiteui.views.expanding
 import com.lightningkite.kiteui.views.l2.icon
+import com.lightningkite.services.database.SerializationRegistry
 import com.lightningkite.services.files.ServerFile
 
 object ServerFileRenderer  : FormRenderer.Generator, ViewRenderer.Generator {

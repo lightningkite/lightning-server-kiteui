@@ -3,6 +3,7 @@ package com.lightningkite.lightningserver.admin
 import com.lightningkite.kiteui.auth.authComponent2
 import com.lightningkite.kiteui.exceptions.ExceptionToMessages
 import com.lightningkite.kiteui.exceptions.installLsError
+import com.lightningkite.kiteui.forms.ServerFileRenderer.type
 import com.lightningkite.kiteui.forms.displayName
 import com.lightningkite.kiteui.models.*
 import com.lightningkite.kiteui.navigation.DefaultSerializersModule
@@ -25,7 +26,9 @@ import com.lightningkite.reactive.extensions.debounceWrite
 import com.lightningkite.reactive.extensions.modify
 import com.lightningkite.services.database.ClientModule
 import com.lightningkite.services.database.SerializableProperty
+import com.lightningkite.services.database.SerializationRegistry
 import com.lightningkite.services.database.serializableProperties
+import com.lightningkite.services.files.ServerFile
 import com.lightningkite.titleCase
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -36,6 +39,8 @@ external object JsJodaTimeZoneModule
 fun ViewWriter.app(navigator: PageNavigator, dialog: PageNavigator) {
     val x = JsJodaTimeZoneModule
     DefaultSerializersModule = ClientModule
+    SerializationRegistry.master.register(ServerFile.serializer())
+    SerializationRegistry.master.register("$type/external") { ServerFile.serializer() }
 //    rootTheme = { appTheme() }
     ExceptionToMessages.root.installLsError()
     appNavFactory.value = ViewWriter::appNavTopAndLeft
@@ -49,8 +54,18 @@ fun ViewWriter.app(navigator: PageNavigator, dialog: PageNavigator) {
                     if (adminSettings().showEndpoints) {
                         add(NavLink("Endpoints", icon = Icon.menu) { EndpointsPage() })
                     }
+                    println("BUILDING NAV")
+                    println(adminServer().models.keys)
+                    try {
+                        println(adminServer().models.entries.map { it.value.serializer.displayName })
+                    } catch(e: Exception) {
+                        e.printStackTrace()
+                    }
+                    println("BUILDING NAV OK")
                     adminServer().models.entries.sortedBy { it.value.serializer.displayName }.forEach {
+                        println("Entry: ${it.key}")
                         if(permissions[it.key]?.read != Condition.Never) {
+                            println("Adding: ${it.key}")
                             add(
                                 NavLink(
                                     it.value.docGroup?.titleCase() ?: it.value.serializer.displayName,
@@ -60,6 +75,7 @@ fun ViewWriter.app(navigator: PageNavigator, dialog: PageNavigator) {
                             )
                         }
                     }
+                    println("nav complete")
                 }
             } catch (e: Exception) {
                 listOf()

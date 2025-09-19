@@ -35,10 +35,11 @@ val serverUrl = PersistentProperty("url", "http://localhost:8080")
 val adminCredentials = PersistentProperty<AdminCredentials?>("credentials", null)
 val adminAuthentication = remember {
     val c = adminCredentials() ?: return@remember null
+    if(c.session == null) return@remember null
     LightningServerAuthentication(
         subject = adminServer().authEndpoints(null).subjects[c.userType ?: return@remember null]!!,
-        subjectPath = c.userType ?: return@remember null,
-        c.session ?: return@remember null
+        subjectPath = c.userType,
+        c.session
     )
 }
 val serverSchema = rememberSuspending {

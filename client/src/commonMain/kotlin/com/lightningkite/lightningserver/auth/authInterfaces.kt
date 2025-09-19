@@ -193,7 +193,7 @@ data class AuthEndpoints(
                     return Proof("otp", property = "otp", value = "id", at = Clock.System.now(), signature = "")
                 }
 
-                override suspend fun establishOneTimePassword(input: EstablishOtp): String {
+                override suspend fun establishOneTimePassword(input: EstablishTotp): String {
                     delay(1000)
                     return "URL for OTP"
                 }

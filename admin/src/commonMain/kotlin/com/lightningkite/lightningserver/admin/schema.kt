@@ -109,40 +109,52 @@ class ExternalLightningServer(
         val fetcher = fetcher(auth)
 
         return AuthEndpoints(
-            subjects = schema.interfaces.filter { it.matches.serialName == "UserAuthClientEndpoints" }.associate {
-                it.path to LiveAuthClientEndpoints(
-                    fetcher = fetcher,
-                    subpath = it.path,
-                    subjectSerializer = it.matches.arguments[0].serializer(registry, mapOf()) as KSerializer<HasId<Comparable<Any>>>,
-                    idSerializer = it.matches.arguments[1].serializer(registry, mapOf()) as KSerializer<Comparable<Any>>,
-                )
-            },
+            subjects = schema.interfaces.filter { it.matches.serialName == "com.lightningkite.lightningserver.sessions.proofs.AuthClientEndpoints" }
+                .associate {
+                    it.path to LiveAuthClientEndpoints(
+                        fetcher = fetcher,
+                        subpath = it.path,
+                        subjectSerializer = it.matches.arguments[0].serializer(
+                            registry,
+                            mapOf()
+                        ) as KSerializer<HasId<Comparable<Any>>>,
+                        idSerializer = it.matches.arguments[1].serializer(
+                            registry,
+                            mapOf()
+                        ) as KSerializer<Comparable<Any>>,
+                    )
+                },
             authentication = auth,
-            smsProof = schema.interfaces.find { it.matches.serialName == "ProofClientEndpoints.Sms" }?.let {
-                val httpPath = it.path
-                LiveProofClientEndpoints.Sms(fetcher = fetcher, subpath = httpPath)
-            },
-            emailProof = schema.interfaces.find { it.matches.serialName == "ProofClientEndpoints.Email" }?.let {
-                val httpPath = it.path
-                LiveProofClientEndpoints.Email(fetcher = fetcher, subpath = httpPath)
-            },
-            oneTimePasswordProof = schema.interfaces.find { it.matches.serialName == "ProofClientEndpoints.TimeBasedOTP" }
+            smsProof = schema.interfaces.find { it.matches.serialName == "com.lightningkite.lightningserver.sessions.proofs.ProofClientEndpoints.Sms" }
+                ?.let {
+                    val httpPath = it.path
+                    LiveProofClientEndpoints.Sms(fetcher = fetcher, subpath = httpPath)
+                },
+            emailProof = schema.interfaces.find { it.matches.serialName == "com.lightningkite.lightningserver.sessions.proofs.ProofClientEndpoints.Email" }
+                ?.let {
+                    val httpPath = it.path
+                    LiveProofClientEndpoints.Email(fetcher = fetcher, subpath = httpPath)
+                },
+            oneTimePasswordProof = schema.interfaces.find { it.matches.serialName == "com.lightningkite.lightningserver.sessions.proofs.ProofClientEndpoints.TimeBasedOTP" }
                 ?.let {
                     val httpPath = it.path
                     LiveProofClientEndpoints.TimeBasedOTP(fetcher = fetcher, subpath = httpPath)
                 },
-            passwordProof = schema.interfaces.find { it.matches.serialName == "ProofClientEndpoints.Password" }?.let {
-                val httpPath = it.path
-                LiveProofClientEndpoints.Password(fetcher = fetcher, subpath = httpPath)
-            },
-            webAuthNProof = schema.interfaces.find { it.matches.serialName == "ProofClientEndpoints.WebAuthN" }?.let {
-                val httpPath = it.path
-                LiveProofClientEndpoints.WebAuthNEndpoints(fetcher = fetcher, subpath = httpPath)
-            },
-            knownDeviceProof = schema.interfaces.find { it.matches.serialName == "KnownDeviceProofClientEndpoints" }?.let {
-                val httpPath = it.path
-                LiveProofClientEndpoints.KnownDevice(fetcher = fetcher, subpath = httpPath)
-            },
+            passwordProof = schema.interfaces.find { it.matches.serialName == "com.lightningkite.lightningserver.sessions.proofs.ProofClientEndpoints.Password" }
+                ?.let {
+                    val httpPath = it.path
+                    LiveProofClientEndpoints.Password(fetcher = fetcher, subpath = httpPath)
+                },
+            webAuthNProof = schema.interfaces.find { it.matches.serialName == "com.lightningkite.lightningserver.sessions.proofs.ProofClientEndpoints.WebAuthN" }
+                ?.let {
+                    val httpPath = it.path
+                    LiveProofClientEndpoints.WebAuthNEndpoints(fetcher = fetcher, subpath = httpPath)
+                },
+            knownDeviceProof = schema.interfaces.find { it.matches.serialName == "com.lightningkite.lightningserver.sessions.proofs.KnownDeviceProofClientEndpoints" }
+                ?.let {
+                    val httpPath = it.path
+                    LiveProofClientEndpoints.KnownDevice(fetcher = fetcher, subpath = httpPath)
+                },
             withAuthentication = { authEndpoints(it) }
         )
     }
@@ -158,10 +170,6 @@ class ExternalLightningServer(
 
         val hasUpdatesWs =
             schema.endpoints.any { it.path == inter.path && it.method == "WEBSOCKET" && it.input.serialName == "com.lightningkite.lightningdb.Condition" && it.output.serialName == "com.lightningkite.lightningdb.CollectionUpdates" }
-
-        init {
-            println("${inter.path} uses ${serializer::class}")
-        }
 
         private var cacheCache = PerAuthCache { auth ->
             when {
@@ -193,7 +201,7 @@ class ExternalLightningServer(
     }
 
     val models: Map<String, ModelInfo<*, *>> = schema.interfaces.filter {
-        it.matches.serialName == "ClientModelRestEndpoints"
+        it.matches.serialName == "com.lightningkite.lightningserver.typed.ClientModelRestEndpoints"
     }.associate { inter ->
         inter.path to ModelInfo<UnknownModel, UnknownId>(inter)
     }
