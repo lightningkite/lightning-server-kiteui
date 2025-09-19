@@ -18,7 +18,7 @@ terraform {
 terraform {
   backend "s3" {
     bucket = "lightningkite-terraform"
-    key    = "lsadmin"
+    key    = "ls5admin"
     region = "us-west-2"
   }
 }
@@ -37,9 +37,9 @@ module "web" {
     aws = aws
     aws.acm = aws.acm
   }
-  deployment_name = "lsadmin"
+  deployment_name = "ls5admin"
   dist_folder = "../../build/vite/dist"
-  domain_name = "lsadmin.cs.lightningkite.com"
+  domain_name = "ls5admin.cs.lightningkite.com"
   domain_name_zone = "cs.lightningkite.com"
   react_mode = true
 }

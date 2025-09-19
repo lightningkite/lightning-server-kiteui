@@ -116,5 +116,5 @@ fun env(name: String, profile: String) {
         this.workingDir = file("terraform/$name")
     }
 }
-env("prod", "lk")
+env("ls5", "lk")
 env("beta", "lk")
