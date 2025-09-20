@@ -10,11 +10,11 @@ kotlinerCli = "1.0.5"
 kotlinxCoroutinesTest = "1.10.2"
 kotlinxSerializationCsvDurable = "0.2.21-1"
 ksp = "2.2.20-2.0.3"
-lightningServer = "5.0.0-prerelease-136"
+lightningServer = "5.0.0-prerelease-146"
 lkGradleHelpers = "4.0.4"
 log4jToSlf4j = "2.25.1"
 proguard = "7.7.0"
-serviceAbstractions = "0.0.1-51"
+serviceAbstractions = "0.0.1-54"
 shadow = "8.1.1"
 vanniktechPublishing = "0.34.0"
 vite = "DEV"
@@ -59,7 +59,6 @@ comLightningKiteServices-should-be-standard-library = { module = "com.lightningk
 comLightningKiteServices-sms = { module = "com.lightningkite.services:sms", version = { ref = "serviceAbstractions" } }
 comLightningKiteServices-sms-test = { module = "com.lightningkite.services:sms-test", version = { ref = "serviceAbstractions" } }
 comLightningKiteServices-sms-twilio = { module = "com.lightningkite.services:sms-twilio", version = { ref = "serviceAbstractions" } }
-#comLightningKiteServices-stringArrayFormat = { module = "com.lightningkite.services:string-array-format", version = { ref = "serviceAbstractions" } }
 comLightningKiteServices-test = { module = "com.lightningkite.services:test", version = { ref = "serviceAbstractions" } }
 comLightningkiteKiteuiLibrary = { module = "com.lightningkite.kiteui:library", version = { ref = "kiteui" } }
 comLightningkiteKotlinxSerializationCsvDurable = { module = "com.lightningkite:kotlinx-serialization-csv-durable", version = { ref = "kotlinxSerializationCsvDurable" } }

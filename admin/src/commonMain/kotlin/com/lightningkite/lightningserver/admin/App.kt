@@ -44,41 +44,31 @@ fun ViewWriter.app(navigator: PageNavigator, dialog: PageNavigator) {
 //    rootTheme = { appTheme() }
     ExceptionToMessages.root.installLsError()
     appNavFactory.value = ViewWriter::appNavTopAndLeft
+    println("BOOT")
     appNav(navigator, dialog) {
         appName = "KiteUI Sample App"
         ::navItems {
             val permissions = loadedPermissions()
-            try {
-                buildList {
-                    add(NavLink("Home", icon = Icon.home) { HomePage() })
-                    if (adminSettings().showEndpoints) {
-                        add(NavLink("Endpoints", icon = Icon.menu) { EndpointsPage() })
-                    }
-                    println("BUILDING NAV")
-                    println(adminServer().models.keys)
-                    try {
-                        println(adminServer().models.entries.map { it.value.serializer.displayName })
-                    } catch(e: Exception) {
-                        e.printStackTrace()
-                    }
-                    println("BUILDING NAV OK")
-                    adminServer().models.entries.sortedBy { it.value.serializer.displayName }.forEach {
-                        println("Entry: ${it.key}")
-                        if(permissions[it.key]?.read != Condition.Never) {
-                            println("Adding: ${it.key}")
-                            add(
-                                NavLink(
-                                    it.value.docGroup?.titleCase() ?: it.value.serializer.displayName,
-//                                    it.value.serializer.displayName,
-                                    icon = Icon.list
-                                ) { CollectionAdminPage(it.key) }
-                            )
-                        }
-                    }
-                    println("nav complete")
+            buildList {
+                add(NavLink("Home", icon = Icon.home) { HomePage() })
+                if (adminSettings().showEndpoints) {
+                    add(NavLink("Endpoints", icon = Icon.menu) { EndpointsPage() })
                 }
-            } catch (e: Exception) {
-                listOf()
+                println("BUILDING NAV OK")
+                adminServer().models.entries.sortedBy { it.value.serializer.displayName }.forEach {
+                    if(permissions[it.key]?.read != Condition.Never) {
+                        add(
+                            NavLink(
+                                it.value.docGroup?.titleCase() ?: it.value.serializer.displayName,
+//                                    it.value.serializer.displayName,
+                                icon = Icon.list
+                            ) { CollectionAdminPage(it.key) }
+                        )
+                    } else {
+                        println("Skipping ${it.key} because it has no read permission.")
+                    }
+                }
+                println("nav complete")
             }
         }
 
