@@ -13,14 +13,14 @@ import com.lightningkite.kiteui.views.expanding
 import com.lightningkite.reactive.context.reactive
 import com.lightningkite.reactive.core.Constant
 import com.lightningkite.reactive.core.Signal
-import com.lightningkite.services.database.ClientModule
 import com.lightningkite.services.files.ServerFile
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.descriptors.SerialKind
+import kotlinx.serialization.modules.EmptySerializersModule
 
 @OptIn(ExperimentalSerializationApi::class)
 class FormModule {
-    var module = ClientModule
+    var module = EmptySerializersModule()
     var showTypePicker = false
     var fileUpload: (suspend (FileReference) -> ServerFile)? = null
     var typeInfo: (type: String) -> FormTypeInfo<*, *>? = { _ -> println("WARN: Empty form context"); null }

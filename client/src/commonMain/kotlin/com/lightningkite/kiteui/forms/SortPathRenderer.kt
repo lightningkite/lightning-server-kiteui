@@ -10,10 +10,14 @@ import com.lightningkite.services.database.SortPart
 import com.lightningkite.services.database.SortPartSerializer
 import com.lightningkite.reactive.core.Constant
 import com.lightningkite.services.database.*
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.LocalTime
 import kotlinx.serialization.ContextualSerializer
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.builtins.serializer
+import kotlin.time.Duration
 import kotlin.time.Instant
 import kotlin.uuid.Uuid
 
@@ -40,15 +44,12 @@ object SortPathRenderer : FormRenderer.Generator, ViewRenderer.Generator {
         UInt.serializer().descriptor.serialName,
         ULong.serializer().descriptor.serialName,
         Uuid.serializer().descriptor.serialName,
-        InstantIso8601Serializer.descriptor.serialName,
-        LocalDateIso8601Serializer.descriptor.serialName,
-        LocalDateTimeIso8601Serializer.descriptor.serialName,
-        LocalTimeIso8601Serializer.descriptor.serialName,
         Instant.serializer().descriptor.serialName,
-        kotlinx.datetime.serializers.LocalDateIso8601Serializer.descriptor.serialName,
-        kotlinx.datetime.serializers.LocalDateTimeIso8601Serializer.descriptor.serialName,
-        kotlinx.datetime.serializers.LocalTimeIso8601Serializer.descriptor.serialName,
-        DurationSerializer.descriptor.serialName,
+        LocalDate.serializer().descriptor.serialName,
+        LocalDateTime.serializer().descriptor.serialName,
+        LocalTime.serializer().descriptor.serialName,
+        Instant.serializer().descriptor.serialName,
+        Duration.serializer().descriptor.serialName,
         DurationMsSerializer.descriptor.serialName,
     ) + stringTypes
 

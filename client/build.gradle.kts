@@ -41,11 +41,11 @@ kotlin {
     sourceSets {
         val commonMain by getting {
             dependencies {
-                api(libs.comLightningKiteServices.database)
                 api(libs.comLightningkiteLightningserver.core.shared)
                 api(libs.comLightningkiteLightningserver.files.shared)
                 api(libs.comLightningkiteLightningserver.typed.shared)
                 api(libs.comLightningkiteLightningserver.sessions.shared)
+                api(libs.comLightningKiteServices.database.shared)
                 api(libs.comLightningkiteKiteuiLibrary)
             }
             kotlin {

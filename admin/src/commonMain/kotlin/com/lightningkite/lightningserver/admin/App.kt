@@ -24,12 +24,12 @@ import com.lightningkite.reactive.core.remember
 import com.lightningkite.reactive.core.rememberSuspending
 import com.lightningkite.reactive.extensions.debounceWrite
 import com.lightningkite.reactive.extensions.modify
-import com.lightningkite.services.database.ClientModule
 import com.lightningkite.services.database.SerializableProperty
 import com.lightningkite.services.database.SerializationRegistry
 import com.lightningkite.services.database.serializableProperties
 import com.lightningkite.services.files.ServerFile
 import com.lightningkite.titleCase
+import kotlinx.serialization.modules.EmptySerializersModule
 import kotlin.time.Duration.Companion.milliseconds
 
 @JsModule("@js-joda/timezone")
@@ -38,9 +38,8 @@ external object JsJodaTimeZoneModule
 
 fun ViewWriter.app(navigator: PageNavigator, dialog: PageNavigator) {
     val x = JsJodaTimeZoneModule
-    DefaultSerializersModule = ClientModule
+    println("Registering server file serializer: ${ServerFile.serializer().descriptor.serialName}")
     SerializationRegistry.master.register(ServerFile.serializer())
-    SerializationRegistry.master.register("$type/external") { ServerFile.serializer() }
 //    rootTheme = { appTheme() }
     ExceptionToMessages.root.installLsError()
     appNavFactory.value = ViewWriter::appNavTopAndLeft
