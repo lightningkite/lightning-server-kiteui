@@ -14,3 +14,4 @@ pluginManagement {
 
 include(":client")
 include(":admin")
+include(":server-client-utils")

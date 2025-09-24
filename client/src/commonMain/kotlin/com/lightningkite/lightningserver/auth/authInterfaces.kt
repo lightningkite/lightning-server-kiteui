@@ -6,8 +6,6 @@ import com.lightningkite.lightningserver.LSError
 import com.lightningkite.lightningserver.LsErrorException
 import com.lightningkite.lightningserver.sessions.*
 import com.lightningkite.lightningserver.sessions.proofs.*
-import com.lightningkite.lightningserver.sessions.proofs.oauth.OauthResponse
-import com.lightningkite.lightningserver.sessions.proofs.oauth.OauthTokenRequest
 import com.lightningkite.reactive.core.AppScope
 import com.lightningkite.reactive.core.Listenable
 import com.lightningkite.services.database.HasId

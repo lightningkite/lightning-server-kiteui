@@ -15,6 +15,7 @@ import com.lightningkite.kiteui.views.centered
 import com.lightningkite.kiteui.views.compact
 import com.lightningkite.kiteui.views.direct.*
 import com.lightningkite.kiteui.views.l2.*
+import com.lightningkite.lightningserver.LSError
 import com.lightningkite.lightningserver.auth.LightningServerAuthentication
 import com.lightningkite.lightningserver.sessions.proofs.LiveAuthClientEndpoints
 import com.lightningkite.services.database.Condition
@@ -38,7 +39,8 @@ external object JsJodaTimeZoneModule
 
 fun ViewWriter.app(navigator: PageNavigator, dialog: PageNavigator) {
     val x = JsJodaTimeZoneModule
-    println("Registering server file serializer: ${ServerFile.serializer().descriptor.serialName}")
+    DefaultSerializersModule = ClientModule
+    SerializationRegistry.master.register(LSError.serializer())
     SerializationRegistry.master.register(ServerFile.serializer())
 //    rootTheme = { appTheme() }
     ExceptionToMessages.root.installLsError()
