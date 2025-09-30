@@ -68,7 +68,7 @@ dependencies {
 
 android {
     namespace = "com.lightningkite.lightningserver.client"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         minSdk = 21
