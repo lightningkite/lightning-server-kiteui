@@ -54,7 +54,7 @@ kotlin {
 
 android {
     namespace = "com.lightningkite.lightningserver"
-    compileSdk = 34
+    compileSdk = 36
     defaultConfig {
         minSdk = 24
     }
@@ -87,7 +87,7 @@ mavenPublishing {
 }
 android {
     namespace = "com.lightningkite.lightningserver.client"
-    compileSdk = 34
+    compileSdk = 36
 
     defaultConfig {
         minSdk = 21
