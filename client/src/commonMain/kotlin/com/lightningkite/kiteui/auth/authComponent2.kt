@@ -278,7 +278,7 @@ open class AuthComponent2(
             }
             centered - text {
                 ::content {
-                    val days = authResult()?.expires?.let { it - now() }?.toDouble(DurationUnit.DAYS)
+                    val days = authResult()?.maxExpiration?.let { it - now() }?.toDouble(DurationUnit.DAYS)
                         ?.roundToInt()
                     if (days != null) "Keep me logged in for $days days" else "Keep me logged in"
                 }

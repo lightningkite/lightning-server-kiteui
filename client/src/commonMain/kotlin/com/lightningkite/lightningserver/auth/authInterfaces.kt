@@ -126,7 +126,7 @@ data class AuthEndpoints(
                         id = "id",
                         options = get(input).filter { it.method.via !in input.map { it.via } },
                         strengthRequired = 3,
-                        expires = Clock.System.now() + 7.days,
+                        maxExpiration = Clock.System.now() + 7.days,
                         readyToLogIn = input.sumOf { it.strength } >= 3
                     )
                 }
