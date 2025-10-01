@@ -2,6 +2,7 @@ package com.lightningkite.lightningserver.db
 
 import com.lightningkite.kiteui.Console
 import com.lightningkite.kiteui.TypedWebSocket
+import com.lightningkite.kiteui.navigation.DefaultJson
 import com.lightningkite.services.database.CollectionUpdates
 import com.lightningkite.services.database.Condition
 import com.lightningkite.services.database.HasId
@@ -10,6 +11,7 @@ import com.lightningkite.reactive.context.reactive
 import com.lightningkite.reactive.core.Signal
 import com.lightningkite.reactive.extensions.use
 import com.lightningkite.reactive.lensing.lens
+import com.lightningkite.services.database.walk
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -92,7 +94,6 @@ class SharedCollectionUpdatesSocket<T : HasId<ID>, ID : Comparable<ID>>(
 
             // If we don't get the message in 5 seconds, we need to try again.
             scope.launch {
-                // TODO: Is this retry logic actually working?
                 delay(4.seconds)
                 if (lastSent == willSend) {
                     log?.log("Update condition to ${lastSent?.fullCondition} failed.")
@@ -119,6 +120,13 @@ class SharedCollectionUpdatesSocket<T : HasId<ID>, ID : Comparable<ID>>(
 
                 // Repeat if there are new differences
                 updateCondition()
+            } else if(l != null && it.condition != null) {
+                log?.log("Condition does not match, though it probably should. (${it.condition} == ${l.fullCondition}) -eval-> (${it.condition == l.fullCondition})")
+                log?.log("---")
+                it.condition!!.walk { log?.log("${it::class} ($it)") }
+                log?.log("---")
+                l.fullCondition.walk { log?.log("${it::class} ($it)") }
+                log?.log("---")
             }
         }
 
