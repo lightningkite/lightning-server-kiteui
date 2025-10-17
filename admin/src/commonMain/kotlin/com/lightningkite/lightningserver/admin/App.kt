@@ -39,7 +39,6 @@ external object JsJodaTimeZoneModule
 
 fun ViewWriter.app(navigator: PageNavigator, dialog: PageNavigator) {
     val x = JsJodaTimeZoneModule
-    DefaultSerializersModule = ClientModule
     SerializationRegistry.master.register(LSError.serializer())
     SerializationRegistry.master.register(ServerFile.serializer())
 //    rootTheme = { appTheme() }
