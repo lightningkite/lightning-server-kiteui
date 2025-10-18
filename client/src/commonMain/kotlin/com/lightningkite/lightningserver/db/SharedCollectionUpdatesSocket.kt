@@ -100,7 +100,7 @@ class SharedCollectionUpdatesSocket<T : HasId<ID>, ID : Comparable<ID>>(
                 // TODO: Is this retry logic actually working?
                 delay(4.seconds)
                 if (lastSent == willSend) {
-                    log?.log("Update condition to ${lastSent.fullCondition} failed.")
+                    log?.log("Update condition to ${lastSent?.fullCondition} failed.")
                     lastSent = null
                     updateCondition()
                 }
