@@ -1,5 +1,6 @@
 @file:UseContextualSerialization(Uuid::class, ServerFile::class)
-package com.lightningkite.lightningserver.demo
+
+package com.lightningkite.specialtest
 
 import com.lightningkite.services.data.AdminHidden
 import com.lightningkite.services.data.AdminTableColumns

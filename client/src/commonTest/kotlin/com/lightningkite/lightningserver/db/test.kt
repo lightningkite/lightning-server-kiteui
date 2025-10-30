@@ -1,22 +1,12 @@
-
-package com.lightningkite.lightningdb.test
+package com.lightningkite.lightningserver.db
 
 import kotlin.uuid.Uuid
-import com.lightningkite.kiteui.HttpMethod
-import com.lightningkite.kiteui.TypedWebSocket
 import com.lightningkite.services.database.*
-import com.lightningkite.lightningserver.auth.*
-import com.lightningkite.lightningserver.db.ModelCache
 import com.lightningkite.services.data.ExpectedPattern
 import com.lightningkite.services.data.GenerateDataClassPaths
+import com.lightningkite.services.data.Index
 import com.lightningkite.services.data.MaxLength
-import com.lightningkite.services.data.Unique
-import com.lightningkite.services.files.ServerFile
-import kotlinx.serialization.ContextualSerializer
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.builtins.ListSerializer
-import kotlinx.serialization.builtins.MapSerializer
-import kotlinx.serialization.builtins.serializer
 
 
 @GenerateDataClassPaths
@@ -42,8 +32,8 @@ data class NestedEnumHolder(
 @Serializable
 data class User(
     override val _id: Uuid = Uuid.random(),
-    @Unique override var email: String,
-    @Unique override val phoneNumber: String,
+    @Index(unique = true) override var email: String,
+    @Index(unique = true) override val phoneNumber: String,
     var age: Long = 0,
     var friends: List<Uuid> = listOf()
 ) : HasId<Uuid>, HasEmail, HasPhoneNumber {
