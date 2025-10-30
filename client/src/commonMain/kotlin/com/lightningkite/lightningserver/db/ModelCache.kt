@@ -93,6 +93,16 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
                         lastIndividualValues.getOrPut(id, ::LateInitSignal).value = WithTimestamp(null)
                     }
                 }
+                is CacheUpdate.SocketChanges -> {
+                    // Handle changed items
+                    update.changed.forEach { item ->
+                        lastIndividualValues.getOrPut(item._id, ::LateInitSignal).value = WithTimestamp(item)
+                    }
+                    // Handle removed items
+                    update.removed.forEach { id ->
+                        lastIndividualValues.getOrPut(id, ::LateInitSignal).value = WithTimestamp(null)
+                    }
+                }
                 is CacheUpdate.SocketOverload -> lastIndividualValues.values.forEach { it.unset() }
                 else -> update.items?.forEach { item ->
                     lastIndividualValues.getOrPut(item._id, ::LateInitSignal).value = WithTimestamp(item)

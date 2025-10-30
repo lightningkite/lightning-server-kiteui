@@ -750,4 +750,46 @@ class ModelCacheTest {
         assertTrue(mock.data.containsKey(item2._id))
         assertTrue(mock.data.containsKey(item3._id))
     }
+
+    @Test
+    fun individualItemDeletionViaWebSocket() = runTest2 {
+        // Test that ModelCacheItemReadableImpl properly notifies listeners when
+        // an item is deleted via websocket update (without relying on pulls)
+        val mock = ClientModelRestEndpointsPlusUpdatesWebsocketMock<LargeTestModel, UUID>(this)
+        var currentValue = LargeTestModel(int = 1)
+        mock.data[currentValue._id] = currentValue
+        val cache = ModelCache<LargeTestModel, UUID>(
+            mock,
+            LargeTestModel.serializer(),
+            scope = backgroundScope,
+            log = testLog
+        )
+
+        // Set up reactive listener for the individual item
+        // Use very short pullFrequency to ensure socket is used (< 30 seconds)
+        // but with a listener that tracks notifications
+        var notificationCount = 0
+        var lastRead: LargeTestModel? = currentValue
+        val ref = cache.item(currentValue._id, maximumAge = 1000.seconds, pullFrequency = 10.seconds)
+        reactive {
+            notificationCount++
+            lastRead = ref()
+        }
+        delay(5.seconds)
+
+        // Verify we received the initial value
+        assertEquals(currentValue, lastRead)
+        val initialNotifications = notificationCount
+
+        // Delete the item via the mock (simulating server deletion via websocket)
+        // This should trigger a websocket notification
+        mock.delete(currentValue._id)
+        delay(2.seconds)  // Short delay, not enough for a full pull cycle
+
+        // The listener should have been notified and lastRead should now be null
+        // If the bug exists, lastRead will still be currentValue because
+        // SocketChanges.removed is not processed in the init block
+        assertEquals(null, lastRead, "Item should be null after websocket deletion")
+        assertTrue(notificationCount > initialNotifications, "Listener should have been notified of deletion")
+    }
 }
