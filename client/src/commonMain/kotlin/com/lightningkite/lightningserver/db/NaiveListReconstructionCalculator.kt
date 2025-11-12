@@ -17,12 +17,9 @@ import kotlinx.serialization.KSerializer
 class NaiveListReconstructionCalculator<T : HasId<ID>, ID : Comparable<ID>>(
     val serializer: KSerializer<T>,
     val log: Console? = null,
-    val maxCachedQueries: Int = 100,
 ) : ListReconstructionCalculator<T, ID> {
-    val byQuery = LinkedHashMap<Query<T>, WithTimestampAndLimit<List<T>>>(maxCachedQueries, 0.75f, true)
+    val byQuery = HashMap<Query<T>, WithTimestampAndLimit<List<T>>>()
     val all = BasicListenable()
-    private val queryListenerCounts = HashMap<Query<T>, Int>()
-
     override fun updates(query: Query<T>): Listenable = all
     override fun update(update: CacheUpdate<T, ID>): Unit {
         log?.log("Handling update $update")
@@ -60,10 +57,7 @@ class NaiveListReconstructionCalculator<T : HasId<ID>, ID : Comparable<ID>>(
                 }
             }
 
-            is CacheUpdate.QueryResult -> {
-                byQuery[update.query] = WithTimestampAndLimit(update.result, requestedLimit = update.query.limit)
-                evictOldQueriesIfNeeded()
-            }
+            is CacheUpdate.QueryResult -> byQuery[update.query] = WithTimestampAndLimit(update.result, requestedLimit = update.query.limit)
             is CacheUpdate.SocketChanges -> {
                 val iter = byQuery.iterator()
                 while (iter.hasNext()) {
@@ -89,42 +83,9 @@ class NaiveListReconstructionCalculator<T : HasId<ID>, ID : Comparable<ID>>(
     }
 
     override fun cached(query: Query<T>): WithTimestampAndLimit<List<T>>? = byQuery[query]
-
     override fun recommendQuery(query: Query<T>): Query<T> = query
-
     override fun clear() {
         byQuery.clear()
-        queryListenerCounts.clear()
-    }
-
-    fun trackQuery(query: Query<T>) {
-        queryListenerCounts[query] = (queryListenerCounts[query] ?: 0) + 1
-    }
-
-    fun untrackQuery(query: Query<T>) {
-        val count = (queryListenerCounts[query] ?: 1) - 1
-        if (count <= 0) {
-            queryListenerCounts.remove(query)
-            // Remove the cached query if it has no active listeners
-            byQuery.remove(query)
-        } else {
-            queryListenerCounts[query] = count
-        }
-    }
-
-    private fun evictOldQueriesIfNeeded() {
-        // LinkedHashMap with accessOrder=true automatically maintains LRU order
-        // Remove entries beyond maxCachedQueries that have no active listeners
-        while (byQuery.size > maxCachedQueries) {
-            val oldestEntry = byQuery.entries.firstOrNull() ?: break
-            val query = oldestEntry.key
-            // Only evict if no active listeners
-            if ((queryListenerCounts[query] ?: 0) == 0) {
-                byQuery.remove(query)
-            } else {
-                break // Can't evict queries with active listeners
-            }
-        }
     }
 
     fun List<T>.update(query: Query<T>, edits: Collection<T>, removed: Collection<ID> = emptyList()): List<T> {

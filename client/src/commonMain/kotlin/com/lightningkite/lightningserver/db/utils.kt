@@ -122,19 +122,12 @@ data class DebounceReactive<T>(val source: Reactive<T>, val scope: CoroutineScop
 data class DebounceListenable(val source: Listenable, val scope: CoroutineScope, val duration: Duration) : Listenable {
     private var changeCount = 0
     override fun addListener(listener: () -> Unit): () -> Unit {
-        var currentJob: Job? = null
-        val sourceRemover = source.addListener {
-            // Cancel any pending debounced call
-            currentJob?.cancel()
+        return source.addListener {
             val num = ++changeCount
-            currentJob = scope.launch {
+            scope.launch {
                 delay(duration)
                 if (num == changeCount) listener()
             }
-        }
-        return {
-            sourceRemover()
-            currentJob?.cancel()
         }
     }
 }
