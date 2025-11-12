@@ -13,10 +13,10 @@ ksp = "2.2.20-2.0.3"
 lightningServer = "4.1.133"
 lkGradleHelpers = "4.0.6"
 log4jToSlf4j = "2.25.2"
-proguard = "7.8.0"
+proguard = "7.8.1"
 shadow = "8.1.1"
 vanniktechPublishing = "0.34.0"
-vite = "DEV"
+vite = "0.6.0" # Don't update to 0.6.3, it is broke
 
 [libraries]
 androidDesugaring = { module = "com.android.tools:desugar_jdk_libs", version = { ref = "androidDesugaring" } }
