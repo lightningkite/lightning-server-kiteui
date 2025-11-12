@@ -22,6 +22,7 @@ import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.serialization.KSerializer
 import kotlin.coroutines.resume
+import kotlin.random.Random
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -34,22 +35,13 @@ fun synchronizingDelay(clock: Clock = Clock.default): suspend (duration: Duratio
         delay(time - n)
     }
 }
-
 interface CloseableFlow<T> : AutoCloseable {
     val flow: Flow<T>
 }
 
-fun <SEND, RECEIVE> TypedWebSocket<SEND, RECEIVE>.toFlow(
-    scope: CoroutineScope,
-    log: Console? = null
-): Flow<Flow<RECEIVE>?> {
-    val out = MutableSharedFlow<Flow<RECEIVE>?>(
-        replay = 1,
-        onBufferOverflow = BufferOverflow.DROP_OLDEST,
-        extraBufferCapacity = 1
-    )
-    var current: MutableSharedFlow<RECEIVE> =
-        MutableSharedFlow(replay = 0, onBufferOverflow = BufferOverflow.DROP_OLDEST, extraBufferCapacity = 1)
+fun <SEND, RECEIVE> TypedWebSocket<SEND, RECEIVE>.toFlow(scope: CoroutineScope, log: Console? = null): Flow<Flow<RECEIVE>?> {
+    val out = MutableSharedFlow<Flow<RECEIVE>?>(replay = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST, extraBufferCapacity = 1)
+    var current: MutableSharedFlow<RECEIVE> = MutableSharedFlow(replay = 0, onBufferOverflow = BufferOverflow.DROP_OLDEST, extraBufferCapacity = 1)
     onOpen {
         current = MutableSharedFlow(replay = 0, onBufferOverflow = BufferOverflow.DROP_OLDEST, extraBufferCapacity = 1)
         log?.log("onOpen current ${current.identityHashCode()}, NO MERGE")
@@ -69,10 +61,7 @@ fun <SEND, RECEIVE> TypedWebSocket<SEND, RECEIVE>.toFlow(
 fun <T> List<SortPart<T>>.ensureTotal(serializer: KSerializer<T>): List<SortPart<T>> {
     if (lastOrNull()?.field?.properties?.singleOrNull()?.name == "_id") return this
     @Suppress("UNCHECKED_CAST")
-    return this + SortPart(
-        DataClassPathAccess(
-            DataClassPathSelf<T>(serializer),
-            serializer.serializableProperties!!.find { it.name == "_id" } as SerializableProperty<T, Comparable<*>>))
+    return this + SortPart(DataClassPathAccess(DataClassPathSelf<T>(serializer), serializer.serializableProperties!!.find { it.name == "_id" } as SerializableProperty<T, Comparable<*>>))
 }
 
 
@@ -95,16 +84,16 @@ abstract class BaseResourceUse : ResourceUse {
     }
 }
 
-suspend fun <T> Reactive<T>.waitFor(matching: (T) -> Boolean) {
+suspend fun <T> Reactive<T>.waitFor(matching: (T)->Boolean) {
     state.onSuccess {
-        if (matching(it)) return
+        if(matching(it)) return
     }
-    var close: (() -> Unit)? = null
+    var close: (()->Unit)? = null
     try {
         suspendCancellableCoroutine<Unit> { cont ->
             close = addListener {
                 state.onSuccess {
-                    if (matching(it)) cont.resume(Unit)
+                    if(matching(it)) cont.resume(Unit)
                 }
             }
         }
@@ -114,12 +103,10 @@ suspend fun <T> Reactive<T>.waitFor(matching: (T) -> Boolean) {
 }
 
 
-data class DebounceReactive<T>(val source: Reactive<T>, val scope: CoroutineScope, val duration: Duration) :
-    Reactive<T>, Listenable by DebounceListenable(source, scope, duration) {
+data class DebounceReactive<T>(val source: Reactive<T>, val scope: CoroutineScope, val duration: Duration) : Reactive<T>, Listenable by DebounceListenable(source, scope, duration) {
     override val state: ReactiveState<T> get() = source.state
 }
-
-data class DebounceListenable(val source: Listenable, val scope: CoroutineScope, val duration: Duration) : Listenable {
+data class DebounceListenable(val source: Listenable, val scope:CoroutineScope, val duration: Duration) : Listenable {
     private var changeCount = 0
     override fun addListener(listener: () -> Unit): () -> Unit {
         return source.addListener {
@@ -132,11 +119,8 @@ data class DebounceListenable(val source: Listenable, val scope: CoroutineScope,
     }
 }
 
-fun <T> Reactive<T>.debounce(scope: CoroutineScope, timeMs: Long): Reactive<T> =
-    DebounceReactive(this, scope, timeMs.milliseconds)
-
-fun <T> Reactive<T>.debounce(scope: CoroutineScope, duration: Duration): Reactive<T> =
-    DebounceReactive(this, scope, duration)
+fun <T> Reactive<T>.debounce(scope: CoroutineScope, timeMs: Long): Reactive<T> = DebounceReactive(this, scope, timeMs.milliseconds)
+fun <T> Reactive<T>.debounce(scope: CoroutineScope, duration: Duration): Reactive<T> = DebounceReactive(this, scope, duration)
 
 fun <T> Reactive<T>.requireDifferenceForListener(): Reactive<T> = lens { it }
 fun <T> Reactive<T>.uses(resource: ResourceUse): Reactive<T> {
@@ -172,28 +156,28 @@ fun ResourceUse(parentScope: CoroutineScope = AppScope, action: suspend Coroutin
     }
 
 
+
 class InterruptibleDelay(val parent: InterruptibleDelay? = null) {
     private val listenable = BasicListenable()
-    fun interrupt() {
-        listenable.invokeAll()
-    }
-
+    fun interrupt() { listenable.invokeAll() }
     fun child(): InterruptibleDelay = InterruptibleDelay(this)
     suspend fun delay(duration: Duration) {
-        race(
-            listOf(suspend { kotlinx.coroutines.delay(duration) })
-                .plus(generateSequence(this) { it.parent }.map { inter ->
-                    suspend {
-                        var closer: () -> Unit = {}
-                        suspendCancellableCoroutine { cont ->
-                            closer = inter.listenable.addListener {
-                                cont.resume(Unit)
-                            }
+        val toRace = listOf(suspend {
+                kotlinx.coroutines.delay(duration)
+        })
+            .plus(generateSequence(this) { it.parent }.map { inter ->
+                suspend {
+                    var closer: () -> Unit = {}
+                    suspendCancellableCoroutine { cont ->
+                        closer = inter.listenable.addListener {
+                            cont.resume(Unit)
                         }
-                        closer()
+                        cont.invokeOnCancellation { closer() }
                     }
-                }.toList().toTypedArray())
-        )
+                    closer()
+                }
+            })
+        race(toRace)
     }
 }
 
@@ -203,7 +187,9 @@ suspend fun <T> race(racers: List<suspend () -> T>): T = coroutineScope {
     list.forEach { racer ->
         launch {
             val winningCandidate = racer.await()
-            list.forEach { racer.cancel() } // Cancelling a complete Job is no-op.
+            list.forEach {
+                if(racer != it) it.cancel()
+            }
             winningValue.complete(winningCandidate)
         }
     }

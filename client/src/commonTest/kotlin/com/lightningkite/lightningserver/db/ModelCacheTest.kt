@@ -87,7 +87,9 @@ class ModelCacheTest {
 
         delay(5.seconds)
         assertEquals(dataToInsert.take(2), lastRead)
+        println("Increasing limit...")
         ref.limit = 10
+        println("Limit Increased.")
         delay(1.seconds)
         assertEquals(dataToInsert.take(10), lastRead)
     }
