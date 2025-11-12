@@ -59,6 +59,7 @@ class SharedCollectionUpdatesSocket<T : HasId<ID>, ID : Comparable<ID>>(
     init {
         // Keep the socket open as needed and fulfilling the desiredRequirements.
         var lastSent: ListeningStatus<T>? = null
+        var retryJob: Job? = null
         fun updateCondition() {
             // We can't send the updated condition to a closed socket.
             if (socket.connected.state.getOrNull() != true) {
@@ -91,9 +92,10 @@ class SharedCollectionUpdatesSocket<T : HasId<ID>, ID : Comparable<ID>>(
             log?.log("Sending condition ${willSend.fullCondition}")
             socket.send(willSend.fullCondition)
 
+            // Cancel any existing retry job
+            retryJob?.cancel()
             // If we don't get the message in 5 seconds, we need to try again.
-            scope.launch {
-                // TODO: Is this retry logic actually working?
+            retryJob = scope.launch {
                 delay(4.seconds)
                 if (lastSent == willSend) {
                     log?.log("Update condition to ${lastSent?.fullCondition} failed.")
@@ -115,6 +117,8 @@ class SharedCollectionUpdatesSocket<T : HasId<ID>, ID : Comparable<ID>>(
             val l = lastSent
             if (l != null && it.condition == l.fullCondition) {
                 lastSent = null
+                retryJob?.cancel()
+                retryJob = null
                 // Inform others that we're listening to this new set now.
                 listeningStatus.value = l
 
@@ -127,6 +131,9 @@ class SharedCollectionUpdatesSocket<T : HasId<ID>, ID : Comparable<ID>>(
         // We need to inform others that we're no longer listening to a socket.
         socket.onClose {
             log?.log("Closed.")
+            retryJob?.cancel()
+            retryJob = null
+            lastSent = null
             listeningStatus.value = ListeningStatus()
         }
 

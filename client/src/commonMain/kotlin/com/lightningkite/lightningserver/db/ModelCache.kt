@@ -78,34 +78,44 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
     }
 
     val lastIndividualValues = HashMap<ID, LateInitSignal<WithTimestamp<T?>>>()
+    private val individualValueListenerCounts = HashMap<ID, Int>()
 
     init {
         newData.addListener {
             when (val update = newData.value) {
                 is CacheUpdate.DeletionResult -> update.deletedIds.forEach { id ->
-                    lastIndividualValues.getOrPut(id, ::LateInitSignal).value = WithTimestamp(null)
+                    lastIndividualValues[id]?.let { it.value = WithTimestamp(null) }
                 }
                 is CacheUpdate.MultiGetResult -> {
                     update.items.forEach { item ->
-                        lastIndividualValues.getOrPut(item._id, ::LateInitSignal).value = WithTimestamp(item)
+                        lastIndividualValues[item._id]?.let { it.value = WithTimestamp(item) }
                     }
                     update.missing.forEach { id ->
-                        lastIndividualValues.getOrPut(id, ::LateInitSignal).value = WithTimestamp(null)
+                        lastIndividualValues[id]?.let { it.value = WithTimestamp(null) }
                     }
                 }
                 is CacheUpdate.SocketChanges -> {
                     // Handle changed items
                     update.changed.forEach { item ->
-                        lastIndividualValues.getOrPut(item._id, ::LateInitSignal).value = WithTimestamp(item)
+                        lastIndividualValues[item._id]?.let { it.value = WithTimestamp(item) }
                     }
                     // Handle removed items
                     update.removed.forEach { id ->
-                        lastIndividualValues.getOrPut(id, ::LateInitSignal).value = WithTimestamp(null)
+                        lastIndividualValues[id]?.let { it.value = WithTimestamp(null) }
                     }
                 }
-                is CacheUpdate.SocketOverload -> lastIndividualValues.values.forEach { it.unset() }
+                is CacheUpdate.SocketOverload -> {
+                    // Clear entries that have no active listeners
+                    val toRemove = lastIndividualValues.keys.filter { (individualValueListenerCounts[it] ?: 0) == 0 }
+                    toRemove.forEach {
+                        lastIndividualValues.remove(it)
+                        individualValueListenerCounts.remove(it)
+                    }
+                    // Unset remaining entries
+                    lastIndividualValues.values.forEach { it.unset() }
+                }
                 else -> update.items?.forEach { item ->
-                    lastIndividualValues.getOrPut(item._id, ::LateInitSignal).value = WithTimestamp(item)
+                    lastIndividualValues[item._id]?.let { it.value = WithTimestamp(item) }
                 }
             }
         }
@@ -143,8 +153,26 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
         val log = this@ModelCache.log?.tag("$id")
         val interrupt = this@ModelCache.interrupt.child()
         val basis = lastIndividualValues.getOrPut(id, ::LateInitSignal)
+
+        init {
+            // Track that this ID is being actively watched
+            individualValueListenerCounts[id] = (individualValueListenerCounts[id] ?: 0) + 1
+        }
         val processWhileRunning = ResourceUse(scope) {
-            onRemove { log?.log("No longer needed") }
+            onRemove {
+                log?.log("No longer needed")
+                // Decrement listener count and cleanup if no longer needed
+                val count = (individualValueListenerCounts[id] ?: 1) - 1
+                if (count <= 0) {
+                    individualValueListenerCounts.remove(id)
+                    // Only remove the value if there are no listeners and it's not live
+                    if (basis.state.getOrNull()?.isLive != true) {
+                        lastIndividualValues.remove(id)
+                    }
+                } else {
+                    individualValueListenerCounts[id] = count
+                }
+            }
 
             // Use a live socket if pullFrequency is very low.
             val socketToWaitFor = if (pullFrequency < 30.seconds && sockets != null) {
@@ -157,8 +185,10 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
                             log?.log("Fetching after socket connected")
                             try {
                                 multiget(id)
+                            } catch(e: CancellationException) {
+                                throw e
                             } catch(e: Exception) {
-                                println("WARN: $e")
+                                log?.error("Failed to fetch $id after socket connected", e)
                             }
                         }
                     }
@@ -184,8 +214,10 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
                 log?.log("Initial fetch")
                 try {
                     multiget(id)
+                } catch(e: CancellationException) {
+                    throw e
                 } catch(e: Exception) {
-                    println("WARN: $e")
+                    log?.error("Failed initial fetch for $id", e)
                 }
                 log?.log("Initial fetch complete.")
             }
@@ -201,8 +233,10 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
                     log?.log("Needs pull, starting")
                     try {
                         multiget(id)
+                    } catch(e: CancellationException) {
+                        throw e
                     } catch(e: Exception) {
-                        println("WARN: $e")
+                        log?.error("Failed to pull $id", e)
                     }
                     interrupt.delay(pullFrequency)
                 }
@@ -291,8 +325,18 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
     ) : ModelCacheLimitReadable<T> {
         val interrupt = this@ModelCache.interrupt.child()
         var currentQuery = query
+
+        init {
+            // Track that this query is being actively watched
+            cache.trackQuery(currentQuery)
+        }
+
         val processWhileRunning = ResourceUse(scope) {
             val log = log?.tag("${currentQuery.condition} ${currentQuery.orderBy}")
+            onRemove {
+                // Untrack the query when no longer needed
+                cache.untrackQuery(currentQuery)
+            }
 
             // Use a live socket if pullFrequency is very low.
             val socketToWaitFor = if (pullFrequency < 30.seconds && sockets != null) {
@@ -305,8 +349,10 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
                             log?.log("Fetching after socket connected")
                             try {
                                 queryInternal(currentQuery)
+                            } catch(e: CancellationException) {
+                                throw e
                             } catch(e: Exception) {
-                                println("WARN: $e")
+                                log?.error("Failed to fetch query after socket connected", e)
                             }
                         }
                     }
@@ -332,8 +378,10 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
                 log?.log("Initial fetch")
                 try {
                     queryInternal(cache.recommendQuery(currentQuery))
+                } catch(e: CancellationException) {
+                    throw e
                 } catch(e: Exception) {
-                    println("WARN: $e")
+                    log?.error("Failed initial fetch for query", e)
                 }
                 log?.log("Initial fetch complete.")
             }
@@ -353,12 +401,13 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
                     log?.log("No need to pull for $next")
                     interrupt.delay(next)
                 } else {
-                    //TODO: Harden against exceptions
                     log?.log("Needs pull, starting because most recent is ${mostRecent?.at} / ${mostRecent?.requestedLimit}")
                     try {
                         queryInternal(cache.recommendQuery(currentQuery))
+                    } catch(e: CancellationException) {
+                        throw e
                     } catch(e: Exception) {
-                        println("WARN: $e")
+                        log?.error("Failed to pull query", e)
                     }
                     interrupt.delay(pullFrequency)
                 }

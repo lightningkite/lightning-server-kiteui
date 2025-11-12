@@ -14,6 +14,7 @@ class BatchAndQueue<T, R>(
 ) {
     val outgoing = HashMap<T, ArrayList<CompletableDeferred<R>>>()
     var multigetQueue: HashSet<T>? = null
+    private val activeJobs = mutableSetOf<Job>()
     suspend operator fun invoke(input: T): R {
         val deferred = CompletableDeferred<R>()
         log?.log("$input starting with deferred ${deferred.identityHashCode()}")
@@ -37,35 +38,39 @@ class BatchAndQueue<T, R>(
             queue.add(input)
             this.multigetQueue = queue
 
-            scope.launch {
-                delay(batchWait)
-                log?.log("Starting request")
-                // stop letting things get added to this queue.
-                if (multigetQueue === queue) multigetQueue = null
+            val job = scope.launch {
                 try {
-                    // get all the items in one big request
-                    val allInputs = queue.toList()
-                    val allOutputs = allInputs.zip(fulfill(allInputs))
-                    // send the results
-                    allOutputs.forEach { (key, value) ->
-                        val out = outgoing.remove(key)
-                        log?.log("Finished request.  Sending results to ${out?.joinToString { it.identityHashCode().toString() }}")
-                        out?.forEach {
-                            it.complete(value)
+                    delay(batchWait)
+                    log?.log("Starting request")
+                    // stop letting things get added to this queue.
+                    if (multigetQueue === queue) multigetQueue = null
+                    try {
+                        // get all the items in one big request
+                        val allInputs = queue.toList()
+                        val allOutputs = allInputs.zip(fulfill(allInputs))
+                        // send the results
+                        allOutputs.forEach { (key, value) ->
+                            val out = outgoing.remove(key)
+                            log?.log("Finished request.  Sending results to ${out?.joinToString { it.identityHashCode().toString() }}")
+                            out?.forEach {
+                                it.complete(value)
+                            }
+                        }
+                    } catch (e: Exception) {
+                        if (e is CancellationException) throw e
+                        e.printStackTrace()
+                        // let everyone know of our failure
+                        queue.forEach { key ->
+                            val out = outgoing.remove(key)
+                            log?.log("Failed to send request.  Sending ", e, " to ${out?.joinToString { it.identityHashCode().toString() }}")
+                            out?.forEach { it.completeExceptionally(e) }
                         }
                     }
-                } catch (e: Exception) {
-//                    if (e is CancellationException) throw e
-                    e.printStackTrace()
-                    // let everyone know of our failure
-                    queue.forEach { key ->
-                        val out = outgoing.remove(key)
-                        log?.log("Failed to send request.  Sending ", e, " to ${out?.joinToString { it.identityHashCode().toString() }}")
-                        out?.forEach { it.completeExceptionally(e) }
-                    }
+                } finally {
+                    activeJobs.remove(coroutineContext[Job])
                 }
-
             }
+            activeJobs.add(job)
         }
         try {
             return deferred.await()
@@ -76,5 +81,12 @@ class BatchAndQueue<T, R>(
             log?.log("Failed to report.  Error: ${t.message}")
             throw t
         }
+    }
+
+    fun cancelAll() {
+        activeJobs.forEach { it.cancel() }
+        activeJobs.clear()
+        outgoing.clear()
+        multigetQueue = null
     }
 }
