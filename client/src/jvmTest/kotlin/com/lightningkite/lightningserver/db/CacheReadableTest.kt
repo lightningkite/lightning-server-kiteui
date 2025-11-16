@@ -1,3 +1,65 @@
+/*
+ * ============================================================================
+ * DEPRECATED TEST FILE - CURRENTLY DISABLED
+ * ============================================================================
+ *
+ * WARNING: This test file has been completely commented out and is not currently active.
+ * It appears to test older versions of caching functionality that may have been
+ * refactored or replaced with the current ModelCache implementation.
+ *
+ * The commented tests include:
+ *
+ * 1. ModelCache3Test - Tests for an older ModelCache implementation (version 3)
+ *    - fromScratch: Building cache from empty state
+ *    - basicsLocal: Local operations (insert, delete, modify)
+ *    - basicsLocalPullMore: Dynamic limit increases
+ *    - basicsLocalPullMoreSorted: Sorted queries with limit changes
+ *    - followUpQuery: Adding queries after cache is established
+ *    - onceQuery: One-time query behavior
+ *    - basicsLocalNoWs: Operations without WebSocket support
+ *    - basicsRemote: Remote operations via skipCache
+ *    - websocket: WebSocket update handling
+ *    - regularPull: Time-based polling
+ *    - invalidationWorks: Cache invalidation
+ *    - fetchSocketOrdering: Coordination between fetch and socket
+ *
+ * 2. CacheReadableTest - Tests for CacheReadable base class state management
+ *    - preventsStackedPull: Prevents duplicate simultaneous pulls
+ *    - fullTest: Comprehensive state transitions with/without WebSocket
+ *    - fullTestNoLoad: State management without loading indicators
+ *    - fullTestNoLoad2: State management with different reload settings
+ *    These tests verify the low-level reactive state management that underlies
+ *    ModelCacheItemReadable and ModelCacheLimitReadable.
+ *
+ * 3. UpdatingQueryListTest - Tests for list update logic (older implementation)
+ *    - insertsFromEmpty: Building lists from empty state
+ *    - replaceEndLt/Gte: Handling updates at list boundaries
+ *    - targeted: Specific item updates
+ *    - weirdUpdateCase: Edge case handling
+ *    - insertOK/replaceOK/deleteOk: Various operations
+ *    - fromScratch: Building from nothing
+ *    This functionality is now handled by ListReconstructionCalculator.
+ *
+ * 4. WatchingWrapperTests - Tests for resource watching and lifecycle management
+ *    - test: Basic watching behavior
+ *    - multistartRunsOnce: Deduplication of multiple starts
+ *    - interrupt: Handling startup interruption
+ *
+ * 5. ChangeUpdateWrapperTest - Tests for WebSocket change updates
+ *    Tests the wrapper that manages WebSocket connections for real-time updates.
+ *
+ * 6. SharedChangeUpdateWrapperTest - Tests for shared update wrappers
+ *    Tests the shared WebSocket connection management across multiple queries.
+ *
+ * TODO DECISION NEEDED: Determine if these tests should be:
+ *   a) Re-enabled and updated to work with current codebase
+ *   b) Migrated to new test patterns in ModelCacheTest.kt
+ *   c) Permanently removed if functionality no longer exists
+ *
+ * The current ModelCacheTest.kt file in commonTest appears to cover
+ * similar functionality with updated implementations.
+ */
+
 //package com.lightningkite.lightningserver.db
 //
 //import com.lightningkite.kiteui.TypedWebSocket
@@ -1185,3 +1247,54 @@
 //        }
 //    }
 //}
+
+/*
+ * ============================================================================
+ * TEST COVERAGE RECOMMENDATIONS (if re-enabled)
+ * ============================================================================
+ *
+ * If these tests are re-enabled and updated to work with the current codebase,
+ * the following additional test coverage should be considered:
+ *
+ * 1. CacheReadable State Transitions:
+ *    - Test rapid state changes (multiple onFreshData calls in quick succession)
+ *    - Test state during error recovery
+ *    - Test state when reactive listeners are added/removed dynamically
+ *    - Test concurrent state modifications
+ *
+ * 2. WebSocket Lifecycle:
+ *    - Test WebSocket reconnection with exponential backoff
+ *    - Test graceful degradation when WebSocket fails but REST API works
+ *    - Test handling of WebSocket messages during reconnection
+ *    - Test duplicate message filtering
+ *
+ * 3. UpdatingQueryList (if still relevant):
+ *    - Test list reconstruction with very large datasets
+ *    - Test edge cases with limits at exact boundary conditions
+ *    - Test concurrent modifications to the same list
+ *    - Test performance under high update frequency
+ *
+ * 4. Resource Management:
+ *    - Test that resources are properly cleaned up when no longer needed
+ *    - Test memory leaks with long-running caches
+ *    - Test proper disposal of WebSocket connections
+ *    - Test cancellation of in-flight requests
+ *
+ * 5. Integration with Current ModelCache:
+ *    - Verify these older patterns match behavior of current implementation
+ *    - Create migration tests to ensure backward compatibility
+ *    - Document differences between old and new implementations
+ *
+ * 6. Time Travel Testing:
+ *    - Add more comprehensive time-based tests using virtual time
+ *    - Test cache expiration edge cases
+ *    - Test polling intervals under various conditions
+ *
+ * 7. Error Recovery:
+ *    - Test recovery from network errors
+ *    - Test recovery from serialization errors
+ *    - Test partial data corruption handling
+ *
+ * Note: Before adding these tests, first decide whether to update this file
+ * or migrate the patterns to the current ModelCacheTest.kt file.
+ */
