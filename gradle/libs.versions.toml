@@ -4,89 +4,32 @@ agp = "8.11.2"
 androidDesugaring = "2.1.5"
 dokka = "2.1.0"
 graalVmNative = "0.11.2"
-kiteui = "6.1.0-prerelease-56"
+kiteui = "6.1.0-prerelease-57"
 kotlin = "2.2.20"
-kotlinerCli = "1.0.5"
 kotlinxCoroutinesTest = "1.10.2"
 kotlinxSerializationCsvDurable = "0.2.21-1"
 ksp = "2.2.20-2.0.3"
-lightningServer = "5.0.0-prerelease-208"
+lightningServer = "5.0.0-prerelease-223"
 lkGradleHelpers = "4.0.6"
-log4jToSlf4j = "2.25.2"
 proguard = "7.8.1"
-serviceAbstractions = "0.0.1-69"
+serviceAbstractions = "0.0.1-82"
 shadow = "8.1.1"
 vanniktechPublishing = "0.34.0"
-vite = "DEV"
+vite = "0.6.0" # Don't update to 0.6.3, it is broke
 
 [libraries]
 androidDesugaring = { module = "com.android.tools:desugar_jdk_libs", version = { ref = "androidDesugaring" } }
-comLightningKiteServices-aws-client = { module = "com.lightningkite.services:aws-client", version = { ref = "serviceAbstractions" } }
-comLightningKiteServices-basis = { module = "com.lightningkite.services:basis", version = { ref = "serviceAbstractions" } }
-comLightningKiteServices-cache = { module = "com.lightningkite.services:cache", version = { ref = "serviceAbstractions" } }
-comLightningKiteServices-cache-dynamodb = { module = "com.lightningkite.services:cache-dynamodb", version = { ref = "serviceAbstractions" } }
-comLightningKiteServices-cache-memcached = { module = "com.lightningkite.services:cache-memcached", version = { ref = "serviceAbstractions" } }
-comLightningKiteServices-cache-redis = { module = "com.lightningkite.services:cache-redis", version = { ref = "serviceAbstractions" } }
-comLightningKiteServices-cache-test = { module = "com.lightningkite.services:cache-test", version = { ref = "serviceAbstractions" } }
-comLightningKiteServices-data = { module = "com.lightningkite.services:data", version = { ref = "serviceAbstractions" } }
-comLightningKiteServices-database = { module = "com.lightningkite.services:database", version = { ref = "serviceAbstractions" } }
-comLightningKiteServices-database-jsonfile = { module = "com.lightningkite.services:database-jsonfile", version = { ref = "serviceAbstractions" } }
-comLightningKiteServices-database-mongodb = { module = "com.lightningkite.services:database-mongodb", version = { ref = "serviceAbstractions" } }
-comLightningKiteServices-database-postgres = { module = "com.lightningkite.services:database-postgres", version = { ref = "serviceAbstractions" } }
 comLightningKiteServices-database-processor = { module = "com.lightningkite.services:database-processor", version = { ref = "serviceAbstractions" } }
 comLightningKiteServices-database-shared = { module = "com.lightningkite.services:database-shared", version = { ref = "serviceAbstractions" } }
-comLightningKiteServices-database-test = { module = "com.lightningkite.services:database-test", version = { ref = "serviceAbstractions" } }
-comLightningKiteServices-email = { module = "com.lightningkite.services:email", version = { ref = "serviceAbstractions" } }
-comLightningKiteServices-email-javasmtp = { module = "com.lightningkite.services:email-javasmtp", version = { ref = "serviceAbstractions" } }
-comLightningKiteServices-email-mailgun = { module = "com.lightningkite.services:email-mailgun", version = { ref = "serviceAbstractions" } }
-comLightningKiteServices-email-test = { module = "com.lightningkite.services:email-test", version = { ref = "serviceAbstractions" } }
-comLightningKiteServices-exceptions-sentry = { module = "com.lightningkite.services:exceptions-sentry", version = { ref = "serviceAbstractions" } }
-comLightningKiteServices-files = { module = "com.lightningkite.services:files", version = { ref = "serviceAbstractions" } }
-comLightningKiteServices-files-azbs = { module = "com.lightningkite.services:files-azbs", version = { ref = "serviceAbstractions" } }
-comLightningKiteServices-files-clamav = { module = "com.lightningkite.services:files-clamav", version = { ref = "serviceAbstractions" } }
-comLightningKiteServices-files-client = { module = "com.lightningkite.services:files-client", version = { ref = "serviceAbstractions" } }
-comLightningKiteServices-files-s3 = { module = "com.lightningkite.services:files-s3", version = { ref = "serviceAbstractions" } }
-comLightningKiteServices-files-test = { module = "com.lightningkite.services:files-test", version = { ref = "serviceAbstractions" } }
-comLightningKiteServices-http-client = { module = "com.lightningkite.services:http-client", version = { ref = "serviceAbstractions" } }
-comLightningKiteServices-metrics-cloudwatch = { module = "com.lightningkite.services:metrics-cloudwatch", version = { ref = "serviceAbstractions" } }
-comLightningKiteServices-notifications = { module = "com.lightningkite.services:notifications", version = { ref = "serviceAbstractions" } }
-comLightningKiteServices-notifications-fcm = { module = "com.lightningkite.services:notifications-fcm", version = { ref = "serviceAbstractions" } }
-comLightningKiteServices-notifications-test = { module = "com.lightningkite.services:notifications-test", version = { ref = "serviceAbstractions" } }
-comLightningKiteServices-pubsub = { module = "com.lightningkite.services:pubsub", version = { ref = "serviceAbstractions" } }
-comLightningKiteServices-pubsub-redis = { module = "com.lightningkite.services:pubsub-redis", version = { ref = "serviceAbstractions" } }
-comLightningKiteServices-pubsub-test = { module = "com.lightningkite.services:pubsub-test", version = { ref = "serviceAbstractions" } }
-comLightningKiteServices-should-be-standard-library = { module = "com.lightningkite.services:should-be-standard-library", version = { ref = "serviceAbstractions" } }
-comLightningKiteServices-sms = { module = "com.lightningkite.services:sms", version = { ref = "serviceAbstractions" } }
-comLightningKiteServices-sms-test = { module = "com.lightningkite.services:sms-test", version = { ref = "serviceAbstractions" } }
-comLightningKiteServices-sms-twilio = { module = "com.lightningkite.services:sms-twilio", version = { ref = "serviceAbstractions" } }
-comLightningKiteServices-test = { module = "com.lightningkite.services:test", version = { ref = "serviceAbstractions" } }
 comLightningkiteKiteuiLibrary = { module = "com.lightningkite.kiteui:library", version = { ref = "kiteui" } }
 comLightningkiteKotlinxSerializationCsvDurable = { module = "com.lightningkite:kotlinx-serialization-csv-durable", version = { ref = "kotlinxSerializationCsvDurable" } }
-comLightningkiteLightningserver-auth = { module = "com.lightningkite.lightningserver:auth", version = { ref = "lightningServer" } }
-comLightningkiteLightningserver-aws = { module = "com.lightningkite.lightningserver:aws", version = { ref = "lightningServer" } }
-comLightningkiteLightningserver-aws-serverless = { module = "com.lightningkite.lightningserver:aws-serverless", version = { ref = "lightningServer" } }
-comLightningkiteLightningserver-core = { module = "com.lightningkite.lightningserver:core", version = { ref = "lightningServer" } }
 comLightningkiteLightningserver-core-shared = { module = "com.lightningkite.lightningserver:core-shared", version = { ref = "lightningServer" } }
-comLightningkiteLightningserver-demo = { module = "com.lightningkite.lightningserver:demo", version = { ref = "lightningServer" } }
-comLightningkiteLightningserver-files = { module = "com.lightningkite.lightningserver:files", version = { ref = "lightningServer" } }
 comLightningkiteLightningserver-files-shared = { module = "com.lightningkite.lightningserver:files-shared", version = { ref = "lightningServer" } }
-comLightningkiteLightningserver-ktor = { module = "com.lightningkite.lightningserver:ktor", version = { ref = "lightningServer" } }
-comLightningkiteLightningserver-meta = { module = "com.lightningkite.lightningserver:meta", version = { ref = "lightningServer" } }
-comLightningkiteLightningserver-sessions = { module = "com.lightningkite.lightningserver:sessions", version = { ref = "lightningServer" } }
-comLightningkiteLightningserver-sessions-email = { module = "com.lightningkite.lightningserver:sessions-email", version = { ref = "lightningServer" } }
-comLightningkiteLightningserver-sessions-oauth = { module = "com.lightningkite.lightningserver:sessions-oauth", version = { ref = "lightningServer" } }
-comLightningkiteLightningserver-sessions-oauth-shared = { module = "com.lightningkite.lightningserver:sessions-oauth-shared", version = { ref = "lightningServer" } }
 comLightningkiteLightningserver-sessions-shared = { module = "com.lightningkite.lightningserver:sessions-shared", version = { ref = "lightningServer" } }
-comLightningkiteLightningserver-sessions-sms = { module = "com.lightningkite.lightningserver:sessions-sms", version = { ref = "lightningServer" } }
 comLightningkiteLightningserver-typed = { module = "com.lightningkite.lightningserver:typed", version = { ref = "lightningServer" } }
 comLightningkiteLightningserver-typed-shared = { module = "com.lightningkite.lightningserver:typed-shared", version = { ref = "lightningServer" } }
-comLightningkiteLightningserver-upload-files = { module = "com.lightningkite.lightningserver:upload-files", version = { ref = "lightningServer" } }
-comLightningkiteLightningserver-vertx = { module = "com.lightningkite.lightningserver:vertx", version = { ref = "lightningServer" } }
-kotlin-test-junit = { module = "org.jetbrains.kotlin:kotlin-test-junit", version = { ref = "kotlin" } }
-kotlinerCli = { module = "com.lightningkite:kotliner-cli", version = { ref = "kotlinerCli" } }
 kotlinxCoroutinesTest = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version = { ref = "kotlinxCoroutinesTest" } }
 lkGradleHelpers = { module = "com.lightningkite:lk-gradle-helpers", version = { ref = "lkGradleHelpers" } }
-log4j-to-slf4j = { module = "org.apache.logging.log4j:log4j-to-slf4j", version = { ref = "log4jToSlf4j" } }
 proguard = { module = "com.guardsquare:proguard-gradle", version = { ref = "proguard" } }
 
 [plugins]
