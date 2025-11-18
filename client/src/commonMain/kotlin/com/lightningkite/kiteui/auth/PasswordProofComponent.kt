@@ -64,9 +64,8 @@ data class PasswordProofComponent(val p: ProofClientEndpoints.Password, val type
         onResult: (Proof?) -> Unit
     ): Unit {
         to.col {
-            // TODO: Variable name "code" is confusing - this is a password, not a code
             // Holds the user-entered password
-            val code = Signal("")
+            val password = Signal("")
 
             // Action to submit the password to the server for verification
             val provePasswordOwnership = Action("Submit", Icon.Companion.done) {
@@ -80,7 +79,7 @@ data class PasswordProofComponent(val p: ProofClientEndpoints.Password, val type
                             property = option.method.property ?: primaryIdentifier?.property ?: "",
                             // Fallback chain: option.value -> primaryIdentifier.value -> ""
                             value = option.value ?: primaryIdentifier?.value ?: "",
-                            password = code.await()
+                            password = password.await()
                         )
                     )
                 )
@@ -91,7 +90,7 @@ data class PasswordProofComponent(val p: ProofClientEndpoints.Password, val type
                     ::hint { "" }
                     // Auto-focus for immediate password entry
                     requestFocus()
-                    content bind code
+                    content bind password
                     action = provePasswordOwnership
                     keyboardHints = KeyboardHints.Companion.password
                 }
@@ -109,8 +108,6 @@ data class PasswordProofComponent(val p: ProofClientEndpoints.Password, val type
 
 /*
  * API Improvement Recommendations:
- *
- * TODO: Rename "code" variable to "password" for clarity
  *
  * TODO: Add validation for missing identification data
  *       - Currently sends empty strings if property/value are unavailable

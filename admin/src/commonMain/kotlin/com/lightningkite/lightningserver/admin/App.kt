@@ -45,6 +45,12 @@ import kotlin.time.Duration.Companion.milliseconds
 @JsNonModule
 external object JsJodaTimeZoneModule
 
+/** Default debounce time for server URL input to prevent rapid reconnections */
+private val SERVER_URL_DEBOUNCE_TIME = 500.milliseconds
+
+/** Standard width for settings input fields in the profile menu */
+private val SETTINGS_FIELD_WIDTH = 20.rem
+
 /**
  * Main application entry point for the Lightning Server admin panel.
  *
@@ -77,9 +83,6 @@ fun ViewWriter.app(navigator: PageNavigator, dialog: PageNavigator) {
     // This sets up the sidebar + top bar layout for the admin panel
     appNavFactory.value = ViewWriter::appNavTopAndLeft
 
-    // TODO: Remove debug logging from production code
-    println("BOOT")
-
     appNav(navigator, dialog) {
         // TODO: Make app name configurable instead of hard-coded
         appName = "KiteUI Sample App"
@@ -97,9 +100,6 @@ fun ViewWriter.app(navigator: PageNavigator, dialog: PageNavigator) {
                     add(NavLink("Endpoints", icon = Icon.menu) { EndpointsPage() })
                 }
 
-                // TODO: Remove debug logging from production code
-                println("BUILDING NAV OK")
-
                 // Auto-generate navigation items for each collection in the schema
                 // Sorted alphabetically by display name for consistent ordering
                 adminServer().models.entries.sortedBy { it.value.serializer.displayName }.forEach {
@@ -114,13 +114,8 @@ fun ViewWriter.app(navigator: PageNavigator, dialog: PageNavigator) {
                                 icon = Icon.list
                             ) { CollectionAdminPage(it.key) }
                         )
-                    } else {
-                        // TODO: Remove debug logging from production code
-                        println("Skipping ${it.key} because it has no read permission.")
                     }
                 }
-                // TODO: Remove debug logging from production code
-                println("nav complete")
             }
         }
 
@@ -182,10 +177,9 @@ fun ViewWriter.app(navigator: PageNavigator, dialog: PageNavigator) {
 
                                     // Server URL configuration with debounced updates
                                     // Debouncing prevents rapid re-connections during typing
-                                    // TODO: Extract magic number 500ms to a constant
-                                    sizeConstraints(width = 20.rem).field("Server") {
+                                    sizeConstraints(width = SETTINGS_FIELD_WIDTH).field("Server") {
                                         textInput {
-                                            content bind serverUrl.debounceWrite(500.milliseconds)
+                                            content bind serverUrl.debounceWrite(SERVER_URL_DEBOUNCE_TIME)
                                         }
                                     }
 
@@ -195,8 +189,7 @@ fun ViewWriter.app(navigator: PageNavigator, dialog: PageNavigator) {
                                         get = { it?.userType },
                                         modify = { o, v -> o?.copy(userType = v) ?: AdminCredentials(userType = v) }
                                     )
-                                    // TODO: Extract magic number 20.rem to a constant
-                                    sizeConstraints(width = 20.rem).field("User Type") {
+                                    sizeConstraints(width = SETTINGS_FIELD_WIDTH).field("User Type") {
                                         select {
                                             bind(
                                                 userType,

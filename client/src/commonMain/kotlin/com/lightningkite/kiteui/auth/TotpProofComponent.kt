@@ -67,9 +67,8 @@ data class TotpProofComponent(val p: ProofClientEndpoints.TimeBasedOTP, val type
             // Holds the user-entered TOTP code (typically 6 digits)
             val code = Signal("")
 
-            // TODO: Variable name "provePasswordOwnership" is misleading - this is TOTP, not password
             // Action to submit the TOTP code to the server for verification
-            val provePasswordOwnership = Action("Submit", Icon.Companion.done) {
+            val proveTotpOwnership = Action("Submit", Icon.Companion.done) {
                 // TODO: Potential bug - if both option.method.property/value and primaryIdentifier
                 // are null, empty strings are sent. Should validate or fail earlier.
                 onResult(
@@ -93,7 +92,7 @@ data class TotpProofComponent(val p: ProofClientEndpoints.TimeBasedOTP, val type
                     // Auto-focus for immediate code entry
                     requestFocus()
                     content bind code
-                    action = provePasswordOwnership
+                    action = proveTotpOwnership
                     // Numeric keyboard for easier code entry
                     keyboardHints = KeyboardHints.Companion.oneTimeCode
                 }
@@ -103,7 +102,7 @@ data class TotpProofComponent(val p: ProofClientEndpoints.TimeBasedOTP, val type
 
             important.button {
                 centered.text("Submit")
-                action = provePasswordOwnership
+                action = proveTotpOwnership
             }
         }
     }
@@ -111,8 +110,6 @@ data class TotpProofComponent(val p: ProofClientEndpoints.TimeBasedOTP, val type
 
 /*
  * API Improvement Recommendations:
- *
- * TODO: Rename "provePasswordOwnership" variable to "proveTotpOwnership" or similar
  *
  * TODO: Add validation for missing identification data
  *       - Currently sends empty strings if property/value are unavailable

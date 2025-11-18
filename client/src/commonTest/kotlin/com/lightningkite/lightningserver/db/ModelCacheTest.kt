@@ -56,7 +56,7 @@ class ModelCacheTest {
             val ref = cache.item(currentValue._id)
             assertEquals(
                 currentValue,
-                ref().also(::println) // TODO: Remove debug println or capture for assertion
+                ref()
             )
         }
         delay(5.seconds)

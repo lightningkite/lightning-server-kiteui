@@ -147,9 +147,6 @@ class CollectionAdminPage(val collectionName: String) : Page {
                     val csv = CsvFormat(StringDeferringConfig(DefaultJson.serializersModule, ignoreUnknownKeys = true))
                     val text = file.text()
 
-                    // TODO: Remove debug logging from production code
-                    println("Text is $text")
-
                     // TODO: CSV parsing errors are not caught - will crash if CSV is malformed or doesn't match schema
                     val items = csv.decodeFromString(ListSerializer(mc().serializer), text)
 
@@ -355,8 +352,7 @@ class CollectionAdminPage(val collectionName: String) : Page {
                             }
                             kv("Create") { p().create.simplify().friendly() }
                             kv("Update") { p().update.simplify().friendly() }
-                            // TODO: This checks readMask instead of updateRestrictions - likely a copy-paste error
-                            kv("Restricted fields", visibleIf = { p().readMask.pairs.isNotEmpty() }) {
+                            kv("Restricted fields", visibleIf = { p().updateRestrictions.fields.isNotEmpty() }) {
                                 p().updateRestrictions.fields
                                     .joinToString(", ") { it.path.properties.joinToString("'s ") { it.displayName } }
                             }

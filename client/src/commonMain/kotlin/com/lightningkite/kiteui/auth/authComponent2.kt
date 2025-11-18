@@ -48,9 +48,8 @@ data class UserIdentification(val property: String, val value: String)
 
 // Pattern to detect email addresses
 private val emailRegex = Regex("""[\w\-+._]+@(?:[\w\-]+\w\.)+[\w\-]+\w$""")
-// Pattern to detect phone numbers (flexible format allowing +, -, spaces, dots)
-// TODO: This regex is too permissive and may match invalid phone numbers (e.g., "123-456")
-private val phoneRegex = Regex("""\+?[0-9-. ]+$""")
+// Pattern to detect phone numbers - requires at least 7 digits with optional separators
+private val phoneRegex = Regex("""\+?(?:[0-9][-. ]?){6,}[0-9]$""")
 
 /**
  * DSL function to render an authentication component in a ViewWriter.

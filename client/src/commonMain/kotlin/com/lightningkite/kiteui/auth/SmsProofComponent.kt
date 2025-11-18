@@ -84,9 +84,8 @@ data class SmsProofComponent(val p: ProofClientEndpoints.Sms) : ProofComponent {
                 p.beginSmsOwnershipProof(option.value ?: "").withTimestamp()
             }
 
-            // TODO: Variable name "proveEmailOwnership" is misleading - this is SMS, not email
             // Action to submit the verification code to the server
-            val proveEmailOwnership = Action("Submit", Icon.Companion.done) {
+            val proveSmsOwnership = Action("Submit", Icon.Companion.done) {
                 onResult(p.provePhoneOwnership(FinishProof(challenge().value, code.await())))
             }
 
@@ -101,7 +100,7 @@ data class SmsProofComponent(val p: ProofClientEndpoints.Sms) : ProofComponent {
                         // Auto-focus once SMS is sent for better UX
                         reactive { if (challenge.state().ready) requestFocus() }
                         content bind code
-                        action = proveEmailOwnership
+                        action = proveSmsOwnership
                         keyboardHints = KeyboardHints.Companion.oneTimeCodeLetters
                     }
                 }
@@ -110,7 +109,7 @@ data class SmsProofComponent(val p: ProofClientEndpoints.Sms) : ProofComponent {
 
                 important.buttonTheme.button {
                     centered.text("Submit")
-                    action = proveEmailOwnership
+                    action = proveSmsOwnership
                 }
 
                 // Resend button with three states:
@@ -149,8 +148,6 @@ data class SmsProofComponent(val p: ProofClientEndpoints.Sms) : ProofComponent {
 
 /*
  * API Improvement Recommendations:
- *
- * TODO: Fix misleading variable name "proveEmailOwnership" - should be "proveSmsOwnership" or similar
  *
  * TODO: Consider making resendTime configurable per-instance or via server settings
  *       - Current hardcoded 15 seconds may not fit all use cases

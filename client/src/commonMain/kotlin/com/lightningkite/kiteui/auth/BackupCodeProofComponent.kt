@@ -68,9 +68,8 @@ data class BackupCodeProofComponent(val p: ProofClientEndpoints.BackupCode, val 
             // Holds the user-entered backup code
             val code = Signal("")
 
-            // TODO: Variable name "provePasswordOwnership" is misleading - this is a backup code, not password
             // Action to submit the backup code to the server for verification
-            val provePasswordOwnership = Action("Submit", Icon.Companion.done) {
+            val proveBackupCode = Action("Submit", Icon.Companion.done) {
                 // TODO: Potential bug - if both option.method.property/value and primaryIdentifier
                 // are null, empty strings are sent. Should validate or fail earlier.
                 onResult(
@@ -95,7 +94,7 @@ data class BackupCodeProofComponent(val p: ProofClientEndpoints.BackupCode, val 
                     // Auto-focus for immediate code entry
                     requestFocus()
                     content bind code
-                    action = provePasswordOwnership
+                    action = proveBackupCode
                     // One-time code keyboard for alphanumeric codes
                     keyboardHints = KeyboardHints.Companion.oneTimeCodeLetters
                 }
@@ -105,7 +104,7 @@ data class BackupCodeProofComponent(val p: ProofClientEndpoints.BackupCode, val 
 
             important.button {
                 centered.text("Submit")
-                action = provePasswordOwnership
+                action = proveBackupCode
             }
         }
     }
@@ -113,8 +112,6 @@ data class BackupCodeProofComponent(val p: ProofClientEndpoints.BackupCode, val 
 
 /*
  * API Improvement Recommendations:
- *
- * TODO: Rename "provePasswordOwnership" variable to "proveBackupCode" or similar
  *
  * TODO: Add validation for missing identification data
  *       - Currently sends empty strings if property/value are unavailable
