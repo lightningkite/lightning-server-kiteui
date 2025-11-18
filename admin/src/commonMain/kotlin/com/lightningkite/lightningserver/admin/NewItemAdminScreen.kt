@@ -53,13 +53,9 @@ class NewItemAdminPage(val collectionName: String) : Page {
                 atEnd.important.button {
                     text("Save")
                     onClick {
-                        println("New item: ${item()}")
                         val mc = mc()
-                        println("MC $mc")
                         val newItemId = mc.insert(item())()!!._id
-                        println("MC $newItemId")
                         val id = UrlProperties.encodeToString(mc.serializer._id().serializer, newItemId)
-                        println("id $id")
                         pageNavigator.replace(DetailAdminPage(collectionName, id))
                     }
                 }

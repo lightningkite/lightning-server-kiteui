@@ -81,7 +81,7 @@ val loadedPermissions: Reactive<Map<String, ModelPermissions<out HasId<out Compa
     adminServer().models.entries.map {
         async {
             it.key to try {
-                it.value.cache(auth).skipCache.permissions().also { v -> println("Permissions for ${it.key}: $v") }
+                it.value.cache(auth).skipCache.permissions()
             } catch (e: LsErrorException) {
                 if (e.status == 403) ModelPermissions()
                 else if (e.status == 401) ModelPermissions()
@@ -109,7 +109,6 @@ private fun KSerializer<*>.printDescriptorNested(label: String, tab: Int = 0) {
     }
 }
 val adminServer = remember {
-    println("Refetching ")
     try {
         val s = ExternalLightningServer(serverSchema(), adminSettings().liveData)
         s.page = label@{ type, id ->
@@ -124,7 +123,6 @@ val adminServer = remember {
         }
         s
     } catch (e: Exception) {
-        println("Exception in admin server")
         throw e
     }
 }
