@@ -1,7 +1,7 @@
 package com.lightningkite.kiteui.auth
 
 import com.lightningkite.kiteui.models.Icon
-import com.lightningkite.kiteui.views.ViewModifiable
+
 import com.lightningkite.kiteui.views.ViewWriter
 import com.lightningkite.kiteui.views.direct.frame
 import com.lightningkite.kiteui.views.direct.text
@@ -80,10 +80,13 @@ interface ProofComponent {
      * @param onResult Callback invoked when proof collection completes (null if user cancels)
      * @return The rendered view
      */
-    fun render(to: ViewWriter, primaryIdentifier: UserIdentification?, checks: ProofsCheckResult<*>?, onResult: (Proof?) -> Unit): ViewModifiable {
+    fun render(to: ViewWriter, primaryIdentifier: UserIdentification?, checks: ProofsCheckResult<*>?, onResult: (Proof?) -> Unit): Unit {
         // TODO: This error message should be impossible to reach; consider removing or replacing with exception
-        val primaryIdentifier = primaryIdentifier ?: return to.frame {
-            text("How... how did you get here?")
+        val primaryIdentifier = primaryIdentifier ?: run {
+            to.frame {
+                text("How... how did you get here?")
+            }
+            return
         }
         // Extract the matching proof option from server response, or create a default one
         val option = checks?.options?.firstOrNull { it.method.via == via } ?: ProofOption(
@@ -109,7 +112,7 @@ interface ProofComponent {
      * @param onResult Callback invoked when proof collection completes
      * @return The rendered view
      */
-    fun render(to: ViewWriter, primaryIdentifier: UserIdentification?, option: ProofOption, onResult: (Proof?) -> Unit): ViewModifiable = TODO()
+    fun render(to: ViewWriter, primaryIdentifier: UserIdentification?, option: ProofOption, onResult: (Proof?) -> Unit): Unit = TODO()
 }
 
 /*

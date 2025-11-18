@@ -33,10 +33,10 @@ object MySealedFormRenderer : FormRenderer.Generator {
                 set = { it.serializer.default() }
             )
             row {
-                atTop - sizeConstraints(width = 10.rem) - fieldTheme - select {
+                atTop.sizeConstraints(width = 10.rem).fieldTheme.select {
                     bind(type, Constant(serializer.options)) { it.serializer.displayName }
                 }
-                expanding - stack {
+                expanding.stack {
                     reactive {
                         val type = type()
                         clearChildren()

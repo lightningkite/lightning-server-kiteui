@@ -108,7 +108,7 @@ object SortPathRenderer : FormRenderer.Generator, ViewRenderer.Generator {
         val serializer = selector.serializer as SortPartSerializer<Any?>
         val info = TypeInfo<SortPart<Any?>>(module, serializer)
         return FormRenderer<SortPart<Any?>>(module, this, selector as FormSelector<SortPart<Any?>>) { field, mutable ->
-            fieldTheme - select {
+            fieldTheme.select {
                 bind(mutable, Constant(info.options), info::toString)
             }
         } as FormRenderer<T>

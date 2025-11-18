@@ -5,7 +5,7 @@ import com.lightningkite.kiteui.forms.FormModule
 import com.lightningkite.kiteui.forms.FormSelector
 import com.lightningkite.kiteui.forms.displayName
 import com.lightningkite.kiteui.navigation.Page
-import com.lightningkite.kiteui.views.ViewModifiable
+
 import com.lightningkite.kiteui.views.ViewWriter
 import com.lightningkite.kiteui.views.direct.col
 import com.lightningkite.kiteui.views.direct.scrolling
@@ -18,24 +18,28 @@ import kotlinx.serialization.KSerializer
 
 @Routable("field-test-screen")
 class FieldTestScreen: Page {
-    override fun ViewWriter.render(): ViewModifiable = scrolling - col {
-        val module = FormModule()
-        module.allForms.forEach {
-            if(it.type == null) return@forEach
-            val s = try {
-                SerializationRegistry.master.get(it.type!!, arrayOf()) as KSerializer<Any?>
-            } catch(e: Throwable) { return@forEach }
-            field(it.name + " - " + s.displayName) {
-                try {
-                    it.form(
-                        module, selector = FormSelector<Any?>(
-                            serializer = s,
-                            listOf(),
-                            handlesField = it.handlesField
-                        )
-                    ).render(this, null, Signal(s.default()))
+    override fun ViewWriter.render() {
+        scrolling.col {
+            val module = FormModule()
+            module.allForms.forEach {
+                if (it.type == null) return@forEach
+                val s = try {
+                    SerializationRegistry.master.get(it.type!!, arrayOf()) as KSerializer<Any?>
                 } catch (e: Throwable) {
-                    text("Error on ${it.name}: ${e.message}")
+                    return@forEach
+                }
+                field(it.name + " - " + s.displayName) {
+                    try {
+                        it.form(
+                            module, selector = FormSelector<Any?>(
+                                serializer = s,
+                                listOf(),
+                                handlesField = it.handlesField
+                            )
+                        ).render(this, null, Signal(s.default()))
+                    } catch (e: Throwable) {
+                        text("Error on ${it.name}: ${e.message}")
+                    }
                 }
             }
         }

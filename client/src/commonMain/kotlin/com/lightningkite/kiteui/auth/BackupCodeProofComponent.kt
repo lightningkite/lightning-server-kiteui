@@ -4,7 +4,7 @@ import com.lightningkite.kiteui.models.Icon
 import com.lightningkite.kiteui.models.KeyboardHints
 import com.lightningkite.kiteui.models.SubtextSemantic
 import com.lightningkite.kiteui.reactive.Action
-import com.lightningkite.kiteui.views.ViewModifiable
+
 import com.lightningkite.kiteui.views.ViewWriter
 import com.lightningkite.kiteui.views.centered
 import com.lightningkite.kiteui.views.direct.button
@@ -63,48 +63,50 @@ data class BackupCodeProofComponent(val p: ProofClientEndpoints.BackupCode, val 
         primaryIdentifier: UserIdentification?,
         option: ProofOption,
         onResult: (Proof?) -> Unit
-    ): ViewModifiable = to.col {
-        // Holds the user-entered backup code
-        val code = Signal("")
+    ) {
+        to.col {
+            // Holds the user-entered backup code
+            val code = Signal("")
 
-        // TODO: Variable name "provePasswordOwnership" is misleading - this is a backup code, not password
-        // Action to submit the backup code to the server for verification
-        val provePasswordOwnership = Action("Submit", Icon.Companion.done) {
-            // TODO: Potential bug - if both option.method.property/value and primaryIdentifier
-            // are null, empty strings are sent. Should validate or fail earlier.
-            onResult(
-                p.proveBackupCode(
-                    IdentificationAndPassword(
-                        type = type,
-                        // Fallback chain: option.method.property -> primaryIdentifier.property -> ""
-                        property = option.method.property ?: primaryIdentifier?.property ?: "",
-                        // Fallback chain: option.value -> primaryIdentifier.value -> ""
-                        value = option.value ?: primaryIdentifier?.value ?: "",
-                        // Note: "password" field is reused to carry the backup code
-                        password = code.await()
+            // TODO: Variable name "provePasswordOwnership" is misleading - this is a backup code, not password
+            // Action to submit the backup code to the server for verification
+            val provePasswordOwnership = Action("Submit", Icon.Companion.done) {
+                // TODO: Potential bug - if both option.method.property/value and primaryIdentifier
+                // are null, empty strings are sent. Should validate or fail earlier.
+                onResult(
+                    p.proveBackupCode(
+                        IdentificationAndPassword(
+                            type = type,
+                            // Fallback chain: option.method.property -> primaryIdentifier.property -> ""
+                            property = option.method.property ?: primaryIdentifier?.property ?: "",
+                            // Fallback chain: option.value -> primaryIdentifier.value -> ""
+                            value = option.value ?: primaryIdentifier?.value ?: "",
+                            // Note: "password" field is reused to carry the backup code
+                            password = code.await()
+                        )
                     )
                 )
-            )
-        }
-
-        fieldNoErrorText("Backup Code") {
-            textInput {
-                // Hint shows typical backup code format with hyphens
-                ::hint { "xxxxx-xxxxx-xxxxx-xxxxx" }
-                // Auto-focus for immediate code entry
-                requestFocus()
-                content bind code
-                action = provePasswordOwnership
-                // One-time code keyboard for alphanumeric codes
-                keyboardHints = KeyboardHints.Companion.oneTimeCodeLetters
             }
-        }
-        // Error messages appear here when backup code is invalid or already used
-        SubtextSemantic.onNext - errorText()
 
-        important - button {
-            centered - text("Submit")
-            action = provePasswordOwnership
+            fieldNoErrorText("Backup Code") {
+                textInput {
+                    // Hint shows typical backup code format with hyphens
+                    ::hint { "xxxxx-xxxxx-xxxxx-xxxxx" }
+                    // Auto-focus for immediate code entry
+                    requestFocus()
+                    content bind code
+                    action = provePasswordOwnership
+                    // One-time code keyboard for alphanumeric codes
+                    keyboardHints = KeyboardHints.Companion.oneTimeCodeLetters
+                }
+            }
+            // Error messages appear here when backup code is invalid or already used
+            SubtextSemantic.onNext.errorText()
+
+            important.button {
+                centered.text("Submit")
+                action = provePasswordOwnership
+            }
         }
     }
 }

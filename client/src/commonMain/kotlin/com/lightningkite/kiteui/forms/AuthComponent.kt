@@ -125,8 +125,8 @@ class EmailProof(val p: ProofClientEndpoints.Email, val id: String, var codeKey:
                     keyboardHints = KeyboardHints.id
                 }
             }
-            important - buttonTheme - button {
-                centered - text("Submit")
+            important.buttonTheme.button {
+                centered.text("Submit")
                 action = proveEmailOwnership
             }
             val newCodeSentAt = Signal(now())
@@ -137,12 +137,12 @@ class EmailProof(val p: ProofClientEndpoints.Email, val id: String, var codeKey:
             }
             button {
                 ::enabled { nowBySecond() !in newCodeSentAt() + 3.seconds..newCodeSentAt() + resendTime }
-                centered - shownWhen { nowBySecond() > newCodeSentAt() + resendTime } - text("Send new code")
-                centered - shownWhen { nowBySecond() < newCodeSentAt() + 3.seconds } - row {
-                    centered - icon(Icon.done.copy(1.rem, 1.rem), "")
-                    centered - text("Sent!")
+                centered.shownWhen { nowBySecond() > newCodeSentAt() + resendTime }.text("Send new code")
+                centered.shownWhen { nowBySecond() < newCodeSentAt() + 3.seconds }.row {
+                    centered.icon(Icon.done.copy(1.rem, 1.rem), "")
+                    centered.text("Sent!")
                 }
-                centered - shownWhen { nowBySecond() in newCodeSentAt() + 3.seconds..newCodeSentAt() + resendTime } - text {
+                centered.shownWhen { nowBySecond() in newCodeSentAt() + 3.seconds..newCodeSentAt() + resendTime }.text {
                     ::content { "Can send new code in ${(newCodeSentAt() + resendTime - nowBySecond()).inWholeSeconds}" }
                 }
                 onClick {
@@ -180,7 +180,7 @@ class SmsProof(val p: ProofClientEndpoints.Sms, val id: String, var codeKey: Str
                 onProof(p.provePhoneOwnership(FinishProof(codeKey, code.await())))
             }
             field("Login code texted to $id") {
-                expanding - textInput {
+                expanding.textInput {
                     ::hint { "ABCDEF" }
                     requestFocus()
                     action = provePhoneOwnership
@@ -188,8 +188,8 @@ class SmsProof(val p: ProofClientEndpoints.Sms, val id: String, var codeKey: Str
                     keyboardHints = KeyboardHints.id
                 }
             }
-            important - button {
-                centered - text("Submit")
+            important.button {
+                centered.text("Submit")
                 action = provePhoneOwnership
             }
             val newCodeSentAt = Signal(now())
@@ -200,12 +200,12 @@ class SmsProof(val p: ProofClientEndpoints.Sms, val id: String, var codeKey: Str
             }
             button {
                 ::enabled { nowBySecond() !in newCodeSentAt() + 3.seconds..newCodeSentAt() + resendTime }
-                centered - shownWhen { nowBySecond() > newCodeSentAt() + resendTime } - text("Send new code")
-                centered - shownWhen { nowBySecond() < newCodeSentAt() + 3.seconds } - row {
-                    centered - icon(Icon.done.copy(1.rem, 1.rem), "")
-                    centered - text("Sent!")
+                centered.shownWhen { nowBySecond() > newCodeSentAt() + resendTime }.text("Send new code")
+                centered.shownWhen { nowBySecond() < newCodeSentAt() + 3.seconds }.row {
+                    centered.icon(Icon.done.copy(1.rem, 1.rem), "")
+                    centered.text("Sent!")
                 }
-                centered - shownWhen { nowBySecond() in newCodeSentAt() + 3.seconds..newCodeSentAt() + resendTime } - text {
+                centered.shownWhen { nowBySecond() in newCodeSentAt() + 3.seconds..newCodeSentAt() + resendTime }.text {
                     ::content { "Can send new code in ${(newCodeSentAt() + resendTime - nowBySecond()).inWholeSeconds}" }
                 }
                 onClick {
@@ -252,8 +252,8 @@ class PasswordProof(
                     keyboardHints = KeyboardHints.password
                 }
             }
-            important - button {
-                centered - text("Submit")
+            important.button {
+                centered.text("Submit")
                 action = provePasswordOwnership
             }
 
@@ -295,7 +295,7 @@ class TotpProof(
                 }
             }
             button {
-                centered - text("Submit")
+                centered.text("Submit")
                 action = proveOtpProofAction
             }
         }
@@ -335,7 +335,7 @@ class BackupCodeProof(
                 }
             }
             button {
-                centered - text("Submit")
+                centered.text("Submit")
                 action = proveBackupCodeProofAction
             }
         }
@@ -362,7 +362,7 @@ class WebAuthNProof(
     val isPrimary: Boolean,
 ) : CurrentProof {
     override fun ViewWriter.render(onProof: (Proof) -> Unit, onException: (Exception) -> Unit) {
-        important - buttonTheme - frame {
+        important.buttonTheme.frame {
 
             launch {
                 try {
@@ -391,17 +391,17 @@ class WebAuthNProof(
             }
 
             row {
-                expanding - space()
-                centered - icon(Icon.passkey, "Passkey")
-                centered - text {
+                expanding.space()
+                centered.icon(Icon.passkey, "Passkey")
+                centered.text {
                     ::content{
                         if (isPrimary) "Use a Passkey"
                         else "Use your Security Key"
                     }
                 }
-                expanding - space()
+                expanding.space()
             }
-            centered - activityIndicator()
+            centered.activityIndicator()
         }
     }
 }
@@ -480,7 +480,7 @@ class ReAuthComponent(
      * 4. Renders active proof component
      * 5. Automatically logs in when requirements met
      */
-    fun ViewWriter.render(): ViewModifiable {
+    fun ViewWriter.render() {
         // Automatically check proofs with server as they're collected
         reactiveSuspending {
             val proofs = proofs.await()
@@ -517,8 +517,8 @@ class ReAuthComponent(
             result.refreshToken?.also { onAuthentication(it) }
         }
 
-        return col {
-            shownWhen { proofs().isNotEmpty() } - card - progressBar {
+        col {
+            shownWhen { proofs().isNotEmpty() }.card.progressBar {
                 ::ratio {
                     proofs().sumOf { it.strength } / requirements().strengthRequired.toFloat()
                 }
@@ -545,20 +545,20 @@ class ReAuthComponent(
                 }
             }
 
-            shownWhen { currentProof() == null && !authenticating() && readyToLogin() != true } - col {
+            shownWhen { currentProof() == null && !authenticating() && readyToLogin() != true }.col {
 
-                shownWhen { proofs().isNotEmpty() } - text("We need more information.")
+                shownWhen { proofs().isNotEmpty() }.text("We need more information.")
 
                 endpoints.emailProof?.let { p ->
                     shownWhen {
                         proofs().none { it.via == p.via } &&
                                 requirements().options.any { it.method.via == p.via }
-                    } - important - buttonTheme - button {
+                    }.important.buttonTheme.button {
                         this.action = Action("Email Code", Icon.send) {
                             val id = requirements().options.find { it.method.via == p.via }?.value ?: return@Action
                             currentProof.value = EmailProof(p, id, p.beginEmailOwnershipProof(id))
                         }
-                        centered - text("Email Code")
+                        centered.text("Email Code")
                     }
                 }
 
@@ -566,12 +566,12 @@ class ReAuthComponent(
                     shownWhen {
                         proofs().none { it.via == p.via } &&
                                 requirements().options.any { it.method.via == p.via }
-                    } - important - buttonTheme - button {
+                    }.important.buttonTheme.button {
                         this.action = Action("Text Code", Icon.send) {
                             val id = requirements().options.find { it.method.via == p.via }?.value ?: return@Action
                             currentProof.value = SmsProof(p, id, p.beginSmsOwnershipProof(id))
                         }
-                        centered - text("Text Code")
+                        centered.text("Text Code")
                     }
                 }
 
@@ -579,8 +579,8 @@ class ReAuthComponent(
                     shownWhen {
                         proofs().none { it.via == p.via } &&
                                 requirements().options.any { it.method.via == p.via }
-                    } - important - buttonTheme - button {
-                        centered - text("Use Password")
+                    }.important.buttonTheme.button {
+                        centered.text("Use Password")
                         this.action = Action("Use Password", Icon.chevronRight) {
                             currentProof.value = PasswordProof(
                                 p = p,
@@ -596,8 +596,8 @@ class ReAuthComponent(
                     shownWhen {
                         proofs().none { it.via == p.via } &&
                                 requirements().options.any { it.method.via == p.via }
-                    } - important - buttonTheme - button {
-                        centered - text("Use Authenticator App")
+                    }.important.buttonTheme.button {
+                        centered.text("Use Authenticator App")
                         this.action = Action("Use Authenticator App", Icon.chevronRight) {
                             currentProof.value = TotpProof(
                                 p = p,
@@ -613,8 +613,8 @@ class ReAuthComponent(
                     shownWhen {
                         proofs().none { it.via == p.via } &&
                                 requirements().options.any { it.method.via == p.via }
-                    } - important - buttonTheme - button {
-                        centered - text("Use Backup Code")
+                    }.important.buttonTheme.button {
+                        centered.text("Use Backup Code")
                         this.action = Action("Use Backup Code", Icon.chevronRight) {
                             currentProof.value = BackupCodeProof(
                                 p = p,
@@ -641,18 +641,18 @@ class ReAuthComponent(
                         webAuthNAvailable() &&
                                 proofs().none { it.via == webAuthNProof.via } &&
                                 requirements().options.any { it.method.via == webAuthNProof.via }
-                    } - col {
-                        important - buttonTheme - button {
+                    }.col {
+                        important.buttonTheme.button {
                             row {
-                                expanding - space()
-                                centered - icon(Icon.passkey, "Passkey")
-                                centered - text {
+                                expanding.space()
+                                centered.icon(Icon.passkey, "Passkey")
+                                centered.text {
                                     ::content{
                                         if (isPrimary()) "Use a Passkey"
                                         else "Use your Security Key"
                                     }
                                 }
-                                expanding - space()
+                                expanding.space()
                             }
                             this.action = Action("Sign in with a Passkey", Icon.passkey) {
                                 currentProof.value = WebAuthNProof(
@@ -694,8 +694,8 @@ class ReAuthComponent(
                                         h2("Error")
                                         text(it.message ?: "???")
                                         row {
-                                            expanding - space()
-                                            buttonTheme - button {
+                                            expanding.space()
+                                            buttonTheme.button {
                                                 text("OK")
                                                 onClick { close() }
                                             }
@@ -708,7 +708,7 @@ class ReAuthComponent(
                 }
             }
 
-            shownWhen { currentProof() != null } - button {
+            shownWhen { currentProof() != null }.button {
                 subtext {
                     content = "Use a different Method"
                     align = Align.Center
@@ -718,9 +718,9 @@ class ReAuthComponent(
                 }
             }
 
-            centered - shownWhen { authenticating() } - row {
+            centered.shownWhen { authenticating() }.row {
                 activityIndicator()
-                centered - text("Authenticating...")
+                centered.text("Authenticating...")
             }
         }
     }
@@ -825,10 +825,10 @@ class AuthComponent(
         endpoints.knownDeviceProof?.knownDeviceOptions()
     }
 
-    fun ViewWriter.render(): ViewModifiable {
-        return col {
+    fun ViewWriter.render() {
+        col {
             val primaryIdentifierField: TextField
-            shownWhen { proofs().isEmpty() && currentProof() == null } - field(
+            shownWhen { proofs().isEmpty() && currentProof() == null }.field(
                 when {
                     endpoints.emailProof != null && endpoints.smsProof != null -> "Email or Phone Number"
                     endpoints.emailProof != null -> "Email"
@@ -868,11 +868,11 @@ class AuthComponent(
             }
 
 
-            shownWhen { proofs().isNotEmpty() || currentProof() != null } - row {
-                expanding - centered - text {
+            shownWhen { proofs().isNotEmpty() || currentProof() != null }.row {
+                expanding.centered.text {
                     ::content{ primaryIdentifier().takeIf { it.isNotEmpty() } ?: "Using Passkey" }
                 }
-                centered - button {
+                centered.button {
                     padding = 0.2.rem
                     icon(Icon.close, "Restart Login")
                     onClick {
@@ -885,7 +885,7 @@ class AuthComponent(
                 }
             }
 
-            shownWhen { proofs().isNotEmpty() } - card - progressBar {
+            shownWhen { proofs().isNotEmpty() }.card.progressBar {
                 ::ratio {
                     authResult()?.let { proofs().sumOf { it.strength } / it.strengthRequired.toFloat() } ?: 0.01f
                 }
@@ -913,9 +913,9 @@ class AuthComponent(
                 }
             }
 
-            shownWhen { currentProof() == null && !authenticating() && authResult()?.readyToLogIn != true } - col {
+            shownWhen { currentProof() == null && !authenticating() && authResult()?.readyToLogIn != true }.col {
 
-                shownWhen { proofs().isNotEmpty() } - text("We need more information.")
+                shownWhen { proofs().isNotEmpty() }.text("We need more information.")
                 val validId =
                     remember { Regexes.email.matches(primaryIdentifier()) || Regexes.phoneNumber.matches(primaryIdentifier()) }
 
@@ -927,9 +927,9 @@ class AuthComponent(
                     shownWhen {
                         proofs().none { it.via == p.via } && (authResult()?.options?.any { it.method.via == p.via }
                             ?: true) && email() != null
-                    } - important - buttonTheme - button {
+                    }.important.buttonTheme.button {
                         this.action = action
-                        centered - text("Email Code")
+                        centered.text("Email Code")
                     }
                     action
                 }
@@ -943,9 +943,9 @@ class AuthComponent(
                         proofs().none { it.via == p.via } &&
                                 (authResult()?.options?.any { it.method.via == p.via }
                                     ?: true) && phone() != null
-                    } - important - buttonTheme - button {
+                    }.important.buttonTheme.button {
                         this.action = action
-                        centered - text("Text Code")
+                        centered.text("Text Code")
                     }
                     action
                 }
@@ -967,8 +967,8 @@ class AuthComponent(
                         proofs().none { it.via == p.via } &&
                                 (authResult()?.options?.any { it.method.via == p.via } ?: true) &&
                                 validId()
-                    } - important - buttonTheme - button {
-                        centered - text("Use Password")
+                    }.important.buttonTheme.button {
+                        centered.text("Use Password")
                         this.action = action
                     }
                     action
@@ -991,9 +991,9 @@ class AuthComponent(
                         proofs().none { it.via == p.via } &&
                                 (authResult()?.options?.any { it.method.via == p.via } ?: true) &&
                                 validId()
-                    } - important - buttonTheme - button {
+                    }.important.buttonTheme.button {
                         this.action = action
-                        centered - text("Use Authenticator App")
+                        centered.text("Use Authenticator App")
                     }
                     action
                 }
@@ -1016,9 +1016,9 @@ class AuthComponent(
                         proofs().none { it.via == p.via } &&
                                 (authResult()?.options?.any { it.method.via == p.via } ?: true) &&
                                 validId()
-                    } - important - buttonTheme - button {
+                    }.important.buttonTheme.button {
                         this.action = action
-                        centered - text("Use Backup Code")
+                        centered.text("Use Backup Code")
                     }
                     action
                 }
@@ -1063,20 +1063,20 @@ class AuthComponent(
                                 proofs().none { it.via == webAuthNProof.via } &&
                                 (isPrimary() ||
                                         authResult()?.options?.any { it.method.via == webAuthNProof.via } == true)
-                    } - col {
-                        centered - shownWhen { isPrimary() } - text("Or")
+                    }.col {
+                        centered.shownWhen { isPrimary() }.text("Or")
 
-                        important - buttonTheme - button {
+                        important.buttonTheme.button {
                             row {
-                                expanding - space()
-                                centered - icon(Icon.passkey, "Passkey")
-                                centered - text {
+                                expanding.space()
+                                centered.icon(Icon.passkey, "Passkey")
+                                centered.text {
                                     ::content{
                                         if (isPrimary()) "Use a Passkey"
                                         else "Use your Security Key"
                                     }
                                 }
-                                expanding - space()
+                                expanding.space()
                             }
 
                             this.action = Action("Sign in with a Passkey", Icon.passkey) {
@@ -1139,8 +1139,8 @@ class AuthComponent(
                                         h2("Error")
                                         text(it.message ?: "???")
                                         row {
-                                            expanding - space()
-                                            buttonTheme - button {
+                                            expanding.space()
+                                            buttonTheme.button {
                                                 text("OK")
                                                 onClick { close() }
                                             }
@@ -1152,19 +1152,19 @@ class AuthComponent(
                     }
                 }
             }
-            centered - shownWhen { authenticating() } - row {
+            centered.shownWhen { authenticating() }.row {
                 activityIndicator()
-                centered - text("Authenticating...")
+                centered.text("Authenticating...")
             }
 
-            shownWhen { authResult()?.readyToLogIn == true } - col {
+            shownWhen { authResult()?.readyToLogIn == true }.col {
 
-                centered - h5("Ready to login")
+                centered.h5("Ready to login")
                 sessionLengthComponent(knownDeviceOptions, rememberDevice, desiredSessionLength, authResult)
 
 
-                important - buttonTheme - button {
-                    centered - text("Login")
+                important.buttonTheme.button {
+                    centered.text("Login")
                     onClick {
 
                         val result = subject.logInV2(
@@ -1219,21 +1219,21 @@ fun ViewWriter.sessionLengthComponent(
     desiredSessionLength: Signal<Duration?>,
     authResult: Reactive<ProofsCheckResult<out Comparable<*>>?>,
 ) {
-    shownWhen { knownDeviceOptions() != null } - row {
-        centered - checkbox { checked bind rememberDevice }
-        centered - text {
+    shownWhen { knownDeviceOptions() != null }.row {
+        centered.checkbox { checked bind rememberDevice }
+        centered.text {
             content = "This is my device"
 //                        ::content { "Remember this device for ${knownDeviceOptions()?.duration?.inWholeDays} days" }
         }
     }
-    shownWhen { rememberDevice() || knownDeviceOptions() == null } - row {
-        centered - checkbox {
+    shownWhen { rememberDevice() || knownDeviceOptions() == null }.row {
+        centered.checkbox {
             checked bind desiredSessionLength.lens(
                 get = { it != 1.days },
                 set = { if (it) null else 1.days }
             )
         }
-        centered - text {
+        centered.text {
             ::content {
                 val days = authResult()?.maxExpiration?.let { it - now() }?.toDouble(DurationUnit.DAYS)
                     ?.roundToInt()

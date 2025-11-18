@@ -129,7 +129,7 @@ abstract class ListRenderer<C> : FormRenderer.Generator, ViewRenderer.Generator 
         return FormRenderer(module, this, selector as FormSelector<C>) { _, mutable ->
             row {
                 vertical = this@ListRenderer.vertical
-                if (!vertical) expanding - scrollsHorizontally
+                if (!vertical) expanding.scrollsHorizontally
                 text {
                     ::exists { (mutable() as Collection<*>).isEmpty() }
                     content = "Empty"
@@ -141,14 +141,14 @@ abstract class ListRenderer<C> : FormRenderer.Generator, ViewRenderer.Generator 
                     // It tracks items by reference, so modifications to item contents are detected, but
                     // external reordering or replacement of the collection would not trigger proper updates
                     forEachUpdating(lens(mutable).lensByElementAssumingSetNeverManipulates()) {
-                        card - row {
+                        card.row {
                             gap = 0.px
                             if (this@ListRenderer.vertical) expanding
                             // flatten() converts Reactive<Reactive<T>> to Reactive<T>
                             // The outer Reactive tracks which element this is (by index/reference)
                             // The inner Reactive tracks changes to the element's contents
                             inner.render(this, null, it.flatten())
-                            centered - button {
+                            centered.button {
                                 icon(Icon.close.copy(width = 1.rem, height = 1.rem), "Delete")
                                 onClick {
                                     // Pass both item value and index for removal
@@ -161,12 +161,12 @@ abstract class ListRenderer<C> : FormRenderer.Generator, ViewRenderer.Generator 
                 }
                 button {
                     if (this@ListRenderer.vertical) {
-                        centered - row {
-                            centered - text("Add")
-                            centered - icon(Icon.add.copy(width = 1.rem, height = 1.rem), "")
+                        centered.row {
+                            centered.text("Add")
+                            centered.icon(Icon.add.copy(width = 1.rem, height = 1.rem), "")
                         }
                     } else {
-                        centered - icon(Icon.add.copy(width = 1.rem, height = 1.rem), "Add")
+                        centered.icon(Icon.add.copy(width = 1.rem, height = 1.rem), "Add")
                     }
                     onClick {
                         // Create new item with default value based on serializer
@@ -198,7 +198,7 @@ abstract class ListRenderer<C> : FormRenderer.Generator, ViewRenderer.Generator 
                 row {
                     vertical = this@ListRenderer.vertical
                     forEachUpdating(lens(readable)) {
-                        card - inner.render(this, null, it)
+                        inner.render(card, null, it)
                     }
                 }
             }

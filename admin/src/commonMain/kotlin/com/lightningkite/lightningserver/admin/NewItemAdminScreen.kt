@@ -4,7 +4,7 @@ import com.lightningkite.kiteui.QueryParameter
 import com.lightningkite.kiteui.Routable
 import com.lightningkite.kiteui.forms.form
 import com.lightningkite.kiteui.navigation.*
-import com.lightningkite.kiteui.views.ViewModifiable
+
 import com.lightningkite.kiteui.views.ViewWriter
 import com.lightningkite.kiteui.views.atEnd
 import com.lightningkite.kiteui.views.direct.*
@@ -27,7 +27,7 @@ class NewItemAdminPage(val collectionName: String) : Page {
     @QueryParameter("condition")
     val conditionString: Signal<String?> = Signal(null)
 
-    override fun ViewWriter.render(): ViewModifiable {
+    override fun ViewWriter.render() {
         val mc = remember { adminServer().models[collectionName]?.cache(adminAuthentication()) as ModelCache<UnknownModel, UnknownId> }
         val item = asyncReactive {
             val coerceCondition = conditionString.value?.let {
@@ -45,12 +45,12 @@ class NewItemAdminPage(val collectionName: String) : Page {
                 }
             )
         }.flatten()
-        return scrolling - col {
+        scrolling.col {
             reactive {
                 clearChildren()
                 val forms = adminFormModule()
                 form(forms, mc().serializer, item)
-                atEnd - important - button {
+                atEnd.important.button {
                     text("Save")
                     onClick {
                         println("New item: ${item()}")

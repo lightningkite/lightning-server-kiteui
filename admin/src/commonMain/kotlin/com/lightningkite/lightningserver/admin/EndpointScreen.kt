@@ -39,11 +39,11 @@ class EndpointPage(val path: String, val method: String) : Page {
         }
     }
 
-    override fun ViewWriter.render(): ViewModifiable {
+    override fun ViewWriter.render() {
         val server = adminServer
         val endpoint = remember { adminServer().schema.endpoints.find { it.path == this@EndpointPage.path && it.method == method }!! }
-        return scrolling - col {
-            reactive {
+        scrolling.col {
+            reactive<Unit> {
                 clearChildren()
                 val forms = adminFormModule()
                 val inputSerializer = endpoint().input.serializer(server().registry, mapOf())
@@ -65,15 +65,15 @@ class EndpointPage(val path: String, val method: String) : Page {
                     ::content { "${endpoint().method} ${path()}" }
                 }
                 if(parameters.isNotEmpty()) {
-                    card - col {
+                    card.col {
                         for ((key, value) in parameters) {
                             value.render(this)
                         }
                     }
                 }
                 if(inputSerializer != Unit.serializer())
-                    card - form(forms, inputSerializer, input)
-                atEnd - important - button {
+                    card.form(forms, inputSerializer, input)
+                atEnd.important.button {
                     text("Submit")
                     onClick {
                         output.state = ReactiveState.notReady
@@ -91,7 +91,7 @@ class EndpointPage(val path: String, val method: String) : Page {
                 separator()
                 errorText()
                 reactive { output() }
-                card - view(forms, outputSerializer.nullable2, output)
+                card.view(forms, outputSerializer.nullable2, output)
             }
         }
     }

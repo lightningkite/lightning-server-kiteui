@@ -134,7 +134,7 @@ fun ViewWriter.app(navigator: PageNavigator, dialog: PageNavigator) {
                     count = null,
                     hidden = { false },
                     square = {
-                        compact - menuButton {
+                        compact.menuButton {
                             // Fetch and display the current user's identity
                             // Falls back to "Anonymous" if not authenticated or "No Server" if unreachable
                             val me = rememberSuspending label@{
@@ -164,8 +164,8 @@ fun ViewWriter.app(navigator: PageNavigator, dialog: PageNavigator) {
                                 }
                             }
                             col {
-                                centered - icon(Icon.person, "Login")
-                                centered - subtext {
+                                centered.icon(Icon.person, "Login")
+                                centered.subtext {
                                     // Show first 10 characters of user identifier in collapsed menu button
                                     // Keeps the button compact while still showing recognizable info
                                     ::content { me().take(10) }
@@ -176,14 +176,14 @@ fun ViewWriter.app(navigator: PageNavigator, dialog: PageNavigator) {
                             opensMenu {
                                 col {
                                     // Full user identifier in expanded menu
-                                    centered - subtext {
+                                    centered.subtext {
                                         ::content { me() }
                                     }
 
                                     // Server URL configuration with debounced updates
                                     // Debouncing prevents rapid re-connections during typing
                                     // TODO: Extract magic number 500ms to a constant
-                                    sizeConstraints(width = 20.rem) - field("Server") {
+                                    sizeConstraints(width = 20.rem).field("Server") {
                                         textInput {
                                             content bind serverUrl.debounceWrite(500.milliseconds)
                                         }
@@ -196,7 +196,7 @@ fun ViewWriter.app(navigator: PageNavigator, dialog: PageNavigator) {
                                         modify = { o, v -> o?.copy(userType = v) ?: AdminCredentials(userType = v) }
                                     )
                                     // TODO: Extract magic number 20.rem to a constant
-                                    sizeConstraints(width = 20.rem) - field("User Type") {
+                                    sizeConstraints(width = 20.rem).field("User Type") {
                                         select {
                                             bind(
                                                 userType,
@@ -219,7 +219,7 @@ fun ViewWriter.app(navigator: PageNavigator, dialog: PageNavigator) {
                                     // Allows directly pasting a session token instead of logging in
                                     // Useful for testing or when token is obtained externally
                                     // TODO: Extract magic number 20.rem to a constant
-                                    sizeConstraints(width = 20.rem) - field("Token") {
+                                    sizeConstraints(width = 20.rem).field("Token") {
                                         textInput {
                                             content bind adminCredentials.lens(
                                                 get = { it?.session ?: "" },
@@ -235,7 +235,7 @@ fun ViewWriter.app(navigator: PageNavigator, dialog: PageNavigator) {
                                     // Rebuilds when userType or server changes
                                     // Provides the full auth flow (password, MFA, etc.)
                                     // TODO: Extract magic number 20.rem to a constant
-                                    sizeConstraints(width = 20.rem) - stack {
+                                    sizeConstraints(width = 20.rem).stack {
                                         reactive {
                                             clearChildren()
                                             try {
@@ -260,10 +260,10 @@ fun ViewWriter.app(navigator: PageNavigator, dialog: PageNavigator) {
 
                                     // Logout button - only visible when credentials exist
                                     // Provides confirmation dialog to prevent accidental logout
-                                    onlyWhen { adminCredentials() != null } - card - button {
-                                        centered - row {
-                                            centered - icon(Icon.logout, "Log Out")
-                                            centered - text("Log Out")
+                                    onlyWhen { adminCredentials() != null }.card.button {
+                                        centered.row {
+                                            centered.icon(Icon.logout, "Log Out")
+                                            centered.text("Log Out")
                                         }
                                         onClick("Log Out") {
                                             confirmDanger("Log Out", "Are you sure you want to log out?", "Log Out") {

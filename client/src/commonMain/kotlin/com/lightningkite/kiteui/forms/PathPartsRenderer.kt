@@ -63,7 +63,7 @@ object PathPartsRenderer : FormRenderer.Generator {
                             }
                         }
                     }) {
-                        fieldTheme - select {
+                        fieldTheme.select {
                             val options = remember {
                                 (properties().getOrNull(it().index() - 1)
                                     ?.let {

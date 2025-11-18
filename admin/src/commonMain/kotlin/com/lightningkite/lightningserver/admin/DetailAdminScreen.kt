@@ -27,7 +27,7 @@ import com.lightningkite.services.database.serializableProperties
 
 @Routable("collections/{collectionName}/detail/{itemId}")
 class DetailAdminPage(val collectionName: String, val itemId: String) : Page {
-    override fun ViewWriter.render(): ViewModifiable {
+    override fun ViewWriter.render() {
         val mc = remember { adminServer().models[collectionName]?.cache(adminAuthentication()) as ModelCache<UnknownModel, UnknownId> }
         val item = Draft(remember {
             val mc = mc()
@@ -36,15 +36,15 @@ class DetailAdminPage(val collectionName: String, val itemId: String) : Page {
                 mc.serializer._id().setCopy(it, actualId)
             })
         }.flatten())
-        return rowCollapsingToColumn(100.rem) {
+        rowCollapsingToColumn(100.rem) {
             space { reactive { item() } }
-            weight(2f) - scrolls - col {
+            weight(2f).scrolling.col {
                 reactive {
                     clearChildren()
                     val forms = adminFormModule()
                     form(forms, mc().serializer, item)
-                    atEnd - row {
-                        danger - button {
+                    atEnd.row {
+                        danger.button {
                             text("Delete")
                             onClick {
                                 confirmDanger("Delete", "Are you sure?") {
@@ -54,15 +54,15 @@ class DetailAdminPage(val collectionName: String, val itemId: String) : Page {
                                     mc[actualId].delete()
                                     toast {
                                         row {
-                                            centered - icon(Icon.deleteForever, "Deleted")
-                                            centered - text("Item has been deleted.")
+                                            centered.icon(Icon.deleteForever, "Deleted")
+                                            centered.text("Item has been deleted.")
                                         }
                                     }
                                     pageNavigator.goBack()
                                 }
                             }
                         }
-                        card - button {
+                        card.button {
                             text("Cancel")
                             ::enabled { item.changesMade() }
                             onClick {
@@ -71,7 +71,7 @@ class DetailAdminPage(val collectionName: String, val itemId: String) : Page {
                                 }
                             }
                         }
-                        shownWhen { item.published()._id != item()._id } - danger - button {
+                        shownWhen { item.published()._id != item()._id }.danger.button {
                             text("Delete and Re-create")
                             ::enabled { item.changesMade() }
                             onClick {
@@ -84,23 +84,23 @@ class DetailAdminPage(val collectionName: String, val itemId: String) : Page {
                                     val newId = mc.insert(newItem)()!!._id
                                     toast {
                                         row {
-                                            centered - icon(Icon.done, "Done")
-                                            centered - text("Your changes have been saved")
+                                            centered.icon(Icon.done, "Done")
+                                            centered.text("Your changes have been saved")
                                         }
                                     }
                                     pageNavigator.replace(DetailAdminPage(collectionName, UrlProperties.encodeToString(mc.serializer._id().serializer, newId)))
                                 }
                             }
                         }
-                        shownWhen { item.published()._id == item()._id } - important - button {
+                        shownWhen { item.published()._id == item()._id }.important.button {
                             text("Save")
                             ::enabled { item.changesMade() }
                             onClick {
                                 item.publish()
                                 toast {
                                     row {
-                                        centered - icon(Icon.done, "Done")
-                                        centered - text("Your changes have been saved")
+                                        centered.icon(Icon.done, "Done")
+                                        centered.text("Your changes have been saved")
                                     }
                                 }
                             }
@@ -108,7 +108,7 @@ class DetailAdminPage(val collectionName: String, val itemId: String) : Page {
                     }
                 }
             }
-            weight(1f) - scrolls - col {
+            weight(1f).scrolls.col {
                 val itemId = remember { item()._id }
                 reactive {
                     clearChildren()

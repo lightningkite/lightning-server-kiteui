@@ -19,22 +19,22 @@ object ServerFileRenderer  : FormRenderer.Generator, ViewRenderer.Generator {
     override fun <T> form(module: FormModule, selector: FormSelector<T>): FormRenderer<T> {
         return FormRenderer<ServerFile?>(module, this, selector as FormSelector<ServerFile?>) { field, mutable ->
             row {
-                expanding - externalLink {
+                expanding.externalLink {
                     newTab = true
                     ::enabled { mutable() != null }
                     ::to { mutable()?.location }
                     row {
-                        sizeConstraints(width = 3.rem, height = 3.rem) - image {
+                        sizeConstraints(width = 3.rem, height = 3.rem).image {
                             ::source { mutable()?.location?.let(::ImageRemote) }
                         }
-                        centered - expanding - text {
+                        centered.expanding.text {
                             ellipsis = true
                             wraps = false
                             ::content { mutable()?.location?.substringAfterLast('/')?.substringBefore('?')?.takeUnless { it.isBlank() } ?: "None" }
                         }
                     }
                 }
-                centered - button {
+                centered.button {
                     ::exists { module.fileUpload != null }
                     icon(Icon.upload, "Upload")
                     onClick {
@@ -54,10 +54,10 @@ object ServerFileRenderer  : FormRenderer.Generator, ViewRenderer.Generator {
                 newTab = true
                 ::to { readable()?.location ?: "" }
                 row {
-                    sizeConstraints(width = 3.rem, height = 3.rem) - image {
+                    sizeConstraints(width = 3.rem, height = 3.rem).image {
                         ::source { readable()?.location?.let(::ImageRemote) }
                     }
-                    centered - expanding - text {
+                    centered.expanding.text {
                         ellipsis = true
                         wraps = false
                         ::content { readable()?.location?.substringAfterLast('/')?.substringBefore('?') ?: "None" }

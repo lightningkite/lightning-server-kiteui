@@ -80,8 +80,8 @@ object NullableFormRenderer : FormRenderer.Generator, ViewRenderer.Generator {
             row {
                 // Capture the last non-null value to restore when checkbox is re-checked
                 var ifNotNull: Any = mutable.state.getOrNull() ?: innerSerializer.default()
-                padded - stack {
-                    atTopStart - checkbox {
+                padded.stack {
+                    atTopStart.checkbox {
                         checked bind mutable.lens(
                             get = { v -> v != null },
                             modify = { e, v ->
@@ -91,7 +91,7 @@ object NullableFormRenderer : FormRenderer.Generator, ViewRenderer.Generator {
                         )
                     }
                 }
-                expanding - stack {
+                expanding.stack {
                     // Remember the initial null state
                     val isNull = remember { mutable() == null }
                     reactive {

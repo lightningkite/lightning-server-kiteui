@@ -17,68 +17,70 @@ import kotlin.time.Clock.System.now
 
 @Routable("/")
 class HomePage : Page {
-    override fun ViewWriter.render() = stack {
-        gravity(Align.Center, Align.Stretch) - sizeConstraints(width = 40.rem) - scrolls - col {
-            h1 {
-                ::content { adminServer.invoke().schema.baseUrl.substringAfter("://") }
-            }
-            card - col {
-                h2("Settings")
-                row {
-                    expanding - centered - text("Show Endpoints")
-                    centered - switch {
-                        checked bind adminSettings.lens(
-                            get = { it.showEndpoints },
-                            modify = { o, it -> o.copy(showEndpoints = it) }
-                        )
+    override fun ViewWriter.render() {
+        frame {
+            gravity(Align.Center, Align.Stretch).sizeConstraints(width = 40.rem).scrolls.col {
+                h1 {
+                    ::content { adminServer.invoke().schema.baseUrl.substringAfter("://") }
+                }
+                card.col {
+                    h2("Settings")
+                    row {
+                        expanding.centered.text("Show Endpoints")
+                        centered.switch {
+                            checked bind adminSettings.lens(
+                                get = { it.showEndpoints },
+                                modify = { o, it -> o.copy(showEndpoints = it) }
+                            )
+                        }
+                    }
+                    row {
+                        expanding.centered.text("Show Hidden Fields")
+                        centered.switch {
+                            checked bind adminSettings.lens(
+                                get = { it.showHiddenFields },
+                                modify = { o, it -> o.copy(showHiddenFields = it) }
+                            )
+                        }
+                    }
+                    row {
+                        expanding.centered.text("Edit Unrecommended Fields")
+                        centered.switch {
+                            checked bind adminSettings.lens(
+                                get = { it.editAllFields },
+                                modify = { o, it -> o.copy(editAllFields = it) }
+                            )
+                        }
+                    }
+                    row {
+                        expanding.centered.text("Show View Type Switcher")
+                        centered.switch {
+                            checked bind adminSettings.lens(
+                                get = { it.showAlternativeEditOptions },
+                                modify = { o, it -> o.copy(showAlternativeEditOptions = it) }
+                            )
+                        }
+                    }
+                    row {
+                        expanding.centered.text("Enable destructive actions")
+                        centered.switch {
+                            checked bind unlockDestructiveActions
+                                .withWrite {
+                                    if (it) adminSettings.value =
+                                        adminSettings.value.copy(unlockDestructiveActions = now())
+                                }
+                        }
+                    }
+                    row {
+                        expanding.centered.text("Live Data")
+                        centered.switch {
+                            checked bind adminSettings.lens(
+                                get = { it.liveData },
+                                modify = { o, it -> o.copy(liveData = it) }
+                            )
+                        }
                     }
                 }
-                row {
-                    expanding - centered - text("Show Hidden Fields")
-                    centered - switch {
-                        checked bind adminSettings.lens(
-                            get = { it.showHiddenFields },
-                            modify = { o, it -> o.copy(showHiddenFields = it) }
-                        )
-                    }
-                }
-                row {
-                    expanding - centered - text("Edit Unrecommended Fields")
-                    centered - switch {
-                        checked bind adminSettings.lens(
-                            get = { it.editAllFields },
-                            modify = { o, it -> o.copy(editAllFields = it) }
-                        )
-                    }
-                }
-                row {
-                    expanding - centered - text("Show View Type Switcher")
-                    centered - switch {
-                        checked bind adminSettings.lens(
-                            get = { it.showAlternativeEditOptions },
-                            modify = { o, it -> o.copy(showAlternativeEditOptions = it) }
-                        )
-                    }
-                }
-                row {
-                    expanding - centered - text("Enable destructive actions")
-                    centered - switch {
-                        checked bind unlockDestructiveActions
-                            .withWrite {
-                                if (it) adminSettings.value = adminSettings.value.copy(unlockDestructiveActions = now())
-                            }
-                    }
-                }
-                row {
-                    expanding - centered - text("Live Data")
-                    centered - switch {
-                        checked bind adminSettings.lens(
-                            get = { it.liveData },
-                            modify = { o, it -> o.copy(liveData = it) }
-                        )
-                    }
-                }
-            }
 //            card - col {
 //                text("Theme")
 //                scrollingHorizontally - row {
@@ -112,44 +114,46 @@ class HomePage : Page {
 //                    expanding - space()
 //                }
 //            }
-            card - col {
-                h2("Server Status")
-                val status = asyncReactive {
-                    val endpoint = adminServer().health ?: return@asyncReactive null
-                    val fetcher = adminServer().fetcher(adminAuthentication() ?: return@asyncReactive null)
-                    val health = fetcher(endpoint.path, LsHttpMethod.GET, Unit.serializer(), Unit, ServerHealth.serializer())
-                    health
-                }
-                row {
-                    expanding - card - text {
-                        ::content {
-                            "CPU: ${status()?.loadAverageCpu?.toString() ?: "-" }%"
-                        }
+                card.col {
+                    h2("Server Status")
+                    val status = asyncReactive {
+                        val endpoint = adminServer().health ?: return@asyncReactive null
+                        val fetcher = adminServer().fetcher(adminAuthentication() ?: return@asyncReactive null)
+                        val health =
+                            fetcher(endpoint.path, LsHttpMethod.GET, Unit.serializer(), Unit, ServerHealth.serializer())
+                        health
                     }
-                    expanding - card - text {
-                        ::content {
-                            "Memory: ${status()?.memory?.usage?.toString() ?: "-" }%"
-                        }
-                    }
-                }
-                col {
-                    forEach(remember { status()?.features?.entries?.sortedBy { it.key } ?: listOf() }) {
-                        row {
-                            dynamicTheme {
-                                when(it.value.level) {
-                                    HealthStatus.Level.OK -> CardSemantic
-                                    HealthStatus.Level.WARNING -> WarningSemantic
-                                    HealthStatus.Level.URGENT -> DangerSemantic
-                                    HealthStatus.Level.ERROR -> ErrorSemantic
-                                }
+                    row {
+                        expanding.card.text {
+                            ::content {
+                                "CPU: ${status()?.loadAverageCpu?.toString() ?: "-"}%"
                             }
-                            expanding - text { ::content { it.key } }
-                            text { ::content { it.value.additionalMessage ?: it.value.level.name } }
+                        }
+                        expanding.card.text {
+                            ::content {
+                                "Memory: ${status()?.memory?.usage?.toString() ?: "-"}%"
+                            }
+                        }
+                    }
+                    col {
+                        forEach(remember { status()?.features?.entries?.sortedBy { it.key } ?: listOf() }) {
+                            row {
+                                dynamicTheme {
+                                    when (it.value.level) {
+                                        HealthStatus.Level.OK -> CardSemantic
+                                        HealthStatus.Level.WARNING -> WarningSemantic
+                                        HealthStatus.Level.URGENT -> DangerSemantic
+                                        HealthStatus.Level.ERROR -> ErrorSemantic
+                                    }
+                                }
+                                expanding.text { ::content { it.key } }
+                                text { ::content { it.value.additionalMessage ?: it.value.level.name } }
+                            }
                         }
                     }
                 }
-            }
 
+            }
         }
     }
 }

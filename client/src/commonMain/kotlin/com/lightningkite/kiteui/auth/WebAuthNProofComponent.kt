@@ -4,7 +4,7 @@ import com.lightningkite.kiteui.ClientAuthenticator
 import com.lightningkite.kiteui.WebAuthNMediationType
 import com.lightningkite.kiteui.models.Icon
 import com.lightningkite.kiteui.printStackTrace2
-import com.lightningkite.kiteui.views.ViewModifiable
+
 import com.lightningkite.kiteui.views.ViewWriter
 import com.lightningkite.kiteui.views.centered
 import com.lightningkite.kiteui.views.direct.activityIndicator
@@ -45,32 +45,34 @@ data class WebAuthNProofComponent(
         primaryIdentifier: UserIdentification?,
         checks: ProofsCheckResult<*>?,
         onResult: (Proof?) -> Unit,
-    ): ViewModifiable = to.frame {
-        centered - activityIndicator()
-        launch {
-            try {
-                val (key, getOptions) = p.start(
-                    Identification(
-                        type = type,
-                        property = primaryIdentifier?.property,
-                        value = primaryIdentifier?.value,
+    ) {
+        to.frame {
+            centered.activityIndicator()
+            launch {
+                try {
+                    val (key, getOptions) = p.start(
+                        Identification(
+                            type = type,
+                            property = primaryIdentifier?.property,
+                            value = primaryIdentifier?.value,
+                        )
                     )
-                )
-                val signedChallenge =
-                    ClientAuthenticator.Companion.getClientAuthenticator().getWebAuthNCredentials(
-                        getOptions,
-                        WebAuthNMediationType.Optional
+                    val signedChallenge =
+                        ClientAuthenticator.Companion.getClientAuthenticator().getWebAuthNCredentials(
+                            getOptions,
+                            WebAuthNMediationType.Optional
+                        )
+                    val result = p.prove(
+                        WebAuthN.Authentication.ProveRequest(
+                            key,
+                            signedChallenge
+                        )
                     )
-                val result = p.prove(
-                    WebAuthN.Authentication.ProveRequest(
-                        key,
-                        signedChallenge
-                    )
-                )
-                onResult(result)
-            } catch (e: Exception) {
-                e.printStackTrace2()
-                onResult(null)
+                    onResult(result)
+                } catch (e: Exception) {
+                    e.printStackTrace2()
+                    onResult(null)
+                }
             }
         }
     }

@@ -125,7 +125,7 @@ object TableRenderer : FormRenderer.Generator, ViewRenderer.Generator {
     override fun <T> view(module: FormModule, selector: FormSelector<T>): ViewRenderer<T> {
         val innerSer = inner(selector.serializer as KSerializer<List<Any?>>)
         return ViewRenderer(module, this, selector as FormSelector<List<Any?>>) { _, readable ->
-            sizeConstraints(height = 30.rem) - view(this, module, innerSer, Constant(readable))
+            view(sizeConstraints(height = 30.rem), module, innerSer, Constant(readable))
         } as ViewRenderer<T>
     }
 
@@ -185,23 +185,23 @@ object TableRenderer : FormRenderer.Generator, ViewRenderer.Generator {
             )
         }
 
-        scrollsHorizontally - col {
+        scrollsHorizontally.col {
             // Dynamically calculate total table width based on column renderers
             // This ensures the table scrolls horizontally when columns exceed viewport width
             // Width = sum of (column width + 2rem padding) + 5rem for margins
-            expanding - changingSizeConstraints {
+            expanding.changingSizeConstraints {
                 SizeConstraints(width = anyCols().sumOf { renderer(it).size.approximateWidth.coerceAtLeast(5.0) + 2.0 }
                     .plus(5.0).rem)
-            } - col {
+            }.col {
                 // Header row with column names and controls
-                padded - row {
+                padded.row {
                     row {
                         forEach(anyCols) {
-                            sizeConstraints(width = renderer(it).size.approximateWidth.coerceAtLeast(5.0).rem) - important - row {
-                                centered - expanding - text(it.properties.joinToString(" ") { it.displayName })
+                            sizeConstraints(width = renderer(it).size.approximateWidth.coerceAtLeast(5.0).rem).important.row {
+                                centered.expanding.text(it.properties.joinToString(" ") { it.displayName })
                                 button {
                                     gap = 0.px
-                                    centered - icon(Icon.close.copy(width = 1.rem, height = 1.rem), "Remove Column")
+                                    centered.icon(Icon.close.copy(width = 1.rem, height = 1.rem), "Remove Column")
                                     onClick {
                                         anyCols.value -= it
                                     }
@@ -212,7 +212,7 @@ object TableRenderer : FormRenderer.Generator, ViewRenderer.Generator {
                     // Add column menu button - allows selecting additional fields to display
                     menuButton {
                         gap = 0.px
-                        centered - icon(Icon.add.copy(width = 1.rem, height = 1.rem), "Add")
+                        centered.icon(Icon.add.copy(width = 1.rem, height = 1.rem), "Add")
                         preferredDirection = PopoverPreferredDirection.belowLeft
                         requireClick = true
                         opensMenu {
@@ -234,7 +234,7 @@ object TableRenderer : FormRenderer.Generator, ViewRenderer.Generator {
                     }
                 }
                 // Virtualized table body with infinite scroll pagination
-                expanding - ListSemantic.onNext - recyclerView {
+                expanding.onNext(ListSemantic).recyclerView {
                     // Automatically increase limit for LimitReadable as user scrolls
                     // This implements "infinite scroll" - as user approaches the end, more data is loaded
                     reactive {
@@ -256,30 +256,36 @@ object TableRenderer : FormRenderer.Generator, ViewRenderer.Generator {
                             forEach(anyCols) { col ->
                                 val render = renderer(col)
                                 // Match column width to header width for proper alignment
-                                padded - sizeConstraints(width = render.size.approximateWidth.coerceAtLeast(5.0).rem) -
-                                        // lensPath creates a reactive lens to the nested field specified by col
-                                        // E.g., if col is "address.city", this creates a lens that extracts
-                                        // and reactively tracks just that nested field from the row data
-                                        render.render(this@row, null, it.lensPath(col))
+
+                                // lensPath creates a reactive lens to the nested field specified by col
+                                // E.g., if col is "address.city", this creates a lens that extracts
+                                // and reactively tracks just that nested field from the row data
+                                render.render(
+                                    padded.sizeConstraints(
+                                        width = render.size.approximateWidth.coerceAtLeast(
+                                            5.0
+                                        ).rem
+                                    ), null, it.lensPath(col)
+                                )
                             }
                         }
 
                         // Wrap content based on interaction mode
                         if (linkTo != null) {
                             // Clickable row that navigates to a page
-                            card - link {
+                            card.link {
                                 content()
                                 ::to { linkTo(it()) }
                             }
                         } else if (action != null) {
                             // Clickable row that executes an action
-                            card - button {
+                            card.button {
                                 content()
                                 onClick { action(it()) }
                             }
                         } else {
                             // Non-interactive row
-                            card - content()
+                            card.content()
                         }
 
                     }

@@ -47,8 +47,8 @@ fun ViewWriter.manageWebAuthNCredentialsComponent(
                         ::content { "Created on ${credential().establishedAt.renderToString(RenderSize.Numerical)}" }
                     }
                 }
-                expanding - space()
-                centered - button {
+                expanding.space()
+                centered.button {
                     icon(Icon.delete, "Delete")
                     onClick {
                         confirmDanger(

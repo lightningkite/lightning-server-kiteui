@@ -4,7 +4,7 @@ import com.lightningkite.kiteui.models.Icon
 import com.lightningkite.kiteui.models.KeyboardHints
 import com.lightningkite.kiteui.models.SubtextSemantic
 import com.lightningkite.kiteui.reactive.Action
-import com.lightningkite.kiteui.views.ViewModifiable
+
 import com.lightningkite.kiteui.views.ViewWriter
 import com.lightningkite.kiteui.views.centered
 import com.lightningkite.kiteui.views.direct.button
@@ -62,45 +62,47 @@ data class PasswordProofComponent(val p: ProofClientEndpoints.Password, val type
         primaryIdentifier: UserIdentification?,
         option: ProofOption,
         onResult: (Proof?) -> Unit
-    ): ViewModifiable = to.col {
-        // TODO: Variable name "code" is confusing - this is a password, not a code
-        // Holds the user-entered password
-        val code = Signal("")
+    ): Unit {
+        to.col {
+            // TODO: Variable name "code" is confusing - this is a password, not a code
+            // Holds the user-entered password
+            val code = Signal("")
 
-        // Action to submit the password to the server for verification
-        val provePasswordOwnership = Action("Submit", Icon.Companion.done) {
-            // TODO: Potential bug - if both option.method.property/value and primaryIdentifier
-            // are null, empty strings are sent. Should validate or fail earlier.
-            onResult(
-                p.provePasswordOwnership(
-                    IdentificationAndPassword(
-                        type = type,
-                        // Fallback chain: option.method.property -> primaryIdentifier.property -> ""
-                        property = option.method.property ?: primaryIdentifier?.property ?: "",
-                        // Fallback chain: option.value -> primaryIdentifier.value -> ""
-                        value = option.value ?: primaryIdentifier?.value ?: "",
-                        password = code.await()
+            // Action to submit the password to the server for verification
+            val provePasswordOwnership = Action("Submit", Icon.Companion.done) {
+                // TODO: Potential bug - if both option.method.property/value and primaryIdentifier
+                // are null, empty strings are sent. Should validate or fail earlier.
+                onResult(
+                    p.provePasswordOwnership(
+                        IdentificationAndPassword(
+                            type = type,
+                            // Fallback chain: option.method.property -> primaryIdentifier.property -> ""
+                            property = option.method.property ?: primaryIdentifier?.property ?: "",
+                            // Fallback chain: option.value -> primaryIdentifier.value -> ""
+                            value = option.value ?: primaryIdentifier?.value ?: "",
+                            password = code.await()
+                        )
                     )
                 )
-            )
-        }
-
-        fieldNoErrorText("Password") {
-            textInput {
-                ::hint { "" }
-                // Auto-focus for immediate password entry
-                requestFocus()
-                content bind code
-                action = provePasswordOwnership
-                keyboardHints = KeyboardHints.Companion.password
             }
-        }
-        // Error messages appear here when password is incorrect
-        SubtextSemantic.onNext - errorText()
 
-        important - button {
-            centered - text("Submit")
-            action = provePasswordOwnership
+            fieldNoErrorText("Password") {
+                textInput {
+                    ::hint { "" }
+                    // Auto-focus for immediate password entry
+                    requestFocus()
+                    content bind code
+                    action = provePasswordOwnership
+                    keyboardHints = KeyboardHints.Companion.password
+                }
+            }
+            // Error messages appear here when password is incorrect
+            SubtextSemantic.onNext.errorText()
+
+            important.button {
+                centered.text("Submit")
+                action = provePasswordOwnership
+            }
         }
     }
 }

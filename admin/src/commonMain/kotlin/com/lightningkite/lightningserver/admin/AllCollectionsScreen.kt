@@ -3,7 +3,7 @@ package com.lightningkite.lightningserver.admin
 import com.lightningkite.kiteui.Routable
 import com.lightningkite.kiteui.forms.displayName
 import com.lightningkite.kiteui.navigation.Page
-import com.lightningkite.kiteui.views.ViewModifiable
+
 import com.lightningkite.kiteui.views.ViewWriter
 import com.lightningkite.kiteui.views.direct.col
 import com.lightningkite.kiteui.views.direct.link
@@ -15,10 +15,10 @@ import com.lightningkite.reactive.core.remember
 
 @Routable("collections")
 class AllCollectionsPage() : Page {
-    override fun ViewWriter.render(): ViewModifiable {
+    override fun ViewWriter.render() {
         val models = remember { adminServer().models.entries.toList() }
-        return col {
-            expanding - recyclerView {
+        col {
+            expanding.recyclerView {
                 children(models, id = {it.key}) {
                     link {
                         text { ::content { it.invoke().value.serializer.displayName } }

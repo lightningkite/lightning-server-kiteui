@@ -87,8 +87,8 @@ class CollectionAdminPage(val collectionName: String) : Page {
 
             // Export to CSV file download
             // Respects current filter and sort but exports full result set (up to 100k items)
-            important - button {
-                centered - text("Direct CSV")
+            important.button {
+                centered.text("Direct CSV")
                 action = Action("Download", Icon.download) {
                     // Configure CSV format to handle complex types by deferring to JSON serialization
                     val csv = CsvFormat(StringDeferringConfig(DefaultJson.serializersModule, ignoreUnknownKeys = true))
@@ -105,13 +105,13 @@ class CollectionAdminPage(val collectionName: String) : Page {
 
             // Export to clipboard (useful for pasting into spreadsheets)
             // Shows success checkmark when copy completes
-            important - button {
+            important.button {
                 val success = Signal(false)
                 row {
-                    expanding - stack()
-                    centered - text("Copy CSV to Clipboard")
-                    onlyWhen { success() } - icon(Icon.done, "Done")
-                    expanding - stack()
+                    expanding.stack()
+                    centered.text("Copy CSV to Clipboard")
+                    onlyWhen { success() }.icon(Icon.done, "Done")
+                    expanding.stack()
                 }
                 action = Action("Download", Icon.download) {
                     val csv = CsvFormat(StringDeferringConfig(DefaultJson.serializersModule, ignoreUnknownKeys = true))
@@ -139,8 +139,8 @@ class CollectionAdminPage(val collectionName: String) : Page {
     fun ViewWriter.importDialog() = dialog { close ->
         col {
             h2("Import")
-            important - button {
-                centered - text("Upload Direct CSV")
+            important.button {
+                centered.text("Upload Direct CSV")
                 action = Action("Upload", Icon.upload) {
                     // Request CSV file from user's filesystem
                     val file = ExternalServices.requestFile(listOf("text/csv")) ?: return@Action
@@ -203,8 +203,8 @@ class CollectionAdminPage(val collectionName: String) : Page {
                     }
                 }
 
-                important - button {
-                    centered - text("Delete All Matching Items")
+                important.button {
+                    centered.text("Delete All Matching Items")
                     action = Action("Delete", Icon.deleteForever) {
                         val c = condition()
                         // Double confirmation for destructive operation
@@ -231,8 +231,8 @@ class CollectionAdminPage(val collectionName: String) : Page {
      *
      * Rebuilds when the ModelCache or FormModule changes (e.g., auth changes).
      */
-    override fun ViewWriter.render(): ViewModifiable {
-        return col {
+    override fun ViewWriter.render() {
+        col {
             reactive<Unit> {
                 clearChildren()
                 val mc = mc()
@@ -270,7 +270,7 @@ class CollectionAdminPage(val collectionName: String) : Page {
         row {
             // Full-width text search input
             // Debounced in queryReadable to prevent excessive queries
-            expanding - fieldTheme - textInput {
+            expanding.fieldTheme.textInput {
                 content bind textSearch
             }
 
@@ -310,15 +310,15 @@ class CollectionAdminPage(val collectionName: String) : Page {
                 requireClick = true
                 opensMenu {
                     col {
-                        important - button {
+                        important.button {
                             text("Export...")
                             onClick { exportDialog() }
                         }
-                        important - button {
+                        important.button {
                             text("Import...")
                             onClick { importDialog() }
                         }
-                        important - button {
+                        important.button {
                             text("Bulk Delete...")
                             onClick { bulkDeleteDialog() }
                         }
@@ -338,7 +338,7 @@ class CollectionAdminPage(val collectionName: String) : Page {
                             ) {
                                 row {
                                     ::exists { visibleIf() }
-                                    expanding - text {
+                                    expanding.text {
                                         wraps = false
                                         content = key
                                     }
@@ -409,9 +409,9 @@ class CollectionAdminPage(val collectionName: String) : Page {
 
         // Main data table with live updates
         // TableRenderer provides virtual scrolling, column customization, and sorting
-        expanding - TableRenderer.view<UnknownModel>(
+        TableRenderer.view<UnknownModel>(
             formModule = forms,
-            writer = this@renderContents,
+            writer = this@renderContents.expanding,
             innerSer = mc.serializer,
             columns = columns,
             // Watch the query - automatically updates when query changes or data changes

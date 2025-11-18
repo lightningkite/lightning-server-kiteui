@@ -268,14 +268,14 @@ class FormModule {
             val selected = Signal(options.first())
             row {
 //                gap = 0.px
-                expanding - stack {
+                expanding.stack {
                     reactive {
                         val sel = selected()
                         clearChildren()
                         sel.render(this@stack, field, mutable)
                     }
                 }
-                sizeConstraints(width = 0.75.rem, height = 0.75.rem) - SubtextSemantic.onNext - atTopEnd - select {
+                sizeConstraints(width = 0.75.rem, height = 0.75.rem).atTopEnd.onNext(SubtextSemantic).select {
                     gap = 0.px
                     bind(selected, Constant(options)) { (it.generator?.name ?: "-") + " (${it.generator?.priority(this@FormModule, key)}, ${it.size.approximateWidth} x ${it.size.approximateHeight})" }
                 }
@@ -330,14 +330,14 @@ class FormModule {
             val selected = Signal(options.first())
             row {
 //                gap = 0.px
-                expanding - stack {
+                expanding.stack {
                     reactive {
                         val sel = selected()
                         clearChildren()
                         sel.render(this@stack, field, mutable)
                     }
                 }
-                sizeConstraints(width = 0.75.rem, height = 0.75.rem) - SubtextSemantic.onNext - atTopEnd - select {
+                sizeConstraints(width = 0.75.rem, height = 0.75.rem).onNext(SubtextSemantic).atTopEnd.select {
                     gap = 0.px
                     bind(selected, Constant(options)) { (it.generator?.name ?: "-") + " (${it.generator?.priority(this@FormModule, key)}, ${it.size.approximateWidth} x ${it.size.approximateHeight})" }
                 }

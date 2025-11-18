@@ -51,11 +51,11 @@ object ForeignKeyRenderer : FormRenderer.Generator, ViewRenderer.Generator {
         val typeInfo =
             module.typeInfo(typeName)!! as FormTypeInfo<HasId<Comparable<Comparable<*>>>, Comparable<Comparable<*>>>
         return FormRenderer(module, this, selector as FormSelector<Comparable<Comparable<*>>?>) { field, mutable ->
-            fieldTheme - row {
+            fieldTheme.row {
                 gap = 0.px
-                expanding - menuButton {
+                expanding.menuButton {
                     requireClick = true
-                    gravity(Align.Start, Align.Center) - text {
+                    gravity(Align.Start, Align.Center).text {
                         reactiveSuspending {
                             content = mutable()?.let { typeInfo.renderToString(it) } ?: "None"
                         }
@@ -66,7 +66,7 @@ object ForeignKeyRenderer : FormRenderer.Generator, ViewRenderer.Generator {
                         }
                         preferredDirection = PopoverPreferredDirection.belowLeft
                         val full = Signal(false)
-                        sizeConstraints(width = 25.rem, height = 25.rem) - col {
+                        sizeConstraints(width = 25.rem, height = 25.rem).col {
                             val textSearch = Signal("")
                             val condition = Signal<Condition<HasId<Comparable<Comparable<*>>>>>(Condition.Always)
                             val sort = Signal<List<SortPart<HasId<Comparable<Comparable<*>>>>>>(listOf())
@@ -121,10 +121,10 @@ object ForeignKeyRenderer : FormRenderer.Generator, ViewRenderer.Generator {
                             }
                             val items = remember { itemsMeta()() }
                             row {
-                                expanding - fieldTheme - textInput {
+                                expanding.fieldTheme.textInput {
                                     content bind textSearch
                                 }
-                                onlyWhen { full() } - menuButton {
+                                onlyWhen { full() }.menuButton {
                                     dynamicTheme { if (condition() != Condition.Always) SelectedSemantic else null }
                                     icon(Icon.filterList, "Filter")
                                     requireClick = true
@@ -132,7 +132,7 @@ object ForeignKeyRenderer : FormRenderer.Generator, ViewRenderer.Generator {
                                         form(module, Condition.serializer(typeInfo.serializer), condition)
                                     }
                                 }
-                                onlyWhen { full() } - menuButton {
+                                onlyWhen { full() }.menuButton {
                                     dynamicTheme { if (sort().isNotEmpty()) SelectedSemantic else null }
                                     icon(Icon.sort, "Sort")
                                     requireClick = true
@@ -145,7 +145,7 @@ object ForeignKeyRenderer : FormRenderer.Generator, ViewRenderer.Generator {
                                     icon(Icon.moreVert, "Show More")
                                 }
                             }
-                            expanding - swapView {
+                            expanding.swapView {
                                 swapping(
                                     current = { full() to typeInfo.cache() },
                                     views = { (full, cache) ->
@@ -164,7 +164,7 @@ object ForeignKeyRenderer : FormRenderer.Generator, ViewRenderer.Generator {
                                         } else {
                                             recyclerView {
                                                 children(items, id = { it._id }) {
-                                                    card - button {
+                                                    card.button {
                                                         text {
                                                             content = "..."
                                                             reactiveSuspending {

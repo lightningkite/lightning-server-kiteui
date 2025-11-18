@@ -7,7 +7,7 @@ import com.lightningkite.kiteui.models.Icon
 import com.lightningkite.kiteui.models.rem
 import com.lightningkite.kiteui.navigation.Page
 import com.lightningkite.kiteui.navigation.mainPageNavigator
-import com.lightningkite.kiteui.views.ViewModifiable
+
 import com.lightningkite.kiteui.views.ViewWriter
 import com.lightningkite.kiteui.views.card
 import com.lightningkite.kiteui.views.centered
@@ -20,13 +20,13 @@ import com.lightningkite.reactive.context.reactive
 
 @Routable("/auth")
 class AuthTestPage : Page {
-    override fun ViewWriter.render(): ViewModifiable {
-        return frame {
+    override fun ViewWriter.render() {
+        frame {
 //            val schema = asyncReactive { fetch("https://jivie.lightningkite.com/meta/kschema").text().let { DefaultJson.decodeFromString(LightningServerKSchema.serializer(), it) } }
             reactive {
                 clearChildren()
 //                val server = ExternalLightningServer(schema().also { println("SCHEMA: $it") })
-                centered - sizeConstraints(width = 20.rem, height = 25.rem) - card - login(AuthEndpoints.dummy) {
+                centered.sizeConstraints(width = 20.rem, height = 25.rem).card.login(AuthEndpoints.dummy) {
                     mainPageNavigator.navigate(HomePage())
                 }
             }
@@ -35,14 +35,14 @@ class AuthTestPage : Page {
 }
 @Routable("/auth2")
 class Auth2TestPage : Page {
-    override fun ViewWriter.render(): ViewModifiable {
-        return frame {
+    override fun ViewWriter.render() {
+        frame {
 //            val schema = asyncReactive { fetch("https://jivie.lightningkite.com/meta/kschema").text().let { DefaultJson.decodeFromString(LightningServerKSchema.serializer(), it) } }
             reactive {
                 clearChildren()
 //                val server = ExternalLightningServer(schema().also { println("SCHEMA: $it") })
-                centered - sizeConstraints(width = 20.rem) - card - col {
-                    centered - icon(Icon.passkey.copy(width = 5.rem, height = 5.rem), "My System")
+                centered.sizeConstraints(width = 20.rem).card.col {
+                    centered.icon(Icon.passkey.copy(width = 5.rem, height = 5.rem), "My System")
                     authComponent2(AuthEndpoints.dummy) {
                         mainPageNavigator.navigate(HomePage())
                     }

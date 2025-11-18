@@ -2,7 +2,7 @@
 
 package com.lightningkite.kiteui.forms
 
-import com.lightningkite.kiteui.views.ViewModifiable
+
 import com.lightningkite.kiteui.views.ViewWriter
 import com.lightningkite.reactive.core.MutableReactive
 import com.lightningkite.reactive.core.Reactive
@@ -19,7 +19,7 @@ inline fun <reified V> FormModule.viewForType(
     name: String = (if(serializer.descriptor.isNullable) "Optional " else "") + serializer.descriptor.serialName.substringBefore('/').substringAfterLast('.').titleCase(),
     annotation: String? = null,
     priority: Float = 1f,
-    crossinline generate: ViewWriter.(prop: Reactive<V>)->ViewModifiable
+    crossinline generate: ViewWriter.(prop: Reactive<V>)->Unit
 ) {
     plusAssign(object: ViewRenderer.Generator {
         override val annotation: String? = annotation
@@ -40,7 +40,7 @@ inline fun <reified V> FormModule.formForType(
     name: String = (if(serializer.descriptor.isNullable) "Optional " else "") + serializer.descriptor.serialName.substringBefore('/').substringAfterLast('.').titleCase(),
     annotation: String? = null,
     priority: Float = 1f,
-    crossinline generate: ViewWriter.(prop: MutableReactive<V>)->ViewModifiable
+    crossinline generate: ViewWriter.(prop: MutableReactive<V>)->Unit
 ) {
     plusAssign(object: FormRenderer.Generator {
         override val annotation: String? = annotation
@@ -62,7 +62,7 @@ inline fun <reified V> FormModule.viewForType(
     name: String = (if(serializer.descriptor.isNullable) "Optional " else "") + serializer.descriptor.serialName.substringBefore('/').substringAfterLast('.').titleCase(),
     annotation: String? = null,
     priority: Float = 1f,
-    crossinline generate: ViewWriter.(prop: Reactive<V>)->ViewModifiable
+    crossinline generate: ViewWriter.(prop: Reactive<V>)->Unit
 ) {
     plusAssign(object: ViewRenderer.Generator {
         override val annotation: String? = annotation
@@ -83,7 +83,7 @@ inline fun <reified V> FormModule.formForType(
     name: String = (if(serializer.descriptor.isNullable) "Optional " else "") + serializer.descriptor.serialName.substringBefore('/').substringAfterLast('.').titleCase(),
     annotation: String? = null,
     priority: Float = 1f,
-    crossinline generate: ViewWriter.(prop: MutableReactive<V>)->ViewModifiable
+    crossinline generate: ViewWriter.(prop: MutableReactive<V>)->Unit
 ) {
     plusAssign(object: FormRenderer.Generator {
         override val annotation: String? = annotation
@@ -105,7 +105,7 @@ inline fun <reified V> FormModule.viewForTypeWithField(
     name: String = (if(serializer.descriptor.isNullable) "Optional " else "") + serializer.descriptor.serialName.substringBefore('/').substringAfterLast('.').titleCase(),
     annotation: String? = null,
     priority: Float = 1f,
-    crossinline generate: ViewWriter.(field: SerializableProperty<*, *>?, prop: Reactive<V>)->ViewModifiable
+    crossinline generate: ViewWriter.(field: SerializableProperty<*, *>?, prop: Reactive<V>)->Unit
 ) {
     plusAssign(object: ViewRenderer.Generator {
         override val annotation: String? = annotation
@@ -127,7 +127,7 @@ inline fun <reified V> FormModule.formForTypeWithField(
     name: String = (if(serializer.descriptor.isNullable) "Optional " else "") + serializer.descriptor.serialName.substringBefore('/').substringAfterLast('.').titleCase(),
     annotation: String? = null,
     priority: Float = 1f,
-    crossinline generate: ViewWriter.(field: SerializableProperty<*, *>?, prop: MutableReactive<V>)->ViewModifiable
+    crossinline generate: ViewWriter.(field: SerializableProperty<*, *>?, prop: MutableReactive<V>)->Unit
 ) {
     plusAssign(object: FormRenderer.Generator {
         override val annotation: String? = annotation

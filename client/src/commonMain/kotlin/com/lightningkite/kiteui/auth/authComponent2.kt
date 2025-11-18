@@ -75,7 +75,7 @@ fun ViewWriter.authComponent2(
     knownDeviceLocalStorageName: String? = "known-device",
     filterMethods: suspend (UserIdentification?, List<ProofComponent>) -> List<ProofComponent> = { _, it -> it },
     onAuthentication: suspend (token: String) -> Unit,
-): ViewModifiable = AuthComponent2(
+) = AuthComponent2(
     endpoints = endpoints,
     supportUsernames = supportUsernames,
     subjectType = subjectType,
@@ -199,50 +199,54 @@ open class AuthComponent2(
      * @param to The ViewWriter to render into
      * @return The rendered view
      */
-    open fun render(to: ViewWriter): ViewModifiable = to.col {
+    open fun render(to: ViewWriter) {
+        to.col {
 
-        renderPrimaryIdentifier(this)
+            renderPrimaryIdentifier(this)
 
-        // Calculate authentication progress as a percentage
-        val progress =
-            remember { authResult()?.let { proofs().sumOf { it.strength } / it.strengthRequired.toFloat() } ?: 0.00f }
-        // Show progress bar when partially authenticated
-        shownWhen {
-            progress() in 0.01f..0.99f
-        } - card - progressBar {
-            ::ratio { progress() }
-        }
+            // Calculate authentication progress as a percentage
+            val progress =
+                remember {
+                    authResult()?.let { proofs().sumOf { it.strength } / it.strengthRequired.toFloat() } ?: 0.00f
+                }
+            // Show progress bar when partially authenticated
+            shownWhen {
+                progress() in 0.01f..0.99f
+            }.card.progressBar {
+                ::ratio { progress() }
+            }
 
-        // Loading indicator while checking proofs with server
-        centered - shownWhen { !authResult.state().ready } - activityIndicator()
-        // Error display if proof validation fails
-        shownWhen { authResult.state().exception != null } - ErrorSemantic.onNext - col {
-            val msg = remember { authResult.state().exception?.let { exceptionToMessage(it) } }
-            text { ::content { msg()?.title ?: "Error" } }
-            subtext { ::content { msg()?.body ?: "" } }
-        }
-        // Show proof selection when not ready to login and no proof currently active
-        shownWhen { authResult()?.readyToLogIn != true && currentProof() == null } - pickProof(this@col)
-        // Render the active proof component
-        shownWhen { currentProof() != null } - col {
-            // Debounce to prevent rapid re-renders during proof transitions
-            forEachAnimated(remember { listOfNotNull(currentProof()).map { it to authResult() } }.debounce(10.milliseconds)) { (it, authResult) ->
-                it.render(this@forEachAnimated, primaryIdentifier.value, authResult) {
-                    if (it != null) {
-                        // Proof successfully collected
-                        proofs.value += it
-                        // Set primary identifier from first proof if not already set (passkey flow)
-                        if (primaryIdentifier.value == null) {
-                            primaryIdentifier.value = UserIdentification(it.property, it.value)
+            // Loading indicator while checking proofs with server
+            centered.shownWhen { !authResult.state().ready }.activityIndicator()
+            // Error display if proof validation fails
+            shownWhen { authResult.state().exception != null }.onNext(ErrorSemantic).col {
+                val msg = remember { authResult.state().exception?.let { exceptionToMessage(it) } }
+                text { ::content { msg()?.title ?: "Error" } }
+                subtext { ::content { msg()?.body ?: "" } }
+            }
+            // Show proof selection when not ready to login and no proof currently active
+            shownWhen { authResult()?.readyToLogIn != true && currentProof() == null }.pickProof()
+            // Render the active proof component
+            shownWhen { currentProof() != null }.col {
+                // Debounce to prevent rapid re-renders during proof transitions
+                forEachAnimated(remember { listOfNotNull(currentProof()).map { it to authResult() } }.debounce(10.milliseconds)) { (it, authResult) ->
+                    it.render(this@forEachAnimated, primaryIdentifier.value, authResult) {
+                        if (it != null) {
+                            // Proof successfully collected
+                            proofs.value += it
+                            // Set primary identifier from first proof if not already set (passkey flow)
+                            if (primaryIdentifier.value == null) {
+                                primaryIdentifier.value = UserIdentification(it.property, it.value)
+                            }
                         }
+                        // Clear active proof (either success or cancel)
+                        currentProof.value = null
                     }
-                    // Clear active proof (either success or cancel)
-                    currentProof.value = null
                 }
             }
+            // Show finalization screen when authentication requirements are met
+            shownWhen { authResult()?.readyToLogIn == true }.renderFinalize()
         }
-        // Show finalization screen when authentication requirements are met
-        shownWhen { authResult()?.readyToLogIn == true } - renderFinalize(this@col)
     }
 
     /**
@@ -257,7 +261,7 @@ open class AuthComponent2(
      */
     open fun renderPrimaryIdentifier(to: RowOrCol): Unit = with(to) {
 
-        shownWhen { proofs().isEmpty() && currentProof() == null } - field(
+        shownWhen { proofs().isEmpty() && currentProof() == null }.field(
             when {
                 endpoints.emailProof != null && endpoints.smsProof != null -> "Email or Phone Number"
                 endpoints.emailProof != null -> "Email"
@@ -336,8 +340,8 @@ open class AuthComponent2(
             }
         }
 
-        shownWhen { proofs().isNotEmpty() || currentProof() != null } - row {
-            centered - button {
+        shownWhen { proofs().isNotEmpty() || currentProof() != null }.row {
+            centered.button {
                 padding = 0.2.rem
                 icon(Icon.arrowBack, "Cancel")
                 onClick {
@@ -348,7 +352,7 @@ open class AuthComponent2(
                     proofs.value = emptyList()
                 }
             }
-            expanding - centered - text {
+            expanding.centered.text {
                 ::content{ primaryIdentifier()?.takeIf { !it.property.contains("_id") }?.value ?: "Using Passkey" }
             }
         }
@@ -356,12 +360,12 @@ open class AuthComponent2(
         endpoints.webAuthNProof?.let { webAuthn ->
             if (endpoints.webAuthNIncludePasskeyUI) {
                 val webAuthAvailable = rememberSuspending { ClientAuthenticator.getClientAuthenticator().webAuthNAvailable() }
-                shownWhen { primaryIdentifier() == null && currentProof() == null && proofs().isEmpty() && webAuthAvailable() } - col {
+                shownWhen { primaryIdentifier() == null && currentProof() == null && proofs().isEmpty() && webAuthAvailable() }.col {
 
-                    centered - text("Or")
+                    centered.text("Or")
 
-                    card - buttonTheme - button {
-                        centered - row {
+                    card.buttonTheme.button {
+                        centered.row {
                             icon(Icon.Companion.passkey, "")
                             text("Use Passkey")
                         }
@@ -385,65 +389,67 @@ open class AuthComponent2(
      *
      * On successful login, calls onAuthentication callback and optionally establishes known device.
      */
-    open fun renderFinalize(to: ViewWriter): ViewModifiable = to.col {
-        val desiredSessionLength = Signal<Duration?>(1.days)
-        val rememberDevice = Signal(Platform.current != Platform.Web)
-        val knownDevice =
-            knownDeviceLocalStorageName?.let { PersistentProperty<KnownDeviceSecretInfoStuff?>(it, null) }
-        val knownDeviceOptions = rememberSuspending {
-            endpoints.knownDeviceProof?.knownDeviceOptions()
-        }
-        centered - h5("Ready to login")
-        shownWhen { knownDeviceOptions() != null } - row {
-            centered - checkbox { checked bind rememberDevice }
-            centered - text {
-                content = "This is my device"
+    open fun ViewWriter.renderFinalize() {
+        col {
+            val desiredSessionLength = Signal<Duration?>(1.days)
+            val rememberDevice = Signal(Platform.current != Platform.Web)
+            val knownDevice =
+                knownDeviceLocalStorageName?.let { PersistentProperty<KnownDeviceSecretInfoStuff?>(it, null) }
+            val knownDeviceOptions = rememberSuspending {
+                endpoints.knownDeviceProof?.knownDeviceOptions()
             }
-        }
-        shownWhen { rememberDevice() || knownDeviceOptions() == null } - row {
-            centered - checkbox {
-                checked bind desiredSessionLength.lens(
-                    get = { it != 1.days },
-                    set = { if (it) null else 1.days }
-                )
-            }
-            centered - text {
-                ::content {
-                    val days = authResult()?.maxExpiration?.let { it - now() }?.toDouble(DurationUnit.DAYS)
-                        ?.roundToInt()
-                    if (days != null) "Keep me logged in for $days days" else "Keep me logged in"
+            centered.h5("Ready to login")
+            shownWhen { knownDeviceOptions() != null }.row {
+                centered.checkbox { checked bind rememberDevice }
+                centered.text {
+                    content = "This is my device"
                 }
             }
-        }
+            shownWhen { rememberDevice() || knownDeviceOptions() == null }.row {
+                centered.checkbox {
+                    checked bind desiredSessionLength.lens(
+                        get = { it != 1.days },
+                        set = { if (it) null else 1.days }
+                    )
+                }
+                centered.text {
+                    ::content {
+                        val days = authResult()?.maxExpiration?.let { it - now() }?.toDouble(DurationUnit.DAYS)
+                            ?.roundToInt()
+                        if (days != null) "Keep me logged in for $days days" else "Keep me logged in"
+                    }
+                }
+            }
 
 
-        important - buttonTheme - button {
-            centered - text("Login")
-            onClick {
-                val result = subject.logInV2(
-                    LogInRequest(
-                        proofs = proofs(),
-                        expires = desiredSessionLength.await()?.let { now() + it }
-                    ))
+            important.buttonTheme.button {
+                centered.text("Login")
+                onClick {
+                    val result = subject.logInV2(
+                        LogInRequest(
+                            proofs = proofs(),
+                            expires = desiredSessionLength.await()?.let { now() + it }
+                        ))
 
-                result.refreshToken?.let {
-                    onAuthentication(it)
-                    (AppScope + Dispatchers.Main).launch {
-                        if (rememberDevice.await()) {
-                            endpoints.withAuth(
-                                LightningServerAuthentication(
-                                    subject,
-                                    subjectType,
-                                    it
-                                )
-                            ).knownDeviceProof?.establishKnownDeviceV2()?.let {
-                                knownDevice?.value = KnownDeviceSecretInfoStuff(
-                                    info = it,
-                                    primaryIdentifier = primaryIdentifier.value?.value ?: ""
-                                )
+                    result.refreshToken?.let {
+                        onAuthentication(it)
+                        (AppScope + Dispatchers.Main).launch {
+                            if (rememberDevice.await()) {
+                                endpoints.withAuth(
+                                    LightningServerAuthentication(
+                                        subject,
+                                        subjectType,
+                                        it
+                                    )
+                                ).knownDeviceProof?.establishKnownDeviceV2()?.let {
+                                    knownDevice?.value = KnownDeviceSecretInfoStuff(
+                                        info = it,
+                                        primaryIdentifier = primaryIdentifier.value?.value ?: ""
+                                    )
+                                }
+                            } else {
+                                knownDevice?.value = null
                             }
-                        } else {
-                            knownDevice?.value = null
                         }
                     }
                 }
@@ -459,30 +465,32 @@ open class AuthComponent2(
      *
      * When user selects a method, cancels background tasks and sets currentProof.
      */
-    open fun pickProof(to: ViewWriter): ViewModifiable = to.col {
-        // Launch background tasks for early proofs (e.g., WebAuthN autofill)
-        val cancelIfSelected = launch {
-            proofOptions()
-                .mapNotNull {
-                    it.earlyProof?.let { task ->
-                        launch {
-                            // If early proof succeeds, add it to proofs list automatically
-                            task(this@col)?.let { proofs.value += it }
+    open fun ViewWriter.pickProof() {
+        col {
+            // Launch background tasks for early proofs (e.g., WebAuthN autofill)
+            val cancelIfSelected = launch {
+                proofOptions()
+                    .mapNotNull {
+                        it.earlyProof?.let { task ->
+                            launch {
+                                // If early proof succeeds, add it to proofs list automatically
+                                task(this@col)?.let { proofs.value += it }
+                            }
                         }
                     }
-                }
-        }
-        // Render button for each available proof method
-        forEachAnimated(proofOptions) {
-            card - buttonTheme - button {
-                centered - sizeConstraints(width = 16.rem) - row {
-                    icon(it.icon, "")
-                    text(it.name)
-                }
-                onClick {
-                    // User made explicit selection; cancel background tasks
-                    cancelIfSelected.cancel()
-                    currentProof.value = it
+            }
+            // Render button for each available proof method
+            forEachAnimated(proofOptions) {
+                card.buttonTheme.button {
+                    centered.sizeConstraints(width = 16.rem).row {
+                        icon(it.icon, "")
+                        text(it.name)
+                    }
+                    onClick {
+                        // User made explicit selection; cancel background tasks
+                        cancelIfSelected.cancel()
+                        currentProof.value = it
+                    }
                 }
             }
         }

@@ -69,15 +69,15 @@ fun ViewWriter.defaultFieldWrapper(field: SerializableProperty<*, *>? = null, in
     else field.sentence?.let {
         val before = it.substringBefore('_')
         val after = it.substringAfter('_')
-        atBottom - row {
+        atBottom.row {
             gap = 0.3.rem
             if(before.isNotBlank()) {
-                centered - text(before)
+                centered.text(before)
             }
             if(before.isBlank() || after.isBlank()) expanding
             inner()
             if(after.isNotBlank()) {
-                centered - text(after)
+                centered.text(after)
             }
         }
     } ?: col {

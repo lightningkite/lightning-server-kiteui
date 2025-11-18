@@ -2,7 +2,7 @@ package com.lightningkite.kiteui.auth
 
 import com.lightningkite.kiteui.models.*
 import com.lightningkite.kiteui.views.ViewDsl
-import com.lightningkite.kiteui.views.ViewModifiable
+
 import com.lightningkite.kiteui.views.ViewWriter
 import com.lightningkite.kiteui.views.direct.col
 import com.lightningkite.kiteui.views.direct.text
@@ -67,11 +67,11 @@ val Icon.Companion.pinCode: Icon
 
 @ViewDsl
 @OptIn(ExperimentalContracts::class)
-inline fun ViewWriter.fieldNoErrorText(label: String, content: ViewWriter.() -> ViewModifiable): ViewModifiable {
+inline fun ViewWriter.fieldNoErrorText(label: String, content: ViewWriter.() -> Unit): Unit {
     contract { callsInPlace(content, InvocationKind.EXACTLY_ONCE) }
-    return col {
+    col {
         gap = 0.px
-        FieldLabelSemantic.onNext - text(label)
-        fieldTheme - content()
+        FieldLabelSemantic.onNext.text(label)
+        fieldTheme.content()
     }
 }

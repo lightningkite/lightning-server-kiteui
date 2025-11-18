@@ -113,11 +113,11 @@ fun FormModule.defaults() {
     // Form renderer: Standard checkbox with optional label
     formForTypeWithField<Boolean>(FormSize.Inline) { field, it ->
         row {
-            centered - checkbox {
+            centered.checkbox {
                 checked bind it
             }
             field?.descriptionOrDisplayName?.let {
-                centered - text(it)
+                centered.text(it)
             }
         }
     }
@@ -140,22 +140,22 @@ fun FormModule.defaults() {
 
     // Nullable number renderers (Byte, Short, Int, Long) - Decimal representation
     formForType<Byte?>(FormSize.Inline, name = "Number") { it ->
-        fieldTheme - numberInput {
+        fieldTheme.numberInput {
             align = Align.End; content bind it.lens(get = { it?.toDouble() }, set = { it?.toInt()?.toByte() })
         }
     }
     formForType<Short?>(FormSize.Inline, name = "Number") { it ->
-        fieldTheme - numberInput {
+        fieldTheme.numberInput {
             align = Align.End; content bind it.lens(get = { it?.toDouble() }, set = { it?.toInt()?.toShort() })
         }
     }
     formForType<Int?>(FormSize.Inline, name = "Number") { it ->
-        fieldTheme - numberInput {
+        fieldTheme.numberInput {
             align = Align.End; content bind it.lens(get = { it?.toDouble() }, set = { it?.toInt() })
         }
     }
     formForType<Long?>(FormSize.Inline, name = "Number") { it ->
-        fieldTheme - numberInput {
+        fieldTheme.numberInput {
             align = Align.End; content bind it.lens(get = { it?.toDouble() }, set = { it?.toLong() })
         }
     }
@@ -163,7 +163,7 @@ fun FormModule.defaults() {
     // Non-nullable number renderers (Byte, Short, Int, Long) - Decimal representation
     // These use lens.modify to preserve old value if input is invalid
     formForType<Byte>(FormSize.Inline, name = "Number") { it ->
-        fieldTheme - numberInput {
+        fieldTheme.numberInput {
             align = Align.End
             content bind it.lens(
                 get = { it.toDouble() },
@@ -171,7 +171,7 @@ fun FormModule.defaults() {
         }
     }
     formForType<Short>(FormSize.Inline, name = "Number") { it ->
-        fieldTheme - numberInput {
+        fieldTheme.numberInput {
             align = Align.End
             content bind it.lens(
                 get = { it.toDouble() },
@@ -179,12 +179,12 @@ fun FormModule.defaults() {
         }
     }
     formForType<Int>(FormSize.Inline, name = "Number") { it ->
-        fieldTheme - numberInput {
+        fieldTheme.numberInput {
             align = Align.End; content bind it.lens(get = { it.toDouble() }, modify = { o, it -> it?.toInt() ?: o })
         }
     }
     formForType<Long>(FormSize.Inline, name = "Number") { it ->
-        fieldTheme - numberInput {
+        fieldTheme.numberInput {
             align = Align.End; content bind it.lens(get = { it.toDouble() }, modify = { o, it -> it?.toLong() ?: o })
         }
     }
@@ -192,7 +192,7 @@ fun FormModule.defaults() {
     // Hexadecimal number renderers - Lower priority (0.9) than decimal
     // Useful for debugging, memory addresses, color codes, etc.
     formForType<Byte?>(FormSize.Inline, name = "Hexadecimal", priority = 0.9f) { it ->
-        fieldTheme - textInput {
+        fieldTheme.textInput {
             align = Align.End
             content bind it.lens(
                 get = { it?.toString(16) ?: "" },
@@ -200,7 +200,7 @@ fun FormModule.defaults() {
         }
     }
     formForType<Short?>(FormSize.Inline, name = "Hexadecimal", priority = 0.9f) { it ->
-        fieldTheme - textInput {
+        fieldTheme.textInput {
             align = Align.End
             content bind it.lens(
                 get = { it?.toString(16) ?: "" },
@@ -208,7 +208,7 @@ fun FormModule.defaults() {
         }
     }
     formForType<Int?>(FormSize.Inline, name = "Hexadecimal", priority = 0.9f) { it ->
-        fieldTheme - textInput {
+        fieldTheme.textInput {
             align = Align.End
             content bind it.lens(
                 get = { it?.toString(16) ?: "" },
@@ -216,7 +216,7 @@ fun FormModule.defaults() {
         }
     }
     formForType<Long?>(FormSize.Inline, name = "Hexadecimal", priority = 0.9f) { it ->
-        fieldTheme - textInput {
+        fieldTheme.textInput {
             align = Align.End
             content bind it.lens(
                 get = { it?.toString(16) ?: "" },
@@ -224,7 +224,7 @@ fun FormModule.defaults() {
         }
     }
     formForType<Byte>(FormSize.Inline, name = "Hexadecimal", priority = 0.9f) { it ->
-        fieldTheme - textInput {
+        fieldTheme.textInput {
             align = Align.End
             content bind it.lens(
                 get = { it.toString(16) },
@@ -232,7 +232,7 @@ fun FormModule.defaults() {
         }
     }
     formForType<Short>(FormSize.Inline, name = "Hexadecimal", priority = 0.9f) { it ->
-        fieldTheme - textInput {
+        fieldTheme.textInput {
             align = Align.End
             content bind it.lens(
                 get = { it.toString(16) },
@@ -240,7 +240,7 @@ fun FormModule.defaults() {
         }
     }
     formForType<Int>(FormSize.Inline, name = "Hexadecimal", priority = 0.9f) { it ->
-        fieldTheme - textInput {
+        fieldTheme.textInput {
             align = Align.End
             content bind it.lens(
                 get = { it.toString(16) },
@@ -248,7 +248,7 @@ fun FormModule.defaults() {
         }
     }
     formForType<Long>(FormSize.Inline, name = "Hexadecimal", priority = 0.9f) { it ->
-        fieldTheme - textInput {
+        fieldTheme.textInput {
             align = Align.End
             content bind it.lens(
                 get = { it.toString(16) },
@@ -259,7 +259,7 @@ fun FormModule.defaults() {
     // Binary number renderers - Lowest priority (0.8)
     // Useful for bit manipulation, flags, and low-level programming
     formForType<Byte?>(FormSize.Inline, name = "Binary", priority = 0.8f) { it ->
-        fieldTheme - textInput {
+        fieldTheme.textInput {
             align = Align.End
             content bind it.lens(
                 get = { it?.toString(2) ?: "" },
@@ -267,7 +267,7 @@ fun FormModule.defaults() {
         }
     }
     formForType<Short?>(FormSize.Inline, name = "Binary", priority = 0.8f) { it ->
-        fieldTheme - textInput {
+        fieldTheme.textInput {
             align = Align.End
             content bind it.lens(
                 get = { it?.toString(2) ?: "" },
@@ -275,7 +275,7 @@ fun FormModule.defaults() {
         }
     }
     formForType<Int?>(FormSize.Inline, name = "Binary", priority = 0.8f) { it ->
-        fieldTheme - textInput {
+        fieldTheme.textInput {
             align = Align.End
             content bind it.lens(
                 get = { it?.toString(2) ?: "" },
@@ -283,7 +283,7 @@ fun FormModule.defaults() {
         }
     }
     formForType<Long?>(FormSize.Inline, name = "Binary", priority = 0.8f) { it ->
-        fieldTheme - textInput {
+        fieldTheme.textInput {
             align = Align.End
             content bind it.lens(
                 get = { it?.toString(2) ?: "" },
@@ -291,7 +291,7 @@ fun FormModule.defaults() {
         }
     }
     formForType<Byte>(FormSize.Inline, name = "Binary", priority = 0.8f) { it ->
-        fieldTheme - textInput {
+        fieldTheme.textInput {
             align = Align.End
             content bind it.lens(
                 get = { it.toString(2) },
@@ -299,7 +299,7 @@ fun FormModule.defaults() {
         }
     }
     formForType<Short>(FormSize.Inline, name = "Binary", priority = 0.8f) { it ->
-        fieldTheme - textInput {
+        fieldTheme.textInput {
             align = Align.End
             content bind it.lens(
                 get = { it.toString(2) },
@@ -307,7 +307,7 @@ fun FormModule.defaults() {
         }
     }
     formForType<Int>(FormSize.Inline, name = "Binary", priority = 0.8f) { it ->
-        fieldTheme - textInput {
+        fieldTheme.textInput {
             align = Align.End
             content bind it.lens(
                 get = { it.toString(2) },
@@ -315,7 +315,7 @@ fun FormModule.defaults() {
         }
     }
     formForType<Long>(FormSize.Inline, name = "Binary", priority = 0.8f) { it ->
-        fieldTheme - textInput {
+        fieldTheme.textInput {
             align = Align.End
             content bind it.lens(
                 get = { it.toString(2) },
@@ -326,22 +326,22 @@ fun FormModule.defaults() {
     // Floating-point number renderers (Float, Double)
     // Only decimal representation provided (no hex/binary)
     formForType<Float?>(FormSize.Inline, name = "Number") { it ->
-        fieldTheme - numberInput {
+        fieldTheme.numberInput {
             align = Align.End; content bind it.lens(get = { it?.toDouble() }, set = { it?.toFloat() })
         }
     }
     formForType<Double?>(FormSize.Inline, name = "Number") { it ->
-        fieldTheme - numberInput {
+        fieldTheme.numberInput {
             align = Align.End; content bind it
         }
     }
     formForType<Float>(FormSize.Inline, name = "Number") { it ->
-        fieldTheme - numberInput {
+        fieldTheme.numberInput {
             align = Align.End; content bind it.lens(get = { it.toDouble() }, modify = { o, it -> it?.toFloat() ?: o })
         }
     }
     formForType<Double>(FormSize.Inline, name = "Number") { it ->
-        fieldTheme - numberInput {
+        fieldTheme.numberInput {
             align = Align.End; content bind it.nullable()
         }
     }
@@ -352,7 +352,7 @@ fun FormModule.defaults() {
         FormSize.Inline,
         name = "Character"
     ) { it ->
-        fieldTheme - textInput {
+        fieldTheme.textInput {
             content bind it.lens(
                 get = { it.toString() },
                 modify = { o, it -> it.firstOrNull() ?: o })
@@ -362,7 +362,7 @@ fun FormModule.defaults() {
         FormSize.Inline,
         name = "Character"
     ) { it ->
-        fieldTheme - textInput {
+        fieldTheme.textInput {
             content bind it.lens(
                 get = { it.toString() },
                 modify = { o, it -> it.firstOrNull() })
@@ -391,7 +391,7 @@ fun FormModule.defaults() {
             )
         },
         name = "Text",
-        generate = { it -> fieldTheme - textInput { content bind it } }
+        generate = { it -> fieldTheme.textInput { content bind it } }
     )
     viewForType<String>(
         size = { selector ->
@@ -421,7 +421,7 @@ fun FormModule.defaults() {
         name = "Large Text",
         annotation = "com.lightningkite.lightningdb.Multiline",
         priority = 2f, // Higher priority ensures this is selected for @Multiline fields
-        generate = { it -> sizeConstraints(minHeight = 10.rem) - fieldTheme - textArea { content bind it } }
+        generate = { it -> sizeConstraints(minHeight = 10.rem).fieldTheme.textArea { content bind it } }
     )
     // View renderers for @Multiline: compact summary (priority 0.8) and full text (priority 0.8)
     // Both show only first line to save space in tables/lists
@@ -431,7 +431,7 @@ fun FormModule.defaults() {
         annotation = "com.lightningkite.lightningdb.Multiline",
         priority = 0.8f,
         generate = { it ->
-            sizeConstraints(maxHeight = 3.rem) - text {
+            sizeConstraints(maxHeight = 3.rem).text {
                 ::content { it().substringBefore('\n') } // Show only first line
                 wraps = false
                 ellipsis = true
@@ -461,7 +461,7 @@ fun FormModule.defaults() {
         priority = 1f,
         generate = { it ->
             col {
-                fieldTheme - textInput {
+                fieldTheme.textInput {
                     // Lens converts between String (UI) and EmailAddress (model)
                     content bind it.lens(
                         get = { it.raw },
@@ -495,7 +495,7 @@ fun FormModule.defaults() {
         priority = 1f,
         generate = { it ->
             col {
-                fieldTheme - textInput {
+                fieldTheme.textInput {
                     content bind it.lens(
                         get = { it.raw },
                         set = { it.toPhoneNumber() }
@@ -527,7 +527,7 @@ fun FormModule.defaults() {
         name = "Time Zone",
         priority = 1f,
         generate = { it ->
-            fieldTheme - select {
+            fieldTheme.select {
                 bind(it, Constant(TimeZone.availableZoneIds.map { TimeZone.of(it) }), { it.id })
             }
         }
@@ -537,7 +537,7 @@ fun FormModule.defaults() {
         name = "Time Zone",
         priority = 1f,
         generate = { it ->
-            fieldTheme - select {
+            fieldTheme.select {
                 bind(it, Constant(listOf(null) + TimeZone.availableZoneIds.map { TimeZone.of(it) }), { it?.id ?: "N/A" })
             }
         }
@@ -560,12 +560,12 @@ fun FormModule.defaults() {
         priority = 1f,
         generate = { it ->
             row {
-                expanding - fieldTheme - numberInput {
+                expanding.fieldTheme.numberInput {
                     hint = "Latitude"
                     // TODO: Add validation - latitude should be constrained to [-90, 90]
                     content bind it.lens(get = { it.latitude }, modify = { o, it -> o.copy(latitude = it ?: 0.0) })
                 }
-                expanding - fieldTheme - numberInput {
+                expanding.fieldTheme.numberInput {
                     hint = "Longitude"
                     // TODO: Add validation - longitude should be constrained to [-180, 180]
                     content bind it.lens(get = { it.longitude }, modify = { o, it -> o.copy(longitude = it ?: 0.0) })
@@ -579,8 +579,8 @@ fun FormModule.defaults() {
     // These appear identical. Likely one is unnecessary or the distinction should be documented.
     // The explicit serializer version may be for handling UUID subtypes or custom serialization.
     formForType<Uuid>(FormSize(24.0, 1.0), Uuid.serializer()) {
-        fieldTheme - row {
-            expanding - textInput {
+        fieldTheme.row {
+            expanding.textInput {
                 content bind it.lens(get = { it.toString() }, modify = { o, it ->
                     try {
                         Uuid.parse(it)
@@ -596,8 +596,8 @@ fun FormModule.defaults() {
         }
     }
     formForType<Uuid>(FormSize(24.0, 1.0)) {
-        fieldTheme - row {
-            expanding - textInput {
+        fieldTheme.row {
+            expanding.textInput {
                 content bind it.lens(get = { it.toString() }, modify = { o, it ->
                     try {
                         Uuid.parse(it)
@@ -627,7 +627,7 @@ fun FormModule.defaults() {
 
     // Instant - stored as UTC, displayed/edited in system timezone
     formForType<Instant>(FormSize(approximateWidth = 17.0, approximateHeight = 1.0)) { prop ->
-        fieldTheme - localDateTimeField {
+        fieldTheme.localDateTimeField {
             content bind prop.lens(
                 get = { it.toLocalDateTime(TimeZone.currentSystemDefault()) },
                 modify = { old, it -> it?.toInstant(TimeZone.currentSystemDefault()) ?: old },
@@ -635,7 +635,7 @@ fun FormModule.defaults() {
         }
     }
     formForType<Instant?>(FormSize(approximateWidth = 17.0, approximateHeight = 1.0)) { prop ->
-        fieldTheme - localDateTimeField {
+        fieldTheme.localDateTimeField {
             content bind prop.lens(
                 get = { it?.toLocalDateTime(TimeZone.currentSystemDefault()) },
                 modify = { old, it -> it?.toInstant(TimeZone.currentSystemDefault()) },
@@ -645,7 +645,7 @@ fun FormModule.defaults() {
 
     // LocalDateTime - no timezone conversion needed
     formForType<LocalDateTime>(FormSize(approximateWidth = 17.0, approximateHeight = 1.0)) { prop ->
-        fieldTheme - localDateTimeField {
+        fieldTheme.localDateTimeField {
             content bind prop.lens(
                 get = { it },
                 modify = { old, it -> it ?: old })
@@ -656,11 +656,11 @@ fun FormModule.defaults() {
             approximateWidth = 17.0,
             approximateHeight = 1.0
         )
-    ) { prop -> fieldTheme - localDateTimeField { content bind prop } }
+    ) { prop -> fieldTheme.localDateTimeField { content bind prop } }
 
     // LocalDate - date without time component
     formForType<LocalDate>(FormSize(approximateWidth = 11.0, approximateHeight = 1.0)) { prop ->
-        fieldTheme - localDateField {
+        fieldTheme.localDateField {
             content bind prop.lens(
                 get = { it },
                 modify = { old, it -> it ?: old })
@@ -671,11 +671,11 @@ fun FormModule.defaults() {
             approximateWidth = 12.0,
             approximateHeight = 1.0
         )
-    ) { prop -> fieldTheme - localDateField { content bind prop } }
+    ) { prop -> fieldTheme.localDateField { content bind prop } }
 
     // LocalTime - time without date component
     formForType<LocalTime>(FormSize(approximateWidth = 5.0, approximateHeight = 1.0)) { prop ->
-        fieldTheme - localTimeField {
+        fieldTheme.localTimeField {
             content bind prop.lens(
                 get = { it },
                 modify = { old, it -> it ?: old })
@@ -686,7 +686,7 @@ fun FormModule.defaults() {
             approximateWidth = 5.0,
             approximateHeight = 1.0
         )
-    ) { prop -> fieldTheme - localTimeField { content bind prop } }
+    ) { prop -> fieldTheme.localTimeField { content bind prop } }
 
     // View renderers for date/time types - use locale-specific rendering
     viewForType<Instant>(
@@ -741,7 +741,7 @@ fun FormModule.defaults() {
      */
     fun ViewWriter.temperatureInput(mutable: MutableReactive<Temperature?>) = row {
         val celsius = Signal(false) // Tracks which unit is currently displayed (false = Fahrenheit)
-        expanding - numberInput {
+        expanding.numberInput {
             align = Align.End
             // Convert value to/from selected unit when reading/writing
             // This lens re-interprets the value whenever the unit changes
@@ -754,11 +754,11 @@ fun FormModule.defaults() {
         }
     }
 
-    formForType<Temperature?>(FormSize.Inline, name = "Temperature") { it -> fieldTheme - temperatureInput(it) }
+    formForType<Temperature?>(FormSize.Inline, name = "Temperature") { it -> fieldTheme.temperatureInput(it) }
     formForType<Temperature>(
         FormSize.Inline,
         name = "Temperature"
-    ) { it -> fieldTheme - temperatureInput(it.nullable()) }
+    ) { it -> fieldTheme.temperatureInput(it.nullable()) }
 
     // ===== Misc Type Renderers =====
 

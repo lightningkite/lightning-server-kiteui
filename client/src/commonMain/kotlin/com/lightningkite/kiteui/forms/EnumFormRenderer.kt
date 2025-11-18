@@ -100,7 +100,7 @@ object EnumFormRenderer: FormRenderer.Generator, ViewRenderer.Generator {
     override fun <T> form(module: FormModule, selector: FormSelector<T>): FormRenderer<T> {
         val info = TypeInfo(selector.serializer)
         return FormRenderer(module, this, selector) { _, mutable ->
-            fieldTheme - select {
+            fieldTheme.select {
                 @Suppress("UNCHECKED_CAST")
                 bind(
                     edits = mutable,

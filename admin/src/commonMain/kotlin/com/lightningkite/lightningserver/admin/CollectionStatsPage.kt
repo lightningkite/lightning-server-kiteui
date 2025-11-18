@@ -48,8 +48,8 @@ class CollectionStatsPage(val collectionName: String) : Page {
                 as ModelCache<UnknownModel, UnknownId>
     }
 
-    override fun ViewWriter.render(): ViewModifiable {
-        return col {
+    override fun ViewWriter.render() {
+        col {
             reactive<Unit> {
                 clearChildren()
                 val mc = mc()
@@ -105,13 +105,13 @@ class CollectionStatsPage(val collectionName: String) : Page {
         row {
             menuButton {
                 dynamicTheme { if (condition() != Condition.Always) SelectedSemantic else null }
-                centered - icon(Icon.filterList, "Filter")
+                centered.icon(Icon.filterList, "Filter")
                 requireClick = true
                 opensMenu {
                     form(forms, Condition.serializer(mc.serializer), condition)
                 }
             }
-            weight(1f) - field("Group By") {
+            weight(1f).field("Group By") {
                 select {
                     val candidates = mc.serializer.serializableProperties!!.flatMap {
                         it.serializer.serializableProperties?.map { it2 ->
@@ -121,7 +121,7 @@ class CollectionStatsPage(val collectionName: String) : Page {
                     bind(groupBy, Constant(listOf(null) + candidates), { it?.properties?.joinToString(" ") { it.displayName } ?: "N/A" })
                 }
             }
-            weight(1f) - field("Aggregate") {
+            weight(1f).field("Aggregate") {
                 select {
                     val candidates = mc.serializer.serializableProperties!!.flatMap {
                         it.serializer.serializableProperties?.map { it2 ->
@@ -131,19 +131,19 @@ class CollectionStatsPage(val collectionName: String) : Page {
                     bind(aggregateProperty, Constant(listOf(null) + candidates), { it?.properties?.joinToString(" ") { it.displayName } ?: "N/A" })
                 }
             }
-            weight(1f) - shownWhen { aggregateProperty() != null } - col {
+            weight(1f).shownWhen { aggregateProperty() != null }.col {
                 gap = 0.px
-                FieldLabelSemantic.onNext - text("Aggregation")
+                FieldLabelSemantic.onNext.text("Aggregation")
                 form(forms, Aggregate.serializer(), aggregationType)
             }
         }
-        expanding - swapView {
+        expanding.swapView {
             swapping(
                 current = { groupBy() to aggregateProperty() },
                 views = { (groupBy, aggregateProperty) ->
                     when {
                         groupBy == null -> frame {
-                            centered - text("Select something to group by.")
+                            centered.text("Select something to group by.")
                         }
 
                         aggregateProperty == null -> {
@@ -155,11 +155,11 @@ class CollectionStatsPage(val collectionName: String) : Page {
                                     )
                                 )
                             }
-                            ListSemantic.onNext - recyclerView {
+                            ListSemantic.onNext.recyclerView {
                                 children(remember { counts().entries.sortedByDescending { it.value } }, id = { it.key }) {
-                                    card - row {
+                                    card.row {
                                         val ser = groupBy.serializerAny as KSerializer<Any?>
-                                        expanding - centered - view(
+                                        expanding.centered.view(
                                             context = forms,
                                             serializer = ser,
                                             readable = it.lens {
@@ -167,7 +167,7 @@ class CollectionStatsPage(val collectionName: String) : Page {
                                             },
                                             annotations = groupBy.properties.last().serializableAnnotations
                                         )
-                                        expanding - link {
+                                        expanding.link {
                                             text {
                                                 align = Align.End
                                                 ::content { "${it().value} Items" }
@@ -206,13 +206,13 @@ class CollectionStatsPage(val collectionName: String) : Page {
                                     )
                                 )
                             }
-                            ListSemantic.onNext - recyclerView {
+                            ListSemantic.onNext.recyclerView {
                                 children(
                                     remember { aggregation().entries.sortedByDescending { it.value } },
                                     id = { it.key }) {
-                                    card - row {
+                                    card.row {
                                         val ser = groupBy.serializerAny as KSerializer<Any?>
-                                        expanding - centered - view(
+                                        expanding.centered.view(
                                             context = forms,
                                             serializer = ser,
                                             readable = it.lens {
@@ -220,7 +220,7 @@ class CollectionStatsPage(val collectionName: String) : Page {
                                             },
                                             annotations = groupBy.properties.last().serializableAnnotations
                                         )
-                                        expanding - link {
+                                        expanding.link {
                                             text {
                                                 align = Align.End
                                                 ::content {

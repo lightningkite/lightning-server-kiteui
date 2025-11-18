@@ -20,7 +20,7 @@ object JsonRenderer : ViewRenderer.Generator, FormRenderer.Generator {
         return ViewRenderer(module, this, selector) { _, it ->
             ThemeDerivation {
                 it.copy(font = it.font.copy(font = systemDefaultFixedWidthFont)).withoutBack
-            }.onNext - text {
+            }.onNext.text {
                 ::content {
                     json.encodeToString(selector.serializer, it())
                 }
@@ -30,9 +30,9 @@ object JsonRenderer : ViewRenderer.Generator, FormRenderer.Generator {
 
     override fun <T> form(module: FormModule, selector: FormSelector<T>): FormRenderer<T> {
         return FormRenderer(module, this, selector) { _, it ->
-            sizeConstraints(minHeight = 20.rem) - fieldTheme - ThemeDerivation {
+            sizeConstraints(minHeight = 20.rem).fieldTheme.onNext(ThemeDerivation {
                 it.copy(font = it.font.copy(font = systemDefaultFixedWidthFont)).withoutBack
-            }.onNext - textArea {
+            }).textArea {
                 content bind it.lens(
                     get = { json.encodeToString(selector.serializer, it) },
                     modify = { o, it ->

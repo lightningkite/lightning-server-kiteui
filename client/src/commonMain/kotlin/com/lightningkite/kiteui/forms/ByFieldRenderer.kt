@@ -207,12 +207,12 @@ object ByFieldRenderer : FormRenderer.Generator, ViewRenderer.Generator {
                         row {
                             gap = 0.3.rem
                             if (before.isNotBlank()) {
-                                centered - text(before)
+                                centered.text(before)
                             }
 //                            if (before.isBlank() || after.isBlank()) expanding
-                            centered - inner(this)
+                            centered.inner()
                             if (after.isNotBlank()) {
-                                centered - text(after)
+                                centered.text(after)
                             }
                         }
                     } ?: col {

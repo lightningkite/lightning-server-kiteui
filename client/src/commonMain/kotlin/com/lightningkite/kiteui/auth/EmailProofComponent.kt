@@ -71,72 +71,75 @@ data class EmailProofComponent(val p: ProofClientEndpoints.Email) : ProofCompone
         primaryIdentifier: UserIdentification?,
         option: ProofOption,
         onResult: (Proof?) -> Unit
-    ): ViewModifiable = to.col {
-        // Listenable to trigger email resends - invoking this causes the challenge to be re-fetched
-        val resend = BasicListenable()
+    ) {
+        to.col {
+            // Listenable to trigger email resends - invoking this causes the challenge to be re-fetched
+            val resend = BasicListenable()
 
-        // Fetch the email challenge from server, automatically retries when resend is triggered
-        // withTimestamp() adds a client-side timestamp to track when the email was sent
-        val challenge = rememberSuspending {
-            rerunOn(resend)
-            p.beginEmailOwnershipProof(option.value ?: "").withTimestamp()
-        }
+            // Fetch the email challenge from server, automatically retries when resend is triggered
+            // withTimestamp() adds a client-side timestamp to track when the email was sent
+            val challenge = rememberSuspending {
+                rerunOn(resend)
+                p.beginEmailOwnershipProof(option.value ?: "").withTimestamp()
+            }
 
-        // Action to submit the verification code to the server
-        val proveEmailOwnership = Action("Submit", Icon.Companion.done) {
-            onResult(p.proveEmailOwnership(FinishProof(challenge().value, code.await())))
-        }
+            // Action to submit the verification code to the server
+            val proveEmailOwnership = Action("Submit", Icon.Companion.done) {
+                onResult(p.proveEmailOwnership(FinishProof(challenge().value, code.await())))
+            }
 
-        // Loading state: shown until initial email is sent
-        centered - shownWhen { !challenge.state().ready } - text("Sending email...")
+            // Loading state: shown until initial email is sent
+            centered.shownWhen { !challenge.state().ready }.text("Sending email...")
 
-        // Main form: shown once email is sent
-        shownWhen { challenge.state().ready } - col {
+            // Main form: shown once email is sent
+            shownWhen { challenge.state().ready }.col {
 
-            fieldNoErrorText("Login code emailed to ${option.value ?: ""}") {
-                textInput {
-                    ::hint { "ABCDEF" }
-                    // Auto-focus once email is sent for better UX
-                    reactive { if (challenge.state().ready) requestFocus() }
-                    content bind code
+                fieldNoErrorText("Login code emailed to ${option.value ?: ""}") {
+                    textInput {
+                        ::hint { "ABCDEF" }
+                        // Auto-focus once email is sent for better UX
+                        reactive { if (challenge.state().ready) requestFocus() }
+                        content bind code
+                        action = proveEmailOwnership
+                        keyboardHints = KeyboardHints.Companion.oneTimeCodeLetters
+                    }
+                }
+                // Error messages appear here when proof fails
+                SubtextSemantic.onNext.errorText()
+
+                important.buttonTheme.button {
+                    centered.text("Submit")
                     action = proveEmailOwnership
-                    keyboardHints = KeyboardHints.Companion.oneTimeCodeLetters
-                }
-            }
-            // Error messages appear here when proof fails
-            SubtextSemantic.onNext - errorText()
-
-            important - buttonTheme - button {
-                centered - text("Submit")
-                action = proveEmailOwnership
-            }
-
-            // Resend button with three states:
-            // 1. "Sent!" for first 3 seconds
-            // 2. Countdown timer for remaining cooldown period
-            // 3. "Send new code" when cooldown expires
-            button {
-                // Button is disabled during cooldown (except first 3 seconds when showing "Sent!")
-                ::enabled { nowBySecond() !in challenge().timestamp + 3.seconds..challenge().timestamp + resendTime }
-
-                // State 3: Ready to resend
-                centered - shownWhen { nowBySecond() > challenge().timestamp + resendTime } - text("Send new code")
-
-                // State 1: Just sent confirmation
-                centered - shownWhen { nowBySecond() < challenge().timestamp + 3.seconds } - row {
-                    centered - icon(Icon.Companion.done.copy(1.rem, 1.rem), "")
-                    centered - text("Sent!")
                 }
 
-                // State 2: Cooldown countdown
-                centered - shownWhen { nowBySecond() in challenge().timestamp + 3.seconds..challenge().timestamp + resendTime } - text {
-                    ::content { "Can send new code in ${(challenge().timestamp + resendTime - nowBySecond()).inWholeSeconds}" }
-                }
+                // Resend button with three states:
+                // 1. "Sent!" for first 3 seconds
+                // 2. Countdown timer for remaining cooldown period
+                // 3. "Send new code" when cooldown expires
+                button {
+                    // Button is disabled during cooldown (except first 3 seconds when showing "Sent!")
+                    ::enabled { nowBySecond() !in challenge().timestamp + 3.seconds..challenge().timestamp + resendTime }
 
-                onClick {
-                    // Only trigger resend if cooldown has expired
-                    if (nowBySecond() > challenge().timestamp + resendTime)
-                        resend.invokeAll()
+                    // State 3: Ready to resend
+                    centered.shownWhen { nowBySecond() > challenge().timestamp + resendTime }.text("Send new code")
+
+                    // State 1: Just sent confirmation
+                    centered.shownWhen { nowBySecond() < challenge().timestamp + 3.seconds }.row {
+                        centered.icon(Icon.Companion.done.copy(1.rem, 1.rem), "")
+                        centered.text("Sent!")
+                    }
+
+                    // State 2: Cooldown countdown
+                    centered.shownWhen { nowBySecond() in challenge().timestamp + 3.seconds..challenge().timestamp + resendTime }
+                        .text {
+                            ::content { "Can send new code in ${(challenge().timestamp + resendTime - nowBySecond()).inWholeSeconds}" }
+                        }
+
+                    onClick {
+                        // Only trigger resend if cooldown has expired
+                        if (nowBySecond() > challenge().timestamp + resendTime)
+                            resend.invokeAll()
+                    }
                 }
             }
         }

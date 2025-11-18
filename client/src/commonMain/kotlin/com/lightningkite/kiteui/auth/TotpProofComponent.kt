@@ -4,7 +4,7 @@ import com.lightningkite.kiteui.models.Icon
 import com.lightningkite.kiteui.models.KeyboardHints
 import com.lightningkite.kiteui.models.SubtextSemantic
 import com.lightningkite.kiteui.reactive.Action
-import com.lightningkite.kiteui.views.ViewModifiable
+
 import com.lightningkite.kiteui.views.ViewWriter
 import com.lightningkite.kiteui.views.centered
 import com.lightningkite.kiteui.views.direct.button
@@ -62,47 +62,49 @@ data class TotpProofComponent(val p: ProofClientEndpoints.TimeBasedOTP, val type
         primaryIdentifier: UserIdentification?,
         option: ProofOption,
         onResult: (Proof?) -> Unit
-    ): ViewModifiable = to.col {
-        // Holds the user-entered TOTP code (typically 6 digits)
-        val code = Signal("")
+    ) {
+        to.col {
+            // Holds the user-entered TOTP code (typically 6 digits)
+            val code = Signal("")
 
-        // TODO: Variable name "provePasswordOwnership" is misleading - this is TOTP, not password
-        // Action to submit the TOTP code to the server for verification
-        val provePasswordOwnership = Action("Submit", Icon.Companion.done) {
-            // TODO: Potential bug - if both option.method.property/value and primaryIdentifier
-            // are null, empty strings are sent. Should validate or fail earlier.
-            onResult(
-                p.proveOTP(
-                    IdentificationAndPassword(
-                        type = type,
-                        // Fallback chain: option.method.property -> primaryIdentifier.property -> ""
-                        property = option.method.property ?: primaryIdentifier?.property ?: "",
-                        // Fallback chain: option.value -> primaryIdentifier.value -> ""
-                        value = option.value ?: primaryIdentifier?.value ?: "",
-                        // Note: "password" field is reused to carry the TOTP code
-                        password = code.await()
+            // TODO: Variable name "provePasswordOwnership" is misleading - this is TOTP, not password
+            // Action to submit the TOTP code to the server for verification
+            val provePasswordOwnership = Action("Submit", Icon.Companion.done) {
+                // TODO: Potential bug - if both option.method.property/value and primaryIdentifier
+                // are null, empty strings are sent. Should validate or fail earlier.
+                onResult(
+                    p.proveOTP(
+                        IdentificationAndPassword(
+                            type = type,
+                            // Fallback chain: option.method.property -> primaryIdentifier.property -> ""
+                            property = option.method.property ?: primaryIdentifier?.property ?: "",
+                            // Fallback chain: option.value -> primaryIdentifier.value -> ""
+                            value = option.value ?: primaryIdentifier?.value ?: "",
+                            // Note: "password" field is reused to carry the TOTP code
+                            password = code.await()
+                        )
                     )
                 )
-            )
-        }
-
-        fieldNoErrorText("One-time Password from App") {
-            textInput {
-                ::hint { "000000" }
-                // Auto-focus for immediate code entry
-                requestFocus()
-                content bind code
-                action = provePasswordOwnership
-                // Numeric keyboard for easier code entry
-                keyboardHints = KeyboardHints.Companion.oneTimeCode
             }
-        }
-        // Error messages appear here when TOTP code is invalid or expired
-        SubtextSemantic.onNext - errorText()
 
-        important - button {
-            centered - text("Submit")
-            action = provePasswordOwnership
+            fieldNoErrorText("One-time Password from App") {
+                textInput {
+                    ::hint { "000000" }
+                    // Auto-focus for immediate code entry
+                    requestFocus()
+                    content bind code
+                    action = provePasswordOwnership
+                    // Numeric keyboard for easier code entry
+                    keyboardHints = KeyboardHints.Companion.oneTimeCode
+                }
+            }
+            // Error messages appear here when TOTP code is invalid or expired
+            SubtextSemantic.onNext.errorText()
+
+            important.button {
+                centered.text("Submit")
+                action = provePasswordOwnership
+            }
         }
     }
 }
