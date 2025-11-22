@@ -145,7 +145,7 @@ fun lk(): Theme {
         foreground = foreground,
         background = background,
         outline = foreground,
-        derivations = mapOf(
+        semanticOverrides = semanticOverridesOf(
             BarSemantic to { it.withBack },
             NavSemantic to { it.withBack },
             OuterSemantic to { it.withBack(cascading = false, gap = 1.px, padding = Edges.ZERO, background = Color.gray(0.3f)) },

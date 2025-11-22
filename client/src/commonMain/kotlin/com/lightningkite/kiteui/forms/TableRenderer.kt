@@ -242,8 +242,8 @@ object TableRenderer : FormRenderer.Generator, ViewRenderer.Generator {
                         if (inner is LimitReadable<T>) {
                             // When within 50 items of the end, load 100 more
                             // This threshold prevents loading too early (poor UX) or too late (scroll jank)
-                            if (inner.limit < lastVisibleIndex() + 50) {
-                                inner.limit = lastVisibleIndex() + 100
+                            if (inner.limit < lastIndex() + 50) {
+                                inner.limit = lastIndex() + 100
                             }
                         }
                     }

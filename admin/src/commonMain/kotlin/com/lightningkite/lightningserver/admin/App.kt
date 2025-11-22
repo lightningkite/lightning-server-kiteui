@@ -84,8 +84,7 @@ fun ViewWriter.app(navigator: PageNavigator, dialog: PageNavigator) {
     appNavFactory.value = ViewWriter::appNavTopAndLeft
 
     appNav(navigator, dialog) {
-        // TODO: Make app name configurable instead of hard-coded
-        appName = "KiteUI Sample App"
+        appName = "Lightning Server Admin"
 
         // Dynamically build navigation items based on server schema and permissions
         // This is reactive and will rebuild when permissions or schema change

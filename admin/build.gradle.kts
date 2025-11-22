@@ -9,7 +9,8 @@ plugins {
     alias(libs.plugins.ksp)
     alias(libs.plugins.serialization)
 //    alias(libs.plugins.dokka)
-    alias(libs.plugins.vite)
+    alias(libs.plugins.jsPlainObjects)
+    alias(libs.plugins.kfc)
     alias(libs.plugins.comLightningkiteKiteui)
 }
 apply<KiteUiPlugin>()
@@ -95,7 +96,7 @@ configure<KiteUiPluginExtension> {
 fun env(name: String, profile: String) {
     tasks.create("deployWeb${name}Init", Exec::class.java) {
         group = "deploy"
-        this.dependsOn("viteBuild")
+        this.dependsOn("jsBundleProduction")
         this.environment("AWS_PROFILE", "$profile")
         val props = Properties()
         props.entries.forEach {

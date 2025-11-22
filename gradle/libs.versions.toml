@@ -4,7 +4,7 @@ agp = "8.11.2"
 androidDesugaring = "2.1.5"
 dokka = "2.1.0"
 graalVmNative = "0.11.2"
-kiteui = "7.0.0-prerelease-67"
+kiteui = "7.0.0-prerelease-76"
 kotlin = "2.2.20"
 kotlinxCoroutinesTest = "1.10.2"
 kotlinxSerializationCsvDurable = "0.2.21-1"
@@ -46,3 +46,5 @@ serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version = { 
 shadow = { id = "com.github.johnrengelman.shadow", version = { ref = "shadow" } }
 vanniktechPublishing = { id = "com.vanniktech.maven.publish", version = { ref = "vanniktechPublishing" } }
 vite = { id = "dev.opensavvy.vite.kotlin", version = { ref = "vite" } }
+jsPlainObjects = { id = "org.jetbrains.kotlin.plugin.js-plain-objects", version = "2.2.21" }
+kfc = { id = "io.github.turansky.kfc.application", version = "16.0.0" }

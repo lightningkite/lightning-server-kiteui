@@ -311,7 +311,7 @@ class BatchAndQueueTest {
         advanceUntilIdle()
 
         // Should have multiple batches due to delayed launches
-        assert(activations > 1) { "Expected multiple batches, got $activations" }
+        if(activations < 1) { throw Exception("Expected multiple batches, got $activations") }
     }
 }
 

@@ -169,7 +169,7 @@ class ModelCacheTest {
     @Test
     fun listChangesPull() = runTest2 {
         // Uses polling mock (no WebSocket) to test fallback update detection
-        val mock = ClientModelRestEndpointsMock<LargeTestModel, Uuid>(this, log = LogRoot.tag("Rest"))
+        val mock = ClientModelRestEndpointsMock<LargeTestModel, Uuid>(this)
         val dataToInsert = listOf(
             LargeTestModel(int = 1),
             LargeTestModel(int = 2),

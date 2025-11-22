@@ -576,12 +576,8 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
      * This handles caching and incremental updating of query results. All query-related
      * updates from [newData] are fed into this cache, which intelligently merges them
      * with existing query results without requiring full refetches.
-     *
-     * Currently uses [NaiveListReconstructionCalculator], which maintains separate caches
-     * for each query. Could be swapped with [OptimizedListReconstructionCalculator] for
-     * better memory efficiency in scenarios with many overlapping queries.
      */
-    val cache: ListReconstructionCalculator<T, ID> = NaiveListReconstructionCalculator<T, ID>(
+    val cache: ListReconstructionCalculator<T, ID> = OptimizedListReconstructionCalculator<T, ID>(
         serializer,
         log = log?.tag("CollectionCache"),
         clock = scope.coroutineContext[ClockContextElement]?.clock ?: Clock.System
