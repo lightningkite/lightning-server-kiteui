@@ -31,11 +31,33 @@ import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.DurationUnit
 
+/**
+ * Regex patterns for validating user identifiers.
+ * These are used to auto-detect identifier type from user input.
+ */
 private object Regexes {
+    /** Email address pattern matching */
     val email = Regex("""[\w\-+._]+@(?:[\w\-]+\w\.)+[\w\-]+\w$""")
+
+    /** Phone number pattern (US format with optional dashes) */
+    // TODO: This pattern only supports US phone numbers (XXX-XXX-XXXX)
+    // International phone numbers will not be recognized. Consider using libphonenumber.
     val phoneNumber = Regex("^\\d{3}-?\\d{3}-?\\d{4}$")
 }
 
+/**
+ * DSL function to render a legacy authentication component in a ViewWriter.
+ *
+ * NOTE: This is the legacy auth component. Consider using [authComponent2] instead
+ * for the newer proof-based authentication flow with better UX and features.
+ *
+ * @param endpoints The authentication endpoints configuration from the server
+ * @param subjectPath The type of subject being authenticated (e.g., "user", "admin")
+ * @param subject The specific authentication client endpoints for this subject type
+ * @param knownDeviceLocalStorageName Key for storing known device credentials. Null disables feature.
+ * @param onAuthentication Callback invoked with refresh token on successful authentication
+ * @see authComponent2 for the newer implementation
+ */
 @ViewDsl
 fun ViewWriter.login(
     endpoints: AuthEndpoints,
@@ -55,6 +77,15 @@ fun ViewWriter.login(
     }
 }
 
+/**
+ * Stores known device information for persistent authentication.
+ *
+ * When a user chooses to "remember this device", this data is saved to local storage
+ * allowing future logins to skip certain authentication proofs.
+ *
+ * @property info The device secret and expiration time from the server
+ * @property primaryIdentifier The user's primary identifier (email/phone) for this device
+ */
 @Serializable
 data class KnownDeviceSecretInfoStuff(
     val info: KnownDeviceSecretAndExpiration,
@@ -62,9 +93,23 @@ data class KnownDeviceSecretInfoStuff(
 )
 
 
+/**
+ * Legacy email verification proof component.
+ *
+ * Renders UI for entering an email verification code sent to the user's email address.
+ * Includes a resend mechanism with countdown timer.
+ *
+ * @property p The email proof endpoints for sending codes and verification
+ * @property id The email address to send the code to
+ * @property codeKey The current verification session key (updated on resend)
+ */
 class EmailProof(val p: ProofClientEndpoints.Email, val id: String, var codeKey: String) : CurrentProof {
+    /** User's input for the verification code */
     val code = Signal("")
+
+    /** Minimum time between code resend requests */
     val resendTime = 15.seconds
+
     override fun ViewWriter.render(onProof: (Proof) -> Unit, onException: (Exception) -> Unit) {
         col {
             val proveEmailOwnership = Action("Submit", Icon.done) {
@@ -112,9 +157,23 @@ class EmailProof(val p: ProofClientEndpoints.Email, val id: String, var codeKey:
 }
 
 
+/**
+ * Legacy SMS verification proof component.
+ *
+ * Renders UI for entering an SMS verification code sent to the user's phone number.
+ * Includes a resend mechanism with countdown timer.
+ *
+ * @property p The SMS proof endpoints for sending codes and verification
+ * @property id The phone number to send the code to
+ * @property codeKey The current verification session key (updated on resend)
+ */
 class SmsProof(val p: ProofClientEndpoints.Sms, val id: String, var codeKey: String) : CurrentProof {
+    /** User's input for the verification code */
     val code = Signal("")
+
+    /** Minimum time between code resend requests */
     val resendTime = 15.seconds
+
     override fun ViewWriter.render(onProof: (Proof) -> Unit, onException: (Exception) -> Unit) {
         col {
             val provePhoneOwnership = Action("Submit", Icon.done) {
@@ -160,13 +219,25 @@ class SmsProof(val p: ProofClientEndpoints.Sms, val id: String, var codeKey: Str
     }
 }
 
+/**
+ * Legacy password authentication proof component.
+ *
+ * Renders UI for entering a password to authenticate.
+ *
+ * @property p The password proof endpoints for verification
+ * @property type The subject type being authenticated (e.g., "user")
+ * @property key The identifier type ("email", "phone", or "_id")
+ * @property value The identifier value (email address, phone number, or user ID)
+ */
 class PasswordProof(
     val p: ProofClientEndpoints.Password,
     val type: String,
     val key: String,
     val value: String,
 ) : CurrentProof {
+    /** User's input for the password */
     val code = Signal("")
+
     override fun ViewWriter.render(onProof: (Proof) -> Unit, onException: (Exception) -> Unit) {
         val provePasswordOwnership = Action("Submit", Icon.done) {
             onProof(p.provePasswordOwnership(IdentificationAndPassword(type, key, value, code.await())))
@@ -190,13 +261,25 @@ class PasswordProof(
     }
 }
 
+/**
+ * Legacy TOTP (Time-based One-Time Password) proof component.
+ *
+ * Renders UI for entering a 6-digit code from an authenticator app (e.g., Google Authenticator).
+ *
+ * @property p The TOTP proof endpoints for verification
+ * @property type The subject type being authenticated (e.g., "user")
+ * @property key The identifier type ("email", "phone", or "_id")
+ * @property value The identifier value (email address, phone number, or user ID)
+ */
 class TotpProof(
     val p: ProofClientEndpoints.TimeBasedOTP,
     val type: String,
     val key: String,
     val value: String,
 ) : CurrentProof {
+    /** User's input for the 6-digit TOTP code */
     val code = Signal("")
+
     override fun ViewWriter.render(onProof: (Proof) -> Unit, onException: (Exception) -> Unit) {
         col {
             val proveOtpProofAction = Action("Submit", Icon.done) {
@@ -219,13 +302,25 @@ class TotpProof(
     }
 }
 
+/**
+ * Legacy backup code proof component.
+ *
+ * Renders UI for entering a backup recovery code (typically used when primary 2FA method unavailable).
+ *
+ * @property p The backup code proof endpoints for verification
+ * @property type The subject type being authenticated (e.g., "user")
+ * @property key The identifier type ("email", "phone", or "_id")
+ * @property value The identifier value (email address, phone number, or user ID)
+ */
 class BackupCodeProof(
     val p: ProofClientEndpoints.BackupCode,
     val type: String,
     val key: String,
     val value: String,
 ) : CurrentProof {
+    /** User's input for the backup code */
     val code = Signal("")
+
     override fun ViewWriter.render(onProof: (Proof) -> Unit, onException: (Exception) -> Unit) {
         col {
             val proveBackupCodeProofAction = Action("Submit", Icon.done) {
@@ -247,6 +342,18 @@ class BackupCodeProof(
     }
 }
 
+/**
+ * Legacy WebAuthN (passkey/security key) proof component.
+ *
+ * Automatically initiates WebAuthN authentication when rendered. Shows a loading indicator
+ * while waiting for the user to interact with their security key or passkey.
+ *
+ * @property p The WebAuthN proof endpoints for challenge/response flow
+ * @property type The subject type being authenticated (e.g., "user")
+ * @property property The identifier property type (e.g., "user/_id")
+ * @property key The identifier value (user ID or null for discoverable credentials)
+ * @property isPrimary Whether this is primary authentication (passkey) vs secondary (security key)
+ */
 class WebAuthNProof(
     val p: ProofClientEndpoints.WebAuthN,
     val type: String,
@@ -299,10 +406,43 @@ class WebAuthNProof(
     }
 }
 
+/**
+ * Interface for legacy proof components.
+ *
+ * Each implementation represents a specific authentication method and knows how to
+ * render its own UI and handle user interaction.
+ *
+ * NOTE: This is the legacy interface. New code should use [ProofComponent] instead.
+ *
+ * @see ProofComponent for the modern interface
+ */
 interface CurrentProof {
+    /**
+     * Renders the proof collection UI.
+     *
+     * @param onProof Callback invoked with the collected proof on success
+     * @param onException Callback invoked if proof collection fails
+     */
     fun ViewWriter.render(onProof: (Proof) -> Unit, onException: (Exception) -> Unit)
 }
 
+/**
+ * Legacy re-authentication component for elevated permissions.
+ *
+ * Used when a logged-in user needs to re-verify their identity for sensitive operations.
+ * Only shows proof methods that the user has already set up (no registration flow).
+ *
+ * The component automatically attempts to use known device credentials if available,
+ * then prompts for additional proofs as needed to meet authentication requirements.
+ *
+ * @property subjectId The ID of the subject (user) to re-authenticate
+ * @property endpoints The authentication endpoints configuration
+ * @property subjectType The type of subject being re-authenticated (e.g., "user")
+ * @property subject The specific authentication client endpoints
+ * @property knownDeviceLocalStorageName Key for loading known device credentials
+ * @property newSessionDuration How long the new elevated session should last (default 15 minutes)
+ * @property onAuthentication Callback invoked with refresh token on successful re-authentication
+ */
 class ReAuthComponent(
     val subjectId: String,
     val endpoints: AuthEndpoints,
@@ -312,14 +452,36 @@ class ReAuthComponent(
     val newSessionDuration: Duration = 15.minutes,
     val onAuthentication: suspend (String) -> Unit,
 ) {
+    /** List of successfully collected proofs */
     val proofs = Signal<List<Proof>>(listOf())
+
+    /** Currently active proof component being rendered */
     val currentProof = Signal<CurrentProof?>(null)
+
+    /** Whether authentication is in progress (checking proofs with server) */
     val authenticating = Signal(false)
+
+    /** Known device credentials loaded from local storage */
     val knownDevice = knownDeviceLocalStorageName?.let { PersistentProperty<KnownDeviceSecretInfoStuff?>(it, null) }
+
+    /** Server's authentication requirements for this user */
     val requirements = rememberSuspending { subject.authRequirements() }
+
+    /** Whether authentication requirements have been met */
     val readyToLogin = Signal(false)
 
+    /**
+     * Renders the re-authentication UI.
+     *
+     * The UI flow:
+     * 1. Attempts known device authentication (if available)
+     * 2. Shows progress bar for collected proofs
+     * 3. Displays available proof method buttons
+     * 4. Renders active proof component
+     * 5. Automatically logs in when requirements met
+     */
     fun ViewWriter.render(): ViewModifiable {
+        // Automatically check proofs with server as they're collected
         reactiveSuspending {
             val proofs = proofs.await()
 
@@ -329,7 +491,9 @@ class ReAuthComponent(
                 val result = subject.checkProofs(proofs)
                 readyToLogin.value = result.readyToLogIn
             } catch (e: LsErrorException) {
+                // Client errors (4xx) = invalid proofs, clear and restart
                 if (e.status / 100 == 4) this@ReAuthComponent.proofs.value = listOf()
+                // Server errors (5xx) = propagate to caller
                 if (e.status / 100 == 5) throw e
                 null
             } finally {
@@ -337,6 +501,7 @@ class ReAuthComponent(
             }
         }
 
+        // Automatically complete login when ready
         reactiveSuspending {
             if (!readyToLogin()) return@reactiveSuspending
 
@@ -347,7 +512,8 @@ class ReAuthComponent(
                 )
             )
 
-
+            // TODO: Handle case where logInV2 succeeds but refreshToken is null
+            // This should not happen but the null safety suggests it's possible
             result.refreshToken?.also { onAuthentication(it) }
         }
 
@@ -358,10 +524,13 @@ class ReAuthComponent(
                 }
             }
 
+            // Attempt automatic known device authentication if available
             knownDevice?.value?.takeIf {
                 now() < it.info.expiresAt
             }?.let { kd ->
                 endpoints.knownDeviceProof?.let { endpoints ->
+                    // TODO: This coroutine launches without tracking/cleanup
+                    // If component unmounts before completion, may leak or cause issues
                     (this as CoroutineScope).launch {
                         try {
                             authenticating.value = true
@@ -369,6 +538,7 @@ class ReAuthComponent(
                         } catch (e: Exception) {
                             authenticating.value = false
                             e.printStackTrace2()
+                            // Clear invalid known device
                             knownDevice.value = null
                         }
                     }
@@ -498,10 +668,12 @@ class ReAuthComponent(
                 }
             }
 
+            // Render the active proof component
             frame {
                 reactive {
                     clearChildren()
                     currentProof()?.run {
+                        // Flag to prevent double-callback (race condition protection)
                         var callBackDone = false
                         render(
                             onProof = {
@@ -516,6 +688,7 @@ class ReAuthComponent(
                                 callBackDone = true
 
                                 currentProof.value = null
+                                // Show error dialog to user
                                 this@frame.dialog { close ->
                                     col {
                                         h2("Error")
@@ -554,6 +727,25 @@ class ReAuthComponent(
 }
 
 
+/**
+ * Legacy authentication component for login and registration flows.
+ *
+ * This is the older authentication implementation. Consider using [AuthComponent2] instead
+ * for improved UX and better progressive proof collection.
+ *
+ * Key differences from AuthComponent2:
+ * - Uses different UI patterns for proof selection
+ * - Separate render methods for each proof type
+ * - Different primary identifier auto-detection logic
+ * - Less flexible filtering of proof methods
+ *
+ * @property endpoints The authentication endpoints configuration
+ * @property subjectPath The type of subject being authenticated (e.g., "user")
+ * @property subject The specific authentication client endpoints
+ * @property knownDeviceLocalStorageName Key for storing known device credentials
+ * @property onAuthentication Callback invoked with refresh token on success
+ * @see AuthComponent2 for the modern implementation
+ */
 class AuthComponent(
     val endpoints: AuthEndpoints,
     val subjectPath: String = endpoints.subjects.keys.single(),
@@ -561,21 +753,43 @@ class AuthComponent(
     val knownDeviceLocalStorageName: String? = "known-device",
     val onAuthentication: suspend (String) -> Unit,
 ) {
+    /** User's primary identifier input (email/phone/username) */
     val primaryIdentifier = Signal("")
+
+    /** Extracted/validated phone number from primary identifier or auth result */
     val phone = remember {
         primaryIdentifier().takeIf { Regexes.phoneNumber.matches(it) }?.filter { it.isDigit() }
             ?: authResult()?.options?.find { it.method.property == "phone" }?.value
     }
+
+    /** Extracted/validated email from primary identifier or auth result */
     val email = remember {
         primaryIdentifier().takeIf { Regexes.email.matches(it) }
             ?: authResult()?.options?.find { it.method.property == "email" }?.value
     }
+
+    /** List of successfully collected proofs */
     val proofs = Signal<List<Proof>>(listOf())
+
+    /** Currently active proof component being rendered */
     val currentProof = Signal<CurrentProof?>(null)
+
+    /** Whether authentication is in progress */
     val authenticating = Signal(false)
+
+    /** Whether user wants to remember this device */
     val rememberDevice = Signal(false)
+
+    /** User's desired session length (1 day vs maximum) */
     val desiredSessionLength = Signal<Duration?>(1.days)
+
+    /** Current error state, if any */
     val error = Signal<Exception?>(null)
+
+    /**
+     * Server validation result for collected proofs.
+     * Automatically re-checks when proofs change.
+     */
     val authResult: Reactive<ProofsCheckResult<out Comparable<*>>?> = rememberSuspending {
         val proofs = proofs.await()
 
@@ -589,6 +803,7 @@ class AuthComponent(
                 error.value = null
             }
         } catch (e: LsErrorException) {
+            // Client errors (4xx) = invalid proofs, clear and restart
             if (e.status / 100 == 4) {
                 this@AuthComponent.proofs.value = listOf()
             }
@@ -601,7 +816,11 @@ class AuthComponent(
             authenticating.value = false
         }
     }
+
+    /** Known device credentials loaded from local storage */
     val knownDevice = knownDeviceLocalStorageName?.let { PersistentProperty<KnownDeviceSecretInfoStuff?>(it, null) }
+
+    /** Server's known device configuration options */
     val knownDeviceOptions = rememberSuspending {
         endpoints.knownDeviceProof?.knownDeviceOptions()
     }
@@ -672,10 +891,13 @@ class AuthComponent(
                 }
             }
 
+            // Attempt automatic known device authentication if available
             knownDevice?.value?.takeIf {
                 now() < it.info.expiresAt
             }?.let { kd ->
                 endpoints.knownDeviceProof?.let { endpoints ->
+                    // TODO: This coroutine launches without tracking/cleanup
+                    // If component unmounts before completion, may leak or cause issues
                     (this as CoroutineScope).launch {
                         try {
                             authenticating.value = true
@@ -684,6 +906,7 @@ class AuthComponent(
                         } catch (e: Exception) {
                             authenticating.value = false
                             e.printStackTrace2()
+                            // Clear invalid known device
                             knownDevice.value = null
                         }
                     }
@@ -803,6 +1026,8 @@ class AuthComponent(
                 // WebAuthN is only supported in Web at the moment.
                 endpoints.webAuthNProof?.let { webAuthNProof ->
 
+                    // Background task for WebAuthN autofill (conditional UI)
+                    // This allows passkeys to appear in autofill without explicit user action
                     val pendingWebauthnRequest = launch {
                         if (!ClientAuthenticator.getClientAuthenticator().autofillAvailable()) return@launch
 
@@ -813,9 +1038,11 @@ class AuthComponent(
                                 null,
                             )
                         )
+                        // Conditional mode = shows passkey in autofill UI
                         val signedChallenge = ClientAuthenticator.getClientAuthenticator()
                             .getWebAuthNCredentials(response.options, WebAuthNMediationType.Conditional)
 
+                        // If user selects from autofill, add proof automatically
                         proofs.value += webAuthNProof
                             .prove(WebAuthN.Authentication.ProveRequest(response.challengeId, signedChallenge))
                     }
@@ -872,6 +1099,8 @@ class AuthComponent(
                     }
                 }
 
+                // Automatically determine which action to run when user presses enter
+                // Priority order: Email > SMS > Password > Backup Code > TOTP
                 primaryIdentifierField::action {
                     val id = primaryIdentifier()
                     val validId = Regexes.email.matches(id) || Regexes.phoneNumber.matches(id)
@@ -972,6 +1201,18 @@ class AuthComponent(
     }
 }
 
+/**
+ * Renders the session length selection UI shown after authentication requirements are met.
+ *
+ * Allows user to choose:
+ * - Whether to remember this device (if known device feature enabled)
+ * - Session length: 1 day (default) vs maximum allowed duration
+ *
+ * @param knownDeviceOptions Server's known device configuration (null if feature disabled)
+ * @param rememberDevice Signal controlling "remember this device" checkbox
+ * @param desiredSessionLength Signal controlling session duration selection
+ * @param authResult Current authentication result containing max expiration time
+ */
 fun ViewWriter.sessionLengthComponent(
     knownDeviceOptions: Reactive<KnownDeviceOptions?>,
     rememberDevice: Signal<Boolean>,
@@ -1001,3 +1242,85 @@ fun ViewWriter.sessionLengthComponent(
         }
     }
 }
+
+/*
+ * API IMPROVEMENT RECOMMENDATIONS FOR AuthComponent.kt:
+ *
+ * 1. PHONE NUMBER VALIDATION - Regexes.phoneNumber only supports US format
+ *    - Pattern "^\d{3}-?\d{3}-?\d{4}$" rejects international numbers
+ *    - Consider using libphonenumber library for proper international support
+ *    - Add region/country code detection
+ *
+ * 2. LEGACY vs MODERN - Two competing authentication implementations in same codebase
+ *    - AuthComponent (this file) is the older implementation
+ *    - AuthComponent2 (authComponent2.kt) is the newer implementation
+ *    - Consider deprecating AuthComponent or documenting migration path clearly
+ *    - Duplicate code between implementations should be extracted to shared utilities
+ *
+ * 3. COROUTINE LIFECYCLE MANAGEMENT - Multiple untracked coroutines launched
+ *    - Known device authentication (lines ~534, ~901)
+ *    - WebAuthN autofill request (line ~1031)
+ *    - No cleanup if component unmounts during async operations
+ *    - Use ResourceUse pattern or structured concurrency to prevent leaks
+ *
+ * 4. CALLBACK RACE CONDITIONS - callBackDone flag pattern is repeated
+ *    - Used to prevent double-callbacks in onProof/onException handlers
+ *    - This pattern appears in multiple places (ReAuthComponent and AuthComponent)
+ *    - Extract to reusable function: fun <T> onceCallback(block: (T) -> Unit): (T) -> Unit
+ *
+ * 5. ERROR HANDLING - Generic exception handling loses context
+ *    - Multiple catch(e: Exception) blocks that don't distinguish error types
+ *    - printStackTrace2() calls (lines ~377, ~540, ~692, ~908) should use proper logging
+ *    - User-facing error messages could be more specific (e.g., network vs auth vs server errors)
+ *
+ * 6. WEBAUTHN CANCELLATION - Background autofill request may not be cancelled properly
+ *    - pendingWebauthnRequest.cancel() only called when explicit button clicked (line ~863)
+ *    - If user navigates away or enters email/password, request continues in background
+ *    - Could cause confusion if user later interacts with stale autofill UI
+ *
+ * 7. IDENTIFIER AUTO-DETECTION - Complex nested logic in multiple places
+ *    - Phone/email extraction logic repeated in AuthComponent2 and AuthComponent
+ *    - Consider extracting: fun detectIdentifierType(input: String): IdentifierType?
+ *    - Would centralize validation and improve testability
+ *
+ * 8. MAGIC STRINGS - "_id" property appears throughout code
+ *    - Lines ~424, ~441, ~458, ~497, ~744, ~768, ~794, ~868, ~871
+ *    - Extract constant: const val PROPERTY_USER_ID = "_id"
+ *    - Document why "_id" fields are treated differently
+ *
+ * 9. NULLABILITY CONFUSION - refreshToken can be null after successful login?
+ *    - Lines ~357, ~517: result.refreshToken?.also { onAuthentication(it) }
+ *    - If null is valid, document when/why this happens
+ *    - If null is error, throw exception instead of silently ignoring
+ *
+ * 10. STATE MACHINE COMPLEXITY - Multiple independent Signals create invalid states
+ *     - currentProof, proofs, authenticating, primaryIdentifier are separate signals
+ *     - Possible invalid states: currentProof set but primaryIdentifier null
+ *     - Consider sealed class AuthState to make valid states explicit
+ *
+ * 11. DUPLICATE PROOF RENDERING - Each proof class has its own render implementation
+ *     - EmailProof and SmsProof have nearly identical code (only text differs)
+ *     - PasswordProof, TotpProof, BackupCodeProof are very similar
+ *     - Extract common patterns to reduce duplication
+ *
+ * 12. COMMENTED CODE - Line 1226 has commented-out alternative text
+ *     - "Remember this device for ${knownDeviceOptions()?.duration?.inWholeDays} days"
+ *     - Either implement this feature or remove the comment
+ *
+ * 13. ACCESSIBILITY - No accessibility labels or screen reader support
+ *     - Important for visually impaired users
+ *     - Add content descriptions for all icons
+ *     - Add labels for progress bars, loading indicators
+ *     - Add announcements for error states
+ *
+ * 14. UNIT TESTING - Complex reactive logic would benefit from tests
+ *     - Identifier detection/validation logic
+ *     - Proof priority selection
+ *     - State transitions during authentication flow
+ *     - Known device expiration handling
+ *
+ * 15. TIMER IMPLEMENTATION - resendTime countdown uses polling every second
+ *     - EmailProof and SmsProof use reactiveProcess { while(true) { emit(now()); delay(1000) } }
+ *     - This creates a coroutine that polls forever
+ *     - Consider using Flow.timer or more efficient countdown approach
+ */

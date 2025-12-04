@@ -15,9 +15,32 @@ import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
+/**
+ * Test suite for ModelCache functionality.
+ *
+ * ModelCache provides intelligent client-side caching with real-time synchronization for Lightning Server models.
+ * It combines local cache, batched requests, and optional WebSocket updates for efficient data management.
+ *
+ * These tests verify:
+ * - Single item tracking (ModelCacheItemReadable)
+ * - Collection tracking with queries (ModelCacheLimitReadable)
+ * - WebSocket-based real-time updates
+ * - Polling-based updates
+ * - Connectivity failure recovery
+ * - Local modifications and invalidation
+ * - List limit changes and reconstruction
+ */
 class ModelCacheTest {
     val testLog = if (Platform.current == Platform.Desktop) LogRoot else null
 
+    /**
+     * Tests that ModelCache correctly handles connectivity failures and recovery.
+     *
+     * Verifies that:
+     * 1. Cache works normally when connectivity is available
+     * 2. Cache continues to function during connectivity failures
+     * 3. Cache resumes updates after connectivity is restored
+     */
     @Test fun connectivityIssue() = runTest2 {
         val mock = ClientModelRestEndpointsPlusUpdatesWebsocketMock<LargeTestModel, Uuid>(this)
         var currentValue = LargeTestModel(int = 0)
@@ -33,29 +56,37 @@ class ModelCacheTest {
             val ref = cache.item(currentValue._id)
             assertEquals(
                 currentValue,
-                ref().also(::println)//.also { lastReceived = it }
+                ref().also(::println) // TODO: Remove debug println or capture for assertion
             )
         }
         delay(5.seconds)
 
-        // Start out as working
+        // Start out as working - verify initial modification is received
         val mod = modification<LargeTestModel> { it.short assign 2 }
         currentValue = mod(currentValue)
         mock.modify(currentValue._id, mod)
         delay(5.seconds)
 
-        println("Break!")
+        // Simulate connectivity failure
         mock.connectivityFailure = true
         delay(5.minutes)
 
-        println("Reconnect")
+        // Restore connectivity and verify cache recovers
         mock.connectivityFailure = false
         delay(5.seconds)
+
+        // TODO: Add explicit assertions for post-reconnection state
     }
 
+    /**
+     * Tests that ModelCache correctly handles dynamic list limit increases.
+     *
+     * Verifies that when a list query's limit is increased, the cache fetches
+     * additional items to satisfy the new limit.
+     */
     @Test fun listLimitIncrease() = runTest2 {
+        // Uses polling mock instead of WebSocket to test non-realtime limit increases
         val mock = ClientModelRestEndpointsMock<LargeTestModel, Uuid>(this)
-//        val mock = ClientModelRestEndpointsPlusUpdatesWebsocketMock<LargeTestModel, Uuid>(this)
         val dataToInsert = listOf(
             LargeTestModel(int = 1),
             LargeTestModel(int = 2),
@@ -84,9 +115,17 @@ class ModelCacheTest {
         assertEquals(dataToInsert.take(10), lastRead)
     }
 
+    /**
+     * Tests that ModelCache correctly receives and applies list updates via WebSocket.
+     *
+     * Verifies that:
+     * 1. Initial list query returns correct filtered data
+     * 2. Modifications sent via WebSocket are reflected in the cached list
+     * 3. The reactive context receives updates automatically
+     */
     @Test
     fun listChangesWs() = runTest2 {
-//        val mock = ClientModelRestEndpointsMock<LargeTestModel, Uuid>(this)
+        // Uses WebSocket mock to test real-time list updates
         val mock = ClientModelRestEndpointsPlusUpdatesWebsocketMock<LargeTestModel, Uuid>(this)
         val dataToInsert = listOf(
             LargeTestModel(int = 1),
@@ -107,8 +146,9 @@ class ModelCacheTest {
 
         val ref = cache.list(Query(condition { it.int gt 2 }, sort { it.int.ascending() }))
         reactive {
+            val currentList = ref()
             assertContains(
-                ref().also(::println),
+                currentList,
                 currentValue,
             )
         }
@@ -120,10 +160,16 @@ class ModelCacheTest {
         delay(5.seconds)
     }
 
+    /**
+     * Tests that ModelCache correctly receives and applies list updates via polling.
+     *
+     * Similar to listChangesWs, but without WebSocket support - tests the fallback
+     * polling mechanism for detecting server-side changes.
+     */
     @Test
     fun listChangesPull() = runTest2 {
+        // Uses polling mock (no WebSocket) to test fallback update detection
         val mock = ClientModelRestEndpointsMock<LargeTestModel, Uuid>(this, log = LogRoot.tag("Rest"))
-//        val mock = ClientModelRestEndpointsPlusUpdatesWebsocketMock<LargeTestModel, Uuid>(this)
         val dataToInsert = listOf(
             LargeTestModel(int = 1),
             LargeTestModel(int = 2),
@@ -151,11 +197,11 @@ class ModelCacheTest {
             currentValue,
         )
 
+        // Modify the item on the server side and verify polling detects the change
         val mod = modification<LargeTestModel> { it.short assign 2 }
         currentValue = mod(currentValue)
-        println("modifying...")
         mock.modify(currentValue._id, mod)
-        delay(80.seconds)
+        delay(80.seconds) // Wait long enough for polling to detect the change
         assertContains(
             lastRead ?: setOf(),
             currentValue,
@@ -163,9 +209,17 @@ class ModelCacheTest {
         )
     }
 
+    /**
+     * Tests that ModelCache correctly receives and applies individual item updates via WebSocket.
+     *
+     * Verifies that:
+     * 1. A single item is fetched and cached correctly
+     * 2. Modifications sent via WebSocket update the cached item
+     * 3. The reactive context receives the updated item automatically
+     */
     @Test
     fun individualChangesWs() = runTest2 {
-//        val mock = ClientModelRestEndpointsMock<LargeTestModel, Uuid>(this)
+        // Uses WebSocket mock to test real-time individual item updates
         val mock = ClientModelRestEndpointsPlusUpdatesWebsocketMock<LargeTestModel, Uuid>(this)
         var currentValue = LargeTestModel(int = 0)
         mock.data[currentValue._id] = currentValue
@@ -178,23 +232,28 @@ class ModelCacheTest {
 
         reactive {
             val ref = cache.item(currentValue._id)
-            assertEquals(
-                currentValue,
-                ref().also(::println)
-            )
+            val item = ref()
+            assertEquals(currentValue, item)
         }
         delay(5.seconds)
 
+        // Modify the item via WebSocket and verify cache receives the update
         val mod = modification<LargeTestModel> { it.short assign 2 }
         currentValue = mod(currentValue)
         mock.modify(currentValue._id, mod)
         delay(5.seconds)
     }
 
+    /**
+     * Tests that ModelCache correctly receives and applies individual item updates via polling.
+     *
+     * Similar to individualChangesWs, but without WebSocket support - tests the fallback
+     * polling mechanism for detecting individual item changes.
+     */
     @Test
     fun individualChangesPull() = runTest2 {
+        // Uses polling mock (no WebSocket) to test fallback individual item update detection
         val mock = ClientModelRestEndpointsMock<LargeTestModel, Uuid>(this)
-//        val mock = ClientModelRestEndpointsPlusUpdatesWebsocketMock<LargeTestModel, Uuid>(this)
         var currentValue = LargeTestModel(int = 0)
         var lastRead: LargeTestModel? = null
         mock.data[currentValue._id] = currentValue
@@ -207,7 +266,7 @@ class ModelCacheTest {
 
         reactive {
             val ref = cache.item(currentValue._id)
-            val read = ref().also(::println)
+            val read = ref()
             lastRead = read
         }
         delay(30.seconds)
@@ -226,10 +285,18 @@ class ModelCacheTest {
         )
     }
 
+    /**
+     * Tests that reactive contexts don't trigger unnecessarily when observing a specific item by ID.
+     *
+     * Verifies that the reactive context only fires twice:
+     * 1. Once on initial setup
+     * 2. Once when the data arrives
+     * And not on subsequent cache operations if the item hasn't changed.
+     */
     @Test
     fun reactiveKeepId() = runTest2 {
+        // Uses polling mock to ensure reactive firing count is not inflated by WebSocket activity
         val mock = ClientModelRestEndpointsMock<LargeTestModel, Uuid>(this)
-//        val mock = ClientModelRestEndpointsPlusUpdatesWebsocketMock<LargeTestModel, Uuid>(this)
         val dataToInsert = listOf(
             LargeTestModel(int = 1),
             LargeTestModel(int = 2),
@@ -249,19 +316,24 @@ class ModelCacheTest {
         reactive {
             reactions++
             val ref = cache.item(dataToInsert[0]._id)
-            assertEquals(
-                dataToInsert[0],
-                ref().also(::println)
-            )
+            val item = ref()
+            assertEquals(dataToInsert[0], item)
         }
         advanceTimeBy(30.seconds)
-        assertEquals(reactions, 2) // One for startup, one for initial data
+        // Should fire exactly twice: once on startup, once when data arrives
+        assertEquals(reactions, 2)
     }
 
+    /**
+     * Tests that ModelCache correctly re-fetches individual items via polling.
+     *
+     * Verifies that items are re-pulled from the server at appropriate intervals
+     * based on cache time settings when WebSocket is not available.
+     */
     @Test
     fun repullingGet() = runTest2 {
+        // Uses polling mock to verify periodic re-fetching behavior
         val mock = ClientModelRestEndpointsMock<LargeTestModel, Uuid>(this)
-//        val mock = ClientModelRestEndpointsPlusUpdatesWebsocketMock<LargeTestModel, Uuid>(this)
         val dataToInsert = listOf(
             LargeTestModel(int = 1),
             LargeTestModel(int = 2),
@@ -279,17 +351,21 @@ class ModelCacheTest {
 
         val ref = cache.item(dataToInsert[0]._id)
         reactive {
-            assertEquals(
-                dataToInsert[0],
-                ref().also(::println)
-            )
+            val item = ref()
+            assertEquals(dataToInsert[0], item)
         }
         advanceTimeBy(30.seconds)
     }
 
+    /**
+     * Tests that ModelCache correctly fetches individual items with WebSocket support.
+     *
+     * Similar to repullingGet, but with WebSocket connection to verify
+     * that item fetching works correctly in a WebSocket-enabled environment.
+     */
     @Test
     fun wsGet() = runTest2 {
-//        val mock = ClientModelRestEndpointsMock<LargeTestModel, Uuid>(this)
+        // Uses WebSocket mock to verify fetching works with real-time connections
         val mock = ClientModelRestEndpointsPlusUpdatesWebsocketMock<LargeTestModel, Uuid>(this)
         val dataToInsert = listOf(
             LargeTestModel(int = 1),
@@ -308,18 +384,22 @@ class ModelCacheTest {
 
         val ref = cache.item(dataToInsert[0]._id)
         reactive {
-            assertEquals(
-                dataToInsert[0],
-                ref().also(::println)
-            )
+            val item = ref()
+            assertEquals(dataToInsert[0], item)
         }
         advanceTimeBy(30.seconds)
     }
 
+    /**
+     * Tests that ModelCache correctly re-fetches lists via polling.
+     *
+     * Verifies that list queries are re-pulled from the server at appropriate intervals
+     * with correct condition and sorting applied.
+     */
     @Test
     fun repullingList() = runTest2 {
+        // Uses polling mock to verify periodic list re-fetching behavior
         val mock = ClientModelRestEndpointsMock<LargeTestModel, Uuid>(this)
-//        val mock = ClientModelRestEndpointsPlusUpdatesWebsocketMock<LargeTestModel, Uuid>(this)
         val dataToInsert = listOf(
             LargeTestModel(int = 1),
             LargeTestModel(int = 2),
@@ -337,18 +417,27 @@ class ModelCacheTest {
 
         val ref = cache.list(Query(condition { it.int lt 4 }, orderBy = sort { it.int.ascending() }))
         reactive {
+            val list = ref()
             assertEquals(
                 dataToInsert.filter { it.int < 4 }.sortedBy { it.int },
-                ref().also(::println)
+                list
             )
         }
         advanceTimeBy(30.seconds)
     }
 
+    /**
+     * Tests that reactive contexts don't trigger unnecessarily when observing a list query.
+     *
+     * Verifies that the reactive context only fires twice:
+     * 1. Once on initial setup
+     * 2. Once when the data arrives
+     * And not on subsequent cache operations if the list hasn't changed.
+     */
     @Test
     fun reactivityKeepList() = runTest2 {
+        // Uses polling mock to ensure reactive firing count is not inflated by WebSocket activity
         val mock = ClientModelRestEndpointsMock<LargeTestModel, Uuid>(this)
-//        val mock = ClientModelRestEndpointsPlusUpdatesWebsocketMock<LargeTestModel, Uuid>(this)
         val dataToInsert = listOf(
             LargeTestModel(int = 1),
             LargeTestModel(int = 2),
@@ -368,18 +457,26 @@ class ModelCacheTest {
         reactive {
             reactions++
             val ref = cache.list(Query(condition { it.int lt 4 }, orderBy = sort { it.int.ascending() }))
+            val list = ref()
             assertEquals(
                 dataToInsert.filter { it.int < 4 }.sortedBy { it.int },
-                ref().also(::println)
+                list
             )
         }
         advanceTimeBy(30.seconds)
-        assertEquals(reactions, 2) // One for startup, one for initial data
+        // Should fire exactly twice: once on startup, once when data arrives
+        assertEquals(reactions, 2)
     }
 
+    /**
+     * Tests that ModelCache correctly fetches lists with WebSocket support.
+     *
+     * Similar to repullingList, but with WebSocket connection to verify
+     * that list fetching works correctly in a WebSocket-enabled environment.
+     */
     @Test
     fun wsList() = runTest2 {
-//        val mock = ClientModelRestEndpointsMock<LargeTestModel, Uuid>(this)
+        // Uses WebSocket mock to verify list fetching works with real-time connections
         val mock = ClientModelRestEndpointsPlusUpdatesWebsocketMock<LargeTestModel, Uuid>(this)
         val dataToInsert = listOf(
             LargeTestModel(int = 1),
@@ -398,18 +495,27 @@ class ModelCacheTest {
 
         val ref = cache.list(Query(condition { it.int lt 4 }, orderBy = sort { it.int.ascending() }))
         reactive {
+            val list = ref()
             assertEquals(
                 dataToInsert.filter { it.int < 4 }.sortedBy { it.int },
-                ref().also(::println)
+                list
             )
         }
         advanceTimeBy(30.seconds)
     }
 
+    /**
+     * Tests that ModelCache correctly handles fetching a non-existent item.
+     *
+     * Verifies that:
+     * 1. The cache returns null for items that don't exist
+     * 2. The reactive context is properly notified
+     * 3. The cache doesn't crash or hang when fetching missing items
+     */
     @Test
     fun getGone() = runTest2 {
+        // Uses polling mock to test missing item behavior
         val mock = ClientModelRestEndpointsMock<LargeTestModel, Uuid>(this)
-//        val mock = ClientModelRestEndpointsPlusUpdatesWebsocketMock<LargeTestModel, Uuid>(this)
         val dataToInsert = listOf(
             LargeTestModel(int = 1),
             LargeTestModel(int = 2),
@@ -426,19 +532,28 @@ class ModelCacheTest {
         )
 
         var runs = 0
+        // Request a random UUID that doesn't exist in the dataset
         val ref = cache.item(Uuid.random())
         reactive {
-            assertEquals(
-                null,
-                ref().also(::println)
-            )
+            val item = ref()
+            assertEquals(null, item)
             runs++
         }
         advanceTimeBy(30.seconds)
+        // Should fire at least once (initial fetch that returns null)
         assertTrue(runs >= 1)
     }
 
-        @Test
+    /**
+     * Tests that ModelCache correctly handles disconnection and reconnection scenarios.
+     *
+     * Verifies that:
+     * 1. Initial data is fetched correctly
+     * 2. Cache handles connectivity failure gracefully
+     * 3. Data added during disconnection is received upon reconnection
+     * 4. List is properly updated after reconnection
+     */
+    @Test
     fun listenStopAddReconnect() = runTest2 {
         val mock = ClientModelRestEndpointsPlusUpdatesWebsocketMock<LargeTestModel, Uuid>(this)
         val dataToInsert = listOf(
@@ -479,6 +594,15 @@ class ModelCacheTest {
         assertEquals(dataToInsert.plus(newItem).sortedBy { it.int }, lastRead)
     }
 
+    /**
+     * Tests that ModelCache correctly handles local modifications.
+     *
+     * Verifies that:
+     * 1. localSignalUpdate() correctly updates items matching a condition
+     * 2. localInsert() correctly adds new items to the cache
+     * 3. These local operations trigger reactive updates
+     * 4. The cache remains synchronized with the mock backend
+     */
     @Test
     fun localModifications() = runTest2 {
         val mock = ClientModelRestEndpointsMock<LargeTestModel, Uuid>(this)
@@ -532,6 +656,14 @@ class ModelCacheTest {
         assertEquals(expectedAfterUpdate.plus(newItem).sortedBy { it.int }, lastRead)
     }
 
+    /**
+     * Tests that ModelCache's totallyInvalidate() forces a complete cache refresh.
+     *
+     * Verifies that:
+     * 1. Cache initially returns stale data
+     * 2. After totallyInvalidate() is called, cache fetches fresh data from server
+     * 3. Updated data is properly reflected in reactive contexts
+     */
     @Test
     fun totalInvalidation() = runTest2 {
         val mock = ClientModelRestEndpointsMock<LargeTestModel, Uuid>(this)
@@ -565,6 +697,14 @@ class ModelCacheTest {
         assertEquals(updatedItem, lastRead)
     }
 
+    /**
+     * Tests that ModelCache's upsert() correctly inserts new items and updates existing ones.
+     *
+     * Verifies that:
+     * 1. Upserting a new item adds it to both cache and backend
+     * 2. Upserting an existing item (by ID) updates it instead of creating a duplicate
+     * 3. Both operations trigger reactive updates
+     */
     @Test
     fun upsertTest() = runTest2 {
         val mock = ClientModelRestEndpointsMock<LargeTestModel, Uuid>(this)
@@ -599,6 +739,14 @@ class ModelCacheTest {
         assertEquals(updatedItem, lastRead)
     }
 
+    /**
+     * Tests that ModelCache's bulkModify() correctly updates multiple items matching a condition.
+     *
+     * Verifies that:
+     * 1. MassModification with condition and modification is properly applied
+     * 2. Only items matching the condition are updated
+     * 3. Updates are reflected in reactive list queries
+     */
     @Test
     fun bulkModifyTest() = runTest2 {
         val mock = ClientModelRestEndpointsMock<LargeTestModel, Uuid>(this)
@@ -639,6 +787,16 @@ class ModelCacheTest {
         assertEquals(expectedAfterUpdate, lastRead)
     }
 
+    /**
+     * Tests that ModelCache correctly handles adding elements to an initially empty dataset.
+     *
+     * Verifies that:
+     * 1. Cache starts with an empty list
+     * 2. Elements can be added one by one via cache.add()
+     * 3. Each addition is reflected in reactive list queries
+     * 4. Elements are properly sorted according to the query
+     * 5. All elements are persisted in the backend
+     */
     @Test
     fun emptyDataAddElements() = runTest2 {
         // Start with an empty mock data source
@@ -692,6 +850,13 @@ class ModelCacheTest {
         assertTrue(mock.data.containsKey(item3._id))
     }
 
+    /**
+     * Tests that ModelCache correctly handles adding elements via WebSocket to an initially empty dataset.
+     *
+     * Similar to emptyDataAddElements, but elements are added via WebSocket updates
+     * rather than direct cache operations. Verifies that WebSocket insertions work
+     * correctly with an empty cache.
+     */
     @Test
     fun emptyDataAddElementsSocket() = runTest2 {
         // Start with an empty mock data source using websocket
@@ -745,3 +910,68 @@ class ModelCacheTest {
         assertTrue(mock.data.containsKey(item3._id))
     }
 }
+
+/*
+ * ============================================================================
+ * TEST COVERAGE RECOMMENDATIONS
+ * ============================================================================
+ *
+ * Missing Test Scenarios:
+ *
+ * 1. Error Handling:
+ *    - Test cache behavior when server returns errors (404, 500, etc.)
+ *    - Test retry logic for failed requests
+ *    - Test timeout scenarios
+ *    - Test handling of malformed responses
+ *
+ * 2. Concurrent Operations:
+ *    - Test simultaneous modifications to the same item from different sources
+ *    - Test race conditions between WebSocket updates and polling
+ *    - Test concurrent list queries with overlapping conditions
+ *    - Test cache behavior under high concurrent load
+ *
+ * 3. Complex Query Scenarios:
+ *    - Test queries with multiple sort fields
+ *    - Test queries with complex nested conditions
+ *    - Test pagination with cursor-based approaches
+ *    - Test queries that return empty results after previously having data
+ *
+ * 4. Cache Eviction and Memory:
+ *    - Test cache size limits and eviction policies
+ *    - Test memory usage with large datasets
+ *    - Test cleanup when reactive contexts are disposed
+ *
+ * 5. Deletion Scenarios:
+ *    - Test deleting items that are referenced in multiple queries
+ *    - Test bulk deletion operations
+ *    - Test deletion of items while they're being modified
+ *    - Test WebSocket deletion notifications
+ *
+ * 6. Edge Cases:
+ *    - Test with null/optional fields in models
+ *    - Test with models containing collections or nested objects
+ *    - Test very large limit values
+ *    - Test queries with limit = 0 or negative limits
+ *    - Test behavior when changing query conditions dynamically
+ *
+ * 7. WebSocket Stability:
+ *    - Test WebSocket reconnection with different backoff strategies
+ *    - Test handling of duplicate WebSocket messages
+ *    - Test WebSocket connection during initial cache load
+ *    - Test graceful degradation when WebSocket fails but REST works
+ *
+ * 8. Performance Tests:
+ *    - Test cache performance with thousands of items
+ *    - Test query response time under various conditions
+ *    - Test memory footprint over extended operation
+ *
+ * 9. Integration Scenarios:
+ *    - Test multiple ModelCache instances for different model types
+ *    - Test cross-cache dependencies (foreign key relationships)
+ *    - Test cache behavior with authentication/authorization failures
+ *
+ * 10. List Reconstruction Edge Cases:
+ *     - Test list reconstruction when items move in and out of query conditions
+ *     - Test handling of items that match query but fall outside limit
+ *     - Test reconstruction with conflicting WebSocket and polling data
+ */
