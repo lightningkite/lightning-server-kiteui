@@ -29,6 +29,6 @@ pluginManagement {
 include(":client")
 include(":admin")
 
-include(":demo-shared")
-include(":demo-apps")
-include(":demo-server")
+//include(":demo-shared")
+//include(":demo-apps")
+//include(":demo-server")
