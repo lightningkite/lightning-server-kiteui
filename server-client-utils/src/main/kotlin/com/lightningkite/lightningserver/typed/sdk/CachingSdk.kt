@@ -1,18 +1,21 @@
 package com.lightningkite.lightningserver.typed.sdk
 
-import com.lightningkite.lightningserver.definition.ServerDefinition
 import com.lightningkite.lightningserver.runtime.ServerRuntime
 import com.lightningkite.lightningserver.typed.ClientModelRestEndpoints
 import com.lightningkite.lightningserver.typed.sdk.SDK.processToModules
 import com.lightningkite.lightningserver.typed.sdk.SDK.sdk
 import com.lightningkite.services.data.KFile
 
-public object CachingSdk : SDK.Format {
-    context(_: ServerRuntime)
-    override fun write(data: ServerDefinition, folder: KFile, packageName: String) {
-        val processed = data.sdk().processToModules().ensureUniqueNames()
+public class CachingSdk(
+    public val packageName: String,
+    public val rootInfo: SdkModule.Info = SdkModule.Info("Api"),
+    public val filename: String = "Cached${rootInfo.interfaceName}.kt"
+) : SDK.Format {
+    context(server: ServerRuntime)
+    override fun write(folder: KFile) {
+        val processed = server.server.sdk(rootInfo).processToModules().ensureUniqueNames()
 
-        folder.then("Cached${processed.info.interfaceName}.kt").overwrite { writeCache(processed, packageName) }
+        folder.then(filename).overwrite { writeCache(processed, packageName) }
     }
 
     context(_: ServerRuntime)
