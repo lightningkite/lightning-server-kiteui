@@ -4,18 +4,20 @@ import com.lightningkite.lightningserver.runtime.ServerRuntime
 import com.lightningkite.lightningserver.typed.ClientModelRestEndpoints
 import com.lightningkite.lightningserver.typed.sdk.SDK.processToModules
 import com.lightningkite.lightningserver.typed.sdk.SDK.sdk
+import com.lightningkite.services.data.ExperimentalLightningServer
 import com.lightningkite.services.data.KFile
 
+@OptIn(ExperimentalLightningServer::class)
 public class CachingSdk(
     public val packageName: String,
     public val rootInfo: SdkModule.Info = SdkModule.Info("Api"),
     public val filename: String = "Cached${rootInfo.interfaceName}.kt"
 ) : SDK.Format {
     context(server: ServerRuntime)
-    override fun write(folder: KFile) {
+    override fun write(archive: Archive) {
         val processed = server.server.sdk(rootInfo).processToModules().ensureUniqueNames()
 
-        folder.then(filename).overwrite { writeCache(processed, packageName) }
+        archive.appendableEntry(filename) { writeCache(processed, packageName) }
     }
 
     context(_: ServerRuntime)
@@ -64,11 +66,6 @@ public class CachingSdk(
         (imports.toList() + imports())
             .distinct()
             .joinTo(buffer, "\n", prefix = "\n", postfix = "\n\n") { "import $it" }
-    }
-
-    private fun KFile.overwrite(action: Appendable.() -> Unit) {
-        parent?.createDirectories()
-        sink().useAsAppendable(action)
     }
 
     private fun String.pluralize() = when {
