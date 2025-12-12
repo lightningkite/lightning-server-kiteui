@@ -3,16 +3,17 @@
 agp = "8.11.2"
 androidDesugaring = "2.1.5"
 dokka = "2.1.0"
-graalVmNative = "0.11.2"
+graalVmNative = "0.11.3"
+kfc = "16.1.0"
 kiteui = "7.0.0-prerelease-93"
 kotlin = "2.2.20"
 kotlinxCoroutinesTest = "1.10.2"
 kotlinxSerializationCsvDurable = "0.2.21-1"
-ksp = "2.2.20-2.0.3"
-lightningServer = "5.0.0-prerelease-272"
+ksp = "2.2.20-2.0.4"
+lightningServer = "5.0.0-prerelease-273"
 lkGradleHelpers = "4.0.6"
-proguard = "7.8.1"
-serviceAbstractions = "0.0.1-87"
+proguard = "7.8.2"
+serviceAbstractions = "0.0.1-94"
 shadow = "8.1.1"
 vanniktechPublishing = "0.34.0"
 vite = "0.6.0" # Don't update to 0.6.3, it is broke
@@ -38,6 +39,8 @@ androidLibrary = { id = "com.android.library", version = { ref = "agp" } }
 comLightningkiteKiteui = { id = "com.lightningkite.kiteui", version = { ref = "kiteui" } }
 dokka = { id = "org.jetbrains.dokka", version = { ref = "dokka" } }
 graalVmNative = { id = "org.graalvm.buildtools.native", version = { ref = "graalVmNative" } }
+jsPlainObjects = { id = "org.jetbrains.kotlin.plugin.js-plain-objects", version = "2.2.21" }
+kfc = { id = "io.github.turansky.kfc.application", version = { ref = "kfc"} }
 kotlinCocoapods = { id = "org.jetbrains.kotlin.native.cocoapods", version = { ref = "kotlin" } }
 kotlinJvm = { id = "org.jetbrains.kotlin.jvm", version = { ref = "kotlin" } }
 kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version = { ref = "kotlin" } }
@@ -46,5 +49,3 @@ serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version = { 
 shadow = { id = "com.github.johnrengelman.shadow", version = { ref = "shadow" } }
 vanniktechPublishing = { id = "com.vanniktech.maven.publish", version = { ref = "vanniktechPublishing" } }
 vite = { id = "dev.opensavvy.vite.kotlin", version = { ref = "vite" } }
-jsPlainObjects = { id = "org.jetbrains.kotlin.plugin.js-plain-objects", version = "2.2.21" }
-kfc = { id = "io.github.turansky.kfc.application", version = "16.0.0" }
