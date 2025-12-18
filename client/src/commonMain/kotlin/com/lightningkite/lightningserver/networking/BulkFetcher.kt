@@ -8,6 +8,7 @@ import com.lightningkite.lightningserver.LsErrorException
 import com.lightningkite.lightningserver.typed.BulkRequest
 import com.lightningkite.lightningserver.typed.BulkResponse
 import com.lightningkite.lightningserver.websocket.MultiplexMessage
+import com.lightningkite.reactive.context.awaitOnce
 import com.lightningkite.reactive.context.reactiveScope
 import com.lightningkite.reactive.core.AppScope
 import com.lightningkite.reactive.core.Reactive
@@ -35,6 +36,12 @@ class BulkFetcher(
 ) : Fetcher {
     override fun withHeaderCalculator(calculator: suspend () -> List<Pair<String, String>>): Fetcher =
         BulkFetcher(httpBulk, wsMultiplex, json, pingTime, delay, log, calculator)
+
+    companion object {
+        val channelInitialBackoff: Duration = 100.milliseconds
+        val channelMaxBackoff: Duration = 30_000.milliseconds
+        val channelStableConnectionThreshold: Duration = 5_000.milliseconds
+    }
 
     private var fetchQueue = HashMap<String, Pair<BulkRequest, CancellableContinuation<BulkResponse>>>()
     private var scheduled = false
@@ -144,10 +151,18 @@ class BulkFetcher(
         val channelOpen = Signal(false)
         val channel = UUID.Companion.random().toString()
 
+        private var reconnectJob: Job? = null
+        private val backoff = ChannelBackoff(
+            initialBackoff = channelInitialBackoff,
+            maxBackoff = channelMaxBackoff,
+            stableConnectionThreshold = channelStableConnectionThreshold,
+        )
+
         init {
             remember.onMessage { message ->
                 if (message.channel == channel) {
                     if (message.start) {
+                        backoff.onConnectionOpened()
                         channelOpen.value = true
                         onOpenList.forEach { it() }
                     }
@@ -156,6 +171,11 @@ class BulkFetcher(
                     }
                     if (message.end) {
                         channelOpen.value = false
+                        val wasIntentional = shouldBeOn.value <= 0
+                        backoff.onConnectionClosed(wasIntentional)
+                        if (!wasIntentional) {
+                            log?.log("Channel $channel closed unexpectedly, backoff now ${backoff.currentBackoffMs}ms")
+                        }
                         onCloseList.forEach { it(-1) }
                     }
                 }
@@ -179,20 +199,39 @@ class BulkFetcher(
             }
         }
 
+        // Reactive scope pattern: whenever any signal changes, re-evaluate what to do.
+        // Only one reconnectJob runs at a time - we cancel before launching a new one.
+        // If signals change rapidly during backoff, we restart the backoff (intentional -
+        // we want to wait for stability before reconnecting).
         val lifecycle = CoroutineScope(Job()).apply {
             reactiveScope {
                 val shouldBeOn = shouldBeOn() > 0
                 val isOn = channelOpen()
                 val parentConnected = remember.connected()
+
+                // Always cancel pending reconnect when re-evaluating
+                reconnectJob?.cancel()
+                reconnectJob = null
+
                 if (shouldBeOn && parentConnected && !isOn) {
-                    remember.send(
-                        MultiplexMessage(
-                            channel = channel,
-                            path = path,
-                            queryParams = params,
-                            start = true
-                        )
-                    )
+                    reconnectJob = launch {
+                        val backoffWithJitter = backoff.getBackoffWithJitter()
+                        if (backoffWithJitter > 0) {
+                            log?.log("Channel $channel backing off for ${backoffWithJitter}ms before reconnect")
+                            delay(backoffWithJitter)
+                        }
+                        // Re-verify conditions after delay (signals may have changed)
+                        if (this@WebsocketChannel.shouldBeOn.value > 0 && remember.connected.awaitOnce() && !channelOpen.value) {
+                            remember.send(
+                                MultiplexMessage(
+                                    channel = channel,
+                                    path = path,
+                                    queryParams = params,
+                                    start = true
+                                )
+                            )
+                        }
+                    }
                 } else if (!shouldBeOn && parentConnected && isOn) {
                     remember.send(
                         MultiplexMessage(
