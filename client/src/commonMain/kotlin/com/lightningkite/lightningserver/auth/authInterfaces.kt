@@ -13,7 +13,7 @@ import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.serialization.ExperimentalSerializationApi
-import kotlin.time.Clock
+import kotlin.time.Clock.System.now
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Instant
@@ -39,7 +39,9 @@ data class AuthEndpoints(
     val knownDeviceProof: ProofClientEndpoints.KnownDevice? = null,
     val webAuthNProof: ProofClientEndpoints.WebAuthN? = null,
     val webAuthNIncludePasskeyUI: Boolean = webAuthNProof != null,
-    private val withAuthentication: AuthEndpoints.(LightningServerAuthentication?) -> AuthEndpoints = { copy(authentication = it) }
+    private val withAuthentication: AuthEndpoints.(LightningServerAuthentication?) -> AuthEndpoints = {
+        copy(authentication = it)
+    },
 ) {
     fun withAuth(auth: LightningServerAuthentication?) =
         if (auth == authentication) this
@@ -91,7 +93,7 @@ data class AuthEndpoints(
 
         val dummy = AuthEndpoints(
             subjects = mapOf("User" to object : AuthClientEndpoints<HasId<String>, String> {
-//                override suspend fun getToken(input: OauthTokenRequest): OauthResponse = OauthResponse("")
+                //                override suspend fun getToken(input: OauthTokenRequest): OauthResponse = OauthResponse("")
                 override suspend fun getTokenSimple(input: String): String = ""
                 override suspend fun getSelf(): HasId<String> = TODO()
 
@@ -126,7 +128,7 @@ data class AuthEndpoints(
                         id = "id",
                         options = get(input).filter { it.method.via !in input.map { it.via } },
                         strengthRequired = 3,
-                        maxExpiration = Clock.System.now() + 7.days,
+                        maxExpiration = now() + 7.days,
                         readyToLogIn = input.sumOf { it.strength } >= 3
                     )
                 }
@@ -150,7 +152,14 @@ data class AuthEndpoints(
                     if (input.password == "wrong") throw LsErrorException(
                         LSError(400, "", "Code incorrect. 4 attempts remain", "")
                     )
-                    return Proof("sms", property = "phone", value = input.key, at = Clock.System.now(), signature = "")
+                    return Proof(
+                        "sms",
+                        property = "phone",
+                        value = input.key,
+                        at = now(),
+                        signature = "",
+                        expiresAt = now().plus(15.minutes)
+                    )
                 }
             },
             emailProof = object : ProofClientEndpoints.Email {
@@ -164,7 +173,14 @@ data class AuthEndpoints(
                     if (input.password == "wrong") throw LsErrorException(
                         LSError(400, "", "Code incorrect. 4 attempts remain", "")
                     )
-                    return Proof("email", property = "email", value = input.key, at = Clock.System.now(), signature = "")
+                    return Proof(
+                        "email",
+                        property = "email",
+                        value = input.key,
+                        at = now(),
+                        signature = "",
+                        expiresAt = now().plus(15.minutes)
+                    )
                 }
             },
             passwordProof = object : ProofClientEndpoints.Password {
@@ -174,7 +190,14 @@ data class AuthEndpoints(
 
                         LSError(400, "", "Password and user do not match", "")
                     )
-                    return Proof("password", property = "password", value = "id", at = Clock.System.now(), signature = "")
+                    return Proof(
+                        "password",
+                        property = "password",
+                        value = "id",
+                        at = now(),
+                        signature = "",
+                        expiresAt = now().plus(15.minutes)
+                    )
                 }
 
                 override suspend fun establishPassword(input: EstablishPassword) {
@@ -188,7 +211,14 @@ data class AuthEndpoints(
 
                         LSError(400, "", "OTP and user do not match", "")
                     )
-                    return Proof("otp", property = "otp", value = "id", at = Clock.System.now(), signature = "")
+                    return Proof(
+                        "otp",
+                        property = "otp",
+                        value = "id",
+                        at = now(),
+                        signature = "",
+                        expiresAt = now().plus(15.minutes)
+                    )
                 }
 
                 override suspend fun establishOneTimePassword(input: EstablishTotp): String {
@@ -204,7 +234,15 @@ data class AuthEndpoints(
                 override suspend fun proveKnownDevice(input: String): Proof {
                     delay(1000)
                     if (input == "wrong") throw LsErrorException(LSError(400, "", "", ""))
-                    return Proof("known-device", 1, "id", "value", Clock.System.now(), "")
+                    return Proof(
+                        "known-device",
+                        1,
+                        "id",
+                        "value",
+                        now(),
+                        signature = "",
+                        expiresAt = now().plus(15.minutes)
+                    )
                 }
 
                 override suspend fun knownDeviceOptions(): KnownDeviceOptions {
@@ -219,7 +257,7 @@ data class AuthEndpoints(
 
                 override suspend fun establishKnownDeviceV2(): KnownDeviceSecretAndExpiration {
                     delay(1000)
-                    return KnownDeviceSecretAndExpiration("ok", Clock.System.now() + 30.days)
+                    return KnownDeviceSecretAndExpiration("ok", now() + 30.days)
                 }
             },
             webAuthNProof = object : ProofClientEndpoints.WebAuthN {
@@ -236,10 +274,19 @@ data class AuthEndpoints(
 
                 override suspend fun prove(input: WebAuthN.Authentication.ProveRequest): Proof {
                     delay(1000)
-                    return Proof(via = "WebAuthN", property = "WebAuthN", value = "id", at = Clock.System.now(), signature = "")
+                    return Proof(
+                        via = "WebAuthN",
+                        property = "WebAuthN",
+                        value = "id",
+                        at = now(),
+                        signature = "",
+                        expiresAt = now().plus(15.minutes)
+                    )
                 }
 
-                override suspend fun registerStart(input: WebAuthN.GeneralPreference): WebAuthN.Registration.RegistrationResponse = TODO()
+                override suspend fun registerStart(input: WebAuthN.GeneralPreference): WebAuthN.Registration.RegistrationResponse =
+                    TODO()
+
                 override suspend fun registerFinish(input: WebAuthN.Registration.RegisterRequest) = TODO()
             },
             backupCodeProof = object : ProofClientEndpoints.BackupCode {
@@ -248,7 +295,14 @@ data class AuthEndpoints(
                     if (input.password == "wrong") throw LsErrorException(
                         LSError(400, "", "OTP and user do not match", "")
                     )
-                    return Proof("backupcode", property = "backupcode", value = "id", at = Clock.System.now(), signature = "")
+                    return Proof(
+                        "backupcode",
+                        property = "backupcode",
+                        value = "id",
+                        at = now(),
+                        signature = "",
+                        expiresAt = now().plus(15.minutes)
+                    )
                 }
 
                 override suspend fun clearCodes() {
@@ -265,9 +319,9 @@ data class AuthEndpoints(
 fun <USER : HasId<ID>, ID : Comparable<ID>> AuthClientEndpoints<USER, ID>.accessToken(sessionToken: String): suspend () -> List<Pair<String, String>> =
     accessToken(sessionToken, null)
 
-fun<USER : HasId<ID>, ID : Comparable<ID>> AuthClientEndpoints<USER, ID>.accessToken(
+fun <USER : HasId<ID>, ID : Comparable<ID>> AuthClientEndpoints<USER, ID>.accessToken(
     sessionToken: String,
-    forceInvalidate: Listenable?
+    forceInvalidate: Listenable?,
 ): suspend () -> List<Pair<String, String>> {
     var lastRefresh: Instant = Instant.DISTANT_PAST
     var token: Deferred<String>? = null
@@ -279,8 +333,8 @@ fun<USER : HasId<ID>, ID : Comparable<ID>> AuthClientEndpoints<USER, ID>.accessT
     }
     return {
         var toUse = token
-        if (Clock.System.now() - lastRefresh > 4.minutes || toUse == null) {
-            lastRefresh = Clock.System.now()
+        if (now() - lastRefresh > 4.minutes || toUse == null) {
+            lastRefresh = now()
             val out = AppScope.async {
                 getTokenSimple(sessionToken)
             }

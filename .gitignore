@@ -18,3 +18,4 @@ version.js
 local
 settings.json
 settings.suggested.json
+package-lock.json
