@@ -38,7 +38,7 @@ module "web" {
     aws.acm = aws.acm
   }
   deployment_name = "lsadmin-beta"
-  dist_folder = "../../build/dist/js/production"
+  dist_folder = "../../build/vite/dist"
   domain_name = "beta.lsadmin.cs.lightningkite.com"
   domain_name_zone = "cs.lightningkite.com"
   react_mode = true

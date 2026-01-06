@@ -29,8 +29,8 @@ public val LsHttpMethod.kiteUi: HttpMethod get() = when (this) {
 
 public val HttpMethod.lightningServer: LsHttpMethod get() = when (this) {
     HttpMethod.GET -> LsHttpMethod.GET
-    HttpMethod.POST -> LsHttpMethod.PUT
-    HttpMethod.PUT -> LsHttpMethod.POST
+    HttpMethod.POST -> LsHttpMethod.POST
+    HttpMethod.PUT -> LsHttpMethod.PUT
     HttpMethod.PATCH -> LsHttpMethod.PATCH
     HttpMethod.DELETE -> LsHttpMethod.DELETE
     HttpMethod.HEAD -> LsHttpMethod.HEAD

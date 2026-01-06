@@ -9,8 +9,7 @@ plugins {
     alias(libs.plugins.ksp)
     alias(libs.plugins.serialization)
 //    alias(libs.plugins.dokka)
-    alias(libs.plugins.jsPlainObjects)
-    alias(libs.plugins.kfc)
+    alias(libs.plugins.vite)
     alias(libs.plugins.comLightningkiteKiteui)
 }
 apply<KiteUiPlugin>()
@@ -93,10 +92,14 @@ configure<KiteUiPluginExtension> {
     this.iosProjectRoot = project.file("../example-app-ios/KiteUI Example App")
 }
 
+vite {
+    publicDir.set(project.file("src/jsMain/resources").absolutePath)
+}
+
 fun env(name: String, profile: String) {
     tasks.create("deployWeb${name}Init", Exec::class.java) {
         group = "deploy"
-        this.dependsOn("jsBundleProduction")
+        this.dependsOn("viteBuild")
         this.environment("AWS_PROFILE", "$profile")
         val props = Properties()
         props.entries.forEach {
