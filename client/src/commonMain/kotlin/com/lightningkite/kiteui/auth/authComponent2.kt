@@ -122,6 +122,7 @@ open class AuthComponent2(
 ) {
     /** The user's current primary identifier (email/phone/username/passkey ID), or null if not yet determined */
     val primaryIdentifier = Signal<UserIdentification?>(null)
+    val rawPrimaryInput = Signal("")
 
     /** List of successfully collected proofs. Accumulates as user completes authentication steps. */
     val proofs = Signal(listOf<Proof>())
@@ -292,18 +293,17 @@ open class AuthComponent2(
                     }
                 }
                 // Local signal for text field binding (separate from validated primaryIdentifier)
-                val primaryIdentifier2 = Signal("")
-                content bind primaryIdentifier2
+                content bind rawPrimaryInput
                 // Sync text field with validated identifier (but not for passkey IDs)
                 reactive {
                     val p = primaryIdentifier()
                     // Don't show internal passkey IDs in the text field
                     if (p?.property?.contains("_id") != true)
-                        primaryIdentifier2.value = p?.value ?: primaryIdentifier2.value
+                        rawPrimaryInput.value = p?.value ?: rawPrimaryInput.value
                 }
                 // Validate and parse user input to determine identifier type
                 reactive {
-                    val it = primaryIdentifier2()
+                    val it = rawPrimaryInput()
                     if (it == primaryIdentifier.value?.value) return@reactive
                     primaryIdentifier.value = run lens@{
                         if (it.isBlank()) return@lens null
