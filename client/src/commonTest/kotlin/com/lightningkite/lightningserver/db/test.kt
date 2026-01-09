@@ -5,6 +5,7 @@ import com.lightningkite.services.database.*
 import com.lightningkite.services.data.ExpectedPattern
 import com.lightningkite.services.data.GenerateDataClassPaths
 import com.lightningkite.services.data.Index
+import com.lightningkite.services.data.IndexUniqueness
 import com.lightningkite.services.data.MaxLength
 import kotlinx.serialization.Serializable
 
@@ -32,8 +33,9 @@ data class NestedEnumHolder(
 @Serializable
 data class User(
     override val _id: Uuid = Uuid.random(),
-    @Index(unique = true) override var email: String,
-    @Index(unique = true) override val phoneNumber: String,
+    // by Claude - fixed Index annotation to use IndexUniqueness enum
+    @Index(unique = IndexUniqueness.Unique) override var email: String,
+    @Index(unique = IndexUniqueness.Unique) override val phoneNumber: String,
     var age: Long = 0,
     var friends: List<Uuid> = listOf()
 ) : HasId<Uuid>, HasEmail, HasPhoneNumber {
