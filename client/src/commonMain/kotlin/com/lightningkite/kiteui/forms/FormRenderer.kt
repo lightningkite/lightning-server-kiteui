@@ -9,7 +9,7 @@ import com.lightningkite.kiteui.navigation.decodeFromString
 
 import com.lightningkite.kiteui.views.ViewWriter
 import com.lightningkite.kiteui.views.centered
-import com.lightningkite.kiteui.views.direct.stack
+import com.lightningkite.kiteui.views.direct.frame
 import com.lightningkite.kiteui.views.direct.text
 import com.lightningkite.services.database.HasId
 import com.lightningkite.services.database.SortPart
@@ -210,7 +210,7 @@ interface ViewRenderer<T> : Renderer<T> {
         override val handlesField: Boolean = false
         override val size: FormSize = FormSize.Block
         override val render: ViewWriter.(field: SerializableProperty<*, *>?, readable: Reactive<T>) -> Unit = { _, _ ->
-            ErrorSemantic.onNext.stack {
+            ErrorSemantic.onNext.frame {
                 centered.text("Blank for ${selector.serializer.displayName}")
             }
         }
@@ -379,7 +379,7 @@ interface FormRenderer<T> : Renderer<T> {
         override val handlesField: Boolean = false
         override val size: FormSize = FormSize.Block
         override val render: ViewWriter.(field: SerializableProperty<*, *>?, mutable: MutableReactive<T>) -> Unit = { _, _ ->
-            ErrorSemantic.onNext.stack {
+            ErrorSemantic.onNext.frame {
                 centered.text("Blank for ${selector.serializer.displayName}")
             }
         }
@@ -535,9 +535,11 @@ fun <T> KSerializer<T>.naturalSort(): List<SortPart<T>> {
         }
     } ?: serializableProperties?.find { it.name == "_id" && it.serializer == String.serializer() }?.let {
         // Named IDs (e.g., usernames, slugs) - sort ascending
+        @Suppress("UNCHECKED_CAST")
         listOf(SortPart(DataClassPathAccess(DataClassPathSelf(this), it as SerializableProperty<T, String>), ascending = true))
     } ?: serializableProperties?.find { !it.serializer.descriptor.isNullable &&  it.serializer.descriptor.serialName.substringBefore('/') == "kotlinx.datetime.Instant" }?.let {
         // Timestamps - sort descending (most recent first)
+        @Suppress("UNCHECKED_CAST")
         listOf(SortPart(DataClassPathAccess(DataClassPathSelf(this), it as SerializableProperty<T, Instant>), ascending = false))
     } ?: serializableProperties?.firstOrNull()?.let {
         // Fallback: use first field, whatever it is

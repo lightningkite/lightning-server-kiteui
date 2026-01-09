@@ -4,6 +4,7 @@ import com.lightningkite.kiteui.ExternalServices
 import com.lightningkite.kiteui.models.Icon
 import com.lightningkite.kiteui.models.ImageRemote
 import com.lightningkite.kiteui.models.rem
+import com.lightningkite.kiteui.requestFile
 import com.lightningkite.kiteui.views.centered
 import com.lightningkite.kiteui.views.direct.*
 import com.lightningkite.kiteui.views.expanding
@@ -35,10 +36,10 @@ object ServerFileRenderer  : FormRenderer.Generator, ViewRenderer.Generator {
                     }
                 }
                 centered.button {
-                    ::exists { module.fileUpload != null }
+                    ::shown { module.fileUpload != null }
                     icon(Icon.upload, "Upload")
                     onClick {
-                        ExternalServices.requestFile()?.let {
+                        context.requestFile()?.let {
                             mutable set module.fileUpload!!.invoke(it)
                         }
                     }

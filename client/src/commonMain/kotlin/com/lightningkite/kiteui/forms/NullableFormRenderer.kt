@@ -2,6 +2,7 @@ package com.lightningkite.kiteui.forms
 
 import com.lightningkite.kiteui.views.atTopStart
 import com.lightningkite.kiteui.views.direct.*
+import com.lightningkite.kiteui.views.direct.frame
 import com.lightningkite.kiteui.views.expanding
 import com.lightningkite.reactive.context.reactive
 import com.lightningkite.reactive.context.reactiveScope
@@ -52,6 +53,7 @@ object NullableFormRenderer : FormRenderer.Generator, ViewRenderer.Generator {
     }
 
     override fun size(module: FormModule, selector: FormSelector<*>): FormSize {
+        @Suppress("UNCHECKED_CAST")
         val innerSerializer = selector.serializer.nullElement()!! as KSerializer<Any>
         val innerSelector = selector.copy(innerSerializer)
         val inner = module.form(innerSelector)
@@ -80,7 +82,7 @@ object NullableFormRenderer : FormRenderer.Generator, ViewRenderer.Generator {
             row {
                 // Capture the last non-null value to restore when checkbox is re-checked
                 var ifNotNull: Any = mutable.state.getOrNull() ?: innerSerializer.default()
-                padded.stack {
+                padded.frame {
                     atTopStart.checkbox {
                         checked bind mutable.lens(
                             get = { v -> v != null },
@@ -91,13 +93,13 @@ object NullableFormRenderer : FormRenderer.Generator, ViewRenderer.Generator {
                         )
                     }
                 }
-                expanding.stack {
+                expanding.frame {
                     // Remember the initial null state
                     val isNull = remember { mutable() == null }
                     reactive {
                         clearChildren()
                         if (!isNull()) inner.render(
-                            this@stack,
+                            this@frame,
                             field,
                             mutable.lens(
                                 get = { v -> v ?: innerSerializer.default() },
@@ -127,7 +129,7 @@ object NullableFormRenderer : FormRenderer.Generator, ViewRenderer.Generator {
         val innerSelector by lazy { selector.copy(innerSerializer) }
         val inner by lazy { module.view(innerSelector) }
         return ViewRenderer(module, this, selector as FormSelector<Any?>) { field, readable ->
-            stack {
+            frame {
                 val isNull = remember { readable() == null }
                 reactiveScope {
                     clearChildren()
@@ -135,7 +137,7 @@ object NullableFormRenderer : FormRenderer.Generator, ViewRenderer.Generator {
                         text("N/A")
                     } else {
                         inner.render(
-                            this@stack,
+                            this@frame,
                             field,
                             // Provide default value if somehow null (defensive)
                             readable.lens { it ?: innerSerializer.default() }

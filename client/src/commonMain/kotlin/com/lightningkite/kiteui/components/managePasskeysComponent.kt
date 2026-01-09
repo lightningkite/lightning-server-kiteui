@@ -39,7 +39,7 @@ fun ViewWriter.manageWebAuthNCredentialsComponent(
         children (remember{ credentials()() }, { it._id }) { credential ->
             row {
                 col {
-                    spacing = 0.dp
+                    gap = 0.dp
                     text {
                         ::content { credential().displayName ?: "Passkey" }
                     }

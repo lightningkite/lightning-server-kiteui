@@ -70,6 +70,7 @@ object TableRenderer : FormRenderer.Generator, ViewRenderer.Generator {
      * Extracts the element serializer from the List serializer.
      * Uses !! operator - will throw if not a List serializer (should be guarded by matches()).
      */
+    @Suppress("UNCHECKED_CAST")
     fun inner(serializer: KSerializer<*>): KSerializer<Any?> = serializer.listElement()!! as KSerializer<Any?>
 
     /**
@@ -94,7 +95,7 @@ object TableRenderer : FormRenderer.Generator, ViewRenderer.Generator {
      */
     override fun priority(module: FormModule, selector: FormSelector<*>): Float {
         val innerSer = inner(selector.serializer)
-        val inner = module.form(selector.copy(innerSer, desiredSize = flp)) as FormRenderer<Any?>
+        val inner = module.form(selector.copy(innerSer, desiredSize = flp))
         return super<FormRenderer.Generator>.priority(
             module,
             selector
@@ -160,10 +161,12 @@ object TableRenderer : FormRenderer.Generator, ViewRenderer.Generator {
         linkTo: ((T) -> () -> Page)? = null,
         action: (suspend (T) -> Unit)? = null,
     ) = with(writer) {
+        @Suppress("UNCHECKED_CAST")
         val properties = innerSer.serializableProperties!! as Array<SerializableProperty<T, Any?>>
         // Cache renderers to avoid recreating them for each cell
         // Without this cache, every cell would create a new renderer instance, causing massive overhead
         val rendererCache = HashMap<DataClassPath<T, Any?>, ViewRenderer<Any?>>()
+        @Suppress("UNCHECKED_CAST")
         val anyCols = columns as MutableReactiveValue<List<DataClassPath<T, Any?>>>
 
         /**
@@ -185,7 +188,7 @@ object TableRenderer : FormRenderer.Generator, ViewRenderer.Generator {
             )
         }
 
-        scrollsHorizontally.col {
+        scrollingHorizontally.col {
             // Dynamically calculate total table width based on column renderers
             // This ensures the table scrolls horizontally when columns exceed viewport width
             // Width = sum of (column width + 2rem padding) + 5rem for margins
@@ -234,7 +237,7 @@ object TableRenderer : FormRenderer.Generator, ViewRenderer.Generator {
                     }
                 }
                 // Virtualized table body with infinite scroll pagination
-                expanding.onNext(ListSemantic).recyclerView {
+                expanding.themed(ListSemantic).recyclerView {
                     // Automatically increase limit for LimitReadable as user scrolls
                     // This implements "infinite scroll" - as user approaches the end, more data is loaded
                     reactive {

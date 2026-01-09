@@ -25,7 +25,7 @@ object JsonRenderer : ViewRenderer.Generator, FormRenderer.Generator {
 
     override fun <T> view(module: FormModule, selector: FormSelector<T>): ViewRenderer<T> {
         return ViewRenderer(module, this, selector) { _, it ->
-            onNext(JsonSemantic).text {
+            themed(JsonSemantic).text {
                 ::content {
                     json.encodeToString(selector.serializer, it())
                 }
@@ -35,7 +35,7 @@ object JsonRenderer : ViewRenderer.Generator, FormRenderer.Generator {
 
     override fun <T> form(module: FormModule, selector: FormSelector<T>): FormRenderer<T> {
         return FormRenderer(module, this, selector) { _, it ->
-            onNext(JsonSemantic).textArea {
+            themed(JsonSemantic).textArea {
                 content bind it.lens(
                     get = { json.encodeToString(selector.serializer, it) },
                     modify = { o, it ->

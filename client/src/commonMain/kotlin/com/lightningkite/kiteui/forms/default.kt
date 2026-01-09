@@ -101,6 +101,7 @@ private class MinEncoder() : AbstractEncoder() {
     var out: Any? = null
     override val serializersModule: SerializersModule = DefaultSerializersModule
     var index = -1
+    @Suppress("UNCHECKED_CAST")
     override fun encodeValue(value: Any) {
         if(index == -1) out = value
         else (out as MutableMap<Int, Any?>)[index] = value
@@ -119,12 +120,14 @@ private class MinEncoder() : AbstractEncoder() {
             val m = mutableMapOf<Int, Any?>()
             l.index = 0
             l.out = m
+            @Suppress("UNCHECKED_CAST")
             (out as MutableMap<Int, Any?>)[index] = m
             l
         }
     }
 
     override fun shouldEncodeElementDefault(descriptor: SerialDescriptor, index: Int): Boolean = true
+    @Suppress("UNCHECKED_CAST")
     override fun encodeNull() {
         if(index == -1) out = null
         else (out as MutableMap<Int, Any?>)[index] = null
@@ -135,6 +138,7 @@ private class MinDecoder(var item: Any?) : AbstractDecoder() {
     override val serializersModule: SerializersModule = DefaultSerializersModule
     var lastIndex: Int = -1
     var lastValue: Any? = item
+    @Suppress("UNCHECKED_CAST")
     val indexIter by lazy { (item as Map<Int, Any?>).iterator() }
     override fun decodeValue(): Any = lastValue!!
     override fun decodeNotNullMark(): Boolean = lastValue != null
@@ -154,6 +158,7 @@ private class MinDecoder(var item: Any?) : AbstractDecoder() {
 internal fun <T, V> KSerializer<T>.get(instance: T, index: Int, childSerializer: KSerializer<V>): V {
     val e = MinEncoder()
     this.serialize(e, instance)
+    @Suppress("UNCHECKED_CAST")
     val encodedValue = (e.out as Map<Int, Any?>)[index]
     val d = MinDecoder(encodedValue)
     return childSerializer.deserialize(d)
@@ -163,6 +168,7 @@ internal fun <T, V> KSerializer<T>.set(instance: T, index: Int, childSerializer:
     this.serialize(e, instance)
     val e2 = MinEncoder()
     childSerializer.serialize(e2, value)
+    @Suppress("UNCHECKED_CAST")
     val eo = e.out as MutableMap<Int, Any?>
     eo[index] = e2.out
     @Suppress("UNCHECKED_CAST") val d = MinDecoder(e.out)

@@ -46,6 +46,7 @@ object WrapperViewRenderer: ViewRenderer.Generator {
      * The resulting view is identical to the inner type's view.
      */
     override fun <T> view(module: FormModule, selector: FormSelector<T>): ViewRenderer<T> {
+        @Suppress("UNCHECKED_CAST")
         val innerSer = (selector.serializer as WrappingSerializer<T, Any?>)
         val inner = module.view(selector.copy(serializer = innerSer.getDeferred()))
         return ViewRenderer<T>(module, this, selector, size = inner.size, handlesField = inner.handlesField) { field, mutable ->

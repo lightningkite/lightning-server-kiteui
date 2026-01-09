@@ -55,8 +55,9 @@ import com.lightningkite.reactive.core.remember
 import com.lightningkite.reactive.extensions.nullable
 import com.lightningkite.reactive.extensions.withWrite
 import com.lightningkite.services.database.SerializableAnnotationValue
-import kotlinx.serialization.builtins.serializer
 import kotlinx.datetime.*
+import kotlinx.serialization.builtins.serializer
+import kotlin.time.Instant
 import kotlin.uuid.Uuid
 
 /**
@@ -196,7 +197,7 @@ fun FormModule.defaults() {
             align = Align.End
             content bind it.lens(
                 get = { it?.toString(16) ?: "" },
-                set = { it?.toByteOrNull(16) })
+                set = { it.toByteOrNull(16) })
         }
     }
     formForType<Short?>(FormSize.Inline, name = "Hexadecimal", priority = 0.9f) { it ->
@@ -204,7 +205,7 @@ fun FormModule.defaults() {
             align = Align.End
             content bind it.lens(
                 get = { it?.toString(16) ?: "" },
-                set = { it?.toShortOrNull(16) })
+                set = { it.toShortOrNull(16) })
         }
     }
     formForType<Int?>(FormSize.Inline, name = "Hexadecimal", priority = 0.9f) { it ->
@@ -212,7 +213,7 @@ fun FormModule.defaults() {
             align = Align.End
             content bind it.lens(
                 get = { it?.toString(16) ?: "" },
-                set = { it?.toIntOrNull(16) })
+                set = { it.toIntOrNull(16) })
         }
     }
     formForType<Long?>(FormSize.Inline, name = "Hexadecimal", priority = 0.9f) { it ->
@@ -220,7 +221,7 @@ fun FormModule.defaults() {
             align = Align.End
             content bind it.lens(
                 get = { it?.toString(16) ?: "" },
-                set = { it?.toLongOrNull(16) })
+                set = { it.toLongOrNull(16) })
         }
     }
     formForType<Byte>(FormSize.Inline, name = "Hexadecimal", priority = 0.9f) { it ->
@@ -228,7 +229,7 @@ fun FormModule.defaults() {
             align = Align.End
             content bind it.lens(
                 get = { it.toString(16) },
-                modify = { o, it -> it?.toByteOrNull(16) ?: o })
+                modify = { o, it -> it.toByteOrNull(16) ?: o })
         }
     }
     formForType<Short>(FormSize.Inline, name = "Hexadecimal", priority = 0.9f) { it ->
@@ -236,7 +237,7 @@ fun FormModule.defaults() {
             align = Align.End
             content bind it.lens(
                 get = { it.toString(16) },
-                modify = { o, it -> it?.toShortOrNull(16) ?: o })
+                modify = { o, it -> it.toShortOrNull(16) ?: o })
         }
     }
     formForType<Int>(FormSize.Inline, name = "Hexadecimal", priority = 0.9f) { it ->
@@ -244,7 +245,7 @@ fun FormModule.defaults() {
             align = Align.End
             content bind it.lens(
                 get = { it.toString(16) },
-                modify = { o, it -> it?.toIntOrNull(16) ?: o })
+                modify = { o, it -> it.toIntOrNull(16) ?: o })
         }
     }
     formForType<Long>(FormSize.Inline, name = "Hexadecimal", priority = 0.9f) { it ->
@@ -252,7 +253,7 @@ fun FormModule.defaults() {
             align = Align.End
             content bind it.lens(
                 get = { it.toString(16) },
-                modify = { o, it -> it?.toLongOrNull(16) ?: o })
+                modify = { o, it -> it.toLongOrNull(16) ?: o })
         }
     }
 
@@ -263,7 +264,7 @@ fun FormModule.defaults() {
             align = Align.End
             content bind it.lens(
                 get = { it?.toString(2) ?: "" },
-                set = { it?.toByteOrNull(2) })
+                set = { it.toByteOrNull(2) })
         }
     }
     formForType<Short?>(FormSize.Inline, name = "Binary", priority = 0.8f) { it ->
@@ -271,7 +272,7 @@ fun FormModule.defaults() {
             align = Align.End
             content bind it.lens(
                 get = { it?.toString(2) ?: "" },
-                set = { it?.toShortOrNull(2) })
+                set = { it.toShortOrNull(2) })
         }
     }
     formForType<Int?>(FormSize.Inline, name = "Binary", priority = 0.8f) { it ->
@@ -279,7 +280,7 @@ fun FormModule.defaults() {
             align = Align.End
             content bind it.lens(
                 get = { it?.toString(2) ?: "" },
-                set = { it?.toIntOrNull(2) })
+                set = { it.toIntOrNull(2) })
         }
     }
     formForType<Long?>(FormSize.Inline, name = "Binary", priority = 0.8f) { it ->
@@ -287,7 +288,7 @@ fun FormModule.defaults() {
             align = Align.End
             content bind it.lens(
                 get = { it?.toString(2) ?: "" },
-                set = { it?.toLongOrNull(2) })
+                set = { it.toLongOrNull(2) })
         }
     }
     formForType<Byte>(FormSize.Inline, name = "Binary", priority = 0.8f) { it ->
@@ -295,7 +296,7 @@ fun FormModule.defaults() {
             align = Align.End
             content bind it.lens(
                 get = { it.toString(2) },
-                modify = { o, it -> it?.toByteOrNull(2) ?: o })
+                modify = { o, it -> it.toByteOrNull(2) ?: o })
         }
     }
     formForType<Short>(FormSize.Inline, name = "Binary", priority = 0.8f) { it ->
@@ -303,7 +304,7 @@ fun FormModule.defaults() {
             align = Align.End
             content bind it.lens(
                 get = { it.toString(2) },
-                modify = { o, it -> it?.toShortOrNull(2) ?: o })
+                modify = { o, it -> it.toShortOrNull(2) ?: o })
         }
     }
     formForType<Int>(FormSize.Inline, name = "Binary", priority = 0.8f) { it ->
@@ -311,7 +312,7 @@ fun FormModule.defaults() {
             align = Align.End
             content bind it.lens(
                 get = { it.toString(2) },
-                modify = { o, it -> it?.toIntOrNull(2) ?: o })
+                modify = { o, it -> it.toIntOrNull(2) ?: o })
         }
     }
     formForType<Long>(FormSize.Inline, name = "Binary", priority = 0.8f) { it ->
@@ -319,7 +320,7 @@ fun FormModule.defaults() {
             align = Align.End
             content bind it.lens(
                 get = { it.toString(2) },
-                modify = { o, it -> it?.toLongOrNull(2) ?: o })
+                modify = { o, it -> it.toLongOrNull(2) ?: o })
         }
     }
 

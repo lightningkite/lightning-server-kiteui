@@ -5,10 +5,10 @@ import com.lightningkite.kiteui.models.SubtextSemantic
 import com.lightningkite.kiteui.models.px
 import com.lightningkite.kiteui.models.rem
 import com.lightningkite.kiteui.views.atTopEnd
+import com.lightningkite.kiteui.views.direct.frame
 import com.lightningkite.kiteui.views.direct.row
 import com.lightningkite.kiteui.views.direct.select
 import com.lightningkite.kiteui.views.direct.sizeConstraints
-import com.lightningkite.kiteui.views.direct.stack
 import com.lightningkite.kiteui.views.expanding
 import com.lightningkite.reactive.context.reactive
 import com.lightningkite.reactive.core.Constant
@@ -268,16 +268,23 @@ class FormModule {
             val selected = Signal(options.first())
             row {
 //                gap = 0.px
-                expanding.stack {
+                expanding.frame {
                     reactive {
                         val sel = selected()
                         clearChildren()
-                        sel.render(this@stack, field, mutable)
+                        sel.render(this@frame, field, mutable)
                     }
                 }
-                sizeConstraints(width = 0.75.rem, height = 0.75.rem).atTopEnd.onNext(SubtextSemantic).select {
+                sizeConstraints(width = 0.75.rem, height = 0.75.rem).atTopEnd.themed(SubtextSemantic).select {
                     gap = 0.px
-                    bind(selected, Constant(options)) { (it.generator?.name ?: "-") + " (${it.generator?.priority(this@FormModule, key)}, ${it.size.approximateWidth} x ${it.size.approximateHeight})" }
+                    bind(selected, Constant(options)) {
+                        (it.generator?.name ?: "-") + " (${
+                            it.generator?.priority(
+                                this@FormModule,
+                                key
+                            )
+                        }, ${it.size.approximateWidth} x ${it.size.approximateHeight})"
+                    }
                 }
             }
         }
@@ -330,14 +337,14 @@ class FormModule {
             val selected = Signal(options.first())
             row {
 //                gap = 0.px
-                expanding.stack {
+                expanding.frame {
                     reactive {
                         val sel = selected()
                         clearChildren()
-                        sel.render(this@stack, field, mutable)
+                        sel.render(this@frame, field, mutable)
                     }
                 }
-                sizeConstraints(width = 0.75.rem, height = 0.75.rem).onNext(SubtextSemantic).atTopEnd.select {
+                sizeConstraints(width = 0.75.rem, height = 0.75.rem).themed(SubtextSemantic).atTopEnd.select {
                     gap = 0.px
                     bind(selected, Constant(options)) { (it.generator?.name ?: "-") + " (${it.generator?.priority(this@FormModule, key)}, ${it.size.approximateWidth} x ${it.size.approximateHeight})" }
                 }

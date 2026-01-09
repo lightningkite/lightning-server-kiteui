@@ -55,6 +55,7 @@ object EnumFormRenderer: FormRenderer.Generator, ViewRenderer.Generator {
          * The list of available enum options.
          * For nullable enums, prepends null to the list of values.
          */
+        @Suppress("UNCHECKED_CAST")
         val options =  Constant((serializer.nullElement() ?: serializer).enumValues().let {
             if (serializer.descriptor.isNullable) listOf(null) + it else it
         } as List<T>)

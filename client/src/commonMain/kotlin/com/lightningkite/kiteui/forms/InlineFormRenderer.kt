@@ -71,7 +71,8 @@ object InlineFormRenderer : FormRenderer.Generator, ViewRenderer.Generator {
      * These should be prevented by matches() check, but worth noting.
      */
     override fun size(module: FormModule, selector: FormSelector<*>): FormSize {
-        val innerSerializer = selector.serializer.tryChildSerializers()!![0]!! as KSerializer<Any>
+        @Suppress("UNCHECKED_CAST")
+        val innerSerializer = selector.serializer.tryChildSerializers()!![0] as KSerializer<Any>
         val innerSelector = selector.copy(innerSerializer)
         val inner = module.form(innerSelector)
         return inner.size

@@ -74,6 +74,7 @@ class BulkFetcher(
         return suspendCancellableCoroutine { cont ->
             fetchQueue[id] = req to cont
         }.let { it: BulkResponse ->
+            @Suppress("UNCHECKED_CAST")
             if (it.error == null && outSerializer.descriptor.serialName == Unit.serializer().descriptor.serialName) Unit as O
             else if (it.result != null) json.decodeFromString(outSerializer, it.result!!)
             else throw LsErrorException(it.error ?: LSError(it.error?.http ?: 0))

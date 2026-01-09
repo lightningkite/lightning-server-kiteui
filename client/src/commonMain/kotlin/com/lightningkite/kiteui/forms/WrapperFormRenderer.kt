@@ -50,6 +50,7 @@ object WrapperFormRenderer: FormRenderer.Generator {
      * The resulting renderer is identical to the inner renderer from the user's perspective.
      */
     override fun <T> form(module: FormModule, selector: FormSelector<T>): FormRenderer<T> {
+        @Suppress("UNCHECKED_CAST")
         val innerSer = (selector.serializer as WrappingSerializer<T, Any?>)
         val inner = module.form(selector.copy(serializer = innerSer.getDeferred()))
         return FormRenderer<T>(module, this, selector, size = inner.size, handlesField = inner.handlesField) { field, mutable ->

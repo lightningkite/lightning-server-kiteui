@@ -35,6 +35,8 @@ object ForeignKeyRenderer : FormRenderer.Generator, ViewRenderer.Generator {
         }?.values ?: return false
         val typeName =
             anno.get("references")?.let { it as? SerializableAnnotationValue.ClassValue }?.fqn ?: return false
+
+        @Suppress("UNCHECKED_CAST")
         val typeInfo =
             module.typeInfo(typeName) as? FormTypeInfo<HasId<Comparable<Comparable<*>>>, Comparable<Comparable<*>>>
                 ?: return false
@@ -55,7 +57,7 @@ object ForeignKeyRenderer : FormRenderer.Generator, ViewRenderer.Generator {
                 gap = 0.px
                 expanding.menuButton {
                     requireClick = true
-                    gravity(Align.Start, Align.Center).text {
+                    align(Align.Start, Align.Center).text {
                         reactiveSuspending {
                             content = mutable()?.let { typeInfo.renderToString(it) } ?: "None"
                         }
@@ -124,7 +126,7 @@ object ForeignKeyRenderer : FormRenderer.Generator, ViewRenderer.Generator {
                                 expanding.fieldTheme.textInput {
                                     content bind textSearch
                                 }
-                                onlyWhen { full() }.menuButton {
+                                shownWhen { full() }.menuButton {
                                     dynamicTheme { if (condition() != Condition.Always) SelectedSemantic else null }
                                     icon(Icon.filterList, "Filter")
                                     requireClick = true
@@ -132,7 +134,7 @@ object ForeignKeyRenderer : FormRenderer.Generator, ViewRenderer.Generator {
                                         form(module, Condition.serializer(typeInfo.serializer), condition)
                                     }
                                 }
-                                onlyWhen { full() }.menuButton {
+                                shownWhen { full() }.menuButton {
                                     dynamicTheme { if (sort().isNotEmpty()) SelectedSemantic else null }
                                     icon(Icon.sort, "Sort")
                                     requireClick = true

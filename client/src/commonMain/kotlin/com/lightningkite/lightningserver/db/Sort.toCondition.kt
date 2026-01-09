@@ -42,6 +42,7 @@ fun <T> List<SortPart<T>>.after(after: T): Condition<T> {
 
             // Handle nullable fields (wrapped in DataClassPathNotNull)
             if(f is DataClassPathNotNull<*, *>) {
+                @Suppress("UNCHECKED_CAST")
                 f as DataClassPathNotNull<T, Comparable<Comparable<*>>>
                 val v = f.get(after)
 
@@ -72,6 +73,7 @@ fun <T> List<SortPart<T>>.after(after: T): Condition<T> {
                     }
                 )
             } else {
+                @Suppress("UNCHECKED_CAST")
                 // Handle non-nullable fields
                 f as DataClassPath<T, Comparable<Comparable<*>>>
                 val v = f.get(after)

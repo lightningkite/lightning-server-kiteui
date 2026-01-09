@@ -219,7 +219,7 @@ open class AuthComponent2(
             // Loading indicator while checking proofs with server
             centered.shownWhen { !authResult.state().ready }.activityIndicator()
             // Error display if proof validation fails
-            shownWhen { authResult.state().exception != null }.onNext(ErrorSemantic).col {
+            shownWhen { authResult.state().exception != null }.themed(ErrorSemantic).col {
                 val msg = remember { authResult.state().exception?.let { exceptionToMessage(it) } }
                 text { ::content { msg()?.title ?: "Error" } }
                 subtext { ::content { msg()?.body ?: "" } }

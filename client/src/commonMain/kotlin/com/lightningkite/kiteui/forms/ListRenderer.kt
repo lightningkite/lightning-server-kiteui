@@ -77,6 +77,7 @@ abstract class ListRenderer<C> : FormRenderer.Generator, ViewRenderer.Generator 
      * @References on the inner element, allowing proper foreign key rendering for collection items.
      */
     private fun inner(module: FormModule, selector: FormSelector<*>): FormSelector<out Any?> {
+        @Suppress("UNCHECKED_CAST")
         val innerSer = inner(selector.serializer as KSerializer<C>)
         val inner = selector.copy(
             innerSer,
@@ -97,6 +98,7 @@ abstract class ListRenderer<C> : FormRenderer.Generator, ViewRenderer.Generator 
      * contain multiple items. Adds 3 units of padding for margins and the add button.
      */
     override fun size(module: FormModule, selector: FormSelector<*>): FormSize {
+        @Suppress("UNCHECKED_CAST")
         val inner = module.form(inner(module, selector)) as FormRenderer<Any?>
         return if (vertical)
             inner.size.copy(approximateHeight = (inner.size.approximateHeight) * 10 + 3)
@@ -129,9 +131,9 @@ abstract class ListRenderer<C> : FormRenderer.Generator, ViewRenderer.Generator 
         return FormRenderer(module, this, selector as FormSelector<C>) { _, mutable ->
             row {
                 vertical = this@ListRenderer.vertical
-                if (!vertical) expanding.scrollsHorizontally
+                if (!vertical) expanding.scrollingHorizontally
                 text {
-                    ::exists { (mutable() as Collection<*>).isEmpty() }
+                    ::shown { (mutable() as Collection<*>).isEmpty() }
                     content = "Empty"
                 }
                 row {
@@ -192,7 +194,7 @@ abstract class ListRenderer<C> : FormRenderer.Generator, ViewRenderer.Generator 
             row {
                 vertical = this@ListRenderer.vertical
                 text {
-                    ::exists { (readable() as Collection<*>).isEmpty() }
+                    ::shown { (readable() as Collection<*>).isEmpty() }
                     content = "Empty"
                 }
                 row {

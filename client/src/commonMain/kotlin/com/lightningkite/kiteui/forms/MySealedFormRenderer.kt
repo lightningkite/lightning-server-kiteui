@@ -2,10 +2,10 @@ package com.lightningkite.kiteui.forms
 
 import com.lightningkite.kiteui.models.rem
 import com.lightningkite.kiteui.views.atTop
+import com.lightningkite.kiteui.views.direct.frame
 import com.lightningkite.kiteui.views.direct.row
 import com.lightningkite.kiteui.views.direct.select
 import com.lightningkite.kiteui.views.direct.sizeConstraints
-import com.lightningkite.kiteui.views.direct.stack
 import com.lightningkite.kiteui.views.expanding
 import com.lightningkite.kiteui.views.fieldTheme
 import com.lightningkite.services.database.MySealedClassSerializerInterface
@@ -36,15 +36,16 @@ object MySealedFormRenderer : FormRenderer.Generator {
                 atTop.sizeConstraints(width = 10.rem).fieldTheme.select {
                     bind(type, Constant(serializer.options)) { it.serializer.displayName }
                 }
-                expanding.stack {
+                expanding.frame {
                     reactive {
                         val type = type()
                         clearChildren()
                         @Suppress("UNCHECKED_CAST")
-                        (form(module, type.serializer as KSerializer<Any>, mutable.lens(
-                            get = { if (type.isInstance(it)) it else type.serializer.default() },
-                            set = { it }
-                        )))
+                        (form(
+                            module, type.serializer as KSerializer<Any>, mutable.lens(
+                                get = { if (type.isInstance(it)) it else type.serializer.default() },
+                                set = { it }
+                            )))
                     }
                 }
             }

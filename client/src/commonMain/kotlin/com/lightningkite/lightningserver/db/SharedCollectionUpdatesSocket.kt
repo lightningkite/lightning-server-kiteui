@@ -1,6 +1,6 @@
 package com.lightningkite.lightningserver.db
 
-import com.lightningkite.kiteui.Console
+import com.lightningkite.kiteui.Log
 import com.lightningkite.kiteui.TypedWebSocket
 import com.lightningkite.kiteui.navigation.DefaultJson
 import com.lightningkite.services.database.CollectionUpdates
@@ -70,7 +70,7 @@ class SharedCollectionUpdatesSocket<T : HasId<ID>, ID : Comparable<ID>>(
     val scope: CoroutineScope,
     val socket: TypedWebSocket<Condition<T>, CollectionUpdates<T, ID>>,
     val onChange: (CollectionUpdates<T, ID>) -> Unit,
-    val log: Console? = null,  // TODO: log this somewhere that I can access later
+    val log: Log? = null,  // TODO: log this somewhere that I can access later
 ) {
     /**
      * Creates a requirement for monitoring a specific condition.

@@ -1,6 +1,6 @@
 package com.lightningkite.lightningserver.db
 
-import com.lightningkite.kiteui.Console
+import com.lightningkite.kiteui.Log
 import com.lightningkite.kiteui.identityHashCode
 import kotlinx.coroutines.*
 import kotlin.time.Duration
@@ -55,7 +55,7 @@ import kotlin.time.Duration.Companion.seconds
 class BatchAndQueue<T, R>(
     val scope: CoroutineScope,
     val batchWait: Duration = 0.1.seconds,
-    val log: Console? = null,
+    val log: Log? = null,
     val fulfill: suspend (List<T>) -> List<R>
 ) {
     /**

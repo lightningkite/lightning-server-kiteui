@@ -1,6 +1,6 @@
 package com.lightningkite.lightningserver.db
 
-import com.lightningkite.kiteui.Console
+import com.lightningkite.kiteui.Log
 import com.lightningkite.services.database.HasId
 import com.lightningkite.services.database.Query
 import com.lightningkite.services.database.comparator
@@ -46,7 +46,7 @@ import kotlin.time.Clock
  */
 class NaiveListReconstructionCalculator<T : HasId<ID>, ID : Comparable<ID>>(
     val serializer: KSerializer<T>,
-    val log: Console? = null,
+    val log: Log? = null,
     val clock: Clock = Clock.System
 ) : ListReconstructionCalculator<T, ID> {
     /** Cache of query results, keyed by the exact Query object (uses Query's equals/hashCode) */

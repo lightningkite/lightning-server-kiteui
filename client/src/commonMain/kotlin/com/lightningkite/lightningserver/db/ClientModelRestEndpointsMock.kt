@@ -1,7 +1,6 @@
 package com.lightningkite.lightningserver.db
 
 import com.lightningkite.kiteui.ConnectionException
-import com.lightningkite.kiteui.Console
 import com.lightningkite.kiteui.Log
 import com.lightningkite.services.database.*
 import com.lightningkite.lightningserver.LSError
