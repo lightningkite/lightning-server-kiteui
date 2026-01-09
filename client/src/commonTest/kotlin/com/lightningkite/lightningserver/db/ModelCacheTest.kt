@@ -7,6 +7,7 @@ import com.lightningkite.kiteui.current
 import com.lightningkite.services.database.*
 import com.lightningkite.reactive.context.reactive
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlin.test.Test
 import kotlin.test.assertContains
@@ -848,6 +849,279 @@ class ModelCacheTest {
         assertTrue(mock.data.containsKey(item1._id))
         assertTrue(mock.data.containsKey(item2._id))
         assertTrue(mock.data.containsKey(item3._id))
+    }
+
+    // =========================================================================
+    // totallyInvalidate() Bug Investigation Tests
+    // =========================================================================
+    // These tests attempt to expose issues with the totallyInvalidate() function
+    // which appears to not properly clear cached data.
+    //
+    // Current implementation of totallyInvalidate():
+    //   1. Emits to totalInvalidation flow (NOT consumed anywhere!)
+    //   2. Calls interrupt.interrupt() (only wakes up polling loops)
+    //
+    // What it should do but doesn't:
+    //   - Clear cache.clear() on ListReconstructionCalculator
+    //   - Emit CacheUpdate.SocketOverload() to newData
+    //   - Unset lastIndividualValues
+    // =========================================================================
+
+    /**
+     * Tests that totallyInvalidate() works immediately, not relying on cache expiration timing.
+     * by Claude
+     *
+     * This test verifies that after totallyInvalidate():
+     * 1. Fresh data is fetched from the server
+     * 2. The updated data is received
+     *
+     * BUG EXPOSURE: The current implementation only interrupts the polling delay,
+     * but if the cached data is still within maximumAge, the polling loop will
+     * see fresh data and NOT refetch.
+     */
+    @Test
+    fun totalInvalidationImmediate() = runTest2 {
+        val mock = ClientModelRestEndpointsMock<LargeTestModel, Uuid>(this)
+        val initialItem = LargeTestModel(int = 1)
+        mock.data[initialItem._id] = initialItem
+        val cache = ModelCache<LargeTestModel, Uuid>(
+            mock,
+            LargeTestModel.serializer(),
+            scope = backgroundScope,
+            log = testLog
+        )
+
+        // Get initial data with a LONG maximumAge so it won't naturally expire
+        var lastRead: LargeTestModel? = null
+        val ref = cache.item(initialItem._id, maximumAge = 10.minutes, pullFrequency = 60.seconds)
+        reactive {
+            lastRead = ref()
+        }
+        delay(5.seconds)
+        assertEquals(initialItem, lastRead)
+
+        // Modify the data in the mock (simulating server-side change)
+        val updatedItem = initialItem.copy(short = 99)
+        mock.data[initialItem._id] = updatedItem
+
+        // Total invalidation should clear cache and trigger refetch
+        cache.totallyInvalidate()
+
+        // Give time for refetch
+        delay(5.seconds)
+
+        // Verify the updated data is received
+        assertEquals(updatedItem, lastRead, "Expected updated item after invalidation, but got stale data")
+    }
+
+    /**
+     * Tests that totallyInvalidate() works with WebSocket connections.
+     *
+     * When using WebSockets, data is considered "live" and the polling loop
+     * won't refetch unless the cache is truly cleared.
+     *
+     * BUG EXPOSURE: The current implementation doesn't emit CacheUpdate.SocketOverload()
+     * to newData, so "live" data remains in the cache and is never invalidated.
+     */
+    @Test
+    fun totalInvalidationWithWebSocket() = runTest2 {
+        val mock = ClientModelRestEndpointsPlusUpdatesWebsocketMock<LargeTestModel, Uuid>(this)
+        val initialItem = LargeTestModel(int = 1)
+        mock.data[initialItem._id] = initialItem
+        val cache = ModelCache<LargeTestModel, Uuid>(
+            mock,
+            LargeTestModel.serializer(),
+            scope = backgroundScope,
+            log = testLog
+        )
+
+        // Get initial data with WebSocket (pullFrequency < 30s triggers socket use)
+        var lastRead: LargeTestModel? = null
+        val ref = cache.item(initialItem._id, maximumAge = 10.minutes, pullFrequency = 10.seconds)
+        reactive {
+            lastRead = ref()
+        }
+        delay(5.seconds)
+        assertEquals(initialItem, lastRead)
+
+        // Modify the data directly in mock storage (NOT through WebSocket)
+        // This simulates data that changed outside the socket's awareness
+        val updatedItem = initialItem.copy(short = 99)
+        mock.data[initialItem._id] = updatedItem
+
+        // Total invalidation should force a refetch even with WebSocket
+        cache.totallyInvalidate()
+        delay(5.seconds)
+
+        // Verify the updated data is received
+        assertEquals(updatedItem, lastRead, "Expected updated item after invalidation with WebSocket")
+    }
+
+    /**
+     * Tests that totallyInvalidate() properly clears list caches.
+     *
+     * BUG EXPOSURE: The current implementation doesn't call cache.clear()
+     * on the ListReconstructionCalculator, so list queries continue
+     * returning stale data.
+     */
+    @Test
+    fun totalInvalidationList() = runTest2 {
+        val mock = ClientModelRestEndpointsMock<LargeTestModel, Uuid>(this)
+        val dataToInsert = listOf(
+            LargeTestModel(int = 1),
+            LargeTestModel(int = 2),
+            LargeTestModel(int = 3),
+        )
+        mock.data.putAll(dataToInsert.associateBy { it._id })
+        val cache = ModelCache<LargeTestModel, Uuid>(
+            mock,
+            LargeTestModel.serializer(),
+            scope = backgroundScope,
+            log = testLog
+        )
+
+        // Get initial list data
+        var lastRead: List<LargeTestModel> = listOf()
+        val ref = cache.list(Query(Condition.Always, sort { it.int.ascending() }), maximumAge = 10.minutes, pullFrequency = 60.seconds)
+        reactive {
+            lastRead = ref()
+        }
+        delay(5.seconds)
+        assertEquals(dataToInsert.sortedBy { it.int }, lastRead)
+
+        // Add new data directly to mock (simulating server-side change)
+        val newItem = LargeTestModel(int = 4)
+        mock.data[newItem._id] = newItem
+
+        // Total invalidation should clear list cache and refetch
+        cache.totallyInvalidate()
+        delay(5.seconds)
+
+        // Verify the new item is included
+        val expected = dataToInsert.plus(newItem).sortedBy { it.int }
+        assertEquals(expected, lastRead, "Expected new item in list after invalidation")
+    }
+
+    /**
+     * Tests that totallyInvalidate() clears individual item cache entries.
+     *
+     * BUG EXPOSURE: The current implementation doesn't clear lastIndividualValues,
+     * so the cached item data persists even after invalidation.
+     */
+    @Test
+    fun totalInvalidationClearsIndividualCache() = runTest2 {
+        val mock = ClientModelRestEndpointsMock<LargeTestModel, Uuid>(this)
+        val item1 = LargeTestModel(int = 1)
+        val item2 = LargeTestModel(int = 2)
+        mock.data[item1._id] = item1
+        mock.data[item2._id] = item2
+        val cache = ModelCache<LargeTestModel, Uuid>(
+            mock,
+            LargeTestModel.serializer(),
+            scope = backgroundScope,
+            log = testLog
+        )
+
+        // Fetch both items
+        var lastRead1: LargeTestModel? = null
+        var lastRead2: LargeTestModel? = null
+        val ref1 = cache.item(item1._id, maximumAge = 10.minutes, pullFrequency = 60.seconds)
+        val ref2 = cache.item(item2._id, maximumAge = 10.minutes, pullFrequency = 60.seconds)
+        reactive { lastRead1 = ref1() }
+        reactive { lastRead2 = ref2() }
+        delay(5.seconds)
+        assertEquals(item1, lastRead1)
+        assertEquals(item2, lastRead2)
+
+        // Modify both items in the mock
+        val updatedItem1 = item1.copy(short = 11)
+        val updatedItem2 = item2.copy(short = 22)
+        mock.data[item1._id] = updatedItem1
+        mock.data[item2._id] = updatedItem2
+
+        // Total invalidation should clear ALL cached items and refetch
+        cache.totallyInvalidate()
+        delay(5.seconds)
+
+        // Verify both items are updated
+        assertEquals(updatedItem1, lastRead1, "Expected item1 to be updated after invalidation")
+        assertEquals(updatedItem2, lastRead2, "Expected item2 to be updated after invalidation")
+    }
+
+    /**
+     * Tests that totallyInvalidate() triggers the totalInvalidation flow.
+     *
+     * This tests that consumers listening to the totalInvalidation flow
+     * are properly notified. (Note: Currently nothing in ModelCache itself
+     * consumes this flow, which may be part of the bug.)
+     */
+    @Test
+    fun totalInvalidationFlowEmits() = runTest2 {
+        val mock = ClientModelRestEndpointsMock<LargeTestModel, Uuid>(this)
+        val cache = ModelCache<LargeTestModel, Uuid>(
+            mock,
+            LargeTestModel.serializer(),
+            scope = backgroundScope,
+            log = testLog
+        )
+
+        var flowEmitted = false
+        val collectJob = backgroundScope.launch {
+            cache.totalInvalidation.collect {
+                flowEmitted = true
+            }
+        }
+
+        delay(1.seconds)
+        cache.totallyInvalidate()
+        delay(1.seconds)
+
+        assertTrue(flowEmitted, "totalInvalidation flow should emit when totallyInvalidate() is called")
+        collectJob.cancel()
+    }
+
+    /**
+     * Tests that reactive state becomes notReady after totallyInvalidate().
+     *
+     * After invalidation, the cache should indicate that data is stale/unavailable
+     * until fresh data is fetched.
+     *
+     * BUG EXPOSURE: Current implementation doesn't unset the cached values,
+     * so state remains "ready" with stale data instead of becoming "notReady".
+     */
+    @Test
+    fun totalInvalidationStateBecomesNotReady() = runTest2 {
+        val mock = ClientModelRestEndpointsMock<LargeTestModel, Uuid>(this)
+        val initialItem = LargeTestModel(int = 1)
+        mock.data[initialItem._id] = initialItem
+        val cache = ModelCache<LargeTestModel, Uuid>(
+            mock,
+            LargeTestModel.serializer(),
+            scope = backgroundScope,
+            log = testLog
+        )
+
+        // Get initial data
+        val ref = cache.item(initialItem._id, maximumAge = 10.minutes, pullFrequency = 60.seconds)
+        reactive { ref() }
+        delay(5.seconds)
+
+        // Verify data is ready before invalidation
+        assertTrue(ref.state.ready, "State should be ready before invalidation")
+
+        // Invalidate - state should become notReady briefly
+        cache.totallyInvalidate()
+
+        // Immediately after invalidation, state should be notReady
+        // (This is the expected behavior - current implementation may not do this)
+        // Note: We can't easily assert this in the current test framework
+        // as the reactive context may have already processed the refetch.
+
+        // Wait for refetch to complete
+        delay(5.seconds)
+
+        // State should be ready again with fresh data
+        assertTrue(ref.state.ready, "State should be ready after refetch")
     }
 
     /**
