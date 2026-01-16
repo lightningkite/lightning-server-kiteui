@@ -2,13 +2,14 @@ package com.lightningkite.lightningserver.db
 
 import com.lightningkite.kiteui.Log
 import com.lightningkite.kiteui.TypedWebSocket
-import com.lightningkite.kiteui.navigation.DefaultJson
+import com.lightningkite.reactive.context.onRemove
 import com.lightningkite.services.database.CollectionUpdates
 import com.lightningkite.services.database.Condition
 import com.lightningkite.services.database.HasId
 import com.lightningkite.services.database.simplify
 import com.lightningkite.reactive.context.reactive
 import com.lightningkite.reactive.core.Signal
+import com.lightningkite.reactive.core.addAndRunListener
 import com.lightningkite.reactive.extensions.use
 import com.lightningkite.reactive.lensing.lens
 import com.lightningkite.services.database.walk
@@ -170,93 +171,94 @@ class SharedCollectionUpdatesSocket<T : HasId<ID>, ID : Comparable<ID>>(
         val requirements: Set<Req> = setOf()
     )
 
-    init {
-        /**
-         * Main socket management logic.
-         *
-         * Handles:
-         * - Combining [desiredRequirements] into a single condition
-         * - Sending conditions to the socket
-         * - Waiting for acknowledgements
-         * - Retrying on timeout
-         * - Reopening socket when requirements change
-         */
 
-        /**
-         * Tracks the last condition we sent to the socket while waiting for acknowledgement.
-         * Null means we're not waiting for any acknowledgement.
-         *
-         * Used to prevent sending multiple updates simultaneously and to match incoming
-         * acknowledgements with sent conditions.
-         */
-        var lastSent: ListeningStatus<T>? = null
+    /**
+     * Main socket management logic.
+     *
+     * Handles:
+     * - Combining [desiredRequirements] into a single condition
+     * - Sending conditions to the socket
+     * - Waiting for acknowledgements
+     * - Retrying on timeout
+     * - Reopening socket when requirements change
+     */
 
-        /**
-         * Attempts to update the socket's listening condition to match [desiredRequirements].
-         *
-         * This function:
-         * 1. Checks if socket is connected (can't send if closed)
-         * 2. Checks if we're waiting for acknowledgement (can't send while pending)
-         * 3. Combines all [desiredRequirements] into a single OR condition
-         * 4. Optimizes: skips send if condition is equivalent to current
-         * 5. Sends the condition to the socket
-         * 6. Starts a 4-second timeout for acknowledgement retry
-         *
-         * Called when:
-         * - Socket opens/reopens
-         * - [desiredRequirements] changes (debounced)
-         * - Acknowledgement is received (to send any queued changes)
-         * - Timeout occurs (retry)
-         */
-        fun updateCondition() {
-            // We can't send the updated condition to a closed socket.
-            if (socket.connected.state.getOrNull() != true) {
-                log?.log("Can't update condition, socket is closed")
-                return
-            }
-            // If we're waiting for an acknowledge of a past request, let's just wait.
-            if (lastSent != null) {
-                log?.log("Can't update condition, waiting on tentative send")
-                return
-            }
+    /**
+     * Tracks the last condition we sent to the socket while waiting for acknowledgement.
+     * Null means we're not waiting for any acknowledgement.
+     *
+     * Used to prevent sending multiple updates simultaneously and to match incoming
+     * acknowledgements with sent conditions.
+     */
+    private var lastSent: ListeningStatus<T>? = null
 
-            // Build the total condition from all desired requirements
-            val willSend = run {
-                val r = desiredRequirements.value
-                // Optimization: if requirements haven't changed by reference, skip
-                if (r === listeningStatus.value.requirements) {
-                    log?.log("No need to update condition; already satisfied by exact requirements")
-                    return
-                }
-                // Combine all conditions with OR, remove duplicates, simplify
-                ListeningStatus(Condition.Or(r.map { it.condition }.distinct()).simplify(), r)
-            }
-
-            // Optimization: if the combined condition is semantically equivalent, just update requirements
-            // This handles cases where requirements changed but the OR'd condition is the same
-            if (listeningStatus.value.fullCondition == willSend.fullCondition) {
-                listeningStatus.value = willSend
-                log?.log("No need to update condition; already satisfied by condition match")
-                return
-            }
-
-            // Send the new condition to the server
-            lastSent = willSend
-            log?.log("Sending condition ${willSend.fullCondition}")
-            socket.send(willSend.fullCondition)
-
-            // Start acknowledgement timeout - retry after 4 seconds if no response
-            scope.launch {
-                delay(4.seconds)
-                // Check if we're still waiting for this specific send
-                if (lastSent == willSend) {
-                    log?.log("Update condition to ${lastSent?.fullCondition} failed (timeout).")
-                    lastSent = null
-                    updateCondition() // Retry
-                }
-            }
+    /**
+     * Attempts to update the socket's listening condition to match [desiredRequirements].
+     *
+     * This function:
+     * 1. Checks if socket is connected (can't send if closed)
+     * 2. Checks if we're waiting for acknowledgement (can't send while pending)
+     * 3. Combines all [desiredRequirements] into a single OR condition
+     * 4. Optimizes: skips send if condition is equivalent to current
+     * 5. Sends the condition to the socket
+     * 6. Starts a 4-second timeout for acknowledgement retry
+     *
+     * Called when:
+     * - Socket opens/reopens
+     * - [desiredRequirements] changes (debounced)
+     * - Acknowledgement is received (to send any queued changes)
+     * - Timeout occurs (retry)
+     */
+    private fun updateCondition() {
+        // We can't send the updated condition to a closed socket.
+        if (socket.connected.state.getOrNull() != true) {
+            log?.log("Can't update condition, socket is closed")
+            return
+        }
+        // If we're waiting for an acknowledge of a past request, let's just wait.
+        if (lastSent != null) {
+            log?.log("Can't update condition, waiting on tentative send")
+            return
         }
 
+        // Build the total condition from all desired requirements
+        val willSend = run {
+            val r = desiredRequirements.value
+            // Optimization: if requirements haven't changed by reference, skip
+            if (r === listeningStatus.value.requirements) {
+                log?.log("No need to update condition; already satisfied by exact requirements")
+                return
+            }
+            // Combine all conditions with OR, remove duplicates, simplify
+            ListeningStatus(Condition.Or(r.map { it.condition }.distinct()).simplify(), r)
+        }
+
+        // Optimization: if the combined condition is semantically equivalent, just update requirements
+        // This handles cases where requirements changed but the OR'd condition is the same
+        if (listeningStatus.value.fullCondition == willSend.fullCondition) {
+            listeningStatus.value = willSend
+            log?.log("No need to update condition; already satisfied by condition match")
+            return
+        }
+
+        // Send the new condition to the server
+        lastSent = willSend
+        log?.log("Sending condition ${willSend.fullCondition}")
+        socket.send(willSend.fullCondition)
+
+        // Start acknowledgement timeout - retry after 4 seconds if no response
+        scope.launch {
+            delay(4.seconds)
+            // Check if we're still waiting for this specific send
+            if (lastSent == willSend) {
+                log?.log("Update condition to ${lastSent?.fullCondition} failed (timeout).")
+                lastSent = null
+                updateCondition() // Retry
+            }
+        }
+    }
+
+    init {
         // Socket event handlers
 
         // On open/reopen: resend current desired condition
@@ -281,7 +283,7 @@ class SharedCollectionUpdatesSocket<T : HasId<ID>, ID : Comparable<ID>>(
 
                 // Check if requirements changed while we were waiting - send update if needed
                 updateCondition()
-            } else if(l != null && it.condition != null) {
+            } else if (l != null && it.condition != null) {
                 // We sent a condition and got a different one back - this might be a bug
                 // Log detailed structure for debugging
                 log?.log("Condition does not match, though it probably should. (${it.condition} == ${l.fullCondition}) -eval-> (${it.condition == l.fullCondition})")
@@ -299,22 +301,30 @@ class SharedCollectionUpdatesSocket<T : HasId<ID>, ID : Comparable<ID>>(
             log?.log("Closed.")
             listeningStatus.value = ListeningStatus()
         }
-
-        // Main reactive loop: manage socket lifecycle based on requirements
-        // Debounce to avoid rapid connect/disconnect during startup when many requirements are added
-        val debouncedRequirements = desiredRequirements.debounce(scope, 100.milliseconds)
-        scope.reactive {
-            val requirements = debouncedRequirements()
-            // Only keep socket open if we have active requirements
-            if (requirements.isEmpty()) {
-                listeningStatus.value = ListeningStatus()
-                return@reactive
-            }
-            // Keep socket open and update condition to match requirements
-            use(socket)
-            updateCondition()
-        }
     }
+
+    // Main reactive loop: manage socket lifecycle based on requirements
+    // Debounce to avoid rapid connect/disconnect during startup when many requirements are added
+
+    // TODO: Replace with `using` once reactive helper is fixed.
+
+    private val debouncedDesiredRequirements = desiredRequirements.debounce(scope, 100.milliseconds)
+
+    private var disconnect: (() -> Unit)? = null
+
+    private val updateLoop = debouncedDesiredRequirements.addAndRunListener {
+        debouncedDesiredRequirements.state.onSuccess { requirements ->
+            if (requirements.isNotEmpty()) {
+                if (disconnect == null) disconnect = socket.beginUse()
+                updateCondition()
+            }
+            else if (disconnect != null) {
+                disconnect?.invoke()
+                disconnect = null
+                listeningStatus.value = ListeningStatus()
+            }
+        }
+    }.also(scope::onRemove)
 }
 
 /*

@@ -33,6 +33,7 @@ class SharedCollectionUpdatesSocketTest {
             delay(1000)
             assertContains(remember.listeningStatus.value.requirements, req)
         }
+        println("OK 2")
         run {
             val req = remember.require(condition { it.int gt 9 })
             onRemove(req.beginUse())
@@ -40,6 +41,7 @@ class SharedCollectionUpdatesSocketTest {
             delay(1000)
             assertContains(remember.listeningStatus.value.requirements, req)
         }
+        println("OK 3")
         run {
             val req = remember.require(condition { it.int lt 2 })
             onRemove(req.beginUse())
