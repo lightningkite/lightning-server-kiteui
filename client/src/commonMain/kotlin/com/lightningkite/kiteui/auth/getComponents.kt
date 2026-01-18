@@ -25,8 +25,8 @@ fun AuthEndpoints.components(
 ): List<ProofComponent> = listOfNotNull(
     smsProof?.let { SmsProofComponent(it) },
     emailProof?.let { EmailProofComponent(it) },
-    oneTimePasswordProof?.let { TotpProofComponent(it, subjectType) },
     passwordProof?.let { PasswordProofComponent(it, subjectType) },
+    oneTimePasswordProof?.let { TotpProofComponent(it, subjectType) },
     backupCodeProof?.let { BackupCodeProofComponent(it, subjectType) },
     webAuthNProof?.let { WebAuthNProofComponent(it, subjectType, webAuthNIncludePasskeyUI) },
 )
