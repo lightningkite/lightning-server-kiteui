@@ -37,7 +37,7 @@ import kotlin.jvm.JvmName
  * Generators can match types by:
  * - [type]: Fully-qualified type name (e.g., "kotlin.String")
  * - [kind]: Serialization kind (PRIMITIVE, CLASS, LIST, MAP, etc.)
- * - [annotation]: Specific annotation FQN (e.g., "com.lightningkite.lightningdb.Multiline")
+ * - [annotation]: Specific annotation FQN (e.g., "com.lightningkite.services.data.Multiline")
  * - [nullable]: Whether the type is nullable
  *
  * ## Priority Scoring
@@ -528,7 +528,7 @@ data class FormSelector<T>(
  */
 fun <T> KSerializer<T>.naturalSort(): List<SortPart<T>> {
     return serializableAnnotations.find {
-        it.fqn == "com.lightningkite.lightningdb.NaturalSort"
+        it.fqn == "com.lightningkite.services.data.NaturalSort"
     }?.values?.entries?.firstOrNull()?.let { it.value as? SerializableAnnotationValue.ArrayValue }?.value?.mapNotNull {
         (it as? SerializableAnnotationValue.StringValue)?.value?.let {
             UrlProperties.decodeFromString(SortPart.serializer(this@naturalSort), it)
@@ -568,7 +568,7 @@ fun <T> KSerializer<T>.naturalSort(): List<SortPart<T>> {
  */
 fun <T> KSerializer<T>.defaultColumns(): List<DataClassPath<T, *>> {
     return serializableAnnotations.find {
-        it.fqn == "com.lightningkite.lightningdb.AdminTableColumns"
+        it.fqn == "com.lightningkite.services.data.AdminTableColumns"
     }?.values?.entries?.firstOrNull()?.let { it.value as? SerializableAnnotationValue.ArrayValue }?.value?.mapNotNull {
         (it as? SerializableAnnotationValue.StringValue)?.value?.let {
             UrlProperties.decodeFromString(DataClassPathPartial.serializer(this), it) as DataClassPath<T, *>
@@ -608,7 +608,7 @@ fun <T> KSerializer<T>.defaultTitleFields(): List<DataClassPath<T, *>> {
     val it = serializer.serializableProperties!!
     val dcps = DataClassPathSerializer(serializer)
     val nameFields: List<DataClassPath<T, *>> = serializer.serializableAnnotations.find {
-        it.fqn == "com.lightningkite.lightningdb.AdminTitleFields"
+        it.fqn == "com.lightningkite.services.data.AdminTitleFields"
     }?.values?.get("fields")?.let { it as? SerializableAnnotationValue.ArrayValue }
         ?.value
         ?.mapNotNull { it as? SerializableAnnotationValue.StringValue }

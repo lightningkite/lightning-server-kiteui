@@ -27,8 +27,31 @@ import com.lightningkite.services.database.serializableProperties
 
 @Routable("collections/{collectionName}/detail/{itemId}")
 class DetailAdminPage(val collectionName: String, val itemId: String) : Page {
+    // by Claude - added null safety for missing collections
+    private val mcOrNull = remember { adminServer().models[collectionName]?.cache(adminAuthentication()) as? ModelCache<UnknownModel, UnknownId> }
+    private val mc = remember { mcOrNull()!! }
+
     override fun ViewWriter.render() {
-        val mc = remember { adminServer().models[collectionName]?.cache(adminAuthentication()) as ModelCache<UnknownModel, UnknownId> }
+        col {
+            reactive {
+                clearChildren()
+                if (mcOrNull() == null) {
+                    centered.col {
+                        h2("Collection Not Found")
+                        text("The collection '$collectionName' does not exist or is not accessible.")
+                        button {
+                            text("Go Home")
+                            onClick { pageNavigator.reset(HomePage()) }
+                        }
+                    }
+                    return@reactive
+                }
+                renderContent()
+            }
+        }
+    }
+
+    private fun RowOrCol.renderContent() {
         val item = Draft(remember {
             val mc = mc()
             val actualId = UrlProperties.decodeFromString(mc.serializer._id().serializer, itemId)
@@ -117,7 +140,7 @@ class DetailAdminPage(val collectionName: String, val itemId: String) : Page {
                     val myTypeName = mc.serializer.descriptor.serialName.substringBefore('/')
                     adminServer().models.entries.forEach { model ->
                         model.value.serializer.serializableProperties?.forEach {
-                            val anno = it.serializableAnnotations.find { it.fqn == "com.lightningkite.lightningdb.References" } ?: return@forEach
+                            val anno = it.serializableAnnotations.find { it.fqn == "com.lightningkite.services.data.References" } ?: return@forEach
                             val typeName = anno.values.get("references")?.let { it as? SerializableAnnotationValue.ClassValue }?.fqn ?: return@forEach
                             if (typeName != myTypeName) return@forEach
                             val reverseName = anno.values.get("reverseName")?.let { it as? SerializableAnnotationValue.StringValue }?.value?.takeUnless { it.isEmpty() }

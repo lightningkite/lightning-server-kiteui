@@ -55,11 +55,18 @@ object InlineFormRenderer : FormRenderer.Generator, ViewRenderer.Generator {
     override val kind: SerialKind? = StructureKind.CLASS
 
     /**
-     * Matches only inline value classes.
+     * Matches only inline value classes that have accessible child serializers.
      * Checks descriptor.isInline flag set by Kotlin compiler for inline value classes.
+     *
+     * Note: Some inline types (like kotlin.uuid.Uuid) have isInline=true but are not
+     * GeneratedSerializers, so tryChildSerializers() returns null. We must check for
+     * this to avoid NPE in size()/form()/view() methods.
+     * // by Claude
      */
     override fun matches(module: FormModule, selector: FormSelector<*>): Boolean {
-        return selector.serializer.descriptor.isInline && super<FormRenderer.Generator>.matches(module, selector)
+        return selector.serializer.descriptor.isInline
+            && selector.serializer.tryChildSerializers()?.isNotEmpty() == true
+            && super<FormRenderer.Generator>.matches(module, selector)
     }
 
     /**

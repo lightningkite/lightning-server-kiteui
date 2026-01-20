@@ -10,6 +10,7 @@ import com.lightningkite.kiteui.navigation.DefaultJson
 import com.lightningkite.kiteui.navigation.Page
 import com.lightningkite.kiteui.navigation.UrlProperties
 import com.lightningkite.kiteui.navigation.encodeToString
+import com.lightningkite.kiteui.navigation.pageNavigator
 import com.lightningkite.kiteui.reactive.Action
 import com.lightningkite.kiteui.views.*
 import com.lightningkite.kiteui.views.direct.*
@@ -64,16 +65,23 @@ class CollectionAdminPage(val collectionName: String) : Page {
     val columnsString: Signal<String?> = Signal(null)
 
     /**
+     * The ModelCache instance for this collection (nullable for existence check).
+     * Returns null if the collection doesn't exist in the schema.
+     */
+    // by Claude - added null safety for missing collections
+    private val mcOrNull = remember {
+        adminServer().models[collectionName]?.cache(adminAuthentication())
+                as? ModelCache<UnknownModel, UnknownId>
+    }
+
+    /**
      * The ModelCache instance for this collection, initialized with current authentication.
      *
      * Provides real-time data synchronization via WebSockets when available, and smart polling otherwise.
      * Cached at the page level so data persists across reactive rebuilds.
+     * Note: Only access after verifying mcOrNull is not null in render().
      */
-    // TODO: This force-unwraps with !! which will throw if collection doesn't exist. Add proper error handling.
-    val mc = remember {
-        adminServer().models[collectionName]?.cache(adminAuthentication())!!
-                as ModelCache<UnknownModel, UnknownId>
-    }
+    val mc = remember { mcOrNull()!! }
 
     /**
      * Shows export dialog with options to download or copy data as CSV.
@@ -232,6 +240,18 @@ class CollectionAdminPage(val collectionName: String) : Page {
         col {
             reactive<Unit> {
                 clearChildren()
+                // by Claude - added null safety for missing collections
+                if (mcOrNull() == null) {
+                    centered.col {
+                        h2("Collection Not Found")
+                        text("The collection '$collectionName' does not exist or is not accessible.")
+                        button {
+                            text("Go Home")
+                            onClick { pageNavigator.reset(HomePage()) }
+                        }
+                    }
+                    return@reactive
+                }
                 val mc = mc()
                 val forms = adminFormModule()
                 renderContents(mc, forms)
@@ -374,20 +394,27 @@ class CollectionAdminPage(val collectionName: String) : Page {
             }
         }
         // Summary text showing current filter/sort state and total item count
+        // by Claude - Fixed to account for text search in both count and display
         subtext {
             val itemCount = rememberSuspending {
-                val c = condition()
-                // Use skipCache to get accurate server-side count
-                mc.skipCache.count(c)
+                // Use the full query condition (including text search) for accurate count
+                val q = query()
+                mc.skipCache.count(q.condition)
             }
             ::content {
                 buildString {
                     val c = condition()
+                    val ts = textSearch()
+                    val hasTextSearch = ts.isNotBlank()
+                    val hasFilter = c != Condition.Always
+
                     // Generate human-readable description of current filter
-                    when (c) {
-                        Condition.Always -> append("Showing all ${itemCount()} items ")
-                        Condition.Never -> append("Showing NO ITEMS ")
-                        else -> append("Showing ${itemCount()} items where $c ")
+                    when {
+                        c == Condition.Never -> append("Showing NO ITEMS ")
+                        !hasTextSearch && !hasFilter -> append("Showing all ${itemCount()} items ")
+                        hasTextSearch && !hasFilter -> append("Showing ${itemCount()} items matching \"$ts\" ")
+                        !hasTextSearch && hasFilter -> append("Showing ${itemCount()} items where $c ")
+                        else -> append("Showing ${itemCount()} items matching \"$ts\" where $c ")
                     }
                     val s = sort()
                     // Append sort description if sorting is active

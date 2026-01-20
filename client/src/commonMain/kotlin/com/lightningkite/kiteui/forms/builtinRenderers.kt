@@ -376,7 +376,7 @@ fun FormModule.defaults() {
     formForType<String>(
         size = { selector ->
             val maxLengthAnno =
-                selector.annotations.find { it.fqn == "com.lightningkite.lightningdb.MaxLength" }?.values
+                selector.annotations.find { it.fqn == "com.lightningkite.services.data.MaxLength" }?.values
             val maxSize =
                 (maxLengthAnno?.get("size") as? SerializableAnnotationValue.IntValue)?.value?.takeUnless { it == -1 }
             // Average size is either explicit or 1/8 of max (or default to 20 chars)
@@ -397,7 +397,7 @@ fun FormModule.defaults() {
     viewForType<String>(
         size = { selector ->
             val maxLengthAnno =
-                selector.annotations.find { it.fqn == "com.lightningkite.lightningdb.MaxLength" }?.values
+                selector.annotations.find { it.fqn == "com.lightningkite.services.data.MaxLength" }?.values
             val maxSize =
                 (maxLengthAnno?.get("size") as? SerializableAnnotationValue.IntValue)?.value?.takeUnless { it == -1 }
             val averageSize =
@@ -420,7 +420,7 @@ fun FormModule.defaults() {
     formForType<String>(
         size = FormSize(40.0, 10.0),
         name = "Large Text",
-        annotation = "com.lightningkite.lightningdb.Multiline",
+        annotation = "com.lightningkite.services.data.Multiline",
         priority = 2f, // Higher priority ensures this is selected for @Multiline fields
         generate = { it -> sizeConstraints(minHeight = 10.rem).fieldTheme.textArea { content bind it } }
     )
@@ -429,7 +429,7 @@ fun FormModule.defaults() {
     viewForType<String>(
         size = FormSize(40.0, 3.0),
         name = "Large Text Summary",
-        annotation = "com.lightningkite.lightningdb.Multiline",
+        annotation = "com.lightningkite.services.data.Multiline",
         priority = 0.8f,
         generate = { it ->
             sizeConstraints(maxHeight = 3.rem).text {
@@ -442,7 +442,7 @@ fun FormModule.defaults() {
     viewForType<String>(
         size = FormSize(40.0, 10.0),
         name = "Large Text",
-        annotation = "com.lightningkite.lightningdb.Multiline",
+        annotation = "com.lightningkite.services.data.Multiline",
         priority = 0.8f,
         generate = { it ->
             text {

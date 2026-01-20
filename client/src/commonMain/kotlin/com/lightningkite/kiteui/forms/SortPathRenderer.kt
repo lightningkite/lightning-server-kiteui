@@ -24,7 +24,7 @@ import kotlin.uuid.Uuid
 @OptIn(ExperimentalSerializationApi::class)
 object SortPathRenderer : FormRenderer.Generator, ViewRenderer.Generator {
     override val name: String = "Sort Part"
-    override val type: String = "com.lightningkite.lightningdb.SortPart"
+    override val type: String = "com.lightningkite.services.database.SortPart"  // by Claude - fixed package name
 
     val stringTypes = setOf(
         Char.serializer().descriptor.serialName,

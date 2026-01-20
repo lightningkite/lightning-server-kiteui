@@ -23,15 +23,15 @@ import kotlin.time.Duration.Companion.milliseconds
 
 object ForeignKeyRenderer : FormRenderer.Generator, ViewRenderer.Generator {
     override val name: String = "Foreign Key"
-    override val annotation: String? get() = "com.lightningkite.lightningdb.References"
+    override val annotation: String? get() = "com.lightningkite.services.data.References"  // by Claude - fixed package name
     override val basePriority: Float
         get() = 2f
 
     override fun size(module: FormModule, selector: FormSelector<*>): FormSize = FormSize(16.0, 1.0)
     override fun matches(module: FormModule, selector: FormSelector<*>): Boolean {
         val anno = selector.annotations.find {
-            it.fqn == "com.lightningkite.lightningdb.References" ||
-                    it.fqn == "com.lightningkite.lightningdb.MultipleReferences"
+            it.fqn == "com.lightningkite.services.data.References" ||
+                    it.fqn == "com.lightningkite.services.data.MultipleReferences"
         }?.values ?: return false
         val typeName =
             anno.get("references")?.let { it as? SerializableAnnotationValue.ClassValue }?.fqn ?: return false
@@ -46,8 +46,8 @@ object ForeignKeyRenderer : FormRenderer.Generator, ViewRenderer.Generator {
     @Suppress("UNCHECKED_CAST")
     override fun <T> form(module: FormModule, selector: FormSelector<T>): FormRenderer<T> {
         val anno = selector.annotations.find {
-            it.fqn == "com.lightningkite.lightningdb.References" ||
-                    it.fqn == "com.lightningkite.lightningdb.MultipleReferences"
+            it.fqn == "com.lightningkite.services.data.References" ||
+                    it.fqn == "com.lightningkite.services.data.MultipleReferences"
         }!!.values
         val typeName = anno.get("references")!!.let { it as SerializableAnnotationValue.ClassValue }.fqn
         val typeInfo =
@@ -203,8 +203,8 @@ object ForeignKeyRenderer : FormRenderer.Generator, ViewRenderer.Generator {
     @Suppress("UNCHECKED_CAST")
     override fun <T> view(module: FormModule, selector: FormSelector<T>): ViewRenderer<T> {
         val anno = selector.annotations.find {
-            it.fqn == "com.lightningkite.lightningdb.References" ||
-                    it.fqn == "com.lightningkite.lightningdb.MultipleReferences"
+            it.fqn == "com.lightningkite.services.data.References" ||
+                    it.fqn == "com.lightningkite.services.data.MultipleReferences"
         }!!.values
         val typeName = anno.get("references")!!.let { it as SerializableAnnotationValue.ClassValue }.fqn
         val typeInfo =

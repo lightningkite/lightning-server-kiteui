@@ -7,27 +7,27 @@ import com.lightningkite.titleCase
 import kotlinx.serialization.KSerializer
 
 val SerializableProperty<*, *>.displayName: String
-    get() = this.serializableAnnotations.find { it.fqn == "com.lightningkite.lightningdb.DisplayName" }?.values?.get(
+    get() = this.serializableAnnotations.find { it.fqn == "com.lightningkite.services.data.DisplayName" }?.values?.get(
         "text"
     )?.let { it as? SerializableAnnotationValue.StringValue }?.value ?: if (name == "_id") "ID" else name.titleCase()
 val KSerializer<*>.displayName: String
-    get() = serializableAnnotations.find { it.fqn == "com.lightningkite.lightningdb.DisplayName" }?.values?.get(
+    get() = serializableAnnotations.find { it.fqn == "com.lightningkite.services.data.DisplayName" }?.values?.get(
         "text"
     )?.let { it as? SerializableAnnotationValue.StringValue }?.value ?: descriptor.serialName.substringBefore('<')
         .substringAfterLast('.').titleCase()
 
 val SerializableProperty<*, *>.description: String?
-    get() = this.serializableAnnotations.find { it.fqn == "com.lightningkite.lightningdb.Description" }?.values?.get(
+    get() = this.serializableAnnotations.find { it.fqn == "com.lightningkite.services.data.Description" }?.values?.get(
         "text"
     )?.let { it as? SerializableAnnotationValue.StringValue }?.value
 val KSerializer<*>.description: String?
-    get() = serializableAnnotations.find { it.fqn == "com.lightningkite.lightningdb.Description" }?.values?.get(
+    get() = serializableAnnotations.find { it.fqn == "com.lightningkite.services.data.Description" }?.values?.get(
         "text"
     )?.let { it as? SerializableAnnotationValue.StringValue }?.value
 
 val SerializableProperty<*, *>.descriptionOrDisplayName get() = description ?: displayName
 val SerializableProperty<*, *>.hint
-    get() = serializableAnnotations.find { it.fqn == "com.lightningkite.lightningdb.Hint" }?.values?.get(
+    get() = serializableAnnotations.find { it.fqn == "com.lightningkite.services.data.Hint" }?.values?.get(
         "text"
     )?.let { it as? SerializableAnnotationValue.StringValue }?.value
         ?: description
@@ -35,19 +35,19 @@ val SerializableProperty<*, *>.hint
 
 val SerializableProperty<*, *>.group
     get() = serializableAnnotations.find {
-        it.fqn == "com.lightningkite.lightningdb.Group"
+        it.fqn == "com.lightningkite.services.data.Group"
     }?.values?.values?.first()?.let {
         it as? SerializableAnnotationValue.StringValue
     }?.value
 val SerializableProperty<*, *>.sentence
     get() = serializableAnnotations.find {
-        it.fqn == "com.lightningkite.lightningdb.Sentence"
+        it.fqn == "com.lightningkite.services.data.Sentence"
     }?.values?.values?.first()?.let {
         it as? SerializableAnnotationValue.StringValue
     }?.value
 val SerializableProperty<*, *>.importance
     get() = serializableAnnotations.find {
-        it.fqn == "com.lightningkite.lightningdb.Importance"
+        it.fqn == "com.lightningkite.services.data.Importance"
     }?.values?.values?.first()?.let {
         it as? SerializableAnnotationValue.ByteValue
     }?.value?.toInt() ?: when (name) {
@@ -58,11 +58,11 @@ val SerializableProperty<*, *>.importance
     }
 val SerializableProperty<*, *>.doesNotNeedLabel
     get() = serializableAnnotations.any {
-        it.fqn == "com.lightningkite.lightningdb.DoesNotNeedLabel"
+        it.fqn == "com.lightningkite.services.data.DoesNotNeedLabel"
     }
 val SerializableProperty<*, *>.indexed
     get() = serializableAnnotations.any {
-        it.fqn == "com.lightningkite.lightningdb.Index"
+        it.fqn == "com.lightningkite.services.data.Index"
     }
 
 fun SerializableProperty<*, *>.visibility(module: FormModule): FieldVisibility =
@@ -70,8 +70,8 @@ fun SerializableProperty<*, *>.visibility(module: FormModule): FieldVisibility =
         ?: when {
             name == "_id" &&
                     serializer.descriptor.serialName.substringBefore('/') == ("com.lightningkite.Uuid") &&
-                    serializableAnnotations.none { it.fqn == "com.lightningkite.lightningdb.References" } &&
-                    serializableAnnotations.none { it.fqn == "com.lightningkite.lightningdb.MultipleReferences" }
-                     -> module.visibilitySettings["com.lightningkite.lightningdb.AdminHidden"]!!
+                    serializableAnnotations.none { it.fqn == "com.lightningkite.services.data.References" } &&
+                    serializableAnnotations.none { it.fqn == "com.lightningkite.services.data.MultipleReferences" }
+                     -> module.visibilitySettings["com.lightningkite.services.data.AdminHidden"]!!
             else -> FieldVisibility.EDIT
         }

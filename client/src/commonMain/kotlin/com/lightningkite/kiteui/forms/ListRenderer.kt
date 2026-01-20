@@ -84,8 +84,8 @@ abstract class ListRenderer<C> : FormRenderer.Generator, ViewRenderer.Generator 
             desiredSize = if (vertical) FormLayoutPreferences.Block else FormLayoutPreferences.Field,
             // Convert @MultipleReferences annotation on collection to @References on element
             // This allows collections of foreign keys to render with proper lookup/autocomplete
-            annotations = selector.annotations?.find { it.fqn == "com.lightningkite.lightningdb.MultipleReferences" }
-                ?.let { selector.annotations + SerializableAnnotation("com.lightningkite.lightningdb.References", it.values) }
+            annotations = selector.annotations?.find { it.fqn == "com.lightningkite.services.data.MultipleReferences" }
+                ?.let { selector.annotations + SerializableAnnotation("com.lightningkite.services.data.References", it.values) }
                 ?: selector.annotations
         )
         return inner

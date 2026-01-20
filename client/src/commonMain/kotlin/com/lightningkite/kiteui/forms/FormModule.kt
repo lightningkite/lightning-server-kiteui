@@ -123,9 +123,9 @@ class FormModule {
      * Default settings hide admin-only or denormalized fields.
      */
     val visibilitySettings: MutableMap<String, FieldVisibility> = mutableMapOf(
-        "com.lightningkite.lightningdb.AdminHidden" to FieldVisibility.HIDDEN,
-        "com.lightningkite.lightningdb.Denormalized" to FieldVisibility.READ,
-        "com.lightningkite.lightningdb.AdminViewOnly" to FieldVisibility.READ
+        "com.lightningkite.services.data.AdminHidden" to FieldVisibility.HIDDEN,
+        "com.lightningkite.services.data.Denormalized" to FieldVisibility.READ,
+        "com.lightningkite.services.data.AdminViewOnly" to FieldVisibility.READ
     )
 
     // ============================================================================
@@ -141,7 +141,7 @@ class FormModule {
     /** Generators indexed by serialization kind (PRIMITIVE, CLASS, LIST, etc.) */
     private val form_kind: HashMap<SerialKind, ArrayList<FormRenderer.Generator>> = HashMap()
 
-    /** Generators indexed by annotation FQN (e.g., "com.lightningkite.lightningdb.Multiline") */
+    /** Generators indexed by annotation FQN (e.g., "com.lightningkite.services.data.Multiline") */
     private val form_annotation: HashMap<String, ArrayList<FormRenderer.Generator>> = HashMap()
 
     /** All registered form generators (flattened from all indices) */

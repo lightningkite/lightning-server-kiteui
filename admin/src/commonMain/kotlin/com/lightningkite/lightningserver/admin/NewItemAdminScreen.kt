@@ -7,6 +7,7 @@ import com.lightningkite.kiteui.navigation.*
 
 import com.lightningkite.kiteui.views.ViewWriter
 import com.lightningkite.kiteui.views.atEnd
+import com.lightningkite.kiteui.views.centered
 import com.lightningkite.kiteui.views.direct.*
 import com.lightningkite.kiteui.views.important
 import com.lightningkite.services.database.Condition
@@ -27,8 +28,31 @@ class NewItemAdminPage(val collectionName: String) : Page {
     @QueryParameter("condition")
     val conditionString: Signal<String?> = Signal(null)
 
+    // by Claude - added null safety for missing collections
+    private val mcOrNull = remember { adminServer().models[collectionName]?.cache(adminAuthentication()) as? ModelCache<UnknownModel, UnknownId> }
+    private val mc = remember { mcOrNull()!! }
+
     override fun ViewWriter.render() {
-        val mc = remember { adminServer().models[collectionName]?.cache(adminAuthentication()) as ModelCache<UnknownModel, UnknownId> }
+        col {
+            reactive {
+                clearChildren()
+                if (mcOrNull() == null) {
+                    centered.col {
+                        h2("Collection Not Found")
+                        text("The collection '$collectionName' does not exist or is not accessible.")
+                        button {
+                            text("Go Home")
+                            onClick { pageNavigator.reset(HomePage()) }
+                        }
+                    }
+                    return@reactive
+                }
+                renderContent()
+            }
+        }
+    }
+
+    private fun RowOrCol.renderContent() {
         val item = asyncReactive {
             val coerceCondition = conditionString.value?.let {
                 try {

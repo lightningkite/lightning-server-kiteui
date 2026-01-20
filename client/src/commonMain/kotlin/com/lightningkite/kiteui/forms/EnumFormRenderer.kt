@@ -76,7 +76,7 @@ object EnumFormRenderer: FormRenderer.Generator, ViewRenderer.Generator {
             // Handle VirtualEnumValue (server-generated enums)
             else (it as? VirtualEnumValue)?.let {
                 it.enum.options[it.index].let {
-                    it.annotations.find { it.fqn == "com.lightningkite.lightningdb.DisplayName" }?.values?.get(
+                    it.annotations.find { it.fqn == "com.lightningkite.services.data.DisplayName" }?.values?.get(
                         "text"
                     )?.let { it as? SerializableAnnotationValue.StringValue }?.value ?: it.name.titleCase()
                 }
@@ -84,7 +84,7 @@ object EnumFormRenderer: FormRenderer.Generator, ViewRenderer.Generator {
             // Handle standard Kotlin enums
             ?: (it as? Enum<*>)?.let {
                 serializer.getElementSerializableAnnotations(it.ordinal)
-                    .find { it.fqn == "com.lightningkite.lightningdb.DisplayName" }?.values?.get(
+                    .find { it.fqn == "com.lightningkite.services.data.DisplayName" }?.values?.get(
                         "text"
                     )?.let { it as? SerializableAnnotationValue.StringValue }?.value ?: it.name.titleCase()
             }
