@@ -2,6 +2,29 @@
 
 package com.lightningkite.lightningserver.admin
 
+//
+// Code Review Summary:
+// - All public APIs have appropriate visibility and are well-designed
+// - Caching mechanisms (PerAuthCache, fetcherAuthCache, endpointsAuthCache) are correctly implemented
+// - The file correctly bridges server-side schema to client-side caching and endpoints
+// - Tests added with comprehensive coverage of main functionality
+//
+// Improvement Suggestions:
+// 1. Consider adding documentation comments for the SerializationRegistry.register extension function
+//    explaining why ServerFile alias is forbidden (line 46) - currently throws IllegalStateException
+//    with no message which could be confusing for debugging
+// 2. The private helper functions (uploadEarlyEndpoint, uploadEarlyVerifyEndpoint, healthEndpoint,
+//    bulkEndpoint) use hardcoded string matching for serialNames. Consider using constants or
+//    a more type-safe approach to reduce brittleness if these type names change
+// 3. ModelInfo.hasUpdatesWs uses complex boolean logic on line 173. Consider extracting this
+//    to a named function for better readability
+// 4. The nullToken lambda (line 94) could be a companion object constant to avoid recreating
+//    it for each ExternalLightningServer instance
+// 5. Consider adding a clear() or dispose() method to ExternalLightningServer to clean up caches
+//    if instances are meant to be short-lived
+// 6. The formModule typeInfo callback (lines 234-251) has nested lambdas that could benefit from
+//    extracting into separate named functions for better testability and readability
+
 import com.lightningkite.kiteui.HttpMethod
 import com.lightningkite.kiteui.RequestBodyFile
 import com.lightningkite.kiteui.connectivityFetch
@@ -208,6 +231,7 @@ class ExternalLightningServer(
     }
 
     fun formModule(auth: LightningServerAuthentication?) = FormModule().apply {
+        println("Building form module.  File upload? $file")
         fileUpload = file?.let {
             { file ->
                 val req = fetcher(auth).invoke(

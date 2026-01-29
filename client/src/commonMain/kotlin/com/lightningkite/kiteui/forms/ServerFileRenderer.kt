@@ -14,7 +14,7 @@ import com.lightningkite.services.files.ServerFile
 
 object ServerFileRenderer  : FormRenderer.Generator, ViewRenderer.Generator {
     override val name: String = "File"
-    override val type: String = "com.lightningkite.lightningserver.files.ServerFile"
+    override val type: String = "com.lightningkite.services.files.ServerFile"
 
     @Suppress("UNCHECKED_CAST")
     override fun <T> form(module: FormModule, selector: FormSelector<T>): FormRenderer<T> {

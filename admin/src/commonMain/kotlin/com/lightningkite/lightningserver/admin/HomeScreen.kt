@@ -1,3 +1,35 @@
+//
+// CODE REVIEW SUMMARY
+// ===================
+// HomePage is the main landing page for the admin panel, displaying:
+// - Server URL in the header
+// - Admin settings toggles (show endpoints, hidden fields, edit all, etc.)
+// - Server health status (CPU, memory, feature health)
+//
+// IMPROVEMENT SUGGESTIONS:
+//
+// 1. LARGE COMMENTED BLOCK (Lines 84-116): Contains unused theme preference UI code.
+//    Either implement this feature or remove the dead code.
+//
+// 2. NULL SAFETY (Line 121): The early return when adminAuthentication() is null means
+//    the health status section won't work for unauthenticated users. Consider showing
+//    an appropriate message instead of silently returning null.
+//
+// 3. MAGIC NUMBER (Line 22): The width constraint `40.rem` is hardcoded. Consider
+//    extracting to a constant like `SETTINGS_PANEL_WIDTH` for consistency.
+//
+// 4. MISSING LOADING STATE (Lines 119-125): When the health status is loading,
+//    there's no visual indicator. Consider adding a loading spinner.
+//
+// 5. ERROR HANDLING: If the health endpoint call fails, the status will be null.
+//    Consider catching exceptions and showing an error message.
+//
+// 6. ACCESSIBILITY: The settings toggles lack accessible labels/descriptions.
+//    Screen readers may not understand the purpose of each toggle.
+//
+// 7. MISSING KDOC: The HomePage class and render function lack documentation
+//    explaining the page's purpose and structure.
+//
 package com.lightningkite.lightningserver.admin
 
 import com.lightningkite.kiteui.Routable

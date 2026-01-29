@@ -61,7 +61,6 @@ object InlineFormRenderer : FormRenderer.Generator, ViewRenderer.Generator {
      * Note: Some inline types (like kotlin.uuid.Uuid) have isInline=true but are not
      * GeneratedSerializers, so tryChildSerializers() returns null. We must check for
      * this to avoid NPE in size()/form()/view() methods.
-     * // by Claude
      */
     override fun matches(module: FormModule, selector: FormSelector<*>): Boolean {
         return selector.serializer.descriptor.isInline

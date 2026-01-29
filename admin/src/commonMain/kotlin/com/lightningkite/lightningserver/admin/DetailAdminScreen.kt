@@ -1,3 +1,37 @@
+//
+// CODE REVIEW SUMMARY
+// ===================
+// DetailAdminPage is the item edit screen for a single record in a collection.
+// Features: form editing, delete, cancel changes, save, and related records panel.
+//
+// IMPROVEMENT SUGGESTIONS:
+//
+// 1. FORCE UNWRAP (Line 107): `mc.insert(newItem)()!!._id` will crash if insert fails.
+//    Should handle null/error gracefully with user feedback.
+//
+// 2. ERROR HANDLING: No try-catch around delete/save operations. Network errors
+//    or validation failures should show user-friendly messages.
+//
+// 3. MAGIC NUMBER (Line 62): `100.rem` for rowCollapsingToColumn is hardcoded.
+//    Consider extracting to a constant.
+//
+// 4. DELETE CONFIRMATION (Line 73): "Are you sure?" is generic. Consider showing
+//    the item ID or name to confirm what's being deleted.
+//
+// 5. RELATED RECORDS PANEL (Lines 134-157): Iterates through ALL models and
+//    properties to find references. Could be slow with many models. Consider
+//    precomputing/caching reverse relationships in schema.
+//
+// 6. LOADING STATE: No loading indicator while fetching item data or saving.
+//
+// 7. MISSING KDOC: No documentation on the page's purpose or the Draft pattern.
+//
+// 8. ID DISPLAY: No display of the current item's ID for reference. Users may
+//    need to know the ID for API calls or debugging.
+//
+// 9. NAVIGATION AFTER DELETE (Line 84): Goes back, but what if user came directly
+//    to this page? Should have fallback to collection page.
+//
 package com.lightningkite.lightningserver.admin
 
 import com.lightningkite.kiteui.Routable

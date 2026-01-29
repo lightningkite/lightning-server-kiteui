@@ -1,3 +1,33 @@
+//
+// CODE REVIEW SUMMARY
+// ===================
+// EndpointPage provides a generic UI for testing arbitrary server endpoints.
+// It dynamically generates input forms based on endpoint schema and displays results.
+//
+// IMPROVEMENT SUGGESTIONS:
+//
+// 1. FORCE UNWRAP (Line 44): The `!!` operator on endpoint lookup will crash if
+//    the endpoint doesn't exist. Should show user-friendly "Endpoint not found" page.
+//
+// 2. NULL AUTHENTICATION (Line 81): `adminAuthentication()` can return null but is
+//    passed directly to fetcher. Should handle unauthenticated state gracefully.
+//
+// 3. MISSING ERROR HANDLING (Lines 80-88): The API call has no try-catch. Errors
+//    should be caught and displayed to the user.
+//
+// 4. LOADING STATE: No visual indicator when request is in progress. The "Submit"
+//    button could show a spinner or be disabled during the request.
+//
+// 5. UNUSED EXTENSION (Line 27): `nullable2` extension has a suppressed warning.
+//    Consider documenting why this is necessary or refactoring.
+//
+// 6. MISSING KDOC: The RoutePage inner class and its methods lack documentation.
+//
+// 7. HARDCODED GAP (Line 32): `gap = 0.px` is hardcoded. Consider using theme spacing.
+//
+// 8. RESPONSE DISPLAY (Line 94): Large responses could benefit from collapsible
+//    sections or virtual scrolling.
+//
 package com.lightningkite.lightningserver.admin
 
 import com.lightningkite.kiteui.HttpMethod

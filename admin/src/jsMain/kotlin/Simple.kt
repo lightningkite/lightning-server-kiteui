@@ -1,3 +1,29 @@
+//
+// CODE REVIEW SUMMARY
+// ===================
+// Simple.kt is the JS entry point for the admin panel web application.
+// It sets up error handling, reads injected backend URL from HTML, and initializes the app.
+//
+// IMPROVEMENT SUGGESTIONS:
+//
+// 1. ERROR HANDLING (Line 24): JSON parsing for InjectedBackendInformation can throw
+//    if script content is malformed. Should have try-catch with fallback.
+//
+// 2. DEBUG LOGGING (Line 20): "ON ERROR HANDLER" println should use proper logging
+//    or be removed in production builds.
+//
+// 3. UNUSED VARIABLE (Line 18): `created` is declared but never assigned or used.
+//    Remove this dead code.
+//
+// 4. MISSING KDOC: No documentation for InjectedBackendInformation or the injection
+//    mechanism from server-side rendering.
+//
+// 5. FALLBACK URL: If no injectedBackendInformation script is present, serverUrl
+//    keeps its default. Consider logging a warning about missing configuration.
+//
+// 6. PACKAGE NAME MISMATCH: File is in `com.lightningkite.admin` but other admin
+//    files use `com.lightningkite.lightningserver.admin`. May cause import confusion.
+//
 package com.lightningkite.admin
 
 import com.lightningkite.kiteui.navigation.DefaultJson

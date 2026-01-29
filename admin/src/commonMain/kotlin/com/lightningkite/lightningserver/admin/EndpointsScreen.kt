@@ -1,3 +1,27 @@
+//
+// CODE REVIEW SUMMARY
+// ===================
+// EndpointsPage displays a filterable list of all API endpoints from the server schema.
+// Each endpoint links to EndpointPage for testing/invocation.
+//
+// IMPROVEMENT SUGGESTIONS:
+//
+// 1. FILTER UX: Filter only matches path, not method. Consider allowing search by
+//    method (GET, POST, etc.) or full endpoint description.
+//
+// 2. EMPTY STATE: No handling for when filter returns no results. Should show
+//    "No endpoints match your filter" message.
+//
+// 3. GROUPING: Endpoints could be grouped by path prefix (e.g., /api/users/*)
+//    for better organization in large schemas.
+//
+// 4. MISSING KDOC: No documentation explaining the page purpose or usage.
+//
+// 5. VISIBILITY: This page may need to be gated by adminSettings().showEndpoints
+//    for consistency with the app navigation.
+//
+// 6. LOADING STATE: No indicator while serverSchema() is loading.
+//
 package com.lightningkite.lightningserver.admin
 
 import com.lightningkite.kiteui.QueryParameter

@@ -1,3 +1,29 @@
+//
+// CODE REVIEW SUMMARY
+// ===================
+// Extension properties for reading serializable annotations on properties/serializers.
+// These power the form rendering system's annotation-driven behavior.
+//
+// IMPROVEMENT SUGGESTIONS:
+//
+// 1. FORCE UNWRAP (Line 75): `visibilitySettings["com.lightningkite.services.data.AdminHidden"]!!`
+//    will throw if AdminHidden annotation is not registered. Consider defensive approach.
+//
+// 2. HARDCODED FQNs: Annotation fully-qualified names are hardcoded strings throughout.
+//    Consider extracting to constants for maintainability and IDE navigation.
+//
+// 3. MAGIC NUMBERS (Lines 54-57): Importance priority values (1, 2, 7, 8) are undocumented.
+//    Add documentation explaining the priority scale and why these defaults.
+//
+// 4. MISSING KDOC: Extensions like `displayName`, `description`, `importance` lack
+//    documentation explaining their purpose and fallback behavior.
+//
+// 5. INCONSISTENT ANNOTATION ACCESS: Some use `.values?.get("text")` while others use
+//    `.values?.values?.first()`. The difference should be documented.
+//
+// 6. FALLBACK LOGIC: displayName falls back to titleCase(name) - this is good but should
+//    be documented as the default behavior users can expect.
+//
 package com.lightningkite.kiteui.forms
 
 import com.lightningkite.services.database.SerializableAnnotationValue
@@ -51,7 +77,7 @@ val SerializableProperty<*, *>.importance
     }?.values?.values?.first()?.let {
         it as? SerializableAnnotationValue.ByteValue
     }?.value?.toInt() ?: when (name) {
-        "_id" -> if (serializer.descriptor.serialName == "com.lightningkite.Uuid") 8 else 1
+        "_id" -> if (serializer.descriptor.serialName == "com.lightningkite.Uuid") 1 else 8
         "title", "subject" -> 1
         "name", "email", "phone" -> 2
         else -> 7

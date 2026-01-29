@@ -64,6 +64,11 @@ kotlin {
                 srcDir(file("build/generated/ksp/common/commonMain/kotlin"))
             }
         }
+        val jsTest by getting {
+            dependencies {
+                implementation(kotlin("test"))
+            }
+        }
 //        val commonJvmMain by creating {
 //            dependsOn(commonMain)
 //        }

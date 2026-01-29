@@ -1,5 +1,45 @@
 package com.lightningkite.lightningserver.admin
 
+//
+// IMPROVEMENT SUGGESTIONS:
+//
+// 1. Unused Imports: Remove the following unused imports:
+//    - com.lightningkite.kiteui.forms.ServerFileRenderer.type
+//    - com.lightningkite.kiteui.navigation.DefaultSerializersModule
+//    - kotlinx.serialization.modules.EmptySerializersModule
+//
+// 2. Inconsistent Magic Numbers: Lines 256 and 272 use raw `20.rem` value instead of the
+//    SETTINGS_FIELD_WIDTH constant defined at line 94. Extract or reuse the constant.
+//
+// 3. Error Handling Specificity: Multiple catch blocks catch generic Exception and show
+//    non-specific messages (e.g., "No Server", "Need valid URL"). Consider:
+//    - Distinguishing network errors from auth errors
+//    - Providing actionable error messages to users
+//    - Logging errors for debugging while showing user-friendly messages
+//
+// 4. Commented Code Cleanup: Lines 318-321 contain commented-out `::exists` code.
+//    Either implement the feature or remove the commented code to reduce noise.
+//
+// 5. User Display Logic Extraction: The logic for extracting user display name (lines 188-195)
+//    using email/phone/username fields is complex. Consider extracting this to a utility
+//    function in the auth module that could be reused elsewhere.
+//
+// 6. Testing Considerations: This file is a UI composition entry point with heavy
+//    dependency on KiteUI ViewWriter and reactive contexts. Unit testing requires:
+//    - Mock ViewWriter infrastructure (not currently available in test utils)
+//    - Mock PageNavigator
+//    - Browser environment (JS-only module)
+//    Consider integration/E2E tests for this file, or extract testable business logic
+//    (like user display name extraction) into separate pure functions.
+//
+// 7. Navigation Rebuild Performance: The entire navItems list rebuilds when permissions
+//    or schema change (lines 133-160). For large schemas, consider caching or diffing
+//    to avoid unnecessary UI rebuilds.
+//
+// 8. JsJodaTimeZoneModule Reference: The variable `x` at line 113 is intentionally unused
+//    to force module initialization. Consider adding a suppress annotation for clarity:
+//    @Suppress("UNUSED_VARIABLE")
+
 import com.lightningkite.kiteui.auth.authComponent2
 import com.lightningkite.kiteui.exceptions.ExceptionToMessages
 import com.lightningkite.kiteui.exceptions.installLsError
@@ -109,7 +149,9 @@ fun ViewWriter.app(navigator: PageNavigator, dialog: PageNavigator) {
                             NavLink(
                                 // Use docGroup if available (for organizing related collections),
                                 // otherwise fall back to serializer display name
-                                it.value.docGroup?.titleCase() ?: it.value.serializer.displayName,
+                                it.value.docGroup?.split('.')?.joinToString(" / ") {
+                                    it.removeSuffix("Api").removeSuffix("RestEndpoints").titleCase()
+                                } ?: it.value.serializer.displayName,
                                 icon = Icon.list
                             ) { CollectionAdminPage(it.key) }
                         )
@@ -281,37 +323,17 @@ fun ViewWriter.app(navigator: PageNavigator, dialog: PageNavigator) {
 }
 
 /*
- * TODO: API Improvement Recommendations for App.kt
+ * Historical Notes (reviewed 2026-01-21):
  *
- * 1. Hard-coded App Name: The app name "KiteUI Sample App" should be configurable or derived from server schema
+ * Items addressed:
+ * - Magic numbers for debounce (500ms) and settings field width (20.rem) extracted to constants
+ * - App name updated from "KiteUI Sample App" to "Lightning Server Admin"
+ * - Debug println statements have been removed from this file
  *
- * 2. User Display Logic: The logic to extract user display name (email/phone/username) is complex and repeated.
- *    Consider extracting to a dedicated function or property in the auth system.
- *
- * 3. Navigation Rebuild Performance: The entire navigation rebuilds on schema/permission changes. Consider
- *    more granular reactivity to avoid rebuilding unchanged sections.
- *
- * 4. Error Handling: Multiple try-catch blocks with generic exception handling. Consider more specific
- *    error types and user-friendly error messages.
- *
- * 5. Debug Logging: Multiple println statements for debugging should be removed or replaced with proper
- *    logging infrastructure with configurable levels.
- *
- * 6. Type Safety: adminServer() returns nullable types that are force-unwrapped with !!. Add proper null
- *    checks or error screens when server is unavailable.
- *
- * 7. Magic Numbers: The debounce time (500ms) and size constraints (20.rem) should be extracted as constants.
- *
- * 8. Commented Code: Unused theme configuration code should either be removed or properly documented.
- *
- * 9. Settings Access: Admin settings visibility should have validation to prevent invalid states.
- *
- * 10. Authentication Flow: The authentication component rebuilds on any reactive change. Consider memoization
- *     to prevent unnecessary re-initialization.
- *
- * 11. Session Management: Logout confirmation dialog resets to HomePage - should preserve navigation state or
- *     allow configuration.
- *
- * 12. Permission Loading: loadedPermissions() is called synchronously but fetches async data. Add loading
- *     states and error handling for permission fetch failures.
+ * Remaining considerations (see IMPROVEMENT SUGGESTIONS at top of file):
+ * - Additional 20.rem usages should use SETTINGS_FIELD_WIDTH constant
+ * - Error handling could be more specific
+ * - User display logic could be extracted
+ * - Commented code cleanup needed
+ * - Unused imports should be removed
  */

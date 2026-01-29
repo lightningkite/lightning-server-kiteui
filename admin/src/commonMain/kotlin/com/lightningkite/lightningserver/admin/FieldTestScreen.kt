@@ -1,5 +1,34 @@
 package com.lightningkite.lightningserver.admin
 
+//
+// PURPOSE:
+// This is a diagnostic/debug screen that displays all registered form renderers in the FormModule.
+// For each renderer that has a valid type, it creates a sample form field with a default value.
+// This allows developers to visually test and verify that all form generators render correctly.
+//
+// IMPROVEMENT SUGGESTIONS:
+// 1. Consider memoizing the FormModule instance instead of creating a new one in render().
+//    Currently, a new FormModule() is created on every render, which could be inefficient
+//    if this screen re-renders frequently. Consider moving it to a class property or using
+//    a shared instance.
+//
+// 2. The empty annotations list (line 36) could be more explicit. Consider adding a comment
+//    or using a named constant like `emptyList<SerializableAnnotation>()` to clarify intent.
+//
+// 3. Add logging or console output for skipped/failed renderers to aid debugging.
+//    Currently, renderers with null types or serialization failures are silently skipped.
+//    This makes it hard to diagnose why a renderer isn't appearing.
+//
+// 4. Consider adding UI controls to filter/search through renderers, especially as the number
+//    of registered form types grows. A searchable list would improve usability.
+//
+// 5. The Signal wrapping the default value (line 39) creates a non-reactive signal.
+//    Consider using MutableSignal if you want to enable interaction with the test forms,
+//    or add a comment clarifying that these are read-only demonstrations.
+//
+// 6. Error messages display exception message only (line 41). Consider adding exception type
+//    or stack trace (in dev mode) for better debugging: "Error on ${it.name}: ${e::class.simpleName}: ${e.message}"
+
 import com.lightningkite.kiteui.Routable
 import com.lightningkite.kiteui.forms.FormModule
 import com.lightningkite.kiteui.forms.FormSelector

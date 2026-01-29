@@ -1,3 +1,38 @@
+//
+// CODE REVIEW SUMMARY
+// ===================
+// This file manages admin panel authentication, settings, and server connection state.
+// It provides reactive properties that automatically update the UI when credentials change.
+//
+// IMPROVEMENT SUGGESTIONS:
+//
+// 1. POTENTIAL NULL POINTER (Line 48): The `!!` operator on subjects[c.userType] will crash
+//    if the userType doesn't exist in the subjects map. Consider using `subjects[c.userType]
+//    ?: return@remember null` with a warning log.
+//
+// 2. HARDCODED URL (Line 54): The "/meta/kschema" path is hardcoded. Consider making this
+//    configurable or defining it as a constant for easier maintenance.
+//
+// 3. ERROR HANDLING (Lines 83-93): The loadedPermissions catch blocks handle 401/403 silently
+//    returning empty permissions. Consider logging these for debugging purposes.
+//
+// 4. UNUSED FUNCTIONS (Lines 103-110): The `printDescriptorBetter` and `printDescriptorNested`
+//    functions appear to be debug utilities. If not used in production, consider removing
+//    or moving to a debug-only file.
+//
+// 5. MAGIC NUMBER (Line 77): The 30.minutes duration for unlockDestructiveActions is hardcoded.
+//    Consider extracting to a named constant like `DESTRUCTIVE_ACTION_TIMEOUT`.
+//
+// 6. EXCEPTION SWALLOWING (Lines 125-127): The catch block in adminServer rethrows the same
+//    exception without adding context. Either add context or remove the try-catch.
+//
+// 7. MISSING DOCUMENTATION: Public properties like `serverUrl`, `adminCredentials`,
+//    `adminAuthentication`, `serverSchema`, `adminSettings`, etc. lack KDoc comments
+//    explaining their purpose and usage.
+//
+// 8. THREAD SAFETY: The `nowByMinute` reactive process emits time updates every minute.
+//    Consider documenting that this is intentionally coarse-grained for performance.
+//
 package com.lightningkite.lightningserver.admin
 
 import com.lightningkite.kiteui.fetch

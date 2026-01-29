@@ -1,3 +1,29 @@
+//
+// CODE REVIEW SUMMARY
+// ===================
+// AuthTestPage and Auth2TestPage are test pages for verifying authentication components.
+// They use AuthEndpoints.dummy for testing without a real server connection.
+//
+// IMPROVEMENT SUGGESTIONS:
+//
+// 1. DEBUG PAGE WARNING: These are test pages using dummy endpoints. Consider:
+//    - Hiding from production navigation
+//    - Adding visible warning that these are for testing only
+//
+// 2. COMMENTED CODE (Lines 25-28, 40-43): Remove or document the commented-out
+//    schema fetching code. If it's kept for reference, explain why.
+//
+// 3. MISSING KDOC: No documentation explaining the purpose of these test pages
+//    or the difference between AuthTestPage and Auth2TestPage.
+//
+// 4. MAGIC NUMBERS (Lines 29, 44-45): Hardcoded size constraints (20.rem, 25.rem,
+//    5.rem). Extract to named constants or use theme values.
+//
+// 5. PAGE DUPLICATION: The two pages are very similar. Consider a parameterized
+//    approach or documenting why both variants are needed.
+//
+// 6. UNUSED IMPORT: Icon is only used in Auth2TestPage. Consider organizing imports.
+//
 package com.lightningkite.lightningserver.admin
 
 import com.lightningkite.kiteui.Routable

@@ -1,3 +1,29 @@
+//
+// CODE REVIEW SUMMARY
+// ===================
+// FunnelTestPage is a debug/testing page for validating the Funnels analytics system.
+// It provides buttons to simulate funnel steps, errors, and completion.
+//
+// IMPROVEMENT SUGGESTIONS:
+//
+// 1. DEBUG PAGE WARNING: This appears to be a test/debug page. Consider:
+//    - Hiding it from production (e.g., check adminSettings().showEndpoints)
+//    - Adding a warning banner that it's for testing only
+//
+// 2. NULL AUTHENTICATION (Line 20): `adminAuthentication()` can return null.
+//    The fetcher call should handle this gracefully.
+//
+// 3. HARDCODED FUNNEL NAME (Line 22): "test" is hardcoded. Consider making it
+//    configurable or showing multiple test funnels.
+//
+// 4. NO FEEDBACK: Buttons don't show any feedback when clicked. Consider adding
+//    visual confirmation (checkmark, toast, etc.) when steps are recorded.
+//
+// 5. MISSING KDOC: No documentation explaining the page's purpose or how funnels work.
+//
+// 6. LAZY DELEGATE (Line 22): Using `by lazy` inside render() may have lifecycle
+//    implications. Consider using remember {} for consistency.
+//
 package com.lightningkite.lightningserver.admin
 
 import com.lightningkite.kiteui.Routable
