@@ -25,7 +25,7 @@ data class FontStyle(
     val italic: Boolean = false,
     val underlined: Boolean = false,
     val strikethrough: Boolean = false,
-    val size: DimensionPx = 1.0
+    val size: DimensionPx = 1.rem.px
 ) {
     constructor(font: FontAndStyle) : this(font.bold, font.italic, font.underline, font.strikethrough, font.size.px)
     operator fun invoke(font: FontAndStyle) = font.copy(
