@@ -18,6 +18,7 @@ import com.lightningkite.reactive.core.Constant
 import com.lightningkite.reactive.core.MutableReactive
 import com.lightningkite.reactive.core.Reactive
 import com.lightningkite.reactive.core.Signal
+import com.lightningkite.services.database.Condition
 import com.lightningkite.services.database.SerializableAnnotation
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.serializer
@@ -44,7 +45,7 @@ internal inline fun ViewWriter.fieldWithoutBorder(label: String, description: St
     }
 }
 fun ViewWriter.subrendererSelector(
-    selectedRenderer: Signal<Renderer<Any?>>,
+    selectedRenderer: MutableReactive<Renderer<Any?>>,
     elementRenderers: List<Renderer<Any?>>
 ) {
     themed(SubtextSemantic).row {
@@ -194,3 +195,45 @@ fun <T> ViewWriter.labeledView(module: FormModule, serializer: KSerializer<T>, v
     module.labeledViewWithSwitcher(context, value, label, description ?: context.description)(this)
 }
 
+
+/**
+ * Converts a Condition into a human-readable string for display.
+ * Used in the UI to show users what filters are currently applied.
+ */
+fun Condition<*>.friendly(): String {
+    return when (this) {
+        Condition.Always -> "All"
+        is Condition.And<*> -> conditions.joinToString(" and ") { it.friendly() }
+        is Condition.Or<*> -> conditions.joinToString(" or ") { it.friendly() }
+        Condition.Never -> "None"
+        is Condition.OnField<*, *> -> this.key.displayName.lowercase() + " " + condition.friendly()
+        is Condition.Equal<*> -> "is $value"
+        is Condition.NotEqual<*> -> "isn't $value"
+        is Condition.GreaterThan<*> -> "> $value"
+        is Condition.GreaterThanOrEqual<*> -> ">= $value"
+        is Condition.LessThan<*> -> "< $value"
+        is Condition.LessThanOrEqual<*> -> "<= $value"
+        is Condition.Inside<*> -> "is ${values.joinToString(" or ")}"
+        is Condition.NotInside<*> -> "isn't ${values.joinToString(" or ")}"
+        is Condition.StringContains -> "contains $value"
+        is Condition.GeoDistance -> "is within ${greaterThanKilometers} km and ${lessThanKilometers} km"
+        is Condition.IfNotNull<*> -> condition.friendly()
+        is Condition.Exists<*> -> "has key $key"
+        is Condition.FullTextSearch<*> -> "matches ${this.value}"
+//        is Condition.IntBitsAnyClear -> TODO()
+//        is Condition.IntBitsAnySet -> TODO()
+//        is Condition.IntBitsClear -> TODO()
+//        is Condition.IntBitsSet -> TODO()
+        is Condition.ListAllElements<*> -> "all items are ${this.condition.friendly()}"
+        is Condition.ListAnyElements<*> -> "has any item that ${this.condition.friendly()}"
+        is Condition.ListSizesEquals<*> -> "size is $count"
+        is Condition.Not<*> -> "not ${condition.friendly()}"
+        is Condition.OnKey<*> -> "${this.key} ${this.condition.friendly()}"
+        is Condition.RawStringContains<*> -> "contains $value"
+        is Condition.RegexMatches -> "matches regex ${this.pattern}"
+        is Condition.SetAllElements<*> -> "all items are ${this.condition.friendly()}"
+        is Condition.SetAnyElements<*> -> "has any item that ${this.condition.friendly()}"
+        is Condition.SetSizesEquals<*> -> "size is $count"
+        else -> toString()
+    }
+}

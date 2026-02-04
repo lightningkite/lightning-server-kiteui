@@ -15,10 +15,13 @@ import com.lightningkite.reactive.core.*
 import com.lightningkite.serialization.lensPath
 import com.lightningkite.kiteui.navigation.DefaultJson
 import com.lightningkite.lightningserver.db.LimitReactiveList
+import com.lightningkite.reactive.extensions.withWrite
 import com.lightningkite.services.database.*
 import kotlinx.coroutines.launch
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.descriptors.StructureKind
 
@@ -68,7 +71,7 @@ object TableRenderer : Renderer<List<Any?>> {
                 module = module,
                 innerSerializer = innerSerializer,
                 items = Constant(value),
-                columns = Signal(innerSerializer.defaultColumns() as List<DataClassPath<Any?, *>>),
+                columns = Signal(innerSerializer.defaultColumns().map { ColumnInfo(it, module) }),
                 linkTo = null,
                 action = null
             )
@@ -119,10 +122,28 @@ object TableRenderer : Renderer<List<Any?>> {
     }
 }
 
-data class ColumnInfo<T, V>(
-    val path: DataClassPath<T, V>,
-    val renderer: Renderer<V>
-)
+@Serializable
+data class ColumnInfo<T>(
+    val path: DataClassPathPartial<T>,
+    val rendererSelected: String? = null
+) {
+    constructor(path: DataClassPathPartial<T>, renderer: Renderer<*>): this(path, renderer.name)
+    constructor(path: DataClassPathPartial<T>, formModule: FormModule): this(path, formModule.select(RenderContext(path.serializerAny, path.properties.lastOrNull()?.serializableAnnotations ?: listOf())))
+    @Transient private var cached: Renderer<Any?>? = null
+    @Transient val ctx = RenderContext(
+        path.serializerAny as KSerializer<Any?>,
+        path.properties.lastOrNull()?.serializableAnnotations ?: listOf()
+    )
+    fun renderer(formModule: FormModule): Renderer<Any?> {
+        return cached ?: run {
+            val n = formModule.selectAll(ctx).find { it.name == rendererSelected }
+                ?: formModule.select(ctx)
+            cached = n
+            n
+        }
+    }
+    fun columnWidth(formModule: FormModule): Double = renderer(formModule).columnWidth(ctx, formModule) ?: 8.0
+}
 
 /**
  * Renders a table view of items.
@@ -145,7 +166,7 @@ fun <T> ViewWriter.renderTable(
     module: FormModule,
     innerSerializer: KSerializer<T>,
     items: Reactive<Reactive<List<T>>>,
-    columns: MutableReactive<List<DataClassPath<T, *>>>, // TODO: We need to change this to store a data class path AND the renderer choice.
+    columns: MutableReactive<List<ColumnInfo<T>>>,
     linkTo: ((T) -> () -> Page)? = null,
     action: (suspend (T) -> Unit)? = null
 ) {
@@ -160,57 +181,27 @@ fun <T> ViewWriter.renderTable(
     // Per-column renderer selections (keyed by column path string) - by Claude
     val columnRendererSelections = HashMap<String, Signal<Renderer<Any?>>>()
 
-    val anyCols = columns as MutableReactive<List<DataClassPath<T, Any?>>>
-
-    fun getContext(path: DataClassPath<T, Any?>): RenderContext<Any?> {
-        return contextCache.getOrPut(path) {
-            RenderContext(
-                serializer = path.serializer,
-                fieldAnnotations = path.properties.lastOrNull()?.serializableAnnotations ?: listOf()
-            )
-        }
-    }
-
-    // by Claude - get or create a Signal for the selected renderer of a column
-    fun getRendererSignal(path: DataClassPath<T, Any?>): Signal<Renderer<Any?>> {
-        val key = path.properties.joinToString(".") { it.name }
-        return columnRendererSelections.getOrPut(key) {
-            val ctx = getContext(path)
-            Signal(module.selectWithOverride(ctx))
-        }
-    }
-
     scrollingHorizontally.col {
         // Dynamic width based on columns and selected renderers - by Claude
         expanding.changingSizeConstraints {
-            val totalWidth = anyCols().sumOf { col ->
-                val ctx = getContext(col)
-                val renderer = getRendererSignal(col)()
-                (renderer.columnWidth(ctx, module) ?: 8.0).coerceAtLeast(5.0) + 2.0
-            } + 5.0
+            val totalWidth = columns().sumOf { it.columnWidth(module) } + 5.0
             SizeConstraints(width = totalWidth.rem)
         }.col {
             // Header row - by Claude
             row {
                 themed(ListSemantic).row {
-                    forEach(anyCols) { col ->
-                        val ctx = getContext(col)
-                        val rendererSignal = getRendererSignal(col)
-                        val availableRenderers = module.selectAll(ctx)
+                    forEach(columns) { col ->
 
-                        changingSizeConstraints {
-                            val width = (rendererSignal().columnWidth(ctx, module) ?: 8.0).coerceAtLeast(5.0)
-                            SizeConstraints(width = width.rem)
-                        }.important.row {
+                        sizeConstraints(width = col.columnWidth(module).rem).important.row {
                             val mimeType = "x-lskui/column"
-                            val colSer = DataClassPathSerializer(innerSerializer)
+                            val colSer = ColumnInfo.serializer(innerSerializer)
                             dragData = DragData(label = col.toString(), mimeType = mimeType, data = DefaultJson.encodeToString(colSer, col))
                             dropTargetDelegate = object: DropTargetDelegate {
                                 override fun drop(event: DragEvent): Boolean {
                                     return event.data[mimeType]?.let { colStr ->
-                                        val otherCol = DefaultJson.decodeFromString(colSer, colStr) as DataClassPath<T, Any?>
+                                        val otherCol = DefaultJson.decodeFromString(colSer, colStr)
                                         launch {
-                                            anyCols set anyCols()
+                                            columns set columns()
                                                 .let {
                                                     val t = it.toMutableList()
                                                     val myOldIndex = t.indexOf(col)
@@ -225,50 +216,27 @@ fun <T> ViewWriter.renderTable(
                                     } ?: false
                                 }
                             }
-                            centered.expanding.text(col.properties.joinToString(" ") { it.displayName })
+                            centered.expanding.text(col.path.properties.joinToString(" ") { it.displayName })
 
                             centered.row {
                                 gap = 0.px
                                 // Renderer switcher (if enabled and multiple options) - by Claude
-                                if (module.enableRendererSwitching && availableRenderers.size > 1) {
-                                    menuButton {
-                                        centered.icon(
-                                            Icon.settings.copy(width = 1.rem, height = 1.rem),
-                                            "Column Settings"
-                                        )
-                                        preferredDirection = PopoverPreferredDirection.belowCenter
-                                        requireClick = true
-                                        opensMenu {
-                                            col {
-                                                subtext("Renderer:")
-                                                for (renderer in availableRenderers) {
-                                                    button {
-                                                        row {
-                                                            text(renderer.name)
-                                                            // Show checkmark for selected - by Claude
-                                                            shownWhen { rendererSignal() == renderer }.icon(
-                                                                Icon.done.copy(width = 1.rem, height = 1.rem),
-                                                                "Selected"
-                                                            )
-                                                        }
-                                                        onClick {
-                                                            rendererSignal set renderer
-                                                            // Persist to module selections - by Claude
-                                                            val key = module.selectionKey(ctx)
-                                                            module.rendererSelections[key] = renderer
-                                                            closePopovers()
-                                                        }
-                                                    }
-                                                }
+                                if (module.enableRendererSwitching) {
+                                    subrendererSelector(
+                                        selectedRenderer = Constant(col.renderer(module)).withWrite { v ->
+                                            columns set columns().map {
+                                                if(it == col) col.copy(rendererSelected = v.name)
+                                                else it
                                             }
-                                        }
-                                    }
+                                        },
+                                        elementRenderers = module.selectAll(col.ctx)
+                                    )
                                 }
 
                                 button {
                                     centered.icon(Icon.close.copy(width = 1.rem, height = 1.rem), "Remove Column")
                                     onClick {
-                                        anyCols set (anyCols() - col)
+                                        columns set (columns() - col)
                                     }
                                 }
                             }
@@ -294,9 +262,9 @@ fun <T> ViewWriter.renderTable(
                                 button {
                                     text(prop.displayName)
                                     onClick {
-                                        val current = anyCols()
-                                        if (path !in current) {
-                                            anyCols set (current + path)
+                                        val current = columns()
+                                        if (path !in current.map { it.path }) {
+                                            columns set (current + ColumnInfo(path, module))
                                         }
                                         closePopovers()
                                     }
@@ -322,22 +290,11 @@ fun <T> ViewWriter.renderTable(
                 // by Claude - items is double-wrapped: Reactive<Reactive<List<T>>>
                 // Use remember { items()() } to unwrap both layers into a single tracked reactive
                 children(remember { items()() }, id = { (it as? HasId<*>)?._id ?: it }) { itemReactive ->
-                    fun ViewWriter.rowContent() = row {
-                        forEach(anyCols) { col ->
-                            val ctx = getContext(col)
-                            val rendererSignal = getRendererSignal(col)
-
-                            // Dynamic width based on selected renderer - by Claude
-                            changingSizeConstraints {
-                                val width = (rendererSignal().columnWidth(ctx, module) ?: 8.0).coerceAtLeast(5.0)
-                                SizeConstraints(width = width.rem)
-                            }.padded.frame {
-                                // Re-render when renderer changes - by Claude
-                                reactive {
-                                    clearChildren()
-                                    rendererSignal().cellView(ctx, itemReactive.lensPath(col), module)()
-                                }
-                            }
+                    fun ViewWriter.rowContent() = themed(ListSemantic).row {
+                        forEach(columns) { col ->
+                            col.renderer(module).cellView(col.ctx, itemReactive.lensPath(col.path as DataClassPath<Any?, Any?>), module)(
+                                sizeConstraints(width = col.columnWidth(module).rem)
+                            )
                         }
                     }
 

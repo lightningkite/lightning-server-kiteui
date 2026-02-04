@@ -47,6 +47,7 @@ import com.lightningkite.kiteui.forms.displayName
 import com.lightningkite.kiteui.models.*
 import com.lightningkite.kiteui.navigation.PageNavigator
 import com.lightningkite.kiteui.navigation.pageNavigator
+import com.lightningkite.kiteui.reactive.AppState
 import com.lightningkite.kiteui.views.ViewWriter
 import com.lightningkite.kiteui.views.card
 import com.lightningkite.kiteui.views.centered
@@ -117,7 +118,14 @@ fun ViewWriter.app(navigator: PageNavigator, dialog: PageNavigator) {
 
     // Configure the navigation factory to use top-and-left navigation layout
     // This sets up the sidebar + top bar layout for the admin panel
-    appNavFactory.value = ViewWriter::appNavTopAndLeft
+    val big = remember { AppState.windowInfo().width > 50.rem }
+    reactive {
+        appNavFactory.value = if(big())
+            ViewWriter::appNavTopAndLeft
+        else
+            ViewWriter::appNavBottomTabs
+    }
+
 
     appNav(navigator, dialog) {
         appName = "Lightning Server Admin"
@@ -141,22 +149,24 @@ fun ViewWriter.app(navigator: PageNavigator, dialog: PageNavigator) {
 
                 // Auto-generate navigation items for each collection in the schema
                 // Sorted alphabetically by display name for consistent ordering
-                adminServer().models.entries.sortedBy { it.value.serializer.displayName }.forEach {
-                    // Only show collections where the user has read permission
-                    // Condition.Never means no read access at all
-                    if(permissions[it.key]?.read != Condition.Never) {
-                        add(
-                            NavLink(
-                                // Use docGroup if available (for organizing related collections),
-                                // otherwise fall back to serializer display name
-                                it.value.docGroup?.split('.')?.joinToString(" / ") {
-                                    it.removeSuffix("Api").removeSuffix("RestEndpoints").titleCase()
-                                } ?: it.value.serializer.displayName,
-                                icon = Icon.list
-                            ) { CollectionAdminPage(it.key) }
-                        )
-                    }
-                }
+                add(
+                    NavGroup(
+                        "Collections",
+                        Icon.list,
+                        adminServer().models.entries.sortedBy { it.value.serializer.displayName }.mapNotNull {
+                            // Only show collections where the user has read permission
+                            // Condition.Never means no read access at all
+                            if (permissions[it.key]?.read != Condition.Never) {
+                                NavLink(
+                                    // Use docGroup if available (for organizing related collections),
+                                    // otherwise fall back to serializer display name
+                                    it.value.docGroup?.split('.')?.joinToString(" / ") {
+                                        it.removeSuffix("Api").removeSuffix("RestEndpoints").titleCase()
+                                    } ?: it.value.serializer.displayName,
+                                    icon = Icon.list
+                                ) { CollectionAdminPage(it.key) }
+                            } else null
+                        }))
             }
         }
 
@@ -191,7 +201,7 @@ fun ViewWriter.app(navigator: PageNavigator, dialog: PageNavigator) {
                                         ?.let { it as SerializableProperty<Any, Any?> }
                                         ?.get(self)
                                         ?.toString()
-                                        // Fallback to toString() but limit to 40 chars to avoid UI overflow
+                                    // Fallback to toString() but limit to 40 chars to avoid UI overflow
                                         ?: self.toString().take(40)
 
                                 } catch (e: Exception) {

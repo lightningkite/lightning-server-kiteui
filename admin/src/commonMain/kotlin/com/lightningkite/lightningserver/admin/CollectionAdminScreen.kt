@@ -9,6 +9,7 @@ import com.lightningkite.kiteui.forms.naturalSort
 import com.lightningkite.kiteui.forms.*
 import com.lightningkite.kiteui.models.Icon
 import com.lightningkite.kiteui.models.SelectedSemantic
+import com.lightningkite.kiteui.models.rem
 import com.lightningkite.kiteui.navigation.DefaultJson
 import com.lightningkite.kiteui.navigation.Page
 import com.lightningkite.kiteui.navigation.UrlProperties
@@ -28,7 +29,6 @@ import com.lightningkite.reactive.context.invoke
 import com.lightningkite.reactive.context.reactive
 import com.lightningkite.reactive.core.*
 import com.lightningkite.reactive.extensions.debounce
-import com.lightningkite.services.database.*
 import kotlinx.serialization.builtins.ListSerializer
 
 
@@ -48,8 +48,16 @@ import kotlinx.serialization.builtins.ListSerializer
  *
  * @param collectionName The collection identifier from the server schema
  */
+// by Claude - refactored to use inner CollectionContents class for cleaner reactive bindings
 @Routable("collections/{collectionName}")
 class CollectionAdminPage(val collectionName: String) : Page {
+
+    override val title: Reactive<String> = remember { collectionName }
+
+    companion object {
+        private const val DEBOUNCE_MS = 500L
+        private const val EXPORT_LIMIT = 100_000
+    }
 
     /** Text search query - searches across visible string columns */
     @QueryParameter("query")
@@ -71,260 +79,187 @@ class CollectionAdminPage(val collectionName: String) : Page {
      * The ModelCache instance for this collection (nullable for existence check).
      * Returns null if the collection doesn't exist in the schema.
      */
-    // by Claude - added null safety for missing collections
     private val mcOrNull = remember {
         adminServer().models[collectionName]?.cache(adminAuthentication())
                 as? ModelCache<UnknownModel, UnknownId>
     }
 
-    /**
-     * The ModelCache instance for this collection, initialized with current authentication.
-     *
-     * Provides real-time data synchronization via WebSockets when available, and smart polling otherwise.
-     * Cached at the page level so data persists across reactive rebuilds.
-     * Note: Only access after verifying mcOrNull is not null in render().
-     */
-    val mc = remember { mcOrNull()!! }
-
-    /**
-     * Shows export dialog with options to download or copy data as CSV.
-     *
-     * Exports respect the current filter/sort but are limited to 100,000 records.
-     * Uses the current visible columns and query state.
-     */
-    fun ViewWriter.exportDialog() = dialog { close ->
-        col {
-            h2("Export")
-
-            // Export to CSV file download
-            // Respects current filter and sort but exports full result set (up to 100k items)
-            important.button {
-                centered.text("Direct CSV")
-                action = Action("Download", Icon.download) {
-                    // Configure CSV format to handle complex types by deferring to JSON serialization
-                    val csv = CsvFormat(StringDeferringConfig(DefaultJson.serializersModule, ignoreUnknownKeys = true))
-                    val mc = mc()
-                    // TODO: 100,000 limit could cause memory issues with large records. Consider streaming or server-side export.
-                    val data = mc.query(
-                        queryReadable(mc)().copy(limit = 100_000)
-                    )()
-                    val items = csv.encodeToString(ListSerializer(mc().serializer), data)
-                    ExternalServices.download("data.csv", items.toBlob("text/csv"), DownloadLocation.Downloads)
-                    close()
-                }
-            }
-
-            // Export to clipboard (useful for pasting into spreadsheets)
-            // Shows success checkmark when copy completes
-            important.button {
-                val success = Signal(false)
-                row {
-                    expanding.stack()
-                    centered.text("Copy CSV to Clipboard")
-                    onlyWhen { success() }.icon(Icon.done, "Done")
-                    expanding.stack()
-                }
-                action = Action("Download", Icon.download) {
-                    val csv = CsvFormat(StringDeferringConfig(DefaultJson.serializersModule, ignoreUnknownKeys = true))
-                    val mc = mc()
-                    // TODO: Same 100k limit - consider streaming for large datasets
-                    val data = mc.query(
-                        queryReadable(mc)().copy(limit = 100_000)
-                    )()
-                    val items = csv.encodeToString(ListSerializer(mc().serializer), data)
-                    ExternalServices.setClipboardText(items)
-                    success.value = true
-                    close()
-                }
-            }
-        }
-
-    }
-
-    /**
-     * Shows import dialog for uploading CSV data to the collection.
-     *
-     * Validates data before insert and requires user confirmation.
-     * All items are inserted in bulk - partial failures may occur.
-     */
-    fun ViewWriter.importDialog() = dialog { close ->
-        col {
-            h2("Import")
-            important.button {
-                centered.text("Upload Direct CSV")
-                action = Action("Upload", Icon.upload) {
-                    // Request CSV file from user's filesystem
-                    val file = ExternalServices.requestFile(listOf("text/csv")) ?: return@Action
-                    val csv = CsvFormat(StringDeferringConfig(DefaultJson.serializersModule, ignoreUnknownKeys = true))
-                    val text = file.text()
-
-                    // TODO: CSV parsing errors are not caught - will crash if CSV is malformed or doesn't match schema
-                    val items = csv.decodeFromString(ListSerializer(mc().serializer), text)
-
-                    // Show confirmation with item count before inserting
-                    confirmDanger("Upload ${items.size} items?", "Are you sure you want to upload these items?") {
-                        // TODO: No error handling for bulk insert failures - partial failures may occur silently
-                        // TODO: No progress indicator for large imports
-                        mc().insert(items)
-                    }
-                    close()
-                }
-            }
-        }
-    }
-
-    /**
-     * Shows bulk delete dialog for removing all items matching the current filter.
-     *
-     * Displays item count preview and requires confirmation before deletion.
-     * Uses skipCache.bulkDelete for direct server deletion bypassing cache.
-     *
-     * WARNING: This is a destructive operation with no undo.
-     */
-    fun ViewWriter.bulkDeleteDialog() = dialog { close ->
-        col {
-            h2("Bulk Delete")
-            reactive<Unit> {
-                clearChildren()
-                val mc = mc()
-                val condition = conditionWritable(mc)
-
-                // Fetch item count matching the current condition for preview
-                // Uses skipCache to get accurate server-side count
-                val itemCount = rememberSuspending {
-                    val c = condition()
-                    mc.skipCache.count(c)
-                }
-
-                // Show preview of what will be deleted
-                // Helps users understand the scope of the delete operation
-                subtext {
-                    ::content {
-                        buildString {
-                            val c = condition()
-                            when (c) {
-                                Condition.Always -> append("This will delete ALL ${itemCount()} items in the collection.")
-                                Condition.Never -> append("No items will be deleted.")
-                                else -> append("This will delete ${itemCount()} items where $c")
-                            }
-                        }
-                    }
-                }
-
-                important.button {
-                    centered.text("Delete All Matching Items")
-                    action = Action("Delete", Icon.deleteForever) {
-                        val c = condition()
-                        // Double confirmation for destructive operation
-                        confirmDanger(
-                            "Delete all matching items?",
-                            "Are you sure you want to delete all items matching the current query? This action cannot be undone."
-                        ) {
-                            // TODO: No error handling for bulk delete failures - user won't know if operation failed
-                            // TODO: No progress indicator for large deletes
-                            // Bypass cache and delete directly on server
-                            mc.skipCache.bulkDelete(c)
-                            // Force full cache refresh to reflect deletions
-                            mc.totallyInvalidate()
-                        }
-                        close()
-                    }
-                }
-            }
-        }
-    }
-
-    /**
-     * Renders the main collection screen.
-     *
-     * Rebuilds when the ModelCache or FormModule changes (e.g., auth changes).
-     */
     override fun ViewWriter.render() {
         col {
             reactive<Unit> {
                 clearChildren()
-                // by Claude - added null safety for missing collections
-                if (mcOrNull() == null) {
-                    centered.col {
-                        h2("Collection Not Found")
-                        text("The collection '$collectionName' does not exist or is not accessible.")
-                        button {
-                            text("Go Home")
-                            onClick { pageNavigator.reset(HomePage()) }
-                        }
-                    }
+                val mc = mcOrNull()
+                if (mc == null) {
+                    renderNotFound()
                     return@reactive
                 }
-                val mc = mc()
-                val forms = adminFormModule()
-                renderContents(mc, forms)
+                CollectionContents(mc, adminFormModule()).run { render() }
+            }
+        }
+    }
+
+    private fun ViewWriter.renderNotFound() {
+        centered.col {
+            h2("Collection Not Found")
+            text("The collection '$collectionName' does not exist or is not accessible.")
+            button {
+                text("Go Home")
+                onClick { pageNavigator.reset(HomePage()) }
             }
         }
     }
 
     /**
-     * Renders the toolbar, filters, and data table for the collection.
-     *
-     * This includes:
-     * - Search input with filter/sort/info buttons
-     * - Item count summary with current query description
-     * - Table renderer with customizable columns and live updates
-     *
-     * @param mc The ModelCache for accessing and watching collection data
-     * @param forms The FormModule for rendering filters and table cells
+     * Inner component with ModelCache and FormModule as fixed constructor params.
+     * All reactive bindings become simple properties instead of functions.
      */
-    private fun RowOrCol.renderContents(mc: ModelCache<UnknownModel, UnknownId>, forms: FormModule) {
-        // Convert URL query parameters to reactive values for condition, sort, and columns
-        // These are bidirectionally bound - changes update both UI and URL
-        val condition = conditionWritable(mc)
-        val sort = sortWritable(mc)
+    private inner class CollectionContents(
+        val mc: ModelCache<UnknownModel, UnknownId>,
+        val forms: FormModule
+    ) {
+        // by Claude - converted from functions to properties since mc/forms are now in scope
+        val condition: MutableReactiveValue<Condition<UnknownModel>> =
+            conditionString.lensJson(Condition.serializer(mc.serializer)) { Condition.Always }
 
-        @Suppress("UNCHECKED_CAST")
-        val columns: MutableReactiveValue<List<DataClassPath<UnknownModel, *>>> =
-            columnsWritable(mc)
-
-        // Build the full query from all reactive inputs (text search + filter + sort)
-        val query = queryReadable(mc)
-
-        // Toolbar with search, filter, sort, and action buttons
-        row {
-            // Full-width text search input
-            // Debounced in queryReadable to prevent excessive queries
-            expanding.fieldTheme.textInput {
-                content bind textSearch
+        val sort: MutableReactiveValue<List<SortPart<UnknownModel>>> =
+            sortString.lensJson(ListSerializer(SortPartSerializer(mc.serializer))) {
+                mc.serializer.naturalSort()
             }
 
-            // Filter button - highlights when filter is active (not Condition.Always)
+        @Suppress("UNCHECKED_CAST")
+        val columns: MutableReactiveValue<List<ColumnInfo<UnknownModel>>> =
+            columnsString.lensJson(ListSerializer(ColumnInfo.serializer(mc.serializer))) {
+                mc.serializer.defaultColumns().map { ColumnInfo(it, forms) }
+            } as MutableReactiveValue<List<ColumnInfo<UnknownModel>>>
+
+        val hasTextIndex: Boolean =
+            mc.serializer.serializableAnnotations.any { it.fqn.endsWith("TextIndex") }
+
+        /**
+         * Builds a complete Query from text search, condition, sort, and columns.
+         * All parts are debounced to prevent query spam during rapid UI changes.
+         */
+        val query: Reactive<Query<UnknownModel>> = remember {
+            Query(
+                condition = Condition.And(
+                    listOfNotNull(
+                        buildTextSearchCondition(),
+                        condition.debounce(DEBOUNCE_MS)()
+                    )
+                ),
+                orderBy = sort.debounce(DEBOUNCE_MS)()
+            )
+
+        }
+
+        /**
+         * Builds a text search condition from the current search text.
+         * Uses full-text search if available, otherwise searches visible string columns.
+         */
+        private fun ReactiveContext.buildTextSearchCondition(): Condition<UnknownModel>? {
+            val text = textSearch.debounce(DEBOUNCE_MS)().takeUnless { it.isBlank() } ?: return null
+            return if (hasTextIndex) {
+                Condition.FullTextSearch(text)
+            } else {
+                buildColumnSearchCondition(text)
+            }
+        }
+
+        /**
+         * Fallback text search: searches each word across all visible string columns.
+         * Each word must match at least one column (AND of ORs).
+         */
+        private fun ReactiveContext.buildColumnSearchCondition(text: String): Condition<UnknownModel> {
+            val cols = columns()
+            return text.split(' ').map { term ->
+                cols.mapNotNull { c ->
+                    @Suppress("UNCHECKED_CAST")
+                    val path = c.path as DataClassPath<UnknownModel, Any?>
+                    val baseSerialName = path.serializer
+                        .let { it.nullElement() ?: it }
+                        .descriptor.serialName.substringBefore('/')
+
+                    val searchPath = if (path.serializer.descriptor.isNullable) {
+                        DataClassPathNotNull(path)
+                    } else {
+                        path
+                    }
+
+                    @Suppress("UNCHECKED_CAST")
+                    when {
+                        baseSerialName == "kotlin.String" -> searchPath.mapCondition(
+                            Condition.StringContains(term, ignoreCase = true) as Condition<Any?>
+                        )
+                        baseSerialName in IsRawString.serialNames -> searchPath.mapCondition(
+                            Condition.RawStringContains<TrimmedString>(term, ignoreCase = true) as Condition<Any?>
+                        )
+                        else -> null
+                    }
+                }.takeUnless { it.isEmpty() }?.let { Condition.Or(it) } ?: Condition.Always
+            }.let { Condition.And(it) }
+        }
+
+        fun ViewWriter.render() {
+            renderToolbar()
+            renderSummary()
+            renderTable()
+        }
+
+        private fun ViewWriter.renderToolbar() {
+            rowCollapsingToColumn(50.rem) {
+                expanding.fieldTheme.textInput {
+                    content bind textSearch
+                }
+
+                row {
+                    renderFilterButton()
+                    renderSortButton()
+
+                    link {
+                        icon(Icon.info, "Statistics")
+                        to = { CollectionStatsPage(collectionName) }
+                    }
+
+                    renderBulkActionsMenu()
+
+                    link {
+                        icon(Icon.add, "Add New")
+                        to = {
+                            NewItemAdminPage(collectionName).apply {
+                                conditionString.value = this@CollectionAdminPage.conditionString.value
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        private fun ViewWriter.renderFilterButton() {
             menuButton {
                 dynamicTheme { if (condition() != Condition.Always) SelectedSemantic else null }
                 icon(Icon.filterList, "Filter")
                 requireClick = true
                 opensMenu {
-                    // Dynamically generated form for building Condition queries
-                    // Form is type-safe and adapts to the collection's schema
-                    form(forms, Condition.serializer(mc.serializer), condition)
+                    form(forms, Condition.And.serializer(mc.serializer), condition.lens(
+                        get = { it as? Condition.And ?: Condition.And(listOf(it)) },
+                        set = { it }
+                    ))
                 }
             }
+        }
 
-            // Sort button - highlights when sort is applied (non-empty)
+        private fun ViewWriter.renderSortButton() {
             menuButton {
                 dynamicTheme { if (sort().isNotEmpty()) SelectedSemantic else null }
                 icon(Icon.sort, "Sort")
                 requireClick = true
                 opensMenu {
-                    // Form for building multi-field sort order
-                    // Supports ascending/descending on any field
                     form(forms, ListSerializer(SortPartSerializer(mc.serializer)), sort)
                 }
             }
+        }
 
-            // Link to collection statistics/analytics page
-            link {
-                icon(Icon.info, "Statistics")
-                to = { CollectionStatsPage(collectionName) }
-            }
-
-            // Bulk actions menu (export/import/delete) and permissions display
+        private fun ViewWriter.renderBulkActionsMenu() {
             menuButton {
                 icon(Icon.moreVert, "Bulk Actions")
                 requireClick = true
@@ -342,368 +277,210 @@ class CollectionAdminPage(val collectionName: String) : Page {
                             text("Bulk Delete...")
                             onClick { bulkDeleteDialog() }
                         }
+                        renderPermissionsSection()
+                    }
+                }
+            }
+        }
 
-                        // Permissions display section
-                        // Shows user's current permissions for this collection
-                        col {
-                            h3("My Permissions")
-                            val p = remember { loadedPermissions().get(collectionName) ?: ModelPermissions() }
+        private fun ViewWriter.renderPermissionsSection() {
+            col {
+                h3("My Permissions")
+                val permissions = remember { loadedPermissions().get(collectionName) ?: ModelPermissions() }
 
-                            // Helper function for rendering key-value permission rows
-                            // Allows conditional visibility for rows that only apply when restrictions exist
-                            fun ViewWriter.kv(
-                                key: String,
-                                visibleIf: ReactiveContext.() -> Boolean = { true },
-                                value: ReactiveContext.() -> String
-                            ) {
-                                row {
-                                    ::exists { visibleIf() }
-                                    expanding.text {
-                                        wraps = false
-                                        content = key
-                                    }
-                                    text {
-                                        wraps = false
-                                        ::content { value() }
-                                    }
+                permissionRow("Read") { permissions().read.simplify().friendly() }
+                permissionRow(
+                    "Restricted fields",
+                    visibleIf = { permissions().readMask.pairs.isNotEmpty() }
+                ) {
+                    permissions().readMask.pairs
+                        .flatMap { it.first.readPaths() }
+                        .joinToString(", ") { it.properties.joinToString("'s ") { it.displayName } }
+                }
+                permissionRow("Create") { permissions().create.simplify().friendly() }
+                permissionRow("Update") { permissions().update.simplify().friendly() }
+                permissionRow(
+                    "Restricted fields",
+                    visibleIf = { permissions().updateRestrictions.fields.isNotEmpty() }
+                ) {
+                    permissions().updateRestrictions.fields
+                        .joinToString(", ") { it.path.properties.joinToString("'s ") { it.displayName } }
+                }
+                permissionRow("Delete") { permissions().delete.simplify().friendly() }
+            }
+        }
+
+        private fun ViewWriter.permissionRow(
+            key: String,
+            visibleIf: ReactiveContext.() -> Boolean = { true },
+            value: ReactiveContext.() -> String
+        ) {
+            row {
+                ::exists { visibleIf() }
+                expanding.text {
+                    wraps = false
+                    content = key
+                }
+                text {
+                    wraps = false
+                    ::content { value() }
+                }
+            }
+        }
+
+        private fun ViewWriter.renderSummary() {
+            row {
+                subtext {
+                    val itemCount = rememberSuspending {
+                        val q = query()
+                        mc.skipCache.count(q.condition)
+                    }
+                    ::content {
+                        buildString {
+                            val c = condition()
+                            val ts = textSearch()
+                            val hasTextSearch = ts.isNotBlank()
+                            val hasFilter = c != Condition.Always
+
+                            when {
+                                c == Condition.Never -> append("Showing NO ITEMS ")
+                                !hasTextSearch && !hasFilter -> append("Showing all ${itemCount()} items")
+                                hasTextSearch && !hasFilter -> append("Showing ${itemCount()} items matching \"$ts\"")
+                                !hasTextSearch && hasFilter -> append("Showing ${itemCount()} items where ${c.friendly()}")
+                                else -> append("Showing ${itemCount()} items matching \"$ts\" where ${c.friendly()}")
+                            }
+
+                            val s = sort()
+                            if (s.isNotEmpty()) {
+                                append(", sorted by ")
+                                s.forEach {
+                                    append(it.field.properties.joinToString("'s ") { it.displayName })
+                                    if (it.ascending) append(" ascending")
+                                    else append(" descending")
                                 }
                             }
-                            kv("Read") { p().read.simplify().friendly() }
-                            kv("Restricted fields", visibleIf = { p().readMask.pairs.isNotEmpty() }) {
-                                p().readMask.pairs.flatMap { it.first.readPaths() }
-                                    .joinToString(", ") { it.properties.joinToString("'s ") { it.displayName } }
-                            }
-                            kv("Create") { p().create.simplify().friendly() }
-                            kv("Update") { p().update.simplify().friendly() }
-                            kv("Restricted fields", visibleIf = { p().updateRestrictions.fields.isNotEmpty() }) {
-                                p().updateRestrictions.fields
-                                    .joinToString(", ") { it.path.properties.joinToString("'s ") { it.displayName } }
-                            }
-                            kv("Delete") { p().delete.simplify().friendly() }
                         }
                     }
                 }
-            }
-
-            // Add new item link - opens NewItemAdminPage
-            // Preserves current filter condition for context
-            link {
-                icon(Icon.add, "Add New")
-                to = {
-                    NewItemAdminPage(collectionName).apply {
-                        conditionString.value = this@CollectionAdminPage.conditionString.value
-                    }
-                }
-            }
-        }
-        // Summary text showing current filter/sort state and total item count
-        // by Claude - Fixed to account for text search in both count and display
-        subtext {
-            val itemCount = rememberSuspending {
-                // Use the full query condition (including text search) for accurate count
-                val q = query()
-                mc.skipCache.count(q.condition)
-            }
-            ::content {
-                buildString {
-                    val c = condition()
-                    val ts = textSearch()
-                    val hasTextSearch = ts.isNotBlank()
-                    val hasFilter = c != Condition.Always
-
-                    // Generate human-readable description of current filter
-                    when {
-                        c == Condition.Never -> append("Showing NO ITEMS ")
-                        !hasTextSearch && !hasFilter -> append("Showing all ${itemCount()} items ")
-                        hasTextSearch && !hasFilter -> append("Showing ${itemCount()} items matching \"$ts\" ")
-                        !hasTextSearch && hasFilter -> append("Showing ${itemCount()} items where $c ")
-                        else -> append("Showing ${itemCount()} items matching \"$ts\" where $c ")
-                    }
-                    val s = sort()
-                    // Append sort description if sorting is active
-                    if (s.isNotEmpty()) {
-                        append("sorted by ")
-                        s.forEach {
-                            append(it.field.properties.joinToString("'s ") { it.displayName })
-                            if (it.ascending) append(" ascending")
-                            else append(" descending")
-                        }
-                    }
+                unpadded.button {
+                    centered.icon(Icon.close.copy(width = 0.75.rem, height = 0.75.rem), "Close")
+                    ::visible { condition() != Condition.Always || sort() != mc.serializer.naturalSort() }
+                    onClick { condition.value = Condition.Always; sort.value = mc.serializer.naturalSort() }
                 }
             }
         }
 
-        // Main data table with live updates - by Claude - migrated to forms2 renderTable
-        // TableRenderer provides virtual scrolling, column customization, and sorting
         @Suppress("UNCHECKED_CAST")
-        this@renderContents.expanding.renderTable(
-            module = forms,
-            innerSerializer = mc.serializer,
-            items = remember { mc.watch(query()) },
-            columns = columns as MutableReactive<List<DataClassPath<UnknownModel, *>>>,
-            // Each row links to detail page for editing
-            linkTo = {
-                val id = UrlProperties.encodeToString(mc.serializer._id().serializer, it._id)
-                return@renderTable { DetailAdminPage(collectionName, id) }
-            }
-        )
-    }
-
-    // by Claude - simplified using lensJson utility
-    @Suppress("UNCHECKED_CAST")
-    private fun columnsWritable(mc: ModelCache<UnknownModel, UnknownId>) =
-        columnsString.lensJson(ListSerializer(DataClassPathSerializer(mc.serializer))) {
-            mc.serializer.defaultColumns()
-        } as MutableReactiveValue<List<DataClassPath<UnknownModel, *>>>
-
-    // by Claude - simplified using lensJson utility
-    private fun sortWritable(mc: ModelCache<UnknownModel, UnknownId>) =
-        sortString.lensJson(ListSerializer(SortPartSerializer(mc.serializer))) {
-            mc.serializer.naturalSort()
-        }
-
-    // by Claude - simplified using lensJson utility
-    private fun conditionWritable(mc: ModelCache<UnknownModel, UnknownId>) =
-        conditionString.lensJson(Condition.serializer(mc.serializer)) { Condition.Always }
-
-    /**
-     * Builds a complete Query from text search, condition, sort, and columns.
-     *
-     * Text search behavior:
-     * - If model has @TextIndex annotation, uses Condition.FullTextSearch
-     * - Otherwise, splits search into words and searches each across all visible string columns
-     * - Debounced by 500ms to avoid excessive queries during typing
-     *
-     * The final query combines:
-     * - Text search condition (if present)
-     * - User-defined condition from filter UI
-     * - Sort order from sort UI
-     *
-     * All parts are debounced to prevent query spam during rapid UI changes.
-     *
-     * @return A reactive Query that updates whenever inputs change
-     */
-    private fun queryReadable(mc: ModelCache<UnknownModel, UnknownId>): Reactive<Query<UnknownModel>> {
-        val sort = sortWritable(mc)
-        val condition = conditionWritable(mc)
-        val columns = columnsWritable(mc)
-
-        // Check if model supports full-text search via @TextIndex annotation
-        // Full-text search is server-side and much more efficient than column-by-column search
-        val hasTextIndex = mc.serializer.serializableAnnotations.any { it.fqn.endsWith("TextIndex") }
-
-        return remember {
-            Query(
-                // Combine text search and filter conditions with AND
-                Condition.And<UnknownModel>(
-                    listOfNotNull(
-                        // Text search processing - debounced for performance
-                        // TODO: Extract magic number 500ms to a constant
-                        textSearch.debounce(500)().takeUnless { it.isBlank() }?.let {
-                            if (hasTextIndex) {
-                                // Use server's full-text search if available (preferred)
-                                Condition.FullTextSearch(it)
-                            } else {
-                                // Fallback: search each word across all visible string columns
-                                // Each word must match at least one column (AND of ORs)
-                                // This can be slow on large datasets
-                                it.split(' ').map { term ->
-                                    columns().mapNotNull {
-                                        // Extract base serializer type, removing nullability and modifiers
-                                        val s = it.serializer.let {
-                                            it.nullElement() ?: it
-                                        }.descriptor.serialName.substringBefore('/')
-
-                                        // Handle nullable columns by wrapping in NotNull check
-                                        // Prevents searching null values
-                                        val p =
-                                            if (it.serializer.descriptor.isNullable)
-                                                DataClassPathNotNull(it as DataClassPath<UnknownModel, Any?>)
-                                            else it
-
-                                        // Apply appropriate contains condition based on type
-                                        // Only searches string and raw string types
-                                        when {
-                                            s == "kotlin.String" -> {
-                                                p.mapCondition(
-                                                    Condition.StringContains(term, ignoreCase = true) as Condition<Any?>
-                                                )
-                                            }
-                                            s in IsRawString.serialNames -> {
-                                                p.mapCondition(
-                                                    Condition.RawStringContains<TrimmedString>(term, ignoreCase = true) as Condition<Any?>
-                                                )
-                                            }
-                                            else -> null // Skip non-string columns
-                                        }
-                                    }.takeUnless { it.isEmpty() }?.let { Condition.Or(it) } ?: Condition.Always
-                                }.let { Condition.And(it) }
-                            }
-                        },
-                        // User-defined filter condition from the filter UI
-                        // TODO: Extract magic number 500ms to a constant
-                        condition.debounce(500)()
-                    )
-                ),
-                // Sort order from sort UI
-                // TODO: Extract magic number 500ms to a constant
-                sort.debounce(500)()
+        private fun ViewWriter.renderTable() {
+            expanding.renderTable(
+                module = forms,
+                innerSerializer = mc.serializer,
+                items = remember { mc.watch(query()) },
+                columns = columns as MutableReactive<List<ColumnInfo<UnknownModel>>>,
+                linkTo = {
+                    val id = UrlProperties.encodeToString(mc.serializer._id().serializer, it._id)
+                    return@renderTable { DetailAdminPage(collectionName, id) }
+                }
             )
         }
+
+        fun ViewWriter.exportDialog() = dialog { close ->
+            col {
+                h2("Export")
+
+                important.button {
+                    centered.text("Direct CSV")
+                    action = Action("Download", Icon.download) {
+                        val csv = createCsvFormat()
+                        val data = mc.query(query().copy(limit = EXPORT_LIMIT))()
+                        val content = csv.encodeToString(ListSerializer(mc.serializer), data)
+                        ExternalServices.download("data.csv", content.toBlob("text/csv"), DownloadLocation.Downloads)
+                        close()
+                    }
+                }
+
+                important.button {
+                    val success = Signal(false)
+                    row {
+                        expanding.stack()
+                        centered.text("Copy CSV to Clipboard")
+                        onlyWhen { success() }.icon(Icon.done, "Done")
+                        expanding.stack()
+                    }
+                    action = Action("Copy", Icon.download) {
+                        val csv = createCsvFormat()
+                        val data = mc.query(query().copy(limit = EXPORT_LIMIT))()
+                        val content = csv.encodeToString(ListSerializer(mc.serializer), data)
+                        ExternalServices.setClipboardText(content)
+                        success.value = true
+                        close()
+                    }
+                }
+            }
+        }
+
+        fun ViewWriter.importDialog() = dialog { close ->
+            col {
+                h2("Import")
+                important.button {
+                    centered.text("Upload Direct CSV")
+                    action = Action("Upload", Icon.upload) {
+                        val file = ExternalServices.requestFile(listOf("text/csv")) ?: return@Action
+                        val csv = createCsvFormat()
+                        val text = file.text()
+                        val items = csv.decodeFromString(ListSerializer(mc.serializer), text)
+
+                        confirmDanger("Upload ${items.size} items?", "Are you sure you want to upload these items?") {
+                            mc.insert(items)
+                        }
+                        close()
+                    }
+                }
+            }
+        }
+
+        fun ViewWriter.bulkDeleteDialog() = dialog { close ->
+            col {
+                h2("Bulk Delete")
+                reactive<Unit> {
+                    clearChildren()
+
+                    val itemCount = rememberSuspending {
+                        val c = condition()
+                        mc.skipCache.count(c)
+                    }
+
+                    subtext {
+                        ::content {
+                            val c = condition()
+                            when (c) {
+                                Condition.Always -> "This will delete ALL ${itemCount()} items in the collection."
+                                Condition.Never -> "No items will be deleted."
+                                else -> "This will delete ${itemCount()} items where $c"
+                            }
+                        }
+                    }
+
+                    important.button {
+                        centered.text("Delete All Matching Items")
+                        action = Action("Delete", Icon.deleteForever) {
+                            val c = condition()
+                            confirmDanger(
+                                "Delete all matching items?",
+                                "Are you sure you want to delete all items matching the current query? This action cannot be undone."
+                            ) {
+                                mc.skipCache.bulkDelete(c)
+                                mc.totallyInvalidate()
+                            }
+                            close()
+                        }
+                    }
+                }
+            }
+        }
+
+        private fun createCsvFormat() = CsvFormat(
+            StringDeferringConfig(DefaultJson.serializersModule, ignoreUnknownKeys = true)
+        )
     }
 }
-
-/**
- * Converts a Condition into a human-readable string for display.
- *
- * Used in the UI to show users what filters are currently applied.
- * Recursively processes nested conditions (And, Or, OnField).
- *
- * Falls back to toString() for unrecognized condition types.
- */
-fun Condition<*>.friendly(): String {
-    return when (this) {
-        Condition.Always -> "All"
-        is Condition.And<*> -> conditions.joinToString(" and ") { it.friendly() }
-        is Condition.Or<*> -> conditions.joinToString(" or ") { it.friendly() }
-        Condition.Never -> "None"
-        is Condition.OnField<*, *> -> this.key.displayName + " " + condition.friendly()
-        is Condition.Equal<*> -> "is $value"
-        is Condition.NotEqual<*> -> "isn't $value"
-        is Condition.GreaterThan<*> -> "> $value"
-        is Condition.GreaterThanOrEqual<*> -> ">= $value"
-        is Condition.LessThan<*> -> "< $value"
-        is Condition.LessThanOrEqual<*> -> "<= $value"
-        is Condition.Inside<*> -> "is ${values.joinToString(" or ")}"
-        is Condition.NotInside<*> -> "isn't ${values.joinToString(" or ")}"
-        is Condition.StringContains -> "contains $value"
-        is Condition.GeoDistance -> "is within ${greaterThanKilometers} km and ${lessThanKilometers} km"
-        is Condition.IfNotNull<*> -> condition.friendly()
-        else -> toString()
-    }
-}
-
-//@Routable("collections/{collectionName}/report")
-//class CollectionAdminReportPage(val collectionName: String) : Page {
-//
-//    @QueryParameter("condition")
-//    val conditionString: Signal<String?> = Signal(null)
-//
-//    val mc = remember {
-//        adminServer().models[collectionName]?.cache(adminAuthentication())!!
-//                as ModelCache<UnknownModel, UnknownId>
-//    }
-//
-//    override fun ViewWriter.render(): Any? {
-//        return col {
-//            reactive {
-//                clearChildren()
-//                val mc = mc()
-//                val forms = adminFormModule()
-//                val condition = conditionWritable(mc)
-//                card - col {
-//                    h2("Filter")
-//                    form(
-//                        context = forms,
-//                        serializer = Condition.serializer(mc.serializer),
-//                        mutable = condition
-//                    )
-//                }
-//                card - col {
-//                    h2("Card")
-//                    form(
-//                        context = forms,
-//                        serializer = Condition.serializer(mc.serializer),
-//                        mutable = condition
-//                    )
-//                }
-//            }
-//        }
-//    }
-//
-//    private fun conditionWritable(mc: ModelCache<UnknownModel, UnknownId>): MutableReactiveValue<Condition<UnknownModel>> =
-//        conditionString.lens(
-//            get = {
-//                it?.let {
-//                    try {
-//                        DefaultJson.decodeFromString(Condition.serializer(mc.serializer), it)
-//                    } catch (e: Exception) {
-//                        null
-//                    }
-//                } ?: Condition.Always
-//            },
-//            set = { DefaultJson.encodeToString(Condition.serializer(mc.serializer), it) }
-//}
-
-/*
- * TODO: API Improvement Recommendations for CollectionAdminScreen.kt
- *
- * BUGS FOUND:
- * 1. Line 359: Permission display bug - "Restricted fields" under Update checks `readMask` instead of
- *    `updateRestrictions.fields`. This is a copy-paste error that causes update restrictions to not be shown.
- *
- * 2. ModelCache initialization (line 74): Force-unwraps with !! which will throw if collection doesn't exist.
- *    Should add proper error handling and show user-friendly error screen.
- *
- * 3. CSV Import (line 154): CSV parsing errors are not caught - will crash if CSV is malformed or doesn't
- *    match schema. Needs try-catch with user-friendly error messages.
- *
- * 4. Bulk operations: No error handling for bulk insert/delete failures. Users won't know if operation failed
- *    partially or completely.
- *
- * IMPROVEMENT RECOMMENDATIONS:
- *
- * 1. Export/Import Limits: The 100,000 item limit for export/import could cause memory issues with large
- *    records or complex nested objects. Consider:
- *    - Streaming export/import for large datasets
- *    - Server-side export generation with download links
- *    - Progress indicators for large operations
- *    - Chunked processing to avoid browser memory limits
- *
- * 2. Magic Numbers: Multiple debounce times (500ms) and size constraints should be extracted to constants
- *    or configuration. Makes tuning and consistency easier.
- *
- * 3. Error Handling: Generic exception catching throughout should be replaced with specific error types
- *    and user-friendly error messages. Add proper error logging for debugging.
- *
- * 4. Debug Logging: Remove println("Text is $text") and other debug statements from production code.
- *
- * 5. Text Search Performance: Fallback text search (when no @TextIndex) can be very slow on large datasets
- *    as it searches multiple columns. Consider:
- *    - Warning users when full-text search is unavailable
- *    - Limiting search to fewer columns by default
- *    - Adding a "search all columns" toggle
- *
- * 6. URL Query Parameter Parsing: All URL parameter parsing swallows exceptions silently. Add logging
- *    to help debug issues with bookmarked/shared URLs.
- *
- * 7. Bulk Delete Confirmation: While there is confirmation, consider additional safety measures for
- *    dangerous operations like deleting ALL items (Condition.Always):
- *    - Type-to-confirm for bulk deletes
- *    - Separate confirmation level for "delete all"
- *    - Operation history/audit log
- *
- * 8. Virtual Scrolling: TableRenderer handles this, but ensure performance with very large result sets
- *    (10k+ items). May need server-side pagination hints.
- *
- * 9. Column Selection: No UI visible in this file for customizing columns. Should be accessible from
- *    the toolbar for discoverability.
- *
- * 10. Permissions Display: The helper function `kv()` is defined inside a menu callback. Consider
- *     extracting to a reusable component for permission display elsewhere.
- *
- * 11. Filter Condition Display: The `friendly()` function could be extended to handle more condition types
- *     and provide more user-friendly descriptions (e.g., date ranges, complex nested conditions).
- *
- * 12. Reactive Rebuilds: The entire contents rebuild when mc or forms change. Consider more granular
- *     reactivity to avoid unnecessary rebuilds of the toolbar when only data changes.
- *
- * 13. Item Count Queries: Multiple places call `mc.skipCache.count(c)` which is a separate query.
- *     Consider caching or batching count queries to reduce server load.
- *
- * 14. Export Filename: Hard-coded as "data.csv". Should include collection name and timestamp for
- *     better organization (e.g., "users_2025-01-15.csv").
- *
- * 15. Import Validation: No validation preview before import. Consider showing a preview of parsed
- *     data and validation errors before allowing insert.
- */

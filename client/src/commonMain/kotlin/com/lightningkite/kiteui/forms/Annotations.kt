@@ -144,6 +144,7 @@ fun SerializableProperty<*, *>.visibility(module: FormModule): FieldVisibility =
         }
 
 
+private val titleFieldNames = setOf("name", "title", "label", "email", "slug", "key")
 /**
  * Determines the natural sort order for a type.
  *
@@ -166,14 +167,18 @@ fun <T> KSerializer<T>.naturalSort(): List<SortPart<T>> {
         (it as? SerializableAnnotationValue.StringValue)?.value?.let {
             DefaultUriFormat.decodeFromString(SortPart.serializer(this@naturalSort), it)
         }
-    } ?: serializableProperties?.find { it.name == "_id" && it.serializer == String.serializer() }?.let {
-        // Named IDs (e.g., usernames, slugs) - sort ascending
-        @Suppress("UNCHECKED_CAST")
-        listOf(SortPart(DataClassPathAccess(DataClassPathSelf(this), it as SerializableProperty<T, String>), ascending = true))
     } ?: serializableProperties?.find { !it.serializer.descriptor.isNullable &&  it.serializer.descriptor.serialName.substringBefore('/') == "kotlinx.datetime.Instant" }?.let {
         // Timestamps - sort descending (most recent first)
         @Suppress("UNCHECKED_CAST")
         listOf(SortPart(DataClassPathAccess(DataClassPathSelf(this), it as SerializableProperty<T, Instant>), ascending = false))
+    } ?: serializableProperties?.find { it.name == "_id" && it.serializer == String.serializer() }?.let {
+        // Named IDs (e.g., usernames, slugs) - sort ascending
+        @Suppress("UNCHECKED_CAST")
+        listOf(SortPart(DataClassPathAccess(DataClassPathSelf(this), it as SerializableProperty<T, String>), ascending = true))
+    } ?: serializableProperties?.find { it.name in titleFieldNames && it.serializer == String.serializer() }?.let {
+        // Named IDs (e.g., usernames, slugs) - sort ascending
+        @Suppress("UNCHECKED_CAST")
+        listOf(SortPart(DataClassPathAccess(DataClassPathSelf(this), it as SerializableProperty<T, String>), ascending = true))
     } ?: serializableProperties?.firstOrNull()?.let {
         // Fallback: use first field, whatever it is
         listOf(

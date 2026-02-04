@@ -188,7 +188,7 @@ object ModificationRenderer : Renderer<Modification<Any?>> {
                 set = { it.serializer.default() }
             )
             row {
-                centered.sizeConstraints(width = options.maxOf { (it.extended?.niceName ?: it.serializer.displayName).length.times(0.6).rem }).card.select {
+                centered.sizeConstraints(width = options.maxOf { (it.extended?.niceName ?: it.serializer.displayName).length.times(0.65).rem }).card.select {
                     bind(type, Constant(options)) { it.extended?.niceName ?: it.serializer.displayName }
                 }
                 expanding.frame {

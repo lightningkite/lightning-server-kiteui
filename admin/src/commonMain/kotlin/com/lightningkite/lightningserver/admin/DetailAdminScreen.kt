@@ -54,6 +54,7 @@ import com.lightningkite.services.database._id
 import com.lightningkite.lightningserver.db.ModelCache
 import com.lightningkite.reactive.context.reactive
 import com.lightningkite.reactive.core.Draft
+import com.lightningkite.reactive.core.Reactive
 import com.lightningkite.reactive.core.remember
 import com.lightningkite.reactive.extensions.flatten
 import com.lightningkite.reactive.extensions.notNull
@@ -67,6 +68,8 @@ class DetailAdminPage(val collectionName: String, val itemId: String) : Page {
     // by Claude - added null safety for missing collections
     private val mcOrNull = remember { adminServer().models[collectionName]?.cache(adminAuthentication()) as? ModelCache<UnknownModel, UnknownId> }
     private val mc = remember { mcOrNull()!! }
+
+    override val title: Reactive<String> = remember { "Edit $collectionName" }
 
     override fun ViewWriter.render() {
         col {
@@ -133,23 +136,23 @@ class DetailAdminPage(val collectionName: String, val itemId: String) : Page {
                             }
                         }
                         shownWhen { item.published()._id != item()._id }.danger.button {
-                            text("Delete and Re-create")
+                            text("Re-create and Delete")
                             ::enabled { item.changesMade() }
                             onClick {
-                                confirmDanger("Delete and Re-create", "Are you sure you want to delete this item then recreate it with a new ID?  This DOES COUNT as a deletion followed by a creation.") {
+                                confirmDanger("Re-create and Delete", "Are you sure you want to recreate this item with a new ID and then delete the old one?  This DOES COUNT as a creation followed by a deletion.") {
                                     val mc = mc()
                                     val actualId =
                                         DefaultUriFormat.decodeFromString(mc.serializer._id().serializer, itemId)
                                     val newItem = item()
+                                    val newId = mc.add(newItem)._id
                                     mc[actualId].delete()
-                                    val newId = mc.insert(newItem)()!!._id
                                     toast {
                                         row {
                                             centered.icon(Icon.done, "Done")
                                             centered.text("Your changes have been saved")
                                         }
                                     }
-                                    pageNavigator.replace(DetailAdminPage(collectionName, UrlProperties.encodeToString(mc.serializer._id().serializer, newId)))
+                                    pageNavigator.replace(DetailAdminPage(collectionName, DefaultUriFormat.encodeToString(mc.serializer._id().serializer, newId)))
                                 }
                             }
                         }
