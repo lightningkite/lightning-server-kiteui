@@ -3,6 +3,9 @@ package com.lightningkite.lightningserver.admin
 import com.lightningkite.IsRawString
 import com.lightningkite.TrimmedString
 import com.lightningkite.kiteui.*
+import com.lightningkite.kiteui.forms.defaultColumns
+import com.lightningkite.kiteui.forms.displayName
+import com.lightningkite.kiteui.forms.naturalSort
 import com.lightningkite.kiteui.forms.*
 import com.lightningkite.kiteui.models.Icon
 import com.lightningkite.kiteui.models.SelectedSemantic
@@ -430,111 +433,38 @@ class CollectionAdminPage(val collectionName: String) : Page {
             }
         }
 
-        // Main data table with live updates
+        // Main data table with live updates - by Claude - migrated to forms2 renderTable
         // TableRenderer provides virtual scrolling, column customization, and sorting
-        TableRenderer.view<UnknownModel>(
-            formModule = forms,
-            writer = this@renderContents.expanding,
-            innerSer = mc.serializer,
-            columns = columns,
-            // Watch the query - automatically updates when query changes or data changes
-            readable = remember {
-                mc.watch(query())
-            },
+        @Suppress("UNCHECKED_CAST")
+        this@renderContents.expanding.renderTable(
+            module = forms,
+            innerSerializer = mc.serializer,
+            items = remember { mc.watch(query()) },
+            columns = columns as MutableReactive<List<DataClassPath<UnknownModel, *>>>,
             // Each row links to detail page for editing
             linkTo = {
                 val id = UrlProperties.encodeToString(mc.serializer._id().serializer, it._id)
-                return@view { DetailAdminPage(collectionName, id) }
+                return@renderTable { DetailAdminPage(collectionName, id) }
             }
         )
     }
 
-    /**
-     * Converts the columnsString query parameter to a reactive list of DataClassPath.
-     *
-     * Falls back to defaultColumns() if the string is null or cannot be parsed.
-     * Writes changes back to the URL parameter as JSON, enabling bookmarkable column configurations.
-     *
-     * The lens pattern provides bidirectional transformation between URL string and typed list.
-     */
-    private fun columnsWritable(mc: ModelCache<UnknownModel, UnknownId>): MutableReactiveValue<List<DataClassPath<UnknownModel, *>>> =
-        columnsString.lens(
-            get = {
-                it?.let {
-                    try {
-                        // Deserialize from JSON URL parameter
-                        DefaultJson.decodeFromString(
-                            ListSerializer(DataClassPathSerializer(mc.serializer)),
-                            it
-                        ) as List<DataClassPath<UnknownModel, *>>
-                    } catch (e: Exception) {
-                        // TODO: Log parsing errors for debugging
-                        null
-                    }
-                } ?: mc.serializer.defaultColumns() // Fallback to schema-defined defaults
-            },
-            set = {
-                // Serialize back to JSON for URL parameter
-                DefaultJson.encodeToString(
-                    ListSerializer(DataClassPathSerializer(mc.serializer)),
-                    it as List<DataClassPathPartial<UnknownModel>>
-                )
-            }
-        )
+    // by Claude - simplified using lensJson utility
+    @Suppress("UNCHECKED_CAST")
+    private fun columnsWritable(mc: ModelCache<UnknownModel, UnknownId>) =
+        columnsString.lensJson(ListSerializer(DataClassPathSerializer(mc.serializer))) {
+            mc.serializer.defaultColumns()
+        } as MutableReactiveValue<List<DataClassPath<UnknownModel, *>>>
 
-    /**
-     * Converts the sortString query parameter to a reactive list of SortPart.
-     *
-     * Falls back to naturalSort() (typically by _id) if null or invalid.
-     * Writes changes back to the URL parameter as JSON, enabling bookmarkable sort configurations.
-     *
-     * The lens pattern provides bidirectional transformation between URL string and typed list.
-     */
-    private fun sortWritable(mc: ModelCache<UnknownModel, UnknownId>): MutableReactiveValue<List<SortPart<UnknownModel>>> =
-        sortString.lens(
-            get = {
-                it?.let {
-                    try {
-                        // Deserialize from JSON URL parameter
-                        DefaultJson.decodeFromString(ListSerializer(SortPartSerializer(mc.serializer)), it)
-                    } catch (e: Exception) {
-                        // TODO: Log parsing errors for debugging
-                        null
-                    }
-                } ?: mc.serializer.naturalSort() // Fallback to default sort (usually by ID)
-            },
-            set = {
-                // Serialize back to JSON for URL parameter
-                DefaultJson.encodeToString(ListSerializer(SortPartSerializer(mc.serializer)), it)
-            }
-        )
+    // by Claude - simplified using lensJson utility
+    private fun sortWritable(mc: ModelCache<UnknownModel, UnknownId>) =
+        sortString.lensJson(ListSerializer(SortPartSerializer(mc.serializer))) {
+            mc.serializer.naturalSort()
+        }
 
-    /**
-     * Converts the conditionString query parameter to a reactive Condition.
-     *
-     * Falls back to Condition.Always (no filter) if null or invalid.
-     * Writes changes back to the URL parameter as JSON, enabling bookmarkable filter configurations.
-     *
-     * The lens pattern provides bidirectional transformation between URL string and typed Condition.
-     */
-    private fun conditionWritable(mc: ModelCache<UnknownModel, UnknownId>): MutableReactiveValue<Condition<UnknownModel>> =
-        conditionString.lens(
-            get = {
-                it?.let {
-                    try {
-                        // Deserialize from JSON URL parameter
-                        DefaultJson.decodeFromString(Condition.serializer(mc.serializer), it)
-                    } catch (e: Exception) {
-                        // TODO: Log parsing errors for debugging
-                        null
-                    }
-                } ?: Condition.Always // Fallback to no filtering
-            },
-            set = {
-                // Serialize back to JSON for URL parameter
-                DefaultJson.encodeToString(Condition.serializer(mc.serializer), it)
-            }
-        )
+    // by Claude - simplified using lensJson utility
+    private fun conditionWritable(mc: ModelCache<UnknownModel, UnknownId>) =
+        conditionString.lensJson(Condition.serializer(mc.serializer)) { Condition.Always }
 
     /**
      * Builds a complete Query from text search, condition, sort, and columns.

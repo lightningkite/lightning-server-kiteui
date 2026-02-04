@@ -27,8 +27,7 @@
 package com.lightningkite.lightningserver.admin
 
 import com.lightningkite.kiteui.Routable
-import com.lightningkite.kiteui.auth.authComponent2
-import com.lightningkite.kiteui.forms.login
+import com.lightningkite.kiteui.auth.authComponent
 import com.lightningkite.kiteui.models.Icon
 import com.lightningkite.kiteui.models.rem
 import com.lightningkite.kiteui.navigation.Page
@@ -45,21 +44,6 @@ import com.lightningkite.lightningserver.auth.AuthEndpoints
 import com.lightningkite.reactive.context.reactive
 
 @Routable("/auth")
-class AuthTestPage : Page {
-    override fun ViewWriter.render() {
-        frame {
-//            val schema = asyncReactive { fetch("https://jivie.lightningkite.com/meta/kschema").text().let { DefaultJson.decodeFromString(LightningServerKSchema.serializer(), it) } }
-            reactive {
-                clearChildren()
-//                val server = ExternalLightningServer(schema().also { println("SCHEMA: $it") })
-                centered.sizeConstraints(width = 20.rem, height = 25.rem).card.login(AuthEndpoints.dummy) {
-                    mainPageNavigator.navigate(HomePage())
-                }
-            }
-        }
-    }
-}
-@Routable("/auth2")
 class Auth2TestPage : Page {
     override fun ViewWriter.render() {
         frame {
@@ -69,7 +53,7 @@ class Auth2TestPage : Page {
 //                val server = ExternalLightningServer(schema().also { println("SCHEMA: $it") })
                 centered.sizeConstraints(width = 20.rem).card.col {
                     centered.icon(Icon.passkey.copy(width = 5.rem, height = 5.rem), "My System")
-                    authComponent2(AuthEndpoints.dummy) {
+                    authComponent(AuthEndpoints.dummy) {
                         mainPageNavigator.navigate(HomePage())
                     }
                 }

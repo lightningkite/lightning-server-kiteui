@@ -1,6 +1,9 @@
 package com.lightningkite.lightningserver.admin
 
+// by Claude - migrated to forms2
+
 import com.lightningkite.kiteui.forms.FormModule
+import com.lightningkite.kiteui.forms.defaults
 import com.lightningkite.services.database.SerializationRegistry
 import com.lightningkite.services.database.default
 import kotlinx.serialization.KSerializer
@@ -27,46 +30,42 @@ class FieldTestScreenTest {
     )
 
     /**
-     * Tests that FieldTestScreen doesn't crash when iterating through form generators
-     * that have null types.
-     *
-     * This verifies the early return logic at line 25: `if (it.type == null) return@forEach`
+     * Tests that FieldTestScreen doesn't crash when iterating through renderers
+     * that have null types in their selectors.
      */
     @Test
     fun testHandlesNullTypes() {
-        val module = FormModule()
+        val module = FormModule().apply { defaults() }
 
-        // Verify that some generators have null types
-        val nullTypeGenerators = module.allForms.filter { it.type == null }
+        // Verify that some renderers have null types (annotation-only or kind-only selectors)
+        val nullTypeRenderers = module.allRenderers.filter { it.first.type == null }
         assertTrue(
-            nullTypeGenerators.isNotEmpty(),
-            "Expected some generators with null types for testing"
+            nullTypeRenderers.isNotEmpty(),
+            "Expected some renderers with null types for testing"
         )
 
         // Should not crash when encountering null types
-        nullTypeGenerators.forEach { generator ->
+        nullTypeRenderers.forEach { (selector, _) ->
             // The screen would skip these with early return
-            assertTrue(generator.type == null)
+            assertTrue(selector.type == null)
         }
     }
 
     /**
      * Tests that FieldTestScreen handles serializers that cannot be retrieved
      * from SerializationRegistry.
-     *
-     * This verifies the try-catch logic at lines 26-29.
      */
     @Test
     fun testHandlesSerializerFailures() {
-        val module = FormModule()
+        val module = FormModule().apply { defaults() }
 
-        // Collect generators that have types but may fail serializer lookup
-        val generatorsWithTypes = module.allForms.filter { it.type != null }
+        // Collect renderers that have types but may fail serializer lookup
+        val renderersWithTypes = module.allRenderers.filter { it.first.type != null }
 
         var caughtExceptionCount = 0
-        generatorsWithTypes.forEach { generator ->
+        renderersWithTypes.forEach { (selector, _) ->
             try {
-                SerializationRegistry.master.get(generator.type!!, arrayOf()) as KSerializer<Any?>
+                SerializationRegistry.master.get(selector.type!!, arrayOf()) as KSerializer<Any?>
             } catch (e: Throwable) {
                 // Expected - some types may not be registered
                 caughtExceptionCount++
@@ -75,15 +74,13 @@ class FieldTestScreenTest {
 
         // At least verify we're testing the error path
         assertTrue(
-            generatorsWithTypes.isNotEmpty(),
-            "Expected generators with types to test serializer lookup"
+            renderersWithTypes.isNotEmpty(),
+            "Expected renderers with types to test serializer lookup"
         )
     }
 
     /**
      * Tests that default() function produces valid default values for common types.
-     *
-     * This verifies the .default() call at line 39 works correctly.
      */
     @Test
     fun testDefaultValueGeneration() {
@@ -109,68 +106,60 @@ class FieldTestScreenTest {
     }
 
     /**
-     * Tests that FormRenderer.Generator.form() can be called safely with
-     * a properly constructed FormSelector.
-     *
-     * This verifies the form generation logic at lines 33-39.
+     * Tests that renderers can be found for various types.
      */
     @Test
-    fun testFormGeneration() {
-        val module = FormModule()
-        val testSerializer = TestModel.serializer()
+    fun testRendererSelection() {
+        val module = FormModule().apply { defaults() }
 
-        // Find a generator that can handle our test model
-        val generator = module.allForms.firstOrNull {
-            it.type != null &&
+        // Find a renderer that can handle our test model
+        val renderersWithTypes = module.allRenderers.filter { (selector, _) ->
+            selector.type != null &&
             try {
-                val s = SerializationRegistry.master.get(it.type!!, arrayOf()) as? KSerializer<Any?>
+                val s = SerializationRegistry.master.get(selector.type!!, arrayOf()) as? KSerializer<Any?>
                 s != null
             } catch (e: Throwable) {
                 false
             }
         }
 
-        // If we found a valid generator, verify we can call form() on it
-        if (generator != null) {
-            assertNotNull(generator.name, "Generator should have a name")
+        // If we found valid renderers, verify they have names
+        renderersWithTypes.forEach { (_, renderer) ->
+            assertNotNull(renderer.name, "Renderer should have a name")
         }
     }
 
     /**
      * Tests error message generation when form rendering fails.
-     *
-     * This verifies the error handling at lines 40-42.
      */
     @Test
     fun testErrorMessageFormat() {
         val testException = RuntimeException("Test error message")
-        val generatorName = "TestGenerator"
+        val rendererName = "TestRenderer"
 
         // Verify error message format matches what would be displayed
-        val expectedMessage = "Error on $generatorName: ${testException.message}"
+        val expectedMessage = "Error on $rendererName: ${testException.message}"
         assertTrue(expectedMessage.contains("Error on"))
-        assertTrue(expectedMessage.contains(generatorName))
+        assertTrue(expectedMessage.contains(rendererName))
         assertTrue(expectedMessage.contains("Test error message"))
     }
 
     /**
-     * Tests that FormModule.allForms returns a non-empty collection.
-     *
-     * This verifies the core iteration at line 24.
+     * Tests that FormModule.allRenderers returns a non-empty collection after defaults().
      */
     @Test
-    fun testAllFormsNotEmpty() {
-        val module = FormModule()
-        val allForms = module.allForms
+    fun testAllRenderersNotEmpty() {
+        val module = FormModule().apply { defaults() }
+        val allRenderers = module.allRenderers
 
         assertTrue(
-            allForms.isNotEmpty(),
-            "FormModule.allForms should contain registered generators"
+            allRenderers.isNotEmpty(),
+            "FormModule.allRenderers should contain registered renderers after defaults()"
         )
 
-        // Verify each generator has a name
-        allForms.forEach { generator ->
-            assertNotNull(generator.name, "Each generator should have a name")
+        // Verify each renderer has a name
+        allRenderers.forEach { (_, renderer) ->
+            assertNotNull(renderer.name, "Each renderer should have a name")
         }
     }
 }

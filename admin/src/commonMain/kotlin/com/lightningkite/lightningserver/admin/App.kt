@@ -40,13 +40,11 @@ package com.lightningkite.lightningserver.admin
 //    to force module initialization. Consider adding a suppress annotation for clarity:
 //    @Suppress("UNUSED_VARIABLE")
 
-import com.lightningkite.kiteui.auth.authComponent2
+import com.lightningkite.kiteui.auth.authComponent
 import com.lightningkite.kiteui.exceptions.ExceptionToMessages
 import com.lightningkite.kiteui.exceptions.installLsError
-import com.lightningkite.kiteui.forms.ServerFileRenderer.type
 import com.lightningkite.kiteui.forms.displayName
 import com.lightningkite.kiteui.models.*
-import com.lightningkite.kiteui.navigation.DefaultSerializersModule
 import com.lightningkite.kiteui.navigation.PageNavigator
 import com.lightningkite.kiteui.navigation.pageNavigator
 import com.lightningkite.kiteui.views.ViewWriter
@@ -56,7 +54,6 @@ import com.lightningkite.kiteui.views.compact
 import com.lightningkite.kiteui.views.direct.*
 import com.lightningkite.kiteui.views.l2.*
 import com.lightningkite.lightningserver.LSError
-import com.lightningkite.lightningserver.auth.LightningServerAuthentication
 import com.lightningkite.lightningserver.sessions.proofs.LiveAuthClientEndpoints
 import com.lightningkite.services.database.Condition
 import com.lightningkite.reactive.context.invoke
@@ -70,7 +67,6 @@ import com.lightningkite.services.database.SerializationRegistry
 import com.lightningkite.services.database.serializableProperties
 import com.lightningkite.services.files.ServerFile
 import com.lightningkite.titleCase
-import kotlinx.serialization.modules.EmptySerializersModule
 import kotlin.time.Duration.Companion.milliseconds
 
 /**
@@ -277,7 +273,7 @@ fun ViewWriter.app(navigator: PageNavigator, dialog: PageNavigator) {
                                         reactive {
                                             clearChildren()
                                             try {
-                                                authComponent2(
+                                                authComponent(
                                                     adminServer().authEndpoints(null),
                                                     userType() ?: return@reactive
                                                 ) { v ->

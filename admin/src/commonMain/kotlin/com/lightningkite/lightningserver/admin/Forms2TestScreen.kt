@@ -3,7 +3,7 @@ package com.lightningkite.lightningserver.admin
 import com.lightningkite.kiteui.Routable
 import com.lightningkite.kiteui.fileName
 import com.lightningkite.kiteui.forms.description
-import com.lightningkite.kiteui.forms2.*
+import com.lightningkite.kiteui.forms.*
 import com.lightningkite.kiteui.models.rem
 import com.lightningkite.kiteui.navigation.Page
 import com.lightningkite.kiteui.views.*

@@ -67,11 +67,4 @@ public class CachingSdk(
             .distinct()
             .joinTo(buffer, "\n", prefix = "\n", postfix = "\n\n") { "import $it" }
     }
-
-    private fun String.pluralize() = when {
-        endsWith("lf") -> this.removeSuffix("lf") + "lves"
-        endsWith('s') -> this + "es"
-        endsWith('y') -> this.removeSuffix("y") + "ies"
-        else -> this + "s"
-    }
 }

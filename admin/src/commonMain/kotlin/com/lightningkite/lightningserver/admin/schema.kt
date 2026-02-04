@@ -28,9 +28,10 @@ package com.lightningkite.lightningserver.admin
 import com.lightningkite.kiteui.HttpMethod
 import com.lightningkite.kiteui.RequestBodyFile
 import com.lightningkite.kiteui.connectivityFetch
-import com.lightningkite.kiteui.forms.FormModule
-import com.lightningkite.kiteui.forms.FormTypeInfo
 import com.lightningkite.kiteui.forms.defaultTitleFields
+import com.lightningkite.kiteui.forms.FormModule
+import com.lightningkite.kiteui.forms.TypeInfo
+import com.lightningkite.kiteui.forms.defaults
 import com.lightningkite.kiteui.navigation.DefaultJson
 import com.lightningkite.kiteui.navigation.Page
 import com.lightningkite.kiteui.navigation.UrlProperties
@@ -230,7 +231,9 @@ class ExternalLightningServer(
         inter.path to ModelInfo<UnknownModel, UnknownId>(inter)
     }
 
+    // by Claude - migrated to forms2
     fun formModule(auth: LightningServerAuthentication?) = FormModule().apply {
+        defaults()
         println("Building form module.  File upload? $file")
         fileUpload = file?.let {
             { file ->
@@ -259,7 +262,7 @@ class ExternalLightningServer(
             val m =
                 models.values.find { it.serializer.descriptor.serialName == name } as? ModelInfo<UnknownModel, UnknownId>
                     ?: return@label null
-            FormTypeInfo(
+            TypeInfo(
                 serializer = m.serializer,
                 cache = { m.cache(auth) },
                 page = { id -> page(m, id) },

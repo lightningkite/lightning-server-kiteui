@@ -2,65 +2,65 @@
 
 package com.lightningkite.kiteui.forms
 
-import com.lightningkite.kiteui.models.DragData
-import com.lightningkite.kiteui.models.DragEvent
 import com.lightningkite.kiteui.models.Icon
 import com.lightningkite.kiteui.models.ListSemantic
+import com.lightningkite.kiteui.models.SubtextSemantic
 import com.lightningkite.kiteui.models.px
 import com.lightningkite.kiteui.models.rem
-import com.lightningkite.kiteui.navigation.DefaultJson
-import com.lightningkite.kiteui.views.DropTargetDelegate
 import com.lightningkite.kiteui.views.ViewWriter
 import com.lightningkite.kiteui.views.card
 import com.lightningkite.kiteui.views.centered
 import com.lightningkite.kiteui.views.direct.*
 import com.lightningkite.kiteui.views.expanding
 import com.lightningkite.kiteui.views.forEachUpdating
-import com.lightningkite.kiteui.views.l2.DragDropReordering
 import com.lightningkite.kiteui.views.l2.icon
 import com.lightningkite.reactive.context.invoke
 import com.lightningkite.reactive.context.reactive
+import com.lightningkite.reactive.core.Constant
 import com.lightningkite.reactive.core.MutableReactive
 import com.lightningkite.reactive.core.Reactive
 import com.lightningkite.reactive.core.Signal
 import com.lightningkite.reactive.extensions.flatten
+import com.lightningkite.reactive.lensing.lens
 import com.lightningkite.reactive.lensing.lensByElementAssumingSetNeverManipulates
-import com.lightningkite.services.database.DataClassPath
-import com.lightningkite.services.database.DataClassPathSerializer
 import com.lightningkite.services.database.default
 import com.lightningkite.services.database.listElement
-import kotlinx.coroutines.launch
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.descriptors.StructureKind
 
 /**
- * Renderer for List<T> types.
+ * Renderer for Set<T> types.
  *
  * Shows items vertically with add/remove buttons.
  * Each item is rendered using the element type's renderer.
+ * Internally converts Set to List for UI rendering since Sets lack stable ordering.
  *
  * by Claude
  */
-object ListRenderer : Renderer<List<Any?>> {
-    override val name: String = "List"  // by Claude
+object SetRenderer : Renderer<Set<Any?>> {
+    override val name: String = "Set"  // by Claude
 
-    override fun priority(context: RenderContext<List<Any?>>, module: FormModule): Float {
-        return if (context.serializer.descriptor.kind == StructureKind.LIST) 0.8f else -1f
+    override fun priority(context: RenderContext<Set<Any?>>, module: FormModule): Float {
+        val descriptor = context.serializer.descriptor
+        // Match sets specifically - they have StructureKind.LIST but serialName contains "Set"
+        return if (descriptor.kind == StructureKind.LIST && descriptor.serialName.contains("Set")) 0.85f else -1f
     }
 
     @Suppress("UNCHECKED_CAST")
-    override fun form(
-        context: RenderContext<List<Any?>>,
-        value: MutableReactive<List<Any?>>,
-        module: FormModule
-    ): ViewWriter.() -> Unit = {
+    override fun form(context: RenderContext<Set<Any?>>, value: MutableReactive<Set<Any?>>, module: FormModule): ViewWriter.() -> Unit = {
         val elementSerializer = context.serializer.listElement() as KSerializer<Any?>
         val elementContext = RenderContext(elementSerializer)
 
         // Get all compatible renderers for element type - by Claude
         val elementRenderers = module.selectAll(elementContext)
         val selectedRenderer = Signal(module.selectWithOverride(elementContext))
+
+        // Lens to convert Set<T> to List<T> for UI
+        val listValue = value.lens(
+            get = { it.toList() },
+            set = { it.toSet() }
+        )
 
         col {
             gap = 0.px
@@ -75,36 +75,10 @@ object ListRenderer : Renderer<List<Any?>> {
                 content = "Empty"
             }
 
-            // List items using lensByElement for proper reactive tracking
+            // Set items using lensByElement for proper reactive tracking
             themed(ListSemantic).col {
-                forEachUpdating(value.lensByElementAssumingSetNeverManipulates()) { itemLens ->
+                forEachUpdating(listValue.lensByElementAssumingSetNeverManipulates()) { itemLens ->
                     card.row {
-                        val mimeType = "x-lskui/${elementSerializer.descriptor.serialName.lowercase()}"
-                        centered.text("::")
-                        ::dragData {
-                            val index = itemLens().index()
-                            DragData(label = "Item ${index + 1}", mimeType = mimeType, data = index.toString())
-                        }
-                        dropTargetDelegate = object: DropTargetDelegate {
-                            override fun drop(event: DragEvent): Boolean {
-                                return event.data[mimeType]?.let { colStr ->
-                                    val otherOldIndex = colStr.toInt()
-                                    launch {
-                                        val myOldIndex = itemLens().index()
-                                        value set value()
-                                            .let {
-                                                val t = it.toMutableList()
-                                                val otherCol = t.removeAt(otherOldIndex)
-                                                if (myOldIndex < otherOldIndex) t.add(myOldIndex, otherCol)
-                                                else t.add(myOldIndex, otherCol)
-                                                println("Rewrote $it to $t")
-                                                t
-                                            }
-                                    }
-                                    true
-                                } ?: false
-                            }
-                        }
                         // Item content - uses selected renderer for all items - by Claude
                         expanding.frame {
                             reactive {
@@ -112,12 +86,12 @@ object ListRenderer : Renderer<List<Any?>> {
                                 selectedRenderer().form(elementContext, itemLens.flatten(), module)()
                             }
                         }
-                        // Remove button
+                        // Remove button - uses item equality for removal
                         button {
-                            centered.icon(Icon.close.copy(width = 1.rem, height = 1.rem), "Remove")
+                            icon(Icon.close.copy(width = 1.rem, height = 1.rem), "Remove")
                             onClick {
-                                val i = itemLens().index()
-                                value set value().filterIndexed { index, _ -> index != i }
+                                val item = itemLens()
+                                value set (value() - item)
                             }
                         }
                     }
@@ -135,17 +109,16 @@ object ListRenderer : Renderer<List<Any?>> {
     }
 
     @Suppress("UNCHECKED_CAST")
-    override fun view(
-        context: RenderContext<List<Any?>>,
-        value: Reactive<List<Any?>>,
-        module: FormModule
-    ): ViewWriter.() -> Unit = {
+    override fun view(context: RenderContext<Set<Any?>>, value: Reactive<Set<Any?>>, module: FormModule): ViewWriter.() -> Unit = {
         val elementSerializer = context.serializer.listElement() as KSerializer<Any?>
         val elementContext = RenderContext(elementSerializer)
 
         // Get all compatible renderers for element type - by Claude
         val elementRenderers = module.selectAll(elementContext)
         val selectedRenderer = Signal(module.selectWithOverride(elementContext))
+
+        // Lens to convert Set<T> to List<T> for UI
+        val listValue = value.lens { it.toList() }
 
         col {
             gap = 0.px
@@ -159,7 +132,7 @@ object ListRenderer : Renderer<List<Any?>> {
                 content = "Empty"
             }
             themed(ListSemantic).col {
-                forEachUpdating(value) { itemValue ->
+                forEachUpdating(listValue) { itemValue ->
                     card.frame {
                         reactive {
                             clearChildren()
@@ -171,23 +144,19 @@ object ListRenderer : Renderer<List<Any?>> {
         }
     }
 
-    override fun cellView(
-        context: RenderContext<List<Any?>>,
-        value: Reactive<List<Any?>>,
-        module: FormModule
-    ): ViewWriter.() -> Unit = {
+    override fun cellView(context: RenderContext<Set<Any?>>, value: Reactive<Set<Any?>>, module: FormModule): ViewWriter.() -> Unit = {
         // Show count in cell view
         text { ::content { "${value().size} items" } }
     }
 
     // cellForm uses default dialog behavior
 
-    override fun columnWidth(context: RenderContext<List<Any?>>, module: FormModule) = 10.0
+    override fun columnWidth(context: RenderContext<Set<Any?>>, module: FormModule) = 10.0
 
-    // by Claude - Lists use section header instead of field() wrapper to avoid nesting
+    // by Claude - Sets use section header instead of field() wrapper to avoid nesting
     override fun labeledForm(
-        context: RenderContext<List<Any?>>,
-        value: MutableReactive<List<Any?>>,
+        context: RenderContext<Set<Any?>>,
+        value: MutableReactive<Set<Any?>>,
         module: FormModule,
         label: String,
         description: String?
@@ -204,8 +173,8 @@ object ListRenderer : Renderer<List<Any?>> {
     }
 
     override fun labeledView(
-        context: RenderContext<List<Any?>>,
-        value: Reactive<List<Any?>>,
+        context: RenderContext<Set<Any?>>,
+        value: Reactive<Set<Any?>>,
         module: FormModule,
         label: String,
         description: String?
@@ -222,8 +191,7 @@ object ListRenderer : Renderer<List<Any?>> {
     }
 }
 
-fun FormModule.registerCollections() {
-    register(Selector(kind = StructureKind.LIST), ListRenderer)
-    register(Selector(kind = StructureKind.LIST), HorizontalListRenderer)
-}
 
+fun FormModule.registerSet() {
+    register(Selector(kind = StructureKind.LIST), SetRenderer)
+}

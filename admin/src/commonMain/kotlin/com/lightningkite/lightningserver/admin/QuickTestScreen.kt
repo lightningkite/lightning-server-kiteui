@@ -19,8 +19,11 @@
 //
 package com.lightningkite.lightningserver.admin
 
+// by Claude - migrated to forms2
+
 import com.lightningkite.kiteui.Routable
 import com.lightningkite.kiteui.forms.FormModule
+import com.lightningkite.kiteui.forms.defaults
 import com.lightningkite.kiteui.forms.form
 import com.lightningkite.kiteui.navigation.Page
 
@@ -35,8 +38,8 @@ import kotlinx.serialization.builtins.serializer
 class QuickTestPage: Page {
     override fun ViewWriter.render() {
         col {
-            val module = FormModule()
-            module.showTypePicker = true
+            val module = FormModule().apply { defaults() }
+            module.enableRendererSwitching = true
             val s = Int.serializer().nullable
             field("Nullable int test") {
                 form(module, s, Signal<Int?>(null))
