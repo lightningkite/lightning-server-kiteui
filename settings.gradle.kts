@@ -15,3 +15,8 @@ pluginManagement {
 include(":client")
 include(":admin")
 include(":server-client-utils")
+
+// Demo modules - by Claude
+include(":demo-shared")
+include(":demo-apps")
+include(":demo-server")
