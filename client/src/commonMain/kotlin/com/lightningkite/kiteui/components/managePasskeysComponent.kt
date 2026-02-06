@@ -4,24 +4,17 @@ import com.lightningkite.kiteui.locale.RenderSize
 import com.lightningkite.kiteui.locale.renderToString
 import com.lightningkite.kiteui.models.Icon
 import com.lightningkite.kiteui.models.dp
-import com.lightningkite.kiteui.views.ViewWriter
-import com.lightningkite.kiteui.views.centered
+import com.lightningkite.kiteui.views.*
 import com.lightningkite.kiteui.views.direct.*
-import com.lightningkite.kiteui.views.expanding
 import com.lightningkite.kiteui.views.l2.children
 import com.lightningkite.kiteui.views.l2.icon
-import com.lightningkite.services.database.Query
-import com.lightningkite.services.database.condition
-import com.lightningkite.services.database.eq
-import com.lightningkite.services.database.modification
-import com.lightningkite.lightningserver.sessions.proofs.WebAuthNCredential
-import com.lightningkite.lightningserver.sessions.proofs.disabledAt
-import com.lightningkite.lightningserver.sessions.proofs.subjectId
-import com.lightningkite.lightningserver.db.LimitReadable
+import com.lightningkite.lightningserver.db.LimitReactiveList
 import com.lightningkite.lightningserver.db.ModelCache
+import com.lightningkite.lightningserver.sessions.proofs.*
 import com.lightningkite.reactive.context.await
 import com.lightningkite.reactive.core.Reactive
 import com.lightningkite.reactive.core.remember
+import com.lightningkite.services.database.*
 import kotlin.time.Clock.System.now
 
 
@@ -30,18 +23,18 @@ fun ViewWriter.manageWebAuthNCredentialsComponent(
     subjectName: Reactive<String>,
     subjectId: Reactive<String>,
 ) {
-    val credentials: Reactive<LimitReadable<WebAuthNCredential>> = remember {
+    val credentials: Reactive<LimitReactiveList<WebAuthNCredential>> = remember {
         webAuthNCCredentials.awaitNotNull()
             .query(Query(condition { it.subjectId.eq(subjectId()) }))
     }
 
     recyclerView {
-        children (remember{ credentials()() }, { it._id }) { credential ->
+        children(remember { credentials()() }, { it._id }) { credential ->
             row {
                 col {
                     gap = 0.dp
                     text {
-                        ::content { credential().displayName ?: "Passkey" }
+                        ::content { credential().displayName }
                     }
                     subtext {
                         ::content { "Created on ${credential().establishedAt.renderToString(RenderSize.Numerical)}" }

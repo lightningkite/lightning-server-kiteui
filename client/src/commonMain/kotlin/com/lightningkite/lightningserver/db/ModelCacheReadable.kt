@@ -20,7 +20,7 @@ interface ModelCacheItemReadable<T> : MutableReactive<T?>, ModelCacheReadable<T?
     suspend fun invalidate(): Unit
 }
 
-interface ModelCacheLimitReadable<T> : LimitReadable<T>, ModelCacheReadable<List<T>> {
+interface ModelCacheLimitReadable<T> : LimitReactiveList<T>, ModelCacheReadable<List<T>> {
 }
 
 fun <T> Reactive<ModelCacheItemReadable<T>>.flatten(): ModelCacheItemReadable<T> {

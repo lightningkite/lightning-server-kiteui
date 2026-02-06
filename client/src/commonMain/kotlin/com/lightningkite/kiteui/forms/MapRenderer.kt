@@ -2,27 +2,14 @@
 
 package com.lightningkite.kiteui.forms
 
-import com.lightningkite.kiteui.models.Icon
-import com.lightningkite.kiteui.models.ListSemantic
-import com.lightningkite.kiteui.models.SubtextSemantic
-import com.lightningkite.kiteui.models.px
-import com.lightningkite.kiteui.models.rem
-import com.lightningkite.kiteui.views.ViewWriter
-import com.lightningkite.kiteui.views.card
-import com.lightningkite.kiteui.views.centered
+import com.lightningkite.kiteui.models.*
+import com.lightningkite.kiteui.views.*
 import com.lightningkite.kiteui.views.direct.*
-import com.lightningkite.kiteui.views.expanding
 import com.lightningkite.kiteui.views.l2.icon
 import com.lightningkite.reactive.context.invoke
 import com.lightningkite.reactive.context.reactive
-import com.lightningkite.reactive.core.Constant
-import com.lightningkite.reactive.core.MutableReactive
-import com.lightningkite.reactive.core.Reactive
-import com.lightningkite.reactive.core.Signal
-import com.lightningkite.reactive.lensing.lens
-import com.lightningkite.services.database.default
-import com.lightningkite.services.database.mapKeyElement
-import com.lightningkite.services.database.mapValueElement
+import com.lightningkite.reactive.core.*
+import com.lightningkite.services.database.*
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.descriptors.StructureKind
@@ -45,8 +32,8 @@ object MapRenderer : Renderer<Map<Any?, Any?>> {
     @Suppress("UNCHECKED_CAST")
     override fun form(
         context: RenderContext<Map<Any?, Any?>>,
-        theMapData: MutableReactive<Map<Any?, Any?>>,
-        module: FormModule
+        value: MutableReactive<Map<Any?, Any?>>,
+        module: FormModule,
     ): ViewWriter.() -> Unit = {
         // by Claude
         val keySerializer = context.serializer.mapKeyElement() as KSerializer<Any?>
@@ -72,7 +59,7 @@ object MapRenderer : Renderer<Map<Any?, Any?>> {
 
             // Show empty text
             text {
-                ::shown { theMapData.invoke().isEmpty() }
+                ::shown { value.invoke().isEmpty() }
                 content = "Empty"
             }
 
@@ -80,9 +67,9 @@ object MapRenderer : Renderer<Map<Any?, Any?>> {
             themed(ListSemantic).col {
                 reactive {
                     clearChildren()
-                    for ((entryKey, entryValue) in theMapData.invoke()) {
+                    for ((entryKey, entryValue) in value.invoke()) {
                         // Lens for this entry's key
-                        val keyLens = theMapData.lens(
+                        val keyLens = value.lens(
                             get = { entryKey },
                             modify = { original, newKey ->
                                 if (newKey != entryKey) {
@@ -95,7 +82,7 @@ object MapRenderer : Renderer<Map<Any?, Any?>> {
                         )
 
                         // Lens for this entry's value
-                        val valueLens = theMapData.lens(
+                        val valueLens = value.lens(
                             get = { entryValue },
                             modify = { original, newValue ->
                                 val result = original.toMutableMap()
@@ -128,9 +115,9 @@ object MapRenderer : Renderer<Map<Any?, Any?>> {
                             centered.button {
                                 icon(Icon.close.copy(width = 1.rem, height = 1.rem), "Remove")
                                 onClick {
-                                    val result = theMapData.invoke().toMutableMap()
+                                    val result = value.invoke().toMutableMap()
                                     result.remove(keyToRemove)
-                                    theMapData.set(result)
+                                    value.set(result)
                                 }
                             }
                         }
@@ -144,9 +131,9 @@ object MapRenderer : Renderer<Map<Any?, Any?>> {
                 onClick {
                     val defaultKey = keySerializer.default()
                     val defaultValue = valueSerializer.default()
-                    val newMap = theMapData.invoke().toMutableMap()
+                    val newMap = value.invoke().toMutableMap()
                     newMap[defaultKey] = defaultValue
-                    theMapData.set(newMap)
+                    value.set(newMap)
                 }
             }
         }
@@ -155,8 +142,8 @@ object MapRenderer : Renderer<Map<Any?, Any?>> {
     @Suppress("UNCHECKED_CAST")
     override fun view(
         context: RenderContext<Map<Any?, Any?>>,
-        theMapData: Reactive<Map<Any?, Any?>>,
-        module: FormModule
+        value: Reactive<Map<Any?, Any?>>,
+        module: FormModule,
     ): ViewWriter.() -> Unit = {
         val keySerializer = context.serializer.mapKeyElement() as KSerializer<Any?>
         val valueSerializer = context.serializer.mapValueElement() as KSerializer<Any?>
@@ -180,14 +167,14 @@ object MapRenderer : Renderer<Map<Any?, Any?>> {
             }
 
             text {
-                ::shown { theMapData().isEmpty() }
+                ::shown { value().isEmpty() }
                 content = "Empty"
             }
 
             themed(ListSemantic).col {
                 reactive {
                     clearChildren()
-                    for ((key, entryValue) in theMapData()) {
+                    for ((key, entryValue) in value()) {
                         card.row {
                             // Uses selected renderers - by Claude
                             expanding.col {
@@ -214,7 +201,7 @@ object MapRenderer : Renderer<Map<Any?, Any?>> {
     override fun cellView(
         context: RenderContext<Map<Any?, Any?>>,
         value: Reactive<Map<Any?, Any?>>,
-        module: FormModule
+        module: FormModule,
     ): ViewWriter.() -> Unit = {
         // Show count in cell view
         text { ::content { "${value().size} entries" } }
@@ -228,7 +215,7 @@ object MapRenderer : Renderer<Map<Any?, Any?>> {
         value: MutableReactive<Map<Any?, Any?>>,
         module: FormModule,
         label: String,
-        description: String?
+        description: String?,
     ): ViewWriter.() -> Unit = {
         col {
             row {
@@ -246,7 +233,7 @@ object MapRenderer : Renderer<Map<Any?, Any?>> {
         value: Reactive<Map<Any?, Any?>>,
         module: FormModule,
         label: String,
-        description: String?
+        description: String?,
     ): ViewWriter.() -> Unit = {
         col {
             row {

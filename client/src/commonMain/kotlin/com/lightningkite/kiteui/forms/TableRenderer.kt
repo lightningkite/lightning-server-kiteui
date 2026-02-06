@@ -8,7 +8,6 @@ import com.lightningkite.kiteui.views.*
 import com.lightningkite.kiteui.views.direct.*
 import com.lightningkite.kiteui.views.l2.children
 import com.lightningkite.kiteui.views.l2.icon
-import com.lightningkite.lightningserver.db.LimitReadable
 import com.lightningkite.reactive.context.invoke
 import com.lightningkite.reactive.context.reactive
 import com.lightningkite.reactive.core.*
@@ -130,6 +129,7 @@ data class ColumnInfo<T>(
     constructor(path: DataClassPathPartial<T>, renderer: Renderer<*>): this(path, renderer.name)
     constructor(path: DataClassPathPartial<T>, formModule: FormModule): this(path, formModule.select(RenderContext(path.serializerAny, path.properties.lastOrNull()?.serializableAnnotations ?: listOf())))
     @Transient private var cached: Renderer<Any?>? = null
+    @Suppress("UNCHECKED_CAST")
     @Transient val ctx = RenderContext(
         path.serializerAny as KSerializer<Any?>,
         path.properties.lastOrNull()?.serializableAnnotations ?: listOf()
