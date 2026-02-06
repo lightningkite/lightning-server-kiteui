@@ -1,13 +1,7 @@
 package com.lightningkite.kiteui.auth
 
-import com.lightningkite.kiteui.ClientAuthenticator
-import com.lightningkite.kiteui.Platform
-import com.lightningkite.kiteui.current
-import com.lightningkite.kiteui.models.ErrorSemantic
-import com.lightningkite.kiteui.models.Icon
-import com.lightningkite.kiteui.models.KeyboardHints
-import com.lightningkite.kiteui.models.rem
-import com.lightningkite.kiteui.printStackTrace2
+import com.lightningkite.kiteui.*
+import com.lightningkite.kiteui.models.*
 import com.lightningkite.kiteui.reactive.Action
 import com.lightningkite.kiteui.reactive.PersistentProperty
 import com.lightningkite.kiteui.views.*
@@ -16,21 +10,15 @@ import com.lightningkite.kiteui.views.l2.field
 import com.lightningkite.kiteui.views.l2.icon
 import com.lightningkite.lightningserver.auth.AuthEndpoints
 import com.lightningkite.lightningserver.auth.LightningServerAuthentication
-import com.lightningkite.lightningserver.sessions.proofs.Proof
 import com.lightningkite.lightningserver.sessions.LogInRequest
 import com.lightningkite.lightningserver.sessions.ProofsCheckResult
-import com.lightningkite.lightningserver.sessions.proofs.AuthClientEndpoints
-import com.lightningkite.lightningserver.sessions.proofs.KnownDeviceSecretAndExpiration
-import com.lightningkite.reactive.context.await
-import com.lightningkite.reactive.context.invoke
-import com.lightningkite.reactive.context.reactive
+import com.lightningkite.lightningserver.sessions.proofs.*
+import com.lightningkite.reactive.context.*
 import com.lightningkite.reactive.core.*
 import com.lightningkite.reactive.extensions.debounce
 import com.lightningkite.toEmailAddress
 import com.lightningkite.toPhoneNumber
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.plus
+import kotlinx.coroutines.*
 import kotlinx.serialization.Serializable
 import kotlin.math.roundToInt
 import kotlin.time.Clock.System.now
@@ -49,6 +37,7 @@ data class UserIdentification(val property: String, val value: String)
 
 // Pattern to detect email addresses
 private val emailRegex = Regex("""[\w\-+._]+@(?:[\w\-]+\w\.)+[\w\-]+\w$""")
+
 // Pattern to detect phone numbers - requires at least 7 digits with optional separators
 private val phoneRegex = Regex("""\+?(?:[0-9][-. ]?){6,}[0-9]$""")
 
@@ -75,7 +64,7 @@ fun ViewWriter.authComponent(
     knownDeviceLocalStorageName: String? = "known-device",
     filterMethods: suspend (UserIdentification?, List<ProofComponent>) -> List<ProofComponent> = { _, it -> it },
     onAuthentication: suspend (token: String) -> Unit,
-) = AuthComponent2(
+) = AuthComponent(
     endpoints = endpoints,
     supportUsernames = supportUsernames,
     subjectType = subjectType,
@@ -112,7 +101,7 @@ fun ViewWriter.authComponent(
  * @property filterMethods Function to filter/reorder available auth methods dynamically
  * @property onAuthentication Callback invoked with refresh token on successful authentication
  */
-open class AuthComponent2(
+open class AuthComponent(
     val endpoints: AuthEndpoints,
     val subjectType: String = endpoints.subjects.keys.single(),
     val subject: AuthClientEndpoints<*, *> = endpoints.subjects[subjectType]!!,
@@ -165,7 +154,7 @@ open class AuthComponent2(
                 if (primaryIdentifier == null)
                     !it.primaryIdentifierRequired // Only allow methods that don't need identifier
                 else if (proofs.value.isEmpty())
-                    // First proof: must match primary identifier type
+                // First proof: must match primary identifier type
                     (it.property == null || it.property == primaryIdentifier.property) &&
                             (supportUsernames || primaryIdentifier.property != "username")
                 else
@@ -359,7 +348,8 @@ open class AuthComponent2(
 
         endpoints.webAuthNProof?.let { webAuthn ->
             if (endpoints.webAuthNIncludePasskeyUI) {
-                val webAuthAvailable = rememberSuspending { ClientAuthenticator.getClientAuthenticator().webAuthNAvailable() }
+                val webAuthAvailable =
+                    rememberSuspending { ClientAuthenticator.getClientAuthenticator().webAuthNAvailable() }
                 shownWhen { primaryIdentifier() == null && currentProof() == null && proofs().isEmpty() && webAuthAvailable() }.col {
 
                     centered.text("Or")
