@@ -2,7 +2,7 @@
 package com.lightningkite.lskiteuistarter
 
 import com.lightningkite.kiteui.Routable
-import com.lightningkite.kiteui.auth.AuthComponent2
+import com.lightningkite.kiteui.auth.AuthComponent
 import com.lightningkite.kiteui.models.SizeConstraints
 import com.lightningkite.kiteui.models.rem
 import com.lightningkite.kiteui.navigation.Page
@@ -31,7 +31,7 @@ class LoginPage : Page, UseFullPage {
 
         val authUI = remember {
             val api = selectedApi().api
-            AuthComponent2(
+            AuthComponent(
                 endpoints = AuthEndpoints(
                     subjects = mapOf("User" to api.userAuth),
                     emailProof = api.userAuth.email,
