@@ -37,7 +37,10 @@ package com.lightningkite.lightningserver.admin
 import com.lightningkite.kiteui.Routable
 import com.lightningkite.kiteui.forms.displayName
 import com.lightningkite.kiteui.forms.form
+import com.lightningkite.kiteui.forms.labeledForm
+import com.lightningkite.kiteui.forms.pluralize
 import com.lightningkite.kiteui.models.Icon
+import com.lightningkite.kiteui.models.ListSemantic
 import com.lightningkite.kiteui.models.rem
 import com.lightningkite.kiteui.navigation.*
 import com.lightningkite.kiteui.views.*
@@ -51,6 +54,7 @@ import com.lightningkite.services.database._id
 import com.lightningkite.lightningserver.db.ModelCache
 import com.lightningkite.reactive.context.reactive
 import com.lightningkite.reactive.core.Draft
+import com.lightningkite.reactive.core.Reactive
 import com.lightningkite.reactive.core.remember
 import com.lightningkite.reactive.extensions.flatten
 import com.lightningkite.reactive.extensions.notNull
@@ -64,6 +68,8 @@ class DetailAdminPage(val collectionName: String, val itemId: String) : Page {
     // by Claude - added null safety for missing collections
     private val mcOrNull = remember { adminServer().models[collectionName]?.cache(adminAuthentication()) as? ModelCache<UnknownModel, UnknownId> }
     private val mc = remember { mcOrNull()!! }
+
+    override val title: Reactive<String> = remember { "Edit $collectionName" }
 
     override fun ViewWriter.render() {
         col {
@@ -88,18 +94,19 @@ class DetailAdminPage(val collectionName: String, val itemId: String) : Page {
     private fun RowOrCol.renderContent() {
         val item = Draft(remember {
             val mc = mc()
-            val actualId = UrlProperties.decodeFromString(mc.serializer._id().serializer, itemId)
+            val actualId = DefaultUriFormat.decodeFromString(mc.serializer._id().serializer, itemId)
             mc[actualId].notNull(mc.serializer.default().also {
                 mc.serializer._id().setCopy(it, actualId)
             })
         }.flatten())
-        rowCollapsingToColumn(100.rem) {
+        scrolling.rowCollapsingToColumn(100.rem) {
             space { reactive { item() } }
-            weight(2f).scrolling.col {
+            weight(2f).card.col {
                 reactive {
                     clearChildren()
                     val forms = adminFormModule()
-                    form(forms, mc().serializer, item)
+                    val mc = mc()
+                    labeledForm(forms, mc.serializer, item, "Edit ${mc.serializer.displayName}")
                     atEnd.row {
                         danger.button {
                             text("Delete")
@@ -107,7 +114,7 @@ class DetailAdminPage(val collectionName: String, val itemId: String) : Page {
                                 confirmDanger("Delete", "Are you sure?") {
                                     val mc = mc()
                                     val actualId =
-                                        UrlProperties.decodeFromString(mc.serializer._id().serializer, itemId)
+                                        DefaultUriFormat.decodeFromString(mc.serializer._id().serializer, itemId)
                                     mc[actualId].delete()
                                     toast {
                                         row {
@@ -129,23 +136,23 @@ class DetailAdminPage(val collectionName: String, val itemId: String) : Page {
                             }
                         }
                         shownWhen { item.published()._id != item()._id }.danger.button {
-                            text("Delete and Re-create")
+                            text("Re-create and Delete")
                             ::enabled { item.changesMade() }
                             onClick {
-                                confirmDanger("Delete and Re-create", "Are you sure you want to delete this item then recreate it with a new ID?  This DOES COUNT as a deletion followed by a creation.") {
+                                confirmDanger("Re-create and Delete", "Are you sure you want to recreate this item with a new ID and then delete the old one?  This DOES COUNT as a creation followed by a deletion.") {
                                     val mc = mc()
                                     val actualId =
-                                        UrlProperties.decodeFromString(mc.serializer._id().serializer, itemId)
+                                        DefaultUriFormat.decodeFromString(mc.serializer._id().serializer, itemId)
                                     val newItem = item()
+                                    val newId = mc.add(newItem)._id
                                     mc[actualId].delete()
-                                    val newId = mc.insert(newItem)()!!._id
                                     toast {
                                         row {
                                             centered.icon(Icon.done, "Done")
                                             centered.text("Your changes have been saved")
                                         }
                                     }
-                                    pageNavigator.replace(DetailAdminPage(collectionName, UrlProperties.encodeToString(mc.serializer._id().serializer, newId)))
+                                    pageNavigator.replace(DetailAdminPage(collectionName, DefaultUriFormat.encodeToString(mc.serializer._id().serializer, newId)))
                                 }
                             }
                         }
@@ -165,26 +172,43 @@ class DetailAdminPage(val collectionName: String, val itemId: String) : Page {
                     }
                 }
             }
-            weight(1f).scrolls.col {
+            atTop.weight(1f).card.col {
                 val itemId = remember { item()._id }
-                reactive {
-                    clearChildren()
-                    val mc = mc()
-                    val itemId = itemId()
-                    val myTypeName = mc.serializer.descriptor.serialName.substringBefore('/')
-                    adminServer().models.entries.forEach { model ->
-                        model.value.serializer.serializableProperties?.forEach {
-                            val anno = it.serializableAnnotations.find { it.fqn == "com.lightningkite.services.data.References" } ?: return@forEach
-                            val typeName = anno.values.get("references")?.let { it as? SerializableAnnotationValue.ClassValue }?.fqn ?: return@forEach
-                            if (typeName != myTypeName) return@forEach
-                            val reverseName = anno.values.get("reverseName")?.let { it as? SerializableAnnotationValue.StringValue }?.value?.takeUnless { it.isEmpty() }
-                            val label = reverseName ?: "${model.value.serializer.displayName}'s ${it.displayName}"
-                            link {
-                                text(label)
-                                to = { CollectionAdminPage(model.key).apply { conditionString.value = DefaultJson.encodeToString(
-                                    ConditionSerializer(model.value.serializer),
-                                    Condition.OnField(it as SerializableProperty<HasId<*>, UnknownId>, Condition.Equal(itemId))
-                                ) } }
+                h4("Related Records")
+                themed(ListSemantic).col {
+                    reactive {
+                        clearChildren()
+                        val mc = mc()
+                        val itemId = itemId()
+                        val myTypeName = mc.serializer.descriptor.serialName.substringBefore('/')
+                        adminServer().models.entries.forEach { model ->
+                            model.value.serializer.serializableProperties?.forEach {
+                                val anno =
+                                    it.serializableAnnotations.find { it.fqn == "com.lightningkite.services.data.References" }
+                                        ?: return@forEach
+                                val typeName = anno.values.get("references")
+                                    ?.let { it as? SerializableAnnotationValue.ClassValue }?.fqn ?: return@forEach
+                                if (typeName != myTypeName) return@forEach
+                                val reverseName = anno.values.get("reverseName")
+                                    ?.let { it as? SerializableAnnotationValue.StringValue }?.value?.takeUnless { it.isEmpty() }
+                                val label = reverseName ?: run {
+                                    if(it.displayName == mc.serializer.displayName || it.displayName == "Owner") model.value.serializer.displayName.pluralize()
+                                    else "${it.displayName} - ${model.value.serializer.displayName.pluralize()}"
+                                }
+                                card.link {
+                                    text(label)
+                                    to = {
+                                        CollectionAdminPage(model.key).apply {
+                                            conditionString.value = DefaultJson.encodeToString(
+                                                ConditionSerializer(model.value.serializer),
+                                                Condition.OnField(
+                                                    it as SerializableProperty<HasId<*>, UnknownId>,
+                                                    Condition.Equal(itemId)
+                                                )
+                                            )
+                                        }
+                                    }
+                                }
                             }
                         }
                     }

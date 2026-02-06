@@ -1,14 +1,17 @@
+@file:OptIn(ExperimentalSerializationApi::class)
+
 package com.lightningkite.kiteui.forms
 
 import com.lightningkite.CaselessStringSerializer
 import com.lightningkite.TrimmedCaselessStringSerializer
 import com.lightningkite.TrimmedStringSerializer
+import com.lightningkite.kiteui.views.ViewWriter
 import com.lightningkite.kiteui.views.direct.select
 import com.lightningkite.kiteui.views.direct.text
 import com.lightningkite.kiteui.views.fieldTheme
-import com.lightningkite.services.database.SortPart
-import com.lightningkite.services.database.SortPartSerializer
 import com.lightningkite.reactive.core.Constant
+import com.lightningkite.reactive.core.MutableReactive
+import com.lightningkite.reactive.core.Reactive
 import com.lightningkite.services.database.*
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
@@ -21,19 +24,26 @@ import kotlin.time.Duration
 import kotlin.time.Instant
 import kotlin.uuid.Uuid
 
-@OptIn(ExperimentalSerializationApi::class)
-object SortPathRenderer : FormRenderer.Generator, ViewRenderer.Generator {
+/**
+ * Renderer for SortPart<T> types used in sorting configuration.
+ *
+ * Displays a dropdown of all sortable fields from the inner type,
+ * with options for ascending/descending and case sensitivity for strings.
+ *
+ * by Claude
+ */
+object SortPathRenderer : Renderer<Any> {
     override val name: String = "Sort Part"
-    override val type: String = "com.lightningkite.services.database.SortPart"  // by Claude - fixed package name
 
-    val stringTypes = setOf(
+    private val stringTypes = setOf(
         Char.serializer().descriptor.serialName,
         String.serializer().descriptor.serialName,
         CaselessStringSerializer.descriptor.serialName,
         TrimmedStringSerializer.descriptor.serialName,
         TrimmedCaselessStringSerializer.descriptor.serialName,
     )
-    val comparableTypes = setOf(
+
+    private val comparableTypes = setOf(
         Boolean.serializer().descriptor.serialName,
         Byte.serializer().descriptor.serialName,
         Short.serializer().descriptor.serialName,
@@ -48,23 +58,33 @@ object SortPathRenderer : FormRenderer.Generator, ViewRenderer.Generator {
         LocalDate.serializer().descriptor.serialName,
         LocalDateTime.serializer().descriptor.serialName,
         LocalTime.serializer().descriptor.serialName,
-        Instant.serializer().descriptor.serialName,
         Duration.serializer().descriptor.serialName,
         DurationMsSerializer.descriptor.serialName,
     ) + stringTypes
 
-    class TypeInfo<T>(val module: FormModule, val serializer: SortPartSerializer<Any?>) {
+    override fun priority(context: RenderContext<Any>, module: FormModule): Float {
+        // Only match SortPartSerializer
+        return if (context.serializer is SortPartSerializer<*>) 1f else -1f
+    }
+
+    override fun columnWidth(context: RenderContext<Any>, module: FormModule): Double = 20.0
+
+    /**
+     * Helper class to compute sortable options from a SortPartSerializer.
+     */
+    private class SortOptions(module: FormModule, serializer: SortPartSerializer<Any?>) {
         val options = ArrayList<SortPart<Any?>>()
 
         init {
             fun traverse(serializer: KSerializer<Any?>, base: DataClassPath<Any?, Any?>) {
-                serializer.serializableProperties?.forEach {
-                    val ser = it.serializer.let {
-                        if (it is ContextualSerializer<*>) module.module.getContextual(it)
+                serializer.serializableProperties?.forEach { prop ->
+                    val ser = prop.serializer.let {
+                        @Suppress("UNCHECKED_CAST")
+                        if (it is ContextualSerializer<*>) module.serializersModule.getContextual(it as ContextualSerializer<Any>)
                         else it
                     }
                     if (ser.descriptor.serialName in comparableTypes) {
-                        val access = DataClassPathAccess(base, it)
+                        val access = DataClassPathAccess(base, prop)
                         if (ser.descriptor.serialName !in stringTypes) {
                             options += listOf(
                                 SortPart(access, ascending = true, ignoreCase = false),
@@ -104,22 +124,41 @@ object SortPathRenderer : FormRenderer.Generator, ViewRenderer.Generator {
     }
 
     @Suppress("UNCHECKED_CAST")
-    override fun <T> form(module: FormModule, selector: FormSelector<T>): FormRenderer<T> {
-        val serializer = selector.serializer as SortPartSerializer<Any?>
-        val info = TypeInfo<SortPart<Any?>>(module, serializer)
-        return FormRenderer<SortPart<Any?>>(module, this, selector as FormSelector<SortPart<Any?>>) { field, mutable ->
+    override fun form(context: RenderContext<Any>, value: MutableReactive<Any>, module: FormModule): ViewWriter.() -> Unit {
+        val serializer = context.serializer as SortPartSerializer<Any?>
+        val sortOptions = SortOptions(module, serializer)
+        val typedValue = value as MutableReactive<SortPart<Any?>>
+
+        return {
             fieldTheme.select {
-                bind(mutable, Constant(info.options), info::toString)
+                bind(typedValue, Constant(sortOptions.options), sortOptions::toString)
             }
-        } as FormRenderer<T>
+        }
     }
 
     @Suppress("UNCHECKED_CAST")
-    override fun <T> view(module: FormModule, selector: FormSelector<T>): ViewRenderer<T> {
-        val serializer = selector.serializer as SortPartSerializer<Any?>
-        val info = TypeInfo<SortPart<Any?>>(module, serializer)
-        return ViewRenderer<SortPart<Any?>>(module, this, selector as FormSelector<SortPart<Any?>>) { field, readable ->
-            text { ::content { info.toString(readable()) } }
-        } as ViewRenderer<T>
+    override fun view(context: RenderContext<Any>, value: Reactive<Any>, module: FormModule): ViewWriter.() -> Unit {
+        val serializer = context.serializer as SortPartSerializer<Any?>
+        val sortOptions = SortOptions(module, serializer)
+        val typedValue = value as Reactive<SortPart<Any?>>
+
+        return {
+            text { ::content { sortOptions.toString(typedValue()) } }
+        }
     }
+
+    override fun cellForm(context: RenderContext<Any>, value: MutableReactive<Any>, module: FormModule) =
+        form(context, value, module)
+
+    override fun cellView(context: RenderContext<Any>, value: Reactive<Any>, module: FormModule) =
+        view(context, value, module)
+}
+
+/**
+ * Register the sort path renderer with the module.
+ *
+ * by Claude
+ */
+fun FormModule.registerSortPath() {
+    register(Selector(type = "com.lightningkite.services.database.SortPart"), SortPathRenderer)
 }

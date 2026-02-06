@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalSerializationApi::class)
+
 package com.lightningkite.kiteui.forms
 
 import com.lightningkite.IsRawString
@@ -9,218 +11,267 @@ import com.lightningkite.kiteui.views.*
 import com.lightningkite.kiteui.views.direct.*
 import com.lightningkite.kiteui.views.l2.children
 import com.lightningkite.kiteui.views.l2.icon
-import com.lightningkite.services.database.*
 import com.lightningkite.reactive.context.invoke
 import com.lightningkite.reactive.context.reactiveSuspending
-import com.lightningkite.reactive.core.MutableReactiveValue
+import com.lightningkite.reactive.core.MutableReactive
+import com.lightningkite.reactive.core.Reactive
 import com.lightningkite.reactive.core.Signal
 import com.lightningkite.reactive.core.remember
 import com.lightningkite.reactive.extensions.debounce
 import com.lightningkite.services.database.*
-import kotlinx.coroutines.delay
-import kotlinx.serialization.builtins.ListSerializer
-import kotlin.time.Duration.Companion.milliseconds
+import kotlinx.serialization.ExperimentalSerializationApi
 
-object ForeignKeyRenderer : FormRenderer.Generator, ViewRenderer.Generator {
-    override val name: String = "Foreign Key"
-    override val annotation: String? get() = "com.lightningkite.services.data.References"  // by Claude - fixed package name
-    override val basePriority: Float
-        get() = 2f
+/**
+ * Renderer for foreign key fields annotated with @References.
+ *
+ * Form mode shows:
+ * - Current selection (or "None")
+ * - Dropdown menu with search and selection list
+ * - Link to open the referenced item
+ *
+ * View mode shows:
+ * - Link to the referenced item with its display name
+ *
+ * Requires FormModule.typeInfo to be configured to resolve referenced types.
+ *
+ * by Claude
+ */
+object ForeignKeyRenderer : Renderer<Any?> {
+    override val name: String = "Reference"  // by Claude
 
-    override fun size(module: FormModule, selector: FormSelector<*>): FormSize = FormSize(16.0, 1.0)
-    override fun matches(module: FormModule, selector: FormSelector<*>): Boolean {
-        val anno = selector.annotations.find {
-            it.fqn == "com.lightningkite.services.data.References" ||
-                    it.fqn == "com.lightningkite.services.data.MultipleReferences"
-        }?.values ?: return false
-        val typeName =
-            anno.get("references")?.let { it as? SerializableAnnotationValue.ClassValue }?.fqn ?: return false
+    private const val REFERENCES_FQN = "com.lightningkite.services.data.References"
+    private const val MULTIPLE_REFERENCES_FQN = "com.lightningkite.services.data.MultipleReferences"
 
-        @Suppress("UNCHECKED_CAST")
-        val typeInfo =
-            module.typeInfo(typeName) as? FormTypeInfo<HasId<Comparable<Comparable<*>>>, Comparable<Comparable<*>>>
-                ?: return false
-        return true
+    override fun priority(context: RenderContext<Any?>, module: FormModule): Float {
+        // Only match if we have a @References annotation and typeInfo is available
+        val anno = context.fieldAnnotations.find {
+            it.fqn == REFERENCES_FQN || it.fqn == MULTIPLE_REFERENCES_FQN
+        } ?: return -1f
+
+        val typeName = anno.values["references"]
+            ?.let { it as? SerializableAnnotationValue.ClassValue }
+            ?.fqn ?: return -1f
+
+        // Check that we can resolve this type
+        if (module.typeInfo(typeName) == null) return -1f
+
+        return 2f  // Higher priority than default object renderer
     }
 
     @Suppress("UNCHECKED_CAST")
-    override fun <T> form(module: FormModule, selector: FormSelector<T>): FormRenderer<T> {
-        val anno = selector.annotations.find {
-            it.fqn == "com.lightningkite.services.data.References" ||
-                    it.fqn == "com.lightningkite.services.data.MultipleReferences"
-        }!!.values
-        val typeName = anno.get("references")!!.let { it as SerializableAnnotationValue.ClassValue }.fqn
-        val typeInfo =
-            module.typeInfo(typeName)!! as FormTypeInfo<HasId<Comparable<Comparable<*>>>, Comparable<Comparable<*>>>
-        return FormRenderer(module, this, selector as FormSelector<Comparable<Comparable<*>>?>) { field, mutable ->
+    override fun form(context: RenderContext<Any?>, value: MutableReactive<Any?>, module: FormModule): ViewWriter.() -> Unit {
+        val anno = context.fieldAnnotations.find {
+            it.fqn == REFERENCES_FQN || it.fqn == MULTIPLE_REFERENCES_FQN
+        }!!
+
+        val typeName = anno.values["references"]!!
+            .let { it as SerializableAnnotationValue.ClassValue }.fqn
+
+        val typeInfo = module.typeInfo(typeName)!!
+            as TypeInfo<HasId<Comparable<Comparable<*>>>, Comparable<Comparable<*>>>
+
+        return {
             fieldTheme.row {
                 gap = 0.px
                 expanding.menuButton {
                     requireClick = true
                     align(Align.Start, Align.Center).text {
                         reactiveSuspending {
-                            content = mutable()?.let { typeInfo.renderToString(it) } ?: "None"
+                            content = (value() as? Comparable<Comparable<*>>)
+                                ?.let { typeInfo.renderToString(it) }
+                                ?: "None"
                         }
                     }
                     opensMenu {
-                        if (selector.serializer.descriptor.isNullable) {
-                            load { mutable set null }
+                        // Allow null selection if serializer is nullable
+                        if (context.serializer.descriptor.isNullable) {
+                            button {
+                                text("Clear selection")
+                                onClick {
+                                    value set null
+                                    closePopovers()
+                                }
+                            }
                         }
                         preferredDirection = PopoverPreferredDirection.belowLeft
-                        val full = Signal(false)
+
                         sizeConstraints(width = 25.rem, height = 25.rem).col {
                             val textSearch = Signal("")
-                            val condition = Signal<Condition<HasId<Comparable<Comparable<*>>>>>(Condition.Always)
-                            val sort = Signal<List<SortPart<HasId<Comparable<Comparable<*>>>>>>(listOf())
-                            val hasTextIndex =
-                                typeInfo.serializer.serializableAnnotations.any { it.fqn.endsWith("TextIndex") }
-                            val columns: MutableReactiveValue<List<DataClassPath<HasId<Comparable<Comparable<*>>>, *>>> =
-                                Signal(run {
-                                    typeInfo.serializer.defaultColumns()
-                                })
-                            val itemsMeta = remember {
-                                typeInfo.cache().watch(
-                                    Query(
-                                        Condition.And<HasId<Comparable<Comparable<*>>>>(
-                                            listOfNotNull(
-                                                textSearch.debounce(500)().takeUnless { it.isBlank() }?.let {
-                                                    if (hasTextIndex) Condition.FullTextSearch(it)
-                                                    else {
-                                                        it.split(' ').map { term ->
-                                                            columns().mapNotNull {
-                                                                val s = it.serializer.let {
-                                                                    it.nullElement() ?: it
-                                                                }.descriptor.serialName.substringBefore('/')
-                                                                val p =
-                                                                    if (it.serializer.descriptor.isNullable) DataClassPathNotNull(
-                                                                        it as DataClassPath<HasId<Comparable<Comparable<*>>>, Any?>
-                                                                    ) else it
-                                                                if (s == "kotlin.String") {
-                                                                    p.mapCondition(
-                                                                        Condition.StringContains(
-                                                                            term,
-                                                                            true
-                                                                        ) as Condition<Any?>
-                                                                    )
-                                                                } else if (s in IsRawString.serialNames) {
-                                                                    p.mapCondition(
-                                                                        Condition.RawStringContains<TrimmedString>(
-                                                                            term,
-                                                                            true
-                                                                        ) as Condition<Any?>
-                                                                    )
-                                                                } else null
-                                                            }.takeUnless { it.isEmpty() }
-                                                                ?.let { Condition.Or(it) } ?: Condition.Always
-                                                        }.let { Condition.And(it) }
-                                                    }
-                                                },
-                                                condition.debounce(500)()
-                                            )
-                                        ), sort.debounce(500)()
-                                    )
-                                )
-                            }
-                            val items = remember { itemsMeta()() }
-                            row {
-                                expanding.fieldTheme.textInput {
-                                    content bind textSearch
-                                }
-                                shownWhen { full() }.menuButton {
-                                    dynamicTheme { if (condition() != Condition.Always) SelectedSemantic else null }
-                                    icon(Icon.filterList, "Filter")
-                                    requireClick = true
-                                    opensMenu {
-                                        form(module, Condition.serializer(typeInfo.serializer), condition)
-                                    }
-                                }
-                                shownWhen { full() }.menuButton {
-                                    dynamicTheme { if (sort().isNotEmpty()) SelectedSemantic else null }
-                                    icon(Icon.sort, "Sort")
-                                    requireClick = true
-                                    opensMenu {
-                                        form(module, ListSerializer(SortPartSerializer(typeInfo.serializer)), sort)
-                                    }
-                                }
-                                toggleButton {
-                                    checked bind full
-                                    icon(Icon.moreVert, "Show More")
-                                }
-                            }
-                            expanding.swapView {
-                                swapping(
-                                    current = { full() to typeInfo.cache() },
-                                    views = { (full, cache) ->
-                                        if(full) {
-                                            TableRenderer.view<HasId<Comparable<Comparable<*>>>>(
-                                                formModule = module,
-                                                writer = this@swapping,
-                                                innerSer = cache.serializer,
-                                                readable = itemsMeta,
-                                                linkTo = null,
-                                                action = {
-                                                    mutable.set(it._id)
-                                                    closePopovers()
+                            val hasTextIndex = typeInfo.serializer.serializableAnnotations
+                                .any { it.fqn.endsWith("TextIndex") }
+
+                            // Build query based on text search
+                            val items = remember {
+                                val cache = typeInfo.cache()
+                                val searchText = textSearch.debounce(500)()
+
+                                if (searchText.isBlank()) {
+                                    cache.watch(Query(Condition.Always, listOf()))()
+                                } else {
+                                    val condition = if (hasTextIndex) {
+                                        Condition.FullTextSearch<HasId<Comparable<Comparable<*>>>>(searchText)
+                                    } else {
+                                        // Search in string fields
+                                        val props = typeInfo.serializer.serializableProperties
+                                            ?: return@remember cache.watch(Query(Condition.Always, listOf()))()
+
+                                        val stringConditions = props.mapNotNull { prop ->
+                                            val serialName = prop.serializer.let {
+                                                it.nullElement() ?: it
+                                            }.descriptor.serialName.substringBefore('/')
+
+                                            when {
+                                                serialName == "kotlin.String" -> {
+                                                    val path = DataClassPathAccess(
+                                                        DataClassPathSelf(typeInfo.serializer),
+                                                        prop as SerializableProperty<HasId<Comparable<Comparable<*>>>, Any?>
+                                                    )
+                                                    path.mapCondition(
+                                                        Condition.StringContains(searchText, true) as Condition<Any?>
+                                                    )
                                                 }
-                                            )
-                                        } else {
-                                            recyclerView {
-                                                children(items, id = { it._id }) {
-                                                    card.button {
-                                                        text {
-                                                            content = "..."
-                                                            reactiveSuspending {
-                                                                content = "..."
-                                                                delay(1.milliseconds)
-                                                                content = typeInfo.renderToString(it()._id)
-                                                            }
-                                                        }
-                                                        action = Action("Select", Icon.done) {
-                                                            mutable.set(it()._id)
-                                                            closePopovers()
-                                                        }
-                                                    }
+                                                serialName in IsRawString.serialNames -> {
+                                                    val path = DataClassPathAccess(
+                                                        DataClassPathSelf(typeInfo.serializer),
+                                                        prop as SerializableProperty<HasId<Comparable<Comparable<*>>>, Any?>
+                                                    )
+                                                    path.mapCondition(
+                                                        Condition.RawStringContains<TrimmedString>(searchText, true)
+                                                            as Condition<Any?>
+                                                    )
                                                 }
+                                                else -> null
                                             }
                                         }
+
+                                        if (stringConditions.isNotEmpty()) {
+                                            Condition.Or(stringConditions)
+                                        } else {
+                                            Condition.Always
+                                        }
                                     }
-                                )
+
+                                    cache.watch(Query(condition, listOf()))()
+                                }
+                            }
+
+                            // Search input
+                            fieldTheme.textInput {
+                                hint = "Search..."
+                                content bind textSearch
+                            }
+
+                            // Results list
+                            expanding.recyclerView {
+                                children(items, id = { it._id }) { itemReactive ->
+                                    card.button {
+                                        text {
+                                            content = "..."
+                                            reactiveSuspending {
+                                                content = typeInfo.renderToString(itemReactive()._id)
+                                            }
+                                        }
+                                        action = Action("Select", Icon.done) {
+                                            value set itemReactive()._id
+                                            closePopovers()
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
                 }
+
+                // Link to open the referenced item
                 link {
                     icon(Icon.externalLink.copy(width = 1.rem, height = 1.rem), "Open")
                     ::to label@{
-                        val id = mutable() ?: return@label null
-                        return@label typeInfo.page(id)
+                        val id = value() as? Comparable<Comparable<*>> ?: return@label null
+                        typeInfo.page(id)
                     }
                 }
             }
-        } as FormRenderer<T>
+        }
     }
 
     @Suppress("UNCHECKED_CAST")
-    override fun <T> view(module: FormModule, selector: FormSelector<T>): ViewRenderer<T> {
-        val anno = selector.annotations.find {
-            it.fqn == "com.lightningkite.services.data.References" ||
-                    it.fqn == "com.lightningkite.services.data.MultipleReferences"
-        }!!.values
-        val typeName = anno.get("references")!!.let { it as SerializableAnnotationValue.ClassValue }.fqn
-        val typeInfo =
-            module.typeInfo(typeName)!! as FormTypeInfo<HasId<Comparable<Comparable<*>>>, Comparable<Comparable<*>>>
-        return ViewRenderer(module, this, selector as FormSelector<Comparable<Comparable<*>>?>) { field, readable ->
+    override fun view(context: RenderContext<Any?>, value: Reactive<Any?>, module: FormModule): ViewWriter.() -> Unit {
+        val anno = context.fieldAnnotations.find {
+            it.fqn == REFERENCES_FQN || it.fqn == MULTIPLE_REFERENCES_FQN
+        }!!
+
+        val typeName = anno.values["references"]!!
+            .let { it as SerializableAnnotationValue.ClassValue }.fqn
+
+        val typeInfo = module.typeInfo(typeName)!!
+            as TypeInfo<HasId<Comparable<Comparable<*>>>, Comparable<Comparable<*>>>
+
+        return {
             link {
                 ::to label@{
-                    val id = readable() ?: return@label null
-                    return@label typeInfo.page(id)
+                    val id = value() as? Comparable<Comparable<*>> ?: return@label null
+                    typeInfo.page(id)
                 }
                 text {
                     reactiveSuspending {
-                        content = readable()?.let { typeInfo.renderToString(it) } ?: "None"
+                        content = (value() as? Comparable<Comparable<*>>)
+                            ?.let { typeInfo.renderToString(it) }
+                            ?: "None"
                     }
                 }
             }
-        } as ViewRenderer<T>
+        }
     }
+
+    @Suppress("UNCHECKED_CAST")
+    override fun cellView(context: RenderContext<Any?>, value: Reactive<Any?>, module: FormModule): ViewWriter.() -> Unit {
+        val anno = context.fieldAnnotations.find {
+            it.fqn == REFERENCES_FQN || it.fqn == MULTIPLE_REFERENCES_FQN
+        }!!
+
+        val typeName = anno.values["references"]!!
+            .let { it as SerializableAnnotationValue.ClassValue }.fqn
+
+        val typeInfo = module.typeInfo(typeName)!!
+            as TypeInfo<HasId<Comparable<Comparable<*>>>, Comparable<Comparable<*>>>
+
+        return {
+            text {
+                reactiveSuspending {
+                    content = (value() as? Comparable<Comparable<*>>)
+                        ?.let { typeInfo.renderToString(it) }
+                        ?: "—"
+                }
+            }
+        }
+    }
+
+    override fun columnWidth(context: RenderContext<Any?>, module: FormModule): Double = 16.0
+    override fun labeledForm(
+        context: RenderContext<Any?>,
+        value: MutableReactive<Any?>,
+        module: FormModule,
+        label: String,
+        description: String?
+    ): ViewWriter.() -> Unit = {
+        fieldWithoutBorder(label, description) { form(context, value, module)() }
+    }
+
+    override fun labeledView(
+        context: RenderContext<Any?>,
+        value: Reactive<Any?>,
+        module: FormModule,
+        label: String,
+        description: String?
+    ): ViewWriter.() -> Unit = {
+        fieldWithoutBorder(label, description) { view(context, value, module)() }
+    }
+}
+
+private const val REFERENCES_FQN = "com.lightningkite.services.data.References"
+private const val MULTIPLE_REFERENCES_FQN = "com.lightningkite.services.data.MultipleReferences"
+
+fun FormModule.registerForeignKey() {
+    register(Selector(annotation = REFERENCES_FQN), ForeignKeyRenderer)
+    register(Selector(annotation = MULTIPLE_REFERENCES_FQN), ForeignKeyRenderer)
 }

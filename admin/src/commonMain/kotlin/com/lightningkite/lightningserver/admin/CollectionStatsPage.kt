@@ -35,8 +35,8 @@ package com.lightningkite.lightningserver.admin
 
 import com.lightningkite.kiteui.QueryParameter
 import com.lightningkite.kiteui.Routable
-import com.lightningkite.kiteui.forms.FormModule
 import com.lightningkite.kiteui.forms.displayName
+import com.lightningkite.kiteui.forms.FormModule
 import com.lightningkite.kiteui.forms.form
 import com.lightningkite.kiteui.forms.view
 import com.lightningkite.kiteui.models.*
@@ -308,45 +308,13 @@ class CollectionStatsPage(val collectionName: String) : Page {
         }
     }
 
-    private fun aggregateWritable(mc: ModelCache<UnknownModel, UnknownId>): MutableReactiveValue<DataClassPathPartial<UnknownModel>?> =
-        aggregateString.lens(
-            get = {
-                it?.let {
-                    try {
-                        DefaultJson.decodeFromString(DataClassPathPartial.serializer(mc.serializer).nullable, it)
-                    } catch (e: Exception) {
-                        null
-                    }
-                }
-            },
-            set = { DefaultJson.encodeToString(DataClassPathPartial.serializer(mc.serializer).nullable, it) }
-        )
+    // by Claude - simplified using lensJson utilities
+    private fun aggregateWritable(mc: ModelCache<UnknownModel, UnknownId>) =
+        aggregateString.lensJsonNullable(DataClassPathPartial.serializer(mc.serializer).nullable)
 
-    private fun groupByWritable(mc: ModelCache<UnknownModel, UnknownId>): MutableReactiveValue<DataClassPathPartial<UnknownModel>?> =
-        groupByString.lens(
-            get = {
-                it?.let {
-                    try {
-                        DefaultJson.decodeFromString(DataClassPathPartial.serializer(mc.serializer).nullable, it)
-                    } catch (e: Exception) {
-                        null
-                    }
-                }
-            },
-            set = { DefaultJson.encodeToString(DataClassPathPartial.serializer(mc.serializer).nullable, it) }
-        )
+    private fun groupByWritable(mc: ModelCache<UnknownModel, UnknownId>) =
+        groupByString.lensJsonNullable(DataClassPathPartial.serializer(mc.serializer).nullable)
 
-    private fun conditionWritable(mc: ModelCache<UnknownModel, UnknownId>): MutableReactiveValue<Condition<UnknownModel>> =
-        conditionString.lens(
-            get = {
-                it?.let {
-                    try {
-                        DefaultJson.decodeFromString(Condition.serializer(mc.serializer), it)
-                    } catch (e: Exception) {
-                        null
-                    }
-                } ?: Condition.Always
-            },
-            set = { DefaultJson.encodeToString(Condition.serializer(mc.serializer), it) }
-        )
+    private fun conditionWritable(mc: ModelCache<UnknownModel, UnknownId>) =
+        conditionString.lensJson(Condition.serializer(mc.serializer)) { Condition.Always }
 }

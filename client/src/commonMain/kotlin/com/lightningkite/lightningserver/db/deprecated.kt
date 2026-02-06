@@ -7,7 +7,8 @@ import com.lightningkite.reactive.core.Reactive
 
 typealias WritableModel<T> = ModelCacheItemReadable<T>
 
-interface LimitReadable<T>: Reactive<List<T>> {
+@Deprecated("Use LimitReactiveList instead", ReplaceWith("LimitReactiveList")) typealias LimitReadable<T> = LimitReactiveList<T>
+interface LimitReactiveList<T>: Reactive<List<T>> {
     var limit: Int
 }
 

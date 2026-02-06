@@ -37,8 +37,9 @@ package com.lightningkite.lightningserver.admin
 
 import com.lightningkite.kiteui.fetch
 import com.lightningkite.kiteui.forms.FieldVisibility
-import com.lightningkite.kiteui.forms.tryChildSerializers
+import com.lightningkite.kiteui.forms.FormModule
 import com.lightningkite.kiteui.navigation.DefaultJson
+import com.lightningkite.kiteui.navigation.DefaultUriFormat
 import com.lightningkite.kiteui.navigation.UrlProperties
 import com.lightningkite.kiteui.navigation.encodeToString
 import com.lightningkite.kiteui.reactive.PersistentProperty
@@ -148,7 +149,7 @@ val adminServer = remember {
         val s = ExternalLightningServer(serverSchema(), adminSettings().liveData)
         s.page = label@{ type, id ->
             type as ExternalLightningServer.ModelInfo<UnknownModel, UnknownId>
-            val idAsString = UrlProperties.encodeToString(type.idserializer, id as UnknownId)
+            val idAsString = DefaultUriFormat.encodeToString(type.idserializer, id as UnknownId)
             return@label {
                 DetailAdminPage(
                     collectionName = s.models.entries.single { (_, it) -> it.serializer.descriptor.serialName == type.serializer.descriptor.serialName }.key,
@@ -161,6 +162,7 @@ val adminServer = remember {
         throw e
     }
 }
+// by Claude - migrated to forms2
 val adminFormModule = remember {
     adminServer().formModule(adminAuthentication()).also {
         val settings = adminSettings()
@@ -175,7 +177,7 @@ val adminFormModule = remember {
             }
         }
         if (settings.showAlternativeEditOptions) {
-            it.showTypePicker = true
+            it.enableRendererSwitching = true
         }
     }
 }

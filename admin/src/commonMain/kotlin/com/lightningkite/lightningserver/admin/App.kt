@@ -40,15 +40,14 @@ package com.lightningkite.lightningserver.admin
 //    to force module initialization. Consider adding a suppress annotation for clarity:
 //    @Suppress("UNUSED_VARIABLE")
 
-import com.lightningkite.kiteui.auth.authComponent2
+import com.lightningkite.kiteui.auth.authComponent
 import com.lightningkite.kiteui.exceptions.ExceptionToMessages
 import com.lightningkite.kiteui.exceptions.installLsError
-import com.lightningkite.kiteui.forms.ServerFileRenderer.type
 import com.lightningkite.kiteui.forms.displayName
 import com.lightningkite.kiteui.models.*
-import com.lightningkite.kiteui.navigation.DefaultSerializersModule
 import com.lightningkite.kiteui.navigation.PageNavigator
 import com.lightningkite.kiteui.navigation.pageNavigator
+import com.lightningkite.kiteui.reactive.AppState
 import com.lightningkite.kiteui.views.ViewWriter
 import com.lightningkite.kiteui.views.card
 import com.lightningkite.kiteui.views.centered
@@ -56,7 +55,6 @@ import com.lightningkite.kiteui.views.compact
 import com.lightningkite.kiteui.views.direct.*
 import com.lightningkite.kiteui.views.l2.*
 import com.lightningkite.lightningserver.LSError
-import com.lightningkite.lightningserver.auth.LightningServerAuthentication
 import com.lightningkite.lightningserver.sessions.proofs.LiveAuthClientEndpoints
 import com.lightningkite.services.database.Condition
 import com.lightningkite.reactive.context.invoke
@@ -70,7 +68,6 @@ import com.lightningkite.services.database.SerializationRegistry
 import com.lightningkite.services.database.serializableProperties
 import com.lightningkite.services.files.ServerFile
 import com.lightningkite.titleCase
-import kotlinx.serialization.modules.EmptySerializersModule
 import kotlin.time.Duration.Companion.milliseconds
 
 /**
@@ -121,7 +118,14 @@ fun ViewWriter.app(navigator: PageNavigator, dialog: PageNavigator) {
 
     // Configure the navigation factory to use top-and-left navigation layout
     // This sets up the sidebar + top bar layout for the admin panel
-    appNavFactory.value = ViewWriter::appNavTopAndLeft
+    val big = remember { AppState.windowInfo().width > 50.rem }
+    reactive {
+        appNavFactory.value = if(big())
+            ViewWriter::appNavTopAndLeft
+        else
+            ViewWriter::appNavBottomTabs
+    }
+
 
     appNav(navigator, dialog) {
         appName = "Lightning Server Admin"
@@ -139,24 +143,30 @@ fun ViewWriter.app(navigator: PageNavigator, dialog: PageNavigator) {
                     add(NavLink("Endpoints", icon = Icon.menu) { EndpointsPage() })
                 }
 
+                // Forms2 test screen for testing the simplified form rendering system
+                // Always visible for development testing (doesn't require backend)
+                add(NavLink("Forms2 Test", icon = Icon.settings) { Forms2TestScreen() })
+
                 // Auto-generate navigation items for each collection in the schema
                 // Sorted alphabetically by display name for consistent ordering
-                adminServer().models.entries.sortedBy { it.value.serializer.displayName }.forEach {
-                    // Only show collections where the user has read permission
-                    // Condition.Never means no read access at all
-                    if(permissions[it.key]?.read != Condition.Never) {
-                        add(
-                            NavLink(
-                                // Use docGroup if available (for organizing related collections),
-                                // otherwise fall back to serializer display name
-                                it.value.docGroup?.split('.')?.joinToString(" / ") {
-                                    it.removeSuffix("Api").removeSuffix("RestEndpoints").titleCase()
-                                } ?: it.value.serializer.displayName,
-                                icon = Icon.list
-                            ) { CollectionAdminPage(it.key) }
-                        )
-                    }
-                }
+                add(
+                    NavGroup(
+                        "Collections",
+                        Icon.list,
+                        adminServer().models.entries.sortedBy { it.value.serializer.displayName }.mapNotNull {
+                            // Only show collections where the user has read permission
+                            // Condition.Never means no read access at all
+                            if (permissions[it.key]?.read != Condition.Never) {
+                                NavLink(
+                                    // Use docGroup if available (for organizing related collections),
+                                    // otherwise fall back to serializer display name
+                                    it.value.docGroup?.split('.')?.joinToString(" / ") {
+                                        it.removeSuffix("Api").removeSuffix("RestEndpoints").titleCase()
+                                    } ?: it.value.serializer.displayName,
+                                    icon = Icon.list
+                                ) { CollectionAdminPage(it.key) }
+                            } else null
+                        }))
             }
         }
 
@@ -191,7 +201,7 @@ fun ViewWriter.app(navigator: PageNavigator, dialog: PageNavigator) {
                                         ?.let { it as SerializableProperty<Any, Any?> }
                                         ?.get(self)
                                         ?.toString()
-                                        // Fallback to toString() but limit to 40 chars to avoid UI overflow
+                                    // Fallback to toString() but limit to 40 chars to avoid UI overflow
                                         ?: self.toString().take(40)
 
                                 } catch (e: Exception) {
@@ -273,7 +283,7 @@ fun ViewWriter.app(navigator: PageNavigator, dialog: PageNavigator) {
                                         reactive {
                                             clearChildren()
                                             try {
-                                                authComponent2(
+                                                authComponent(
                                                     adminServer().authEndpoints(null),
                                                     userType() ?: return@reactive
                                                 ) { v ->

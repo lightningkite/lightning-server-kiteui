@@ -67,11 +67,47 @@ public class CachingSdk(
             .distinct()
             .joinTo(buffer, "\n", prefix = "\n", postfix = "\n\n") { "import $it" }
     }
+}
 
-    private fun String.pluralize() = when {
-        endsWith("lf") -> this.removeSuffix("lf") + "lves"
-        endsWith('s') -> this + "es"
-        endsWith('y') -> this.removeSuffix("y") + "ies"
-        else -> this + "s"
+private val pluralizeRules = listOf(
+    // Irregular/Static mappings
+    "person" to "people",
+    "child" to "children",
+    "mouse" to "mice",
+    "tooth" to "teeth",
+    "goose" to "geese",
+
+    // Regex rules (Pattern to Replacement)
+    "(quiz)$" to "$1zes",
+    "^(ox)$" to "$1en",
+    "([m|l])ouse$" to "$1ice",
+    "(matr|vert|ind)ix|ex$" to "$1ices",
+    "(x|ch|ss|sh)$" to "$1es",
+    "([^aeiouy]|qu)y$" to "$1ies",
+    "(hive)$" to "$1s",
+    "(?:([^f])fe|([lr])f)$" to "$1$2ves",
+    "sis$" to "ses",
+    "([ti])um$" to "$1a",
+    "(buffal|tomat)o$" to "$1oes",
+    "(bu)s$" to "$1ses",
+    "(alias|status)$" to "$1es",
+    "(octop|vir)us$" to "$1i",
+    "(ax|test)is$" to "$1es",
+    "s$" to "s"
+).map { (pattern, replacement) -> Regex(pattern, RegexOption.IGNORE_CASE) to replacement }
+
+internal fun String.pluralize(): String {
+    val word = this
+    if (word.isBlank()) return word
+
+    // 1. Check for exact matches in our rules first (for things like "person")
+    // 2. Otherwise, apply Regex rules
+    for ((regex, replacement) in pluralizeRules) {
+        if (regex.containsMatchIn(word)) {
+            return word.replace(regex, replacement)
+        }
     }
+
+    // Default: just add 's'
+    return "${word}s"
 }

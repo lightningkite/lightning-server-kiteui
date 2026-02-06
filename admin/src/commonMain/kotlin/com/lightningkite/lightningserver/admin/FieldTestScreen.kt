@@ -6,33 +6,13 @@ package com.lightningkite.lightningserver.admin
 // For each renderer that has a valid type, it creates a sample form field with a default value.
 // This allows developers to visually test and verify that all form generators render correctly.
 //
-// IMPROVEMENT SUGGESTIONS:
-// 1. Consider memoizing the FormModule instance instead of creating a new one in render().
-//    Currently, a new FormModule() is created on every render, which could be inefficient
-//    if this screen re-renders frequently. Consider moving it to a class property or using
-//    a shared instance.
-//
-// 2. The empty annotations list (line 36) could be more explicit. Consider adding a comment
-//    or using a named constant like `emptyList<SerializableAnnotation>()` to clarify intent.
-//
-// 3. Add logging or console output for skipped/failed renderers to aid debugging.
-//    Currently, renderers with null types or serialization failures are silently skipped.
-//    This makes it hard to diagnose why a renderer isn't appearing.
-//
-// 4. Consider adding UI controls to filter/search through renderers, especially as the number
-//    of registered form types grows. A searchable list would improve usability.
-//
-// 5. The Signal wrapping the default value (line 39) creates a non-reactive signal.
-//    Consider using MutableSignal if you want to enable interaction with the test forms,
-//    or add a comment clarifying that these are read-only demonstrations.
-//
-// 6. Error messages display exception message only (line 41). Consider adding exception type
-//    or stack trace (in dev mode) for better debugging: "Error on ${it.name}: ${e::class.simpleName}: ${e.message}"
+// Migrated to forms2 by Claude
 
 import com.lightningkite.kiteui.Routable
-import com.lightningkite.kiteui.forms.FormModule
-import com.lightningkite.kiteui.forms.FormSelector
 import com.lightningkite.kiteui.forms.displayName
+import com.lightningkite.kiteui.forms.FormModule
+import com.lightningkite.kiteui.forms.RenderContext
+import com.lightningkite.kiteui.forms.defaults
 import com.lightningkite.kiteui.navigation.Page
 
 import com.lightningkite.kiteui.views.ViewWriter
@@ -49,25 +29,25 @@ import kotlinx.serialization.KSerializer
 class FieldTestScreen: Page {
     override fun ViewWriter.render() {
         scrolling.col {
-            val module = FormModule()
-            module.allForms.forEach {
-                if (it.type == null) return@forEach
+            val module = FormModule().apply { defaults() }
+            // by Claude - migrated to forms2 API
+            // Iterate through all registered renderers
+            module.allRenderers.forEach { (selector, renderer) ->
+                // Skip renderers without a type selector (annotation-only or kind-only)
+                if (selector.type == null) return@forEach
                 val s = try {
-                    SerializationRegistry.master.get(it.type!!, arrayOf()) as KSerializer<Any?>
+                    SerializationRegistry.master.get(selector.type!!, arrayOf()) as KSerializer<Any?>
                 } catch (e: Throwable) {
                     return@forEach
                 }
-                field(it.name + " - " + s.displayName) {
+                field(renderer.name + " - " + s.displayName) {
                     try {
-                        it.form(
-                            module, selector = FormSelector<Any?>(
-                                serializer = s,
-                                listOf(),
-                                handlesField = it.handlesField
-                            )
-                        ).render(this, null, Signal(s.default()))
+                        val context = RenderContext(s)
+                        val value = Signal(s.default())
+                        // Use FormModule.form() instead of calling renderer directly - handles type variance
+                        module.form(context, value)()
                     } catch (e: Throwable) {
-                        text("Error on ${it.name}: ${e.message}")
+                        text("Error on ${renderer.name}: ${e.message}")
                     }
                 }
             }

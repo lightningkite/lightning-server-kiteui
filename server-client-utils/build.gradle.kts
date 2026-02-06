@@ -12,6 +12,7 @@ plugins {
 dependencies {
 //    api(project(":client"))
     api(libs.comLightningkiteLightningserver.typed)
+    api(libs.comLightningkiteKiteuiLibraryJvmSsr)
 }
 
 ksp {

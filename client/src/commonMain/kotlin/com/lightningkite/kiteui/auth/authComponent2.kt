@@ -3,7 +3,6 @@ package com.lightningkite.kiteui.auth
 import com.lightningkite.kiteui.ClientAuthenticator
 import com.lightningkite.kiteui.Platform
 import com.lightningkite.kiteui.current
-import com.lightningkite.kiteui.forms.KnownDeviceSecretInfoStuff
 import com.lightningkite.kiteui.models.ErrorSemantic
 import com.lightningkite.kiteui.models.Icon
 import com.lightningkite.kiteui.models.KeyboardHints
@@ -21,6 +20,7 @@ import com.lightningkite.lightningserver.sessions.proofs.Proof
 import com.lightningkite.lightningserver.sessions.LogInRequest
 import com.lightningkite.lightningserver.sessions.ProofsCheckResult
 import com.lightningkite.lightningserver.sessions.proofs.AuthClientEndpoints
+import com.lightningkite.lightningserver.sessions.proofs.KnownDeviceSecretAndExpiration
 import com.lightningkite.reactive.context.await
 import com.lightningkite.reactive.context.invoke
 import com.lightningkite.reactive.context.reactive
@@ -31,6 +31,7 @@ import com.lightningkite.toPhoneNumber
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.plus
+import kotlinx.serialization.Serializable
 import kotlin.math.roundToInt
 import kotlin.time.Clock.System.now
 import kotlin.time.Duration
@@ -66,7 +67,7 @@ private val phoneRegex = Regex("""\+?(?:[0-9][-. ]?){6,}[0-9]$""")
  * @param onAuthentication Callback invoked with the refresh token when authentication succeeds
  * @return The rendered view
  */
-fun ViewWriter.authComponent2(
+fun ViewWriter.authComponent(
     endpoints: AuthEndpoints,
     subjectType: String = endpoints.subjects.keys.single(),
     subject: AuthClientEndpoints<*, *> = endpoints.subjects[subjectType]!!,
@@ -495,6 +496,21 @@ open class AuthComponent2(
         }
     }
 }
+
+/**
+ * Stores known device information for persistent authentication.
+ *
+ * When a user chooses to "remember this device", this data is saved to local storage
+ * allowing future logins to skip certain authentication proofs.
+ *
+ * @property info The device secret and expiration time from the server
+ * @property primaryIdentifier The user's primary identifier (email/phone) for this device
+ */
+@Serializable
+data class KnownDeviceSecretInfoStuff(
+    val info: KnownDeviceSecretAndExpiration,
+    val primaryIdentifier: String,
+)
 
 /*
  * API IMPROVEMENT RECOMMENDATIONS:
