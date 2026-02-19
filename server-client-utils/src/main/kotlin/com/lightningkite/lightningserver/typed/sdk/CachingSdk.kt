@@ -2,10 +2,13 @@ package com.lightningkite.lightningserver.typed.sdk
 
 import com.lightningkite.lightningserver.runtime.ServerRuntime
 import com.lightningkite.lightningserver.typed.ClientModelRestEndpoints
+import com.lightningkite.lightningserver.typed.ClientModelRestEndpointsAndUpdatesWebsocket
 import com.lightningkite.lightningserver.typed.sdk.SDK.processToModules
 import com.lightningkite.lightningserver.typed.sdk.SDK.sdk
 import com.lightningkite.services.data.ExperimentalLightningServer
 import com.lightningkite.services.data.KFile
+import kotlin.reflect.full.isSubclassOf
+import kotlin.reflect.full.isSuperclassOf
 
 @OptIn(ExperimentalLightningServer::class)
 public class CachingSdk(
@@ -35,7 +38,7 @@ public class CachingSdk(
             extendsInterfaces
                 .asSequence()
                 .map { it.item }
-                .firstOrNull { it.type == ClientModelRestEndpoints::class }
+                .firstOrNull { it.type.isSubclassOf(ClientModelRestEndpoints::class) }
                 ?.let { interfaceInfo ->
                     val typeName = interfaceInfo.typeParameters
                         .first()
