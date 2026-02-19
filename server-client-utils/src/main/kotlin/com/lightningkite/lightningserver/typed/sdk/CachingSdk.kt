@@ -5,7 +5,7 @@ import com.lightningkite.lightningserver.typed.ClientModelRestEndpoints
 import com.lightningkite.lightningserver.typed.sdk.SDK.processToModules
 import com.lightningkite.lightningserver.typed.sdk.SDK.sdk
 import com.lightningkite.services.data.ExperimentalLightningServer
-import com.lightningkite.services.data.KFile
+import kotlin.reflect.full.isSubclassOf
 
 @OptIn(ExperimentalLightningServer::class)
 public class CachingSdk(
@@ -35,7 +35,7 @@ public class CachingSdk(
             extendsInterfaces
                 .asSequence()
                 .map { it.item }
-                .firstOrNull { it.type == ClientModelRestEndpoints::class }
+                .firstOrNull { it.type.isSubclassOf(ClientModelRestEndpoints::class) }
                 ?.let { interfaceInfo ->
                     val typeName = interfaceInfo.typeParameters
                         .first()
