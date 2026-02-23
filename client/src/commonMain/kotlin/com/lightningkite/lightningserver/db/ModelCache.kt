@@ -868,6 +868,7 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
      */
     suspend fun totallyInvalidate() {
         totalInvalidation.tryEmit(Unit)
+        newData.value = CacheUpdate.SocketOverload()
         interrupt.interrupt()
     }
 
