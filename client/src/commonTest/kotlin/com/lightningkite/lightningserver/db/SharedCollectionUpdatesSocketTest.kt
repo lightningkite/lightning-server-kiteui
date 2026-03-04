@@ -1,7 +1,7 @@
 package com.lightningkite.lightningserver.db
 
 import kotlin.uuid.Uuid
-import com.lightningkite.kiteui.ConsoleRoot
+import com.lightningkite.kiteui.Log
 import com.lightningkite.kiteui.Platform
 import com.lightningkite.kiteui.current
 import com.lightningkite.lightningserver.networking.toTypedWebsocket
@@ -14,7 +14,7 @@ import kotlin.test.Test
 import kotlin.test.assertContains
 
 class SharedCollectionUpdatesSocketTest {
-    val testLog = if(Platform.current == Platform.Desktop) ConsoleRoot else null
+    val testLog = if(Platform.current == Platform.Desktop) Log else null
 
     @Test
     fun test() = runTest2 {

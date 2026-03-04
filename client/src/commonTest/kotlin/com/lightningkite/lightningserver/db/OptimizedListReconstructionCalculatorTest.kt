@@ -1,7 +1,7 @@
 package com.lightningkite.lightningserver.db
 
 import kotlin.uuid.Uuid
-import com.lightningkite.kiteui.ConsoleRoot
+import com.lightningkite.kiteui.Log
 import com.lightningkite.kiteui.Platform
 import com.lightningkite.kiteui.current
 import com.lightningkite.services.ClockContextElement
@@ -18,7 +18,7 @@ import kotlin.time.Clock
  * the same behavior as NaiveListReconstructionCalculator
  */
 class OptimizedListReconstructionCalculatorTest {
-    val testLog = if(Platform.current == Platform.Desktop) ConsoleRoot else null
+    val testLog = if(Platform.current == Platform.Desktop) Log else null
 
     @Test
     fun basic() = runTest2 {

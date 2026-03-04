@@ -27,6 +27,7 @@ import com.lightningkite.lightningserver.websockets.*
 import com.lightningkite.lskiteuistarter.AutoRoutes
 import com.lightningkite.lskiteuistarter.app
 import com.lightningkite.lskiteuistarter.defaultTheme
+import com.lightningkite.services.Untested
 import com.lightningkite.services.cache.*
 import com.lightningkite.services.data.*
 import com.lightningkite.services.database.*
@@ -83,6 +84,7 @@ fun sdk() = engine {
     Utils.logger.info { "Done" }
 }
 // by Claude - Static site generation using StaticSiteRenderer
+@OptIn(Untested::class)
 fun staticSite() = runBlocking {
     val outputDir = File("build/static-site")
     println("Rendering static site to ${outputDir.absolutePath}...")

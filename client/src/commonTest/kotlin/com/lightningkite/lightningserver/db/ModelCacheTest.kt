@@ -6,6 +6,7 @@ import com.lightningkite.kiteui.Platform
 import com.lightningkite.kiteui.current
 import com.lightningkite.services.database.*
 import com.lightningkite.reactive.context.reactive
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.advanceTimeBy
@@ -31,6 +32,7 @@ import kotlin.time.Duration.Companion.seconds
  * - Local modifications and invalidation
  * - List limit changes and reconstruction
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 class ModelCacheTest {
     val testLog = if (Platform.current == Platform.Desktop) LogRoot else null
 

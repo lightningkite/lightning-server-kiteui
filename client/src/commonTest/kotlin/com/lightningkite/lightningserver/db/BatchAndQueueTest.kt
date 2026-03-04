@@ -1,8 +1,9 @@
 package com.lightningkite.lightningserver.db
 
-import com.lightningkite.kiteui.ConsoleRoot
+import com.lightningkite.kiteui.Log
 import com.lightningkite.kiteui.Platform
 import com.lightningkite.kiteui.current
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -21,8 +22,9 @@ import kotlin.test.assertEquals
  * - Duplicate requests while one is in progress are queued and share results
  * - Request deduplication works correctly
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 class BatchAndQueueTest {
-    val testLog = if(Platform.current == Platform.Desktop) ConsoleRoot else null
+    val testLog = if(Platform.current == Platform.Desktop) Log else null
 
     /**
      * Tests that multiple concurrent requests are batched into a single execution.

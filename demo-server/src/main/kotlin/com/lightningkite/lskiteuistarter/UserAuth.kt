@@ -85,7 +85,7 @@ object UserAuth : PrincipalType<User, Uuid>, ServerBuilder() {
                 Email(
                     subject = "Log In Code",
                     to = listOf(EmailAddressWithName(to)),
-                    html = createHTML(true).html {
+                    html = {
                         emailBase {
                             header("Log In Code")
                             paragraph(
@@ -116,7 +116,7 @@ object UserAuth : PrincipalType<User, Uuid>, ServerBuilder() {
                         Email(
                             subject = "New Email Verification",
                             to = listOf(EmailAddressWithName(newEmail, self.name)),
-                            html = createHTML(true).html {
+                            html = {
                                 emailBase {
                                     header("New Email Verification")
                                     paragraph("Here is your verification passcode,")

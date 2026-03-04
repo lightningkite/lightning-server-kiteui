@@ -2,6 +2,7 @@ package com.lightningkite.lightningserver.db
 
 import com.lightningkite.services.ClockContextElement
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.plus
 import kotlinx.coroutines.test.TestCoroutineScheduler
 import kotlinx.coroutines.test.TestScope
@@ -13,6 +14,7 @@ import kotlin.time.Instant
 import kotlin.time.Duration.Companion.milliseconds
 
 
+@OptIn(ExperimentalCoroutinesApi::class)
 fun runTest2(action: suspend TestScope.() -> Unit) {
     lateinit var scope: TestScope
     runTest(ClockContextElement(
