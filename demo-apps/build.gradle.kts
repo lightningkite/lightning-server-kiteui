@@ -2,6 +2,10 @@
 import com.lightningkite.kiteui.KiteUiPluginExtension
 import java.util.*
 
+// KMP currently doesn't disable iOS target and dependency resolution correctly when not on a mac.
+// So we work around it on non mac machines with this check
+val onMac = System.getProperty("os.name").contains("Mac", ignoreCase = true)
+
 plugins {
     alias(libs.plugins.androidApp)
     alias(libs.plugins.kotlinMultiplatform)
@@ -22,9 +26,11 @@ kotlin {
     applyDefaultHierarchyTemplate()
     androidTarget()
     jvm() // Needed for SSR via StaticSiteRenderer
-    iosX64()
-    iosArm64()
-    iosSimulatorArm64()
+    if (onMac) {
+        iosX64()
+        iosArm64()
+        iosSimulatorArm64()
+    }
     js {
         binaries.executable()
         browser {
