@@ -55,10 +55,10 @@ object TableRenderer : Renderer<List<Any?>> {
     }
 
     @Suppress("UNCHECKED_CAST")
-    override fun form(context: RenderContext<List<Any?>>, value: MutableReactive<List<Any?>>, module: FormModule): ViewWriter.() -> Unit = {
-        // For now, table form just displays the view
+    override fun form(context: RenderContext<List<Any?>>, value: MutableReactive<List<Any?>>, module: FormModule): ViewWriter.() -> Unit {
+        // For now, table form just delegates to ListRenderer form
         // TODO: Implement editable table with inline editing
-        text("Table editing not yet implemented")
+        return ListRenderer.form(context, value, module)
     }
 
     @Suppress("UNCHECKED_CAST")
