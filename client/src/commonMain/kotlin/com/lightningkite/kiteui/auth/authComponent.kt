@@ -262,6 +262,7 @@ open class AuthComponent(
             val autoFillAvailable =
                 rememberSuspending { ClientAuthenticator.getClientAuthenticator().autofillAvailable() }
             textInput {
+                debugName = "primaryInput"
                 hint = when {
                     endpoints.emailProof != null && endpoints.smsProof != null -> "me@email.com OR 800-123-4567"
                     endpoints.emailProof != null -> "me@email.com"
@@ -331,6 +332,7 @@ open class AuthComponent(
 
         shownWhen { proofs().isNotEmpty() || currentProof() != null }.row {
             centered.button {
+                debugName = "cancelButton"
                 padding = 0.2.rem
                 icon(Icon.arrowBack, "Cancel")
                 onClick {
@@ -355,6 +357,7 @@ open class AuthComponent(
                     centered.text("Or")
 
                     card.buttonTheme.button {
+                        debugName = "usePasskeyButton"
                         centered.row {
                             icon(Icon.Companion.passkey, "")
                             text("Use Passkey")
@@ -390,13 +393,14 @@ open class AuthComponent(
             }
             centered.h5("Ready to login")
             shownWhen { knownDeviceOptions() != null }.row {
-                centered.checkbox { checked bind rememberDevice }
+                centered.checkbox { debugName = "rememberDeviceCheckbox"; checked bind rememberDevice }
                 centered.text {
                     content = "This is my device"
                 }
             }
             shownWhen { rememberDevice() || knownDeviceOptions() == null }.row {
                 centered.checkbox {
+                    debugName = "keepLoggedInCheckbox"
                     checked bind desiredSessionLength.lens(
                         get = { it != 1.days },
                         set = { if (it) null else 1.days }
@@ -413,6 +417,7 @@ open class AuthComponent(
 
 
             important.buttonTheme.button {
+                debugName = "loginButton"
                 centered.text("Login")
                 onClick {
                     val result = subject.logInV2(
@@ -472,6 +477,7 @@ open class AuthComponent(
             // Render button for each available proof method
             forEachAnimated(proofOptions) {
                 card.buttonTheme.button {
+                    debugName = it.name
                     centered.sizeConstraints(width = 16.rem).row {
                         icon(it.icon, "")
                         text(it.name)
