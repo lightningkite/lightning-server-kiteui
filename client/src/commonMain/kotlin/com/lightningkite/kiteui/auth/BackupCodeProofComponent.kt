@@ -89,6 +89,7 @@ data class BackupCodeProofComponent(val p: ProofClientEndpoints.BackupCode, val 
 
             fieldNoErrorText("Backup Code") {
                 textInput {
+                    debugName = "codeInput"
                     // Hint shows typical backup code format with hyphens
                     ::hint { "xxxxx-xxxxx-xxxxx-xxxxx" }
                     // Auto-focus for immediate code entry
@@ -103,6 +104,7 @@ data class BackupCodeProofComponent(val p: ProofClientEndpoints.BackupCode, val 
             SubtextSemantic.onNext.errorText()
 
             important.button {
+                debugName = "submitButton"
                 centered.text("Submit")
                 action = proveBackupCode
             }

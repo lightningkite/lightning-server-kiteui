@@ -357,6 +357,7 @@ open class AuthComponent(
                     centered.text("Or")
 
                     card.buttonTheme.button {
+                        debugName = "usePasskeyButton"
                         centered.row {
                             icon(Icon.Companion.passkey, "")
                             text("Use Passkey")
@@ -392,13 +393,14 @@ open class AuthComponent(
             }
             centered.h5("Ready to login")
             shownWhen { knownDeviceOptions() != null }.row {
-                centered.checkbox { checked bind rememberDevice }
+                centered.checkbox { debugName = "rememberDeviceCheckbox"; checked bind rememberDevice }
                 centered.text {
                     content = "This is my device"
                 }
             }
             shownWhen { rememberDevice() || knownDeviceOptions() == null }.row {
                 centered.checkbox {
+                    debugName = "keepLoggedInCheckbox"
                     checked bind desiredSessionLength.lens(
                         get = { it != 1.days },
                         set = { if (it) null else 1.days }
@@ -475,6 +477,7 @@ open class AuthComponent(
             // Render button for each available proof method
             forEachAnimated(proofOptions) {
                 card.buttonTheme.button {
+                    debugName = it.name
                     centered.sizeConstraints(width = 16.rem).row {
                         icon(it.icon, "")
                         text(it.name)
