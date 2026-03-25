@@ -262,6 +262,7 @@ open class AuthComponent(
             val autoFillAvailable =
                 rememberSuspending { ClientAuthenticator.getClientAuthenticator().autofillAvailable() }
             textInput {
+                debugName = "primaryInput"
                 hint = when {
                     endpoints.emailProof != null && endpoints.smsProof != null -> "me@email.com OR 800-123-4567"
                     endpoints.emailProof != null -> "me@email.com"
@@ -331,6 +332,7 @@ open class AuthComponent(
 
         shownWhen { proofs().isNotEmpty() || currentProof() != null }.row {
             centered.button {
+                debugName = "cancelButton"
                 padding = 0.2.rem
                 icon(Icon.arrowBack, "Cancel")
                 onClick {
@@ -413,6 +415,7 @@ open class AuthComponent(
 
 
             important.buttonTheme.button {
+                debugName = "loginButton"
                 centered.text("Login")
                 onClick {
                     val result = subject.logInV2(
