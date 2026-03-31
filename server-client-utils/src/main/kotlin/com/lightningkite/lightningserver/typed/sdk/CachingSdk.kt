@@ -31,6 +31,8 @@ public class CachingSdk(
 
         appendLine("open class Cached${data.info.interfaceName}(val uncached: ${data.info.interfaceName}) {")
 
+        val usedNames = mutableSetOf<String>()
+
         fun SDK.Module.appendCaches(chain: List<SDK.Module>) {
             extendsInterfaces
                 .asSequence()
@@ -44,6 +46,20 @@ public class CachingSdk(
                         .substringAfterLast('.')
                         .camelCase()
                         .pluralize()
+                        .let {
+                            if (it !in usedNames) {
+                                usedNames += it
+                                return@let it
+                            }
+
+                            val appended = it.plus(this.info.valueName)
+                            var updated = appended
+                            var count = 1
+                            while (updated in usedNames) updated = appended + (++count)
+
+                            usedNames += updated
+                            updated
+                        }
 
                     appendLine("\topen val $typeName = ModelCache(uncached.${(chain + this).drop(1).joinToString(".") { it.info.valueName }}, ${interfaceInfo.typeParameters[0].kotlinSerializer()})")
                 }
