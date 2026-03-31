@@ -8,8 +8,8 @@ val onMac = System.getProperty("os.name").contains("Mac", ignoreCase = true)
 
 plugins {
     alias(libs.plugins.androidApp)
-    alias(libs.plugins.kotlinMultiplatform)
-    alias(libs.plugins.serialization)
+    alias(libs.plugins.kotlin.multiplatform)
+    alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.comLightningkiteKiteui)
     alias(libs.plugins.kjsplain)
     alias(libs.plugins.kfc)
@@ -45,11 +45,11 @@ kotlin {
     sourceSets {
         val commonMain by getting {
             dependencies {
-                api(libs.comLightningkiteKiteuiLibrary)
-                api(libs.comLightningkiteKotlinxSerializationCsvDurable)
-                api(libs.comLightningkiteLightningserver.core.shared)
-                api(libs.comLightningkiteLightningserver.typed.shared)
-                api(libs.comLightningkiteLightningserver.sessions.shared)
+                api(libs.kitui)
+                api(libs.kotlinx.serialization.csv.durable)
+                api(libs.lightningServer.core.shared)
+                api(libs.lightningServer.typed.shared)
+                api(libs.lightningServer.sessions.shared)
                 api(project(":client"))
                 api(project(":demo-shared"))
             }

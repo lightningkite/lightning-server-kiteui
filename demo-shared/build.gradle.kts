@@ -1,7 +1,7 @@
 // by Claude - adapted from ls-kiteui-starter/shared
 plugins {
-    alias(libs.plugins.kotlinMultiplatform)
-    alias(libs.plugins.serialization)
+    alias(libs.plugins.kotlin.multiplatform)
+    alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.androidLibrary)
     alias(libs.plugins.ksp)
 }
@@ -27,10 +27,10 @@ kotlin {
     sourceSets {
         val commonMain by getting {
             dependencies {
-                api(libs.comLightningkiteLightningserver.core.shared)
-                api(libs.comLightningkiteLightningserver.typed.shared)
-                api(libs.comLightningkiteLightningserver.sessions.shared)
-                api(libs.comLightningkiteLightningserver.files.shared)
+                api(libs.lightningServer.core.shared)
+                api(libs.lightningServer.typed.shared)
+                api(libs.lightningServer.sessions.shared)
+                api(libs.lightningServer.files.shared)
                 api(libs.lightningServer.media.shared)
             }
             kotlin {
@@ -47,7 +47,7 @@ kotlin {
 
 dependencies {
     configurations.filter { it.name.startsWith("ksp") && it.name != "ksp" }.forEach {
-        add(it.name, libs.comLightningKiteServices.database.processor)
+        add(it.name, libs.services.database.processor)
     }
 }
 

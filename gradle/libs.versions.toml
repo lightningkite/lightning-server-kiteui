@@ -2,39 +2,39 @@
 [versions]
 agp = "8.12.3"
 androidDesugaring = "2.1.5"
-dokka = "2.1.0"
+dokka = "2.2.0"
 firebaseMessagingKtx = "24.1.2"
 graalVmNative = "0.11.5"
 kfc = "18.1.0"
-kiteui = "7.0.0-prerelease-276"
+kiteui = "7.0.0-prerelease-282"
 kotlin = "2.2.21"
 kotlinerCli = "1.0.5"
 kotlinxCoroutinesTest = "1.10.2"
 kotlinxSerializationCsvDurable = "0.2.21-1"
 ksp = "2.2.21-2.0.5"
-lightningServer = "5.0.0-prerelease-394"
+lightningServer = "5.0.0-prerelease-396"
 lkGradleHelpers = "4.0.6"
 proguard = "7.9.0"
-serviceAbstractions = "0.0.1-185"
+serviceAbstractions = "0.0.1-189"
 shadow = "8.1.1"
 vanniktechPublishing = "0.35.0"
-vite = "0.6.0" # Don't update to 0.6.3, it is broke
+vite = "0.8.3"
 
 [libraries]
 androidDesugaring = { module = "com.android.tools:desugar_jdk_libs", version = { ref = "androidDesugaring" } }
-comLightningKiteServices-database-processor = { module = "com.lightningkite.services:database-processor", version = { ref = "serviceAbstractions" } }
-comLightningKiteServices-database-shared = { module = "com.lightningkite.services:database-shared", version = { ref = "serviceAbstractions" } }
-comLightningkiteKiteuiLibrary = { module = "com.lightningkite.kiteui:library", version = { ref = "kiteui" } }
-comLightningkiteKiteuiLibraryJvmSsr = { module = "com.lightningkite.kiteui:library-jvmssr", version = { ref = "kiteui" } }
-comLightningkiteKotlinxSerializationCsvDurable = { module = "com.lightningkite:kotlinx-serialization-csv-durable", version = { ref = "kotlinxSerializationCsvDurable" } }
-comLightningkiteLightningserver-core-shared = { module = "com.lightningkite.lightningserver:core-shared", version = { ref = "lightningServer" } }
-comLightningkiteLightningserver-files-shared = { module = "com.lightningkite.lightningserver:files-shared", version = { ref = "lightningServer" } }
-comLightningkiteLightningserver-sessions-shared = { module = "com.lightningkite.lightningserver:sessions-shared", version = { ref = "lightningServer" } }
-comLightningkiteLightningserver-typed = { module = "com.lightningkite.lightningserver:typed", version = { ref = "lightningServer" } }
-comLightningkiteLightningserver-typed-shared = { module = "com.lightningkite.lightningserver:typed-shared", version = { ref = "lightningServer" } }
-kotlinxCoroutinesTest = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version = { ref = "kotlinxCoroutinesTest" } }
+kitui = { module = "com.lightningkite.kiteui:library", version = { ref = "kiteui" } }
+kitui-jvm-ssr = { module = "com.lightningkite.kiteui:library-jvmssr", version = { ref = "kiteui" } }
+kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version = { ref = "kotlinxCoroutinesTest" } }
+kotlinx-serialization-csv-durable = { module = "com.lightningkite:kotlinx-serialization-csv-durable", version = { ref = "kotlinxSerializationCsvDurable" } }
+lightningServer-core-shared = { module = "com.lightningkite.lightningserver:core-shared", version = { ref = "lightningServer" } }
+lightningServer-files-shared = { module = "com.lightningkite.lightningserver:files-shared", version = { ref = "lightningServer" } }
+lightningServer-sessions-shared = { module = "com.lightningkite.lightningserver:sessions-shared", version = { ref = "lightningServer" } }
+lightningServer-typed = { module = "com.lightningkite.lightningserver:typed", version = { ref = "lightningServer" } }
+lightningServer-typed-shared = { module = "com.lightningkite.lightningserver:typed-shared", version = { ref = "lightningServer" } }
 lkGradleHelpers = { module = "com.lightningkite:lk-gradle-helpers", version = { ref = "lkGradleHelpers" } }
 proguard = { module = "com.guardsquare:proguard-gradle", version = { ref = "proguard" } }
+services-database-processor = { module = "com.lightningkite.services:database-processor", version = { ref = "serviceAbstractions" } }
+services-database-shared = { module = "com.lightningkite.services:database-shared", version = { ref = "serviceAbstractions" } }
 
 # Demo module dependencies - by Claude
 firebaseMessagingKtx = { module = "com.google.firebase:firebase-messaging-ktx", version = { ref = "firebaseMessagingKtx" } }
@@ -63,11 +63,11 @@ dokka = { id = "org.jetbrains.dokka", version = { ref = "dokka" } }
 graalVmNative = { id = "org.graalvm.buildtools.native", version = { ref = "graalVmNative" } }
 kfc = { id = "io.github.turansky.kfc.application", version = { ref = "kfc" } }
 kjsplain = { id = "org.jetbrains.kotlin.plugin.js-plain-objects", version = { ref = "kotlin" } }
-kotlinCocoapods = { id = "org.jetbrains.kotlin.native.cocoapods", version = { ref = "kotlin" } }
-kotlinJvm = { id = "org.jetbrains.kotlin.jvm", version = { ref = "kotlin" } }
-kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version = { ref = "kotlin" } }
+kotlin-cocoapods = { id = "org.jetbrains.kotlin.native.cocoapods", version = { ref = "kotlin" } }
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version = { ref = "kotlin" } }
+kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version = { ref = "kotlin" } }
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version = { ref = "kotlin" } }
 ksp = { id = "com.google.devtools.ksp", version = { ref = "ksp" } }
-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version = { ref = "kotlin" } }
 shadow = { id = "com.github.johnrengelman.shadow", version = { ref = "shadow" } }
 vanniktechPublishing = { id = "com.vanniktech.maven.publish", version = { ref = "vanniktechPublishing" } }
 vite = { id = "dev.opensavvy.vite.kotlin", version = { ref = "vite" } }

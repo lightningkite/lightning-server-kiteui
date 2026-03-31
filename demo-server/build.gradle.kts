@@ -1,7 +1,7 @@
 // by Claude - adapted from ls-kiteui-starter/server
 plugins {
-    alias(libs.plugins.kotlinJvm)
-    alias(libs.plugins.serialization)
+    alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
     application
 }
@@ -17,11 +17,11 @@ dependencies {
     implementation(project(":demo-shared"))
     implementation(project(":demo-apps"))
     implementation(project(":server-client-utils"))
-    implementation(libs.comLightningkiteKiteuiLibraryJvmSsr)
+    implementation(libs.kitui.jvm.ssr)
     implementation(libs.kotlinerCli)
-    implementation(libs.comLightningkiteKotlinxSerializationCsvDurable)
+    implementation(libs.kotlinx.serialization.csv.durable)
     implementation(libs.lightningServer.core)
-    implementation(libs.comLightningkiteLightningserver.typed)
+    implementation(libs.lightningServer.typed)
     implementation(libs.lightningServer.files)
     implementation(libs.lightningServer.media)
     implementation(libs.lightningServer.sessions)
@@ -37,7 +37,7 @@ dependencies {
     implementation(libs.services.files.s3)
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-swing") // Provides Dispatchers.Main for SSR
 
-    ksp(libs.comLightningKiteServices.database.processor)
+    ksp(libs.services.database.processor)
 
     testImplementation(kotlin("test"))
 }

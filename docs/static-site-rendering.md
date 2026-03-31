@@ -13,7 +13,7 @@ Your server module needs two dependencies beyond the standard Lightning Server o
 dependencies {
     implementation(project(":your-app-module"))       // For AutoRoutes, theme, app()
     implementation(project(":server-client-utils"))    // For StaticSiteRenderer
-    implementation(libs.comLightningkiteKiteuiLibraryJvmSsr)  // KiteUI SSR engine
+    implementation(libs.kitui.jvm.ssr)  // KiteUI SSR engine
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-swing")  // Dispatchers.Main for SSR
 }
 ```
@@ -37,7 +37,7 @@ Add the SSR library to your version catalog if not already present:
 ```toml
 # gradle/libs.versions.toml
 [libraries]
-comLightningkiteKiteuiLibraryJvmSsr = { module = "com.lightningkite.kiteui:library-jvmssr", version.ref = "kiteui" }
+kituiJvmSsr = { module = "com.lightningkite.kiteui:library-jvmssr", version.ref = "kiteui" }
 ```
 
 ## Basic usage
