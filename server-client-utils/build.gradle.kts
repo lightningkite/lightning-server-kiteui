@@ -1,9 +1,9 @@
 import com.lightningkite.deployhelpers.*
 
 plugins {
-    alias(libs.plugins.kotlinJvm)
+    alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.ksp)
-    alias(libs.plugins.serialization)
+    alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.dokka)
     id("signing")
     alias(libs.plugins.vanniktechPublishing)
@@ -11,8 +11,8 @@ plugins {
 
 dependencies {
 //    api(project(":client"))
-    api(libs.comLightningkiteLightningserver.typed)
-    api(libs.comLightningkiteKiteuiLibraryJvmSsr)
+    api(libs.lightningServer.typed)
+    api(libs.kitui.jvm.ssr)
 }
 
 ksp {

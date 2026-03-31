@@ -143,10 +143,6 @@ fun ViewWriter.app(navigator: PageNavigator, dialog: PageNavigator) {
                     add(NavLink("Endpoints", icon = Icon.menu) { EndpointsPage() })
                 }
 
-                // Forms2 test screen for testing the simplified form rendering system
-                // Always visible for development testing (doesn't require backend)
-                add(NavLink("Forms2 Test", icon = Icon.settings) { Forms2TestScreen() })
-
                 // Auto-generate navigation items for each collection in the schema
                 // Sorted alphabetically by display name for consistent ordering
                 add(

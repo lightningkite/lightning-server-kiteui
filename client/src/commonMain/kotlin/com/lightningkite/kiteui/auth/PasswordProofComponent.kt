@@ -87,6 +87,7 @@ data class PasswordProofComponent(val p: ProofClientEndpoints.Password, val type
 
             fieldNoErrorText("Password") {
                 textInput {
+                    debugName = "passwordInput"
                     ::hint { "" }
                     // Auto-focus for immediate password entry
                     requestFocus()
@@ -99,6 +100,7 @@ data class PasswordProofComponent(val p: ProofClientEndpoints.Password, val type
             SubtextSemantic.onNext.errorText()
 
             important.button {
+                debugName = "submitButton"
                 centered.text("Submit")
                 action = provePasswordOwnership
             }

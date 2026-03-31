@@ -96,6 +96,7 @@ data class EmailProofComponent(val p: ProofClientEndpoints.Email) : ProofCompone
 
                 fieldNoErrorText("Login code emailed to ${option.value ?: ""}") {
                     textInput {
+                        debugName = "codeInput"
                         ::hint { "ABCDEF" }
                         // Auto-focus once email is sent for better UX
                         reactive { if (challenge.state().ready) requestFocus() }
@@ -108,6 +109,7 @@ data class EmailProofComponent(val p: ProofClientEndpoints.Email) : ProofCompone
                 SubtextSemantic.onNext.errorText()
 
                 important.buttonTheme.button {
+                    debugName = "submitButton"
                     centered.text("Submit")
                     action = proveEmailOwnership
                 }
@@ -117,6 +119,7 @@ data class EmailProofComponent(val p: ProofClientEndpoints.Email) : ProofCompone
                 // 2. Countdown timer for remaining cooldown period
                 // 3. "Send new code" when cooldown expires
                 button {
+                    debugName = "resendButton"
                     // Button is disabled during cooldown (except first 3 seconds when showing "Sent!")
                     ::enabled { nowBySecond() !in challenge().timestamp + 3.seconds..challenge().timestamp + resendTime }
 

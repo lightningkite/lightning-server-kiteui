@@ -194,6 +194,7 @@ open class ReAuthComponent(
             centered.h5("Ready to login")
 
             important.buttonTheme.button {
+                debugName = "loginButton"
                 centered.text("Login")
                 onClick {
                     val result = subject.logInV2(
@@ -235,6 +236,7 @@ open class ReAuthComponent(
             // Render button for each available proof method
             forEachAnimated(proofOptions) { it ->
                 card.buttonTheme.button {
+                    debugName = it.first.name
                     centered.sizeConstraints(width = 16.rem).row {
                         icon(it.first.icon, "")
                         text(it.first.name)

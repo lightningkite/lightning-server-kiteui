@@ -5,9 +5,9 @@ import java.util.*
 
 plugins {
     signing
-    alias(libs.plugins.kotlinMultiplatform)
+    alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.ksp)
-    alias(libs.plugins.serialization)
+    alias(libs.plugins.kotlin.serialization)
 //    alias(libs.plugins.dokka)
     alias(libs.plugins.vite)
     alias(libs.plugins.comLightningkiteKiteui)
@@ -58,7 +58,7 @@ kotlin {
         val commonMain by getting {
             dependencies {
                 api(project(":client"))
-                api(libs.comLightningkiteKotlinxSerializationCsvDurable)
+                api(libs.kotlinx.serialization.csv.durable)
             }
             kotlin {
                 srcDir(file("build/generated/ksp/common/commonMain/kotlin"))
@@ -88,7 +88,7 @@ ksp {
 
 dependencies {
     configurations.filter { it.name.startsWith("ksp") && it.name != "ksp" }.forEach {
-        add(it.name, libs.comLightningKiteServices.database.processor)
+        add(it.name, libs.services.database.processor)
     }
 }
 

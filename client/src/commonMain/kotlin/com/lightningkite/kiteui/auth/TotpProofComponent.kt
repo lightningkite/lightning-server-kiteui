@@ -88,6 +88,7 @@ data class TotpProofComponent(val p: ProofClientEndpoints.TimeBasedOTP, val type
 
             fieldNoErrorText("One-time Password from App") {
                 textInput {
+                    debugName = "codeInput"
                     ::hint { "000000" }
                     // Auto-focus for immediate code entry
                     requestFocus()
@@ -101,6 +102,7 @@ data class TotpProofComponent(val p: ProofClientEndpoints.TimeBasedOTP, val type
             SubtextSemantic.onNext.errorText()
 
             important.button {
+                debugName = "submitButton"
                 centered.text("Submit")
                 action = proveTotpOwnership
             }

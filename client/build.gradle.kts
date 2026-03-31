@@ -8,10 +8,10 @@ val onMac = System.getProperty("os.name").contains("Mac", ignoreCase = true)
 group = "com.lightningkite.lightningserver"
 
 plugins {
-    alias(libs.plugins.kotlinMultiplatform)
+    alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.androidLibrary)
     alias(libs.plugins.ksp)
-    alias(libs.plugins.serialization)
+    alias(libs.plugins.kotlin.serialization)
     signing
     alias(libs.plugins.vanniktechPublishing)
     alias(libs.plugins.dokka)
@@ -47,12 +47,12 @@ kotlin {
     sourceSets {
         val commonMain by getting {
             dependencies {
-                api(libs.comLightningkiteLightningserver.core.shared)
-                api(libs.comLightningkiteLightningserver.files.shared)
-                api(libs.comLightningkiteLightningserver.typed.shared)
-                api(libs.comLightningkiteLightningserver.sessions.shared)
-                api(libs.comLightningKiteServices.database.shared)
-                api(libs.comLightningkiteKiteuiLibrary)
+                api(libs.lightningServer.core.shared)
+                api(libs.lightningServer.files.shared)
+                api(libs.lightningServer.typed.shared)
+                api(libs.lightningServer.sessions.shared)
+                api(libs.services.database.shared)
+                api(libs.kitui)
             }
             kotlin {
                 srcDir(file("build/generated/ksp/common/commonMain/kotlin"))
@@ -61,7 +61,7 @@ kotlin {
         val commonTest by getting {
             dependencies {
                 implementation(kotlin("test"))
-                implementation(libs.kotlinxCoroutinesTest)
+                implementation(libs.kotlinx.coroutines.test)
             }
             kotlin {
                 srcDir(file("build/generated/ksp/common/commonTest/kotlin"))
@@ -77,7 +77,7 @@ kotlin {
 
 dependencies {
     configurations.filter { it.name.startsWith("ksp") && it.name != "ksp" }.forEach {
-        add(it.name, libs.comLightningKiteServices.database.processor)
+        add(it.name, libs.services.database.processor)
     }
 }
 
