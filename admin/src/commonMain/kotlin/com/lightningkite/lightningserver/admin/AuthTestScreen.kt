@@ -32,6 +32,7 @@ import com.lightningkite.kiteui.models.Icon
 import com.lightningkite.kiteui.models.rem
 import com.lightningkite.kiteui.navigation.Page
 import com.lightningkite.kiteui.navigation.mainPageNavigator
+import com.lightningkite.kiteui.views.ElementWriter
 
 import com.lightningkite.kiteui.views.ViewWriter
 import com.lightningkite.kiteui.views.card
@@ -39,13 +40,13 @@ import com.lightningkite.kiteui.views.centered
 import com.lightningkite.kiteui.views.direct.col
 import com.lightningkite.kiteui.views.direct.frame
 import com.lightningkite.kiteui.views.direct.sizeConstraints
-import com.lightningkite.kiteui.views.l2.icon
+import com.lightningkite.kiteui.views.direct.icon
 import com.lightningkite.lightningserver.auth.AuthEndpoints
 import com.lightningkite.reactive.context.reactive
 
 @Routable("/auth")
 class Auth2TestPage : Page {
-    override fun ViewWriter.render() {
+    override fun ElementWriter.CanAddTheme.render() {
         frame {
 //            val schema = asyncReactive { fetch("https://jivie.lightningkite.com/meta/kschema").text().let { DefaultJson.decodeFromString(LightningServerKSchema.serializer(), it) } }
             reactive {

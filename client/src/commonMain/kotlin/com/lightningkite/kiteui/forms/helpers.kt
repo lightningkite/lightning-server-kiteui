@@ -1,11 +1,9 @@
 package com.lightningkite.kiteui.forms
 
-import com.lightningkite.kiteui.models.FieldLabelSemantic
 import com.lightningkite.kiteui.models.Icon
 import com.lightningkite.kiteui.models.SubtextSemantic
-import com.lightningkite.kiteui.models.px
 import com.lightningkite.kiteui.models.rem
-import com.lightningkite.kiteui.views.ViewDsl
+import com.lightningkite.kiteui.views.ElementWriter
 import com.lightningkite.kiteui.views.ViewWriter
 import com.lightningkite.kiteui.views.centered
 import com.lightningkite.kiteui.views.direct.*
@@ -13,11 +11,13 @@ import com.lightningkite.kiteui.views.expanding
 import com.lightningkite.kiteui.views.fieldTheme
 import com.lightningkite.kiteui.views.l2.errorText
 import com.lightningkite.kiteui.views.l2.field
-import com.lightningkite.kiteui.views.l2.icon
+import com.lightningkite.kiteui.views.direct.icon
+import com.lightningkite.kiteui.views.l2.LabelGapSemantic
+import com.lightningkite.kiteui.views.l2.LabelSemantic
+import com.lightningkite.kiteui.views.themed
 import com.lightningkite.reactive.core.Constant
 import com.lightningkite.reactive.core.MutableReactive
 import com.lightningkite.reactive.core.Reactive
-import com.lightningkite.reactive.core.Signal
 import com.lightningkite.services.database.Condition
 import com.lightningkite.services.database.SerializableAnnotation
 import kotlinx.serialization.KSerializer
@@ -27,24 +27,24 @@ import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
 
 // by Claude
-@ViewDsl
 @OptIn(ExperimentalContracts::class)
-internal inline fun ViewWriter.fieldWithoutBorder(label: String, description: String? = null, content: ViewWriter.() -> Unit): Unit {
+internal inline fun ElementWriter.fieldWithoutBorder(label: String, description: String? = null, content: ViewWriter.() -> Unit) {
     contract { callsInPlace(content, InvocationKind.EXACTLY_ONCE) }
     col {
-        gap = 0.px
+        themeChoice += LabelGapSemantic
         row {
             gap = 0.25.rem
-            centered.themed(FieldLabelSemantic).text(label)
+            centered.themed(LabelSemantic).text(label)
             if (description != null) {
-                centered.textPopover(description).icon(Icon.info.copy(width = 1.rem, height = 1.rem), "Info")
+                centered.textPopover(description).icon(Icon.info.resize(1.rem), "Info")
             }
         }
         content()
-        SubtextSemantic.onNext.errorText()
+        errorText()
     }
 }
-fun ViewWriter.subrendererSelector(
+
+fun ElementWriter.CanAddTheme.subrendererSelector(
     selectedRenderer: MutableReactive<Renderer<Any?>>,
     elementRenderers: List<Renderer<Any?>>
 ) {
@@ -63,18 +63,18 @@ fun ViewWriter.subrendererSelector(
  *
  * by Claude
  */
-inline fun ViewWriter.fieldWithDescription(label: String, description: String?, content: ViewWriter.() -> Unit) {
+inline fun ElementWriter.fieldWithDescription(label: String, description: String?, content: ElementWriter.CanAddTheme.() -> Unit) {
     if (description == null) {
         // No description - use standard field layout
         field(label, content)
     } else {
         // Has description - show info icon next to label
         col {
-            gap = 0.px
+            themeChoice += LabelGapSemantic
             row {
                 gap = 0.25.rem
-                FieldLabelSemantic.onNext.text(label)
-                textPopover(description).icon(Icon.info.copy(width = 1.rem, height = 1.rem), "Info")
+                themed(LabelSemantic).text(label)
+                textPopover(description).icon(Icon.info.resize(1.rem), "Info")
             }
             fieldTheme.content()
         }
@@ -90,7 +90,7 @@ inline fun ViewWriter.fieldWithDescription(label: String, description: String?, 
  * @param readable The reactive data source
  * @param annotations Optional field annotations to pass to the renderer
  */
-fun <T> ViewWriter.view(
+fun <T> ElementWriter.CanAddTheme.view(
     context: FormModule,
     serializer: KSerializer<T>,
     readable: Reactive<T>,
@@ -103,22 +103,22 @@ fun <T> ViewWriter.view(
 /**
  * Render an editable form for a value.
  */
-inline fun <reified T> ViewWriter.form(module: FormModule, value: MutableReactive<T>) = form(module, serializer(), value)
+inline fun <reified T> ElementWriter.CanAddTheme.form(module: FormModule, value: MutableReactive<T>) = form(module, serializer(), value)
 
 /**
  * Render a read-only view of a value.
  */
-inline fun <reified T> ViewWriter.view(module: FormModule, value: Reactive<T>) = view(module, serializer(), value)
+inline fun <reified T> ElementWriter.CanAddTheme.view(module: FormModule, value: Reactive<T>) = view(module, serializer(), value)
 
 /**
  * Render a compact editable cell (for tables).
  */
-inline fun <reified T> ViewWriter.cellForm(module: FormModule, value: MutableReactive<T>) = cellForm(module, serializer(), value)
+inline fun <reified T> ElementWriter.CanAddTheme.cellForm(module: FormModule, value: MutableReactive<T>) = cellForm(module, serializer(), value)
 
 /**
  * Render a compact read-only cell (for tables).
  */
-inline fun <reified T> ViewWriter.cellView(module: FormModule, value: Reactive<T>) = cellView(module, serializer(), value)
+inline fun <reified T> ElementWriter.CanAddTheme.cellView(module: FormModule, value: Reactive<T>) = cellView(module, serializer(), value)
 
 /**
  * Render an editable form with its label.
@@ -127,7 +127,7 @@ inline fun <reified T> ViewWriter.cellView(module: FormModule, value: Reactive<T
  *
  * @param description Optional description text shown via info icon popover
  */
-inline fun <reified T> ViewWriter.labeledForm(module: FormModule, value: MutableReactive<T>, label: String, description: String? = null) = labeledForm(module, serializer(), value, label, description)
+inline fun <reified T> ElementWriter.CanAddTheme.labeledForm(module: FormModule, value: MutableReactive<T>, label: String, description: String? = null) = labeledForm(module, serializer(), value, label, description)
 
 /**
  * Render a read-only view with its label.
@@ -136,13 +136,13 @@ inline fun <reified T> ViewWriter.labeledForm(module: FormModule, value: Mutable
  *
  * @param description Optional description text shown via info icon popover
  */
-inline fun <reified T> ViewWriter.labeledView(module: FormModule, value: Reactive<T>, label: String, description: String? = null) = labeledView(module, serializer(), value, label, description)
+inline fun <reified T> ElementWriter.CanAddTheme.labeledView(module: FormModule, value: Reactive<T>, label: String, description: String? = null) = labeledView(module, serializer(), value, label, description)
 
 
 /**
  * Render an editable form for a value.
  */
-fun <T> ViewWriter.form(module: FormModule, serializer: KSerializer<T>, value: MutableReactive<T>) {
+fun <T> ElementWriter.CanAddTheme.form(module: FormModule, serializer: KSerializer<T>, value: MutableReactive<T>) {
     val context = RenderContext(serializer)
     module.form(context, value)(this)
 }
@@ -150,7 +150,7 @@ fun <T> ViewWriter.form(module: FormModule, serializer: KSerializer<T>, value: M
 /**
  * Render a read-only view of a value.
  */
-fun <T> ViewWriter.view(module: FormModule, serializer: KSerializer<T>, value: Reactive<T>) {
+fun <T> ElementWriter.CanAddTheme.view(module: FormModule, serializer: KSerializer<T>, value: Reactive<T>) {
     val context = RenderContext(serializer)
     module.view(context, value)(this)
 }
@@ -158,7 +158,7 @@ fun <T> ViewWriter.view(module: FormModule, serializer: KSerializer<T>, value: R
 /**
  * Render a compact editable cell (for tables).
  */
-fun <T> ViewWriter.cellForm(module: FormModule, serializer: KSerializer<T>, value: MutableReactive<T>) {
+fun <T> ElementWriter.CanAddTheme.cellForm(module: FormModule, serializer: KSerializer<T>, value: MutableReactive<T>) {
     val context = RenderContext(serializer)
     module.cellForm(context, value)(this)
 }
@@ -166,7 +166,7 @@ fun <T> ViewWriter.cellForm(module: FormModule, serializer: KSerializer<T>, valu
 /**
  * Render a compact read-only cell (for tables).
  */
-fun <T> ViewWriter.cellView(module: FormModule, serializer: KSerializer<T>, value: Reactive<T>) {
+fun <T> ElementWriter.CanAddTheme.cellView(module: FormModule, serializer: KSerializer<T>, value: Reactive<T>) {
     val context = RenderContext(serializer)
     module.cellView(context, value)(this)
 }
@@ -178,7 +178,7 @@ fun <T> ViewWriter.cellView(module: FormModule, serializer: KSerializer<T>, valu
  *
  * @param description Optional description text shown via info icon popover
  */
-fun <T> ViewWriter.labeledForm(module: FormModule, serializer: KSerializer<T>, value: MutableReactive<T>, label: String, description: String? = null) {
+fun <T> ElementWriter.CanAddTheme.labeledForm(module: FormModule, serializer: KSerializer<T>, value: MutableReactive<T>, label: String, description: String? = null) {
     val context = RenderContext(serializer)
     module.labeledFormWithSwitcher(context, value, label, description ?: context.description)(this)
 }
@@ -190,7 +190,7 @@ fun <T> ViewWriter.labeledForm(module: FormModule, serializer: KSerializer<T>, v
  *
  * @param description Optional description text shown via info icon popover
  */
-fun <T> ViewWriter.labeledView(module: FormModule, serializer: KSerializer<T>, value: Reactive<T>, label: String, description: String? = null) {
+fun <T> ElementWriter.CanAddTheme.labeledView(module: FormModule, serializer: KSerializer<T>, value: Reactive<T>, label: String, description: String? = null) {
     val context = RenderContext(serializer)
     module.labeledViewWithSwitcher(context, value, label, description ?: context.description)(this)
 }

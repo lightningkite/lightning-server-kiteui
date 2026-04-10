@@ -82,6 +82,7 @@ import com.lightningkite.kiteui.QueryParameter
 import com.lightningkite.kiteui.Routable
 import com.lightningkite.kiteui.forms.form
 import com.lightningkite.kiteui.navigation.*
+import com.lightningkite.kiteui.views.ElementWriter
 
 import com.lightningkite.kiteui.views.ViewWriter
 import com.lightningkite.kiteui.views.atEnd
@@ -110,7 +111,7 @@ class NewItemAdminPage(val collectionName: String) : Page {
     private val mcOrNull = remember { adminServer().models[collectionName]?.cache(adminAuthentication()) as? ModelCache<UnknownModel, UnknownId> }
     private val mc = remember { mcOrNull()!! }
 
-    override fun ViewWriter.render() {
+    override fun ElementWriter.CanAddTheme.render() {
         col {
             reactive {
                 clearChildren()

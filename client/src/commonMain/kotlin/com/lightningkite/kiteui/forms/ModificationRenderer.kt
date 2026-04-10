@@ -3,9 +3,8 @@
 
 package com.lightningkite.kiteui.forms
 
-import com.lightningkite.kiteui.forms.ConditionRenderer.extended
 import com.lightningkite.kiteui.models.rem
-import com.lightningkite.kiteui.views.ViewWriter
+import com.lightningkite.kiteui.views.ElementWriter
 import com.lightningkite.kiteui.views.card
 import com.lightningkite.kiteui.views.centered
 import com.lightningkite.kiteui.views.centeredVertically
@@ -16,8 +15,6 @@ import com.lightningkite.reactive.core.Constant
 import com.lightningkite.reactive.core.MutableReactive
 import com.lightningkite.reactive.core.Reactive
 import com.lightningkite.reactive.lensing.lens
-import com.lightningkite.services.database.Condition
-import com.lightningkite.services.database.ConditionSerializer
 import com.lightningkite.services.database.Modification
 import com.lightningkite.services.database.ModificationSerializer
 import com.lightningkite.services.database.MySealedClassSerializer
@@ -179,7 +176,7 @@ object ModificationRenderer : Renderer<Modification<Any?>> {
         context: RenderContext<Modification<Any?>>,
         value: MutableReactive<Modification<Any?>>,
         module: FormModule
-    ): ViewWriter.() -> Unit {
+    ): ElementWriter.CanAddTheme.() -> Unit {
         val options = (context.serializer as ModificationSerializer<Any?>).options
 
         return {
@@ -214,7 +211,7 @@ object ModificationRenderer : Renderer<Modification<Any?>> {
         context: RenderContext<Modification<Any?>>,
         value: Reactive<Modification<Any?>>,
         module: FormModule
-    ): ViewWriter.() -> Unit {
+    ): ElementWriter.CanAddTheme.() -> Unit {
         val options = (context.serializer as ModificationSerializer<Any?>).options
 
         return {
@@ -248,7 +245,7 @@ object ModificationRenderer : Renderer<Modification<Any?>> {
         context: RenderContext<Modification<Any?>>,
         value: Reactive<Modification<Any?>>,
         module: FormModule
-    ): ViewWriter.() -> Unit {
+    ): ElementWriter.CanAddTheme.() -> Unit {
         val serializer = context.serializer as MySealedClassSerializerInterface<Any>
 
         return {
@@ -264,7 +261,7 @@ object ModificationRenderer : Renderer<Modification<Any?>> {
         module: FormModule,
         label: String,
         description: String?
-    ): ViewWriter.() -> Unit = {
+    ): ElementWriter.CanAddTheme.() -> Unit = {
         fieldWithoutBorder(label, description) { form(context, value, module)() }
     }
 
@@ -274,7 +271,7 @@ object ModificationRenderer : Renderer<Modification<Any?>> {
         module: FormModule,
         label: String,
         description: String?
-    ): ViewWriter.() -> Unit = {
+    ): ElementWriter.CanAddTheme.() -> Unit = {
         fieldWithoutBorder(label, description) { view(context, value, module)() }
     }
 }

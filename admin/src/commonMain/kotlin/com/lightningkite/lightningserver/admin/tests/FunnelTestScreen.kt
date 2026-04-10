@@ -24,23 +24,25 @@
 // 6. LAZY DELEGATE (Line 22): Using `by lazy` inside render() may have lifecycle
 //    implications. Consider using remember {} for consistency.
 //
-package com.lightningkite.lightningserver.admin
+package com.lightningkite.lightningserver.admin.tests
 
 import com.lightningkite.kiteui.Routable
 import com.lightningkite.kiteui.monitoring.Funnels
 import com.lightningkite.kiteui.monitoring.funnel
 import com.lightningkite.kiteui.navigation.Page
+import com.lightningkite.kiteui.views.ElementWriter
 
-import com.lightningkite.kiteui.views.ViewWriter
 import com.lightningkite.kiteui.views.direct.button
 import com.lightningkite.kiteui.views.direct.col
 import com.lightningkite.kiteui.views.direct.onClick
 import com.lightningkite.kiteui.views.direct.text
+import com.lightningkite.lightningserver.admin.adminAuthentication
+import com.lightningkite.lightningserver.admin.adminServer
 import com.lightningkite.reactive.context.reactive
 
 @Routable("funnel")
 class FunnelTestPage: Page {
-    override fun ViewWriter.render() {
+    override fun ElementWriter.CanAddTheme.render() {
         col {
             reactive {
                 Funnels.fetcher = adminServer().fetcher(adminAuthentication())

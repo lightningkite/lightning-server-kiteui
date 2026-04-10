@@ -6,7 +6,7 @@ import com.lightningkite.kiteui.models.Icon
 import com.lightningkite.kiteui.models.px
 import com.lightningkite.kiteui.models.rem
 import com.lightningkite.kiteui.views.DropTargetDelegate
-import com.lightningkite.kiteui.views.ViewWriter
+import com.lightningkite.kiteui.views.ElementWriter
 import com.lightningkite.kiteui.views.card
 import com.lightningkite.kiteui.views.centered
 import com.lightningkite.kiteui.views.direct.button
@@ -19,7 +19,7 @@ import com.lightningkite.kiteui.views.direct.scrollingHorizontally
 import com.lightningkite.kiteui.views.direct.text
 import com.lightningkite.kiteui.views.direct.textPopover
 import com.lightningkite.kiteui.views.forEachUpdating
-import com.lightningkite.kiteui.views.l2.icon
+import com.lightningkite.kiteui.views.direct.icon
 import com.lightningkite.reactive.context.invoke
 import com.lightningkite.reactive.context.reactive
 import com.lightningkite.reactive.core.MutableReactive
@@ -65,7 +65,7 @@ object HorizontalListRenderer : Renderer<List<Any?>> {
     }
 
     @Suppress("UNCHECKED_CAST")
-    override fun form(context: RenderContext<List<Any?>>, value: MutableReactive<List<Any?>>, module: FormModule): ViewWriter.() -> Unit = {
+    override fun form(context: RenderContext<List<Any?>>, value: MutableReactive<List<Any?>>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
         val elementSerializer = context.serializer.listElement() as KSerializer<Any?>
         val elementContext = RenderContext(elementSerializer)
 
@@ -148,7 +148,7 @@ object HorizontalListRenderer : Renderer<List<Any?>> {
     }
 
     @Suppress("UNCHECKED_CAST")
-    override fun view(context: RenderContext<List<Any?>>, value: Reactive<List<Any?>>, module: FormModule): ViewWriter.() -> Unit = {
+    override fun view(context: RenderContext<List<Any?>>, value: Reactive<List<Any?>>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
         val elementSerializer = context.serializer.listElement() as KSerializer<Any?>
         val elementContext = RenderContext(elementSerializer)
 
@@ -182,7 +182,7 @@ object HorizontalListRenderer : Renderer<List<Any?>> {
         }
     }
 
-    override fun cellView(context: RenderContext<List<Any?>>, value: Reactive<List<Any?>>, module: FormModule): ViewWriter.() -> Unit = {
+    override fun cellView(context: RenderContext<List<Any?>>, value: Reactive<List<Any?>>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
         // Show count in cell view - by Claude
         text { ::content { "${value().size} items" } }
     }
@@ -196,7 +196,7 @@ object HorizontalListRenderer : Renderer<List<Any?>> {
         module: FormModule,
         label: String,
         description: String?
-    ): ViewWriter.() -> Unit = {
+    ): ElementWriter.CanAddTheme.() -> Unit = {
         col {
             row {
                 h4(label)
@@ -214,7 +214,7 @@ object HorizontalListRenderer : Renderer<List<Any?>> {
         module: FormModule,
         label: String,
         description: String?
-    ): ViewWriter.() -> Unit = {
+    ): ElementWriter.CanAddTheme.() -> Unit = {
         col {
             row {
                 h4(label)

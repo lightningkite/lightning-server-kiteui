@@ -27,6 +27,7 @@ package com.lightningkite.lightningserver.admin
 import com.lightningkite.kiteui.Routable
 import com.lightningkite.kiteui.forms.displayName
 import com.lightningkite.kiteui.navigation.Page
+import com.lightningkite.kiteui.views.ElementWriter
 
 import com.lightningkite.kiteui.views.ViewWriter
 import com.lightningkite.kiteui.views.direct.col
@@ -60,7 +61,7 @@ class AllCollectionsPage() : Page {
      * Each collection entry is rendered as a clickable link that navigates to
      * the CollectionAdminPage for detailed CRUD operations.
      */
-    override fun ViewWriter.render() {
+    override fun ElementWriter.CanAddTheme.render() {
         // by Claude - Fetch collection list once and cache it
         // Note: If adminServer() fails, this will throw. Consider error handling.
         val models = remember { adminServer().models.entries.toList() }

@@ -3,14 +3,12 @@
 package com.lightningkite.kiteui.forms
 
 import com.lightningkite.kiteui.models.rem
-import com.lightningkite.kiteui.views.ViewWriter
-import com.lightningkite.kiteui.views.atTop
+import com.lightningkite.kiteui.views.ElementWriter
 import com.lightningkite.kiteui.views.card
 import com.lightningkite.kiteui.views.centered
 import com.lightningkite.kiteui.views.centeredVertically
 import com.lightningkite.kiteui.views.direct.*
 import com.lightningkite.kiteui.views.expanding
-import com.lightningkite.kiteui.views.fieldTheme
 import com.lightningkite.reactive.context.reactive
 import com.lightningkite.reactive.core.Constant
 import com.lightningkite.reactive.core.MutableReactive
@@ -20,13 +18,10 @@ import com.lightningkite.services.database.Condition
 import com.lightningkite.services.database.ConditionSerializer
 import com.lightningkite.services.database.MySealedClassSerializer
 import com.lightningkite.services.database.MySealedClassSerializerInterface
-import com.lightningkite.services.database.WrappingSerializer
 import com.lightningkite.services.database.default
-import com.lightningkite.services.database.innerElement
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.builtins.NothingSerializer
-import kotlinx.serialization.builtins.serializer
 
 object ConditionRenderer : Renderer<Condition<Any?>> {
     override val name: String = "Fill In The Blank"
@@ -210,7 +205,7 @@ object ConditionRenderer : Renderer<Condition<Any?>> {
         context: RenderContext<Condition<Any?>>,
         value: MutableReactive<Condition<Any?>>,
         module: FormModule
-    ): ViewWriter.() -> Unit {
+    ): ElementWriter.CanAddTheme.() -> Unit {
         val options = (context.serializer as ConditionSerializer<Any?>).options
 
         return {
@@ -245,7 +240,7 @@ object ConditionRenderer : Renderer<Condition<Any?>> {
         context: RenderContext<Condition<Any?>>,
         value: Reactive<Condition<Any?>>,
         module: FormModule
-    ): ViewWriter.() -> Unit {
+    ): ElementWriter.CanAddTheme.() -> Unit {
         val options = (context.serializer as ConditionSerializer<Any?>).options
 
         return {
@@ -279,7 +274,7 @@ object ConditionRenderer : Renderer<Condition<Any?>> {
         context: RenderContext<Condition<Any?>>,
         value: Reactive<Condition<Any?>>,
         module: FormModule
-    ): ViewWriter.() -> Unit {
+    ): ElementWriter.CanAddTheme.() -> Unit {
         val serializer = context.serializer as MySealedClassSerializerInterface<Any>
 
         return {
@@ -295,7 +290,7 @@ object ConditionRenderer : Renderer<Condition<Any?>> {
         module: FormModule,
         label: String,
         description: String?
-    ): ViewWriter.() -> Unit = {
+    ): ElementWriter.CanAddTheme.() -> Unit = {
         fieldWithoutBorder(label, description) { form(context, value, module)() }
     }
 
@@ -305,7 +300,7 @@ object ConditionRenderer : Renderer<Condition<Any?>> {
         module: FormModule,
         label: String,
         description: String?
-    ): ViewWriter.() -> Unit = {
+    ): ElementWriter.CanAddTheme.() -> Unit = {
         fieldWithoutBorder(label, description) { view(context, value, module)() }
     }
 }

@@ -19,7 +19,7 @@ import com.lightningkite.kiteui.reactive.Action
 import com.lightningkite.kiteui.views.*
 import com.lightningkite.kiteui.views.direct.*
 import com.lightningkite.kiteui.views.l2.dialog
-import com.lightningkite.kiteui.views.l2.icon
+import com.lightningkite.kiteui.views.direct.icon
 import com.lightningkite.kotlinx.serialization.csv.CsvFormat
 import com.lightningkite.kotlinx.serialization.csv.StringDeferringConfig
 import com.lightningkite.services.database.*
@@ -84,7 +84,7 @@ class CollectionAdminPage(val collectionName: String) : Page {
                 as? ModelCache<UnknownModel, UnknownId>
     }
 
-    override fun ViewWriter.render() {
+    override fun ElementWriter.CanAddTheme.render() {
         col {
             reactive<Unit> {
                 clearChildren()
@@ -135,6 +135,9 @@ class CollectionAdminPage(val collectionName: String) : Page {
         val hasTextIndex: Boolean =
             mc.serializer.serializableAnnotations.any { it.fqn.endsWith("TextIndex") }
 
+        private val conditionD = condition.debounce(DEBOUNCE_MS, mc.scope)
+        private val sortD = sort.debounce(DEBOUNCE_MS, mc.scope)
+
         /**
          * Builds a complete Query from text search, condition, sort, and columns.
          * All parts are debounced to prevent query spam during rapid UI changes.
@@ -144,20 +147,21 @@ class CollectionAdminPage(val collectionName: String) : Page {
                 condition = Condition.And(
                     listOfNotNull(
                         buildTextSearchCondition(),
-                        condition.debounce(DEBOUNCE_MS)()
+                        conditionD()
                     )
                 ),
-                orderBy = sort.debounce(DEBOUNCE_MS)()
+                orderBy = sortD()
             )
 
         }
 
+        private val textSearchD = textSearch.debounce(DEBOUNCE_MS, mc.scope)
         /**
          * Builds a text search condition from the current search text.
          * Uses full-text search if available, otherwise searches visible string columns.
          */
         private fun ReactiveContext.buildTextSearchCondition(): Condition<UnknownModel>? {
-            val text = textSearch.debounce(DEBOUNCE_MS)().takeUnless { it.isBlank() } ?: return null
+            val text = textSearchD().takeUnless { it.isBlank() } ?: return null
             return if (hasTextIndex) {
                 Condition.FullTextSearch(text)
             } else {
@@ -316,7 +320,7 @@ class CollectionAdminPage(val collectionName: String) : Page {
             value: ReactiveContext.() -> String
         ) {
             row {
-                ::exists { visibleIf() }
+                ::shown { visibleIf() }
                 expanding.text {
                     wraps = false
                     content = key

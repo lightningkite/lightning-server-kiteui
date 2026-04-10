@@ -4,6 +4,7 @@ import com.lightningkite.kiteui.models.Icon
 import com.lightningkite.kiteui.models.KeyboardHints
 import com.lightningkite.kiteui.models.SubtextSemantic
 import com.lightningkite.kiteui.reactive.Action
+import com.lightningkite.kiteui.views.ElementWriter
 
 import com.lightningkite.kiteui.views.ViewWriter
 import com.lightningkite.kiteui.views.centered
@@ -13,6 +14,7 @@ import com.lightningkite.kiteui.views.direct.text
 import com.lightningkite.kiteui.views.direct.textInput
 import com.lightningkite.kiteui.views.important
 import com.lightningkite.kiteui.views.l2.errorText
+import com.lightningkite.kiteui.views.themed
 import com.lightningkite.lightningserver.sessions.proofs.IdentificationAndPassword
 import com.lightningkite.lightningserver.sessions.proofs.Proof
 import com.lightningkite.lightningserver.sessions.proofs.ProofClientEndpoints
@@ -59,7 +61,7 @@ data class BackupCodeProofComponent(val p: ProofClientEndpoints.BackupCode, val 
      * @return The root view modifier for the rendered UI
      */
     override fun render(
-        to: ViewWriter,
+        to: ElementWriter.CanAddTheme,
         primaryIdentifier: UserIdentification?,
         option: ProofOption,
         onResult: (Proof?) -> Unit
@@ -101,7 +103,7 @@ data class BackupCodeProofComponent(val p: ProofClientEndpoints.BackupCode, val 
                 }
             }
             // Error messages appear here when backup code is invalid or already used
-            SubtextSemantic.onNext.errorText()
+            errorText()
 
             important.button {
                 debugName = "submitButton"

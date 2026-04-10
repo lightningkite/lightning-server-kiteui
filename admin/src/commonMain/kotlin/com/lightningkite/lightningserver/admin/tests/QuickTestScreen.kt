@@ -17,7 +17,7 @@
 // 4. SIGNAL SCOPE: The Signal is created inline. Value changes won't persist or
 //    be observable outside this render. This may be intentional for testing.
 //
-package com.lightningkite.lightningserver.admin
+package com.lightningkite.lightningserver.admin.tests
 
 // by Claude - migrated to forms2
 
@@ -26,8 +26,8 @@ import com.lightningkite.kiteui.forms.FormModule
 import com.lightningkite.kiteui.forms.defaults
 import com.lightningkite.kiteui.forms.form
 import com.lightningkite.kiteui.navigation.Page
+import com.lightningkite.kiteui.views.ElementWriter
 
-import com.lightningkite.kiteui.views.ViewWriter
 import com.lightningkite.kiteui.views.direct.col
 import com.lightningkite.kiteui.views.l2.field
 import com.lightningkite.reactive.core.Signal
@@ -36,7 +36,7 @@ import kotlinx.serialization.builtins.serializer
 
 @Routable("quick-test")
 class QuickTestPage: Page {
-    override fun ViewWriter.render() {
+    override fun ElementWriter.CanAddTheme.render() {
         col {
             val module = FormModule().apply { defaults() }
             module.enableRendererSwitching = true

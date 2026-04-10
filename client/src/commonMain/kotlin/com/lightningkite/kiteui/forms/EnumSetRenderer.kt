@@ -2,12 +2,10 @@
 
 package com.lightningkite.kiteui.forms
 
-import com.lightningkite.kiteui.views.ViewWriter
+import com.lightningkite.kiteui.views.ElementWriter
 import com.lightningkite.kiteui.views.direct.*
-import com.lightningkite.reactive.context.invoke
 import com.lightningkite.reactive.core.MutableReactive
 import com.lightningkite.reactive.core.Reactive
-import com.lightningkite.reactive.lensing.lens
 import com.lightningkite.services.database.SerializableAnnotationValue
 import com.lightningkite.services.database.VirtualEnumValue
 import com.lightningkite.services.database.getElementSerializableAnnotations
@@ -48,7 +46,7 @@ object EnumSetRenderer : Renderer<Set<Any?>> {
     }
 
     @Suppress("UNCHECKED_CAST")
-    override fun form(context: RenderContext<Set<Any?>>, value: MutableReactive<Set<Any?>>, module: FormModule): ViewWriter.() -> Unit {
+    override fun form(context: RenderContext<Set<Any?>>, value: MutableReactive<Set<Any?>>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit {
         val elementSerializer = context.serializer.listElement() as KSerializer<Any?>
         val enumValues = elementSerializer.enumValues()
 
@@ -72,7 +70,7 @@ object EnumSetRenderer : Renderer<Set<Any?>> {
     }
 
     @Suppress("UNCHECKED_CAST")
-    override fun view(context: RenderContext<Set<Any?>>, value: Reactive<Set<Any?>>, module: FormModule): ViewWriter.() -> Unit {
+    override fun view(context: RenderContext<Set<Any?>>, value: Reactive<Set<Any?>>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit {
         val elementSerializer = context.serializer.listElement() as KSerializer<Any?>
 
         return {
@@ -87,7 +85,7 @@ object EnumSetRenderer : Renderer<Set<Any?>> {
     }
 
     @Suppress("UNCHECKED_CAST")
-    override fun cellView(context: RenderContext<Set<Any?>>, value: Reactive<Set<Any?>>, module: FormModule): ViewWriter.() -> Unit {
+    override fun cellView(context: RenderContext<Set<Any?>>, value: Reactive<Set<Any?>>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit {
         val elementSerializer = context.serializer.listElement() as KSerializer<Any?>
 
         return {

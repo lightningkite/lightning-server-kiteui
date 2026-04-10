@@ -5,7 +5,7 @@ package com.lightningkite.kiteui.forms
 import com.lightningkite.CaselessStringSerializer
 import com.lightningkite.TrimmedCaselessStringSerializer
 import com.lightningkite.TrimmedStringSerializer
-import com.lightningkite.kiteui.views.ViewWriter
+import com.lightningkite.kiteui.views.ElementWriter
 import com.lightningkite.kiteui.views.direct.select
 import com.lightningkite.kiteui.views.direct.text
 import com.lightningkite.kiteui.views.fieldTheme
@@ -124,7 +124,7 @@ object SortPathRenderer : Renderer<Any> {
     }
 
     @Suppress("UNCHECKED_CAST")
-    override fun form(context: RenderContext<Any>, value: MutableReactive<Any>, module: FormModule): ViewWriter.() -> Unit {
+    override fun form(context: RenderContext<Any>, value: MutableReactive<Any>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit {
         val serializer = context.serializer as SortPartSerializer<Any?>
         val sortOptions = SortOptions(module, serializer)
         val typedValue = value as MutableReactive<SortPart<Any?>>
@@ -137,7 +137,7 @@ object SortPathRenderer : Renderer<Any> {
     }
 
     @Suppress("UNCHECKED_CAST")
-    override fun view(context: RenderContext<Any>, value: Reactive<Any>, module: FormModule): ViewWriter.() -> Unit {
+    override fun view(context: RenderContext<Any>, value: Reactive<Any>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit {
         val serializer = context.serializer as SortPartSerializer<Any?>
         val sortOptions = SortOptions(module, serializer)
         val typedValue = value as Reactive<SortPart<Any?>>
@@ -147,10 +147,10 @@ object SortPathRenderer : Renderer<Any> {
         }
     }
 
-    override fun cellForm(context: RenderContext<Any>, value: MutableReactive<Any>, module: FormModule) =
+    override fun cellForm(context: RenderContext<Any>, value: MutableReactive<Any>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit =
         form(context, value, module)
 
-    override fun cellView(context: RenderContext<Any>, value: Reactive<Any>, module: FormModule) =
+    override fun cellView(context: RenderContext<Any>, value: Reactive<Any>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit =
         view(context, value, module)
 }
 

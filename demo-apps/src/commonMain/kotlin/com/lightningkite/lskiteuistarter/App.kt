@@ -8,6 +8,7 @@ import com.lightningkite.kiteui.navigation.PageNavigator
 import com.lightningkite.kiteui.navigation.dialogPageNavigator
 import com.lightningkite.kiteui.reactive.*
 import com.lightningkite.kiteui.views.ViewWriter
+import com.lightningkite.kiteui.views.confirmDanger
 import com.lightningkite.kiteui.views.direct.confirmDanger
 import com.lightningkite.kiteui.views.l2.appNav
 import com.lightningkite.lskiteuistarter.extensions.toAppPlatform
@@ -31,8 +32,8 @@ val setFcmToken =
 var appUpdateChecked = false
 
 fun ViewWriter.app(navigator: PageNavigator, dialog: PageNavigator) {
-    ExceptionToMessages.root.installLsError()
-    ExceptionToMessages.root.installLoggedOutErrors()
+    context.exceptionHandlers.installLsError()
+    context.exceptionHandlers.installLoggedOutErrors()
 
     AppScope.reactiveSuspending {
         if (currentSession() == null) return@reactiveSuspending
@@ -45,7 +46,7 @@ fun ViewWriter.app(navigator: PageNavigator, dialog: PageNavigator) {
             }
 
             null -> {
-                confirmDanger(
+                context.confirmDanger(
                     "Send notifications?",
                     "LS KiteUI Starter would like to send you notifications.",
                     "Allow"

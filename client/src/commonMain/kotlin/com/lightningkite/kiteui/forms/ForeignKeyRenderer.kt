@@ -4,20 +4,18 @@ package com.lightningkite.kiteui.forms
 
 import com.lightningkite.IsRawString
 import com.lightningkite.TrimmedString
-import com.lightningkite.kiteui.load
 import com.lightningkite.kiteui.models.*
 import com.lightningkite.kiteui.reactive.Action
 import com.lightningkite.kiteui.views.*
 import com.lightningkite.kiteui.views.direct.*
 import com.lightningkite.kiteui.views.l2.children
-import com.lightningkite.kiteui.views.l2.icon
+import com.lightningkite.kiteui.views.direct.icon
 import com.lightningkite.reactive.context.invoke
 import com.lightningkite.reactive.context.reactiveSuspending
 import com.lightningkite.reactive.core.MutableReactive
 import com.lightningkite.reactive.core.Reactive
 import com.lightningkite.reactive.core.Signal
 import com.lightningkite.reactive.core.remember
-import com.lightningkite.reactive.extensions.debounce
 import com.lightningkite.services.database.*
 import kotlinx.serialization.ExperimentalSerializationApi
 
@@ -59,7 +57,7 @@ object ForeignKeyRenderer : Renderer<Any?> {
     }
 
     @Suppress("UNCHECKED_CAST")
-    override fun form(context: RenderContext<Any?>, value: MutableReactive<Any?>, module: FormModule): ViewWriter.() -> Unit {
+    override fun form(context: RenderContext<Any?>, value: MutableReactive<Any?>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit {
         val anno = context.fieldAnnotations.find {
             it.fqn == REFERENCES_FQN || it.fqn == MULTIPLE_REFERENCES_FQN
         }!!
@@ -82,6 +80,9 @@ object ForeignKeyRenderer : Renderer<Any?> {
                                 ?: "None"
                         }
                     }
+
+                    preferredDirection = PopoverPreferredDirection.belowLeft
+
                     opensMenu {
                         // Allow null selection if serializer is nullable
                         if (context.serializer.descriptor.isNullable) {
@@ -93,7 +94,6 @@ object ForeignKeyRenderer : Renderer<Any?> {
                                 }
                             }
                         }
-                        preferredDirection = PopoverPreferredDirection.belowLeft
 
                         sizeConstraints(width = 25.rem, height = 25.rem).col {
                             val textSearch = Signal("")
@@ -195,7 +195,7 @@ object ForeignKeyRenderer : Renderer<Any?> {
     }
 
     @Suppress("UNCHECKED_CAST")
-    override fun view(context: RenderContext<Any?>, value: Reactive<Any?>, module: FormModule): ViewWriter.() -> Unit {
+    override fun view(context: RenderContext<Any?>, value: Reactive<Any?>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit {
         val anno = context.fieldAnnotations.find {
             it.fqn == REFERENCES_FQN || it.fqn == MULTIPLE_REFERENCES_FQN
         }!!
@@ -224,7 +224,7 @@ object ForeignKeyRenderer : Renderer<Any?> {
     }
 
     @Suppress("UNCHECKED_CAST")
-    override fun cellView(context: RenderContext<Any?>, value: Reactive<Any?>, module: FormModule): ViewWriter.() -> Unit {
+    override fun cellView(context: RenderContext<Any?>, value: Reactive<Any?>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit {
         val anno = context.fieldAnnotations.find {
             it.fqn == REFERENCES_FQN || it.fqn == MULTIPLE_REFERENCES_FQN
         }!!
@@ -253,7 +253,7 @@ object ForeignKeyRenderer : Renderer<Any?> {
         module: FormModule,
         label: String,
         description: String?
-    ): ViewWriter.() -> Unit = {
+    ): ElementWriter.CanAddTheme.() -> Unit = {
         fieldWithoutBorder(label, description) { form(context, value, module)() }
     }
 
@@ -263,7 +263,7 @@ object ForeignKeyRenderer : Renderer<Any?> {
         module: FormModule,
         label: String,
         description: String?
-    ): ViewWriter.() -> Unit = {
+    ): ElementWriter.CanAddTheme.() -> Unit = {
         fieldWithoutBorder(label, description) { view(context, value, module)() }
     }
 }

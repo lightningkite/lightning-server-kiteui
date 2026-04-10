@@ -5,7 +5,7 @@ package com.lightningkite.kiteui.forms
 import com.lightningkite.kiteui.models.*
 import com.lightningkite.kiteui.views.*
 import com.lightningkite.kiteui.views.direct.*
-import com.lightningkite.kiteui.views.l2.icon
+import com.lightningkite.kiteui.views.direct.icon
 import com.lightningkite.reactive.context.invoke
 import com.lightningkite.reactive.context.reactive
 import com.lightningkite.reactive.core.*
@@ -34,7 +34,7 @@ object MapRenderer : Renderer<Map<Any?, Any?>> {
         context: RenderContext<Map<Any?, Any?>>,
         value: MutableReactive<Map<Any?, Any?>>,
         module: FormModule,
-    ): ViewWriter.() -> Unit = {
+    ): ElementWriter.CanAddTheme.() -> Unit = {
         // by Claude
         val keySerializer = context.serializer.mapKeyElement() as KSerializer<Any?>
         val valueSerializer = context.serializer.mapValueElement() as KSerializer<Any?>
@@ -144,7 +144,7 @@ object MapRenderer : Renderer<Map<Any?, Any?>> {
         context: RenderContext<Map<Any?, Any?>>,
         value: Reactive<Map<Any?, Any?>>,
         module: FormModule,
-    ): ViewWriter.() -> Unit = {
+    ): ElementWriter.CanAddTheme.() -> Unit = {
         val keySerializer = context.serializer.mapKeyElement() as KSerializer<Any?>
         val valueSerializer = context.serializer.mapValueElement() as KSerializer<Any?>
         val keyContext = RenderContext(keySerializer)
@@ -202,7 +202,7 @@ object MapRenderer : Renderer<Map<Any?, Any?>> {
         context: RenderContext<Map<Any?, Any?>>,
         value: Reactive<Map<Any?, Any?>>,
         module: FormModule,
-    ): ViewWriter.() -> Unit = {
+    ): ElementWriter.CanAddTheme.() -> Unit = {
         // Show count in cell view
         text { ::content { "${value().size} entries" } }
     }
@@ -216,7 +216,7 @@ object MapRenderer : Renderer<Map<Any?, Any?>> {
         module: FormModule,
         label: String,
         description: String?,
-    ): ViewWriter.() -> Unit = {
+    ): ElementWriter.CanAddTheme.() -> Unit = {
         col {
             row {
                 h4(label)
@@ -234,7 +234,7 @@ object MapRenderer : Renderer<Map<Any?, Any?>> {
         module: FormModule,
         label: String,
         description: String?,
-    ): ViewWriter.() -> Unit = {
+    ): ElementWriter.CanAddTheme.() -> Unit = {
         col {
             row {
                 h4(label)

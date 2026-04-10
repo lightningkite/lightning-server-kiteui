@@ -1,12 +1,16 @@
 package com.lightningkite.kiteui.auth
 
 import com.lightningkite.kiteui.models.*
+import com.lightningkite.kiteui.views.ElementWriter
 import com.lightningkite.kiteui.views.ViewDsl
 
 import com.lightningkite.kiteui.views.ViewWriter
 import com.lightningkite.kiteui.views.direct.col
 import com.lightningkite.kiteui.views.direct.text
 import com.lightningkite.kiteui.views.fieldTheme
+import com.lightningkite.kiteui.views.l2.LabelSemantic
+import com.lightningkite.kiteui.views.l2.label
+import com.lightningkite.kiteui.views.themed
 import com.lightningkite.lightningserver.db.now
 import com.lightningkite.reactive.core.reactiveProcess
 import kotlinx.coroutines.delay
@@ -65,13 +69,10 @@ val Icon.Companion.pinCode: Icon
     )
 
 
-@ViewDsl
 @OptIn(ExperimentalContracts::class)
-inline fun ViewWriter.fieldNoErrorText(label: String, content: ViewWriter.() -> Unit): Unit {
+inline fun ViewWriter.fieldNoErrorText(label: String, content: ElementWriter.CanAddTheme.() -> Unit) {
     contract { callsInPlace(content, InvocationKind.EXACTLY_ONCE) }
-    col {
-        gap = 0.px
-        FieldLabelSemantic.onNext.text(label)
+    label(label) {
         fieldTheme.content()
     }
 }

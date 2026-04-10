@@ -69,7 +69,7 @@ class EndpointPage(val path: String, val method: String) : Page {
         }
     }
 
-    override fun ViewWriter.render() {
+    override fun ElementWriter.CanAddTheme.render() {
         val server = adminServer
         val endpoint = remember { adminServer().schema.endpoints.find { it.path == this@EndpointPage.path && it.method == method }!! }
         scrolling.col {

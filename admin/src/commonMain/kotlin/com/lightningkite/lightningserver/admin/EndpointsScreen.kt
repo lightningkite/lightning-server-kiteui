@@ -27,6 +27,7 @@ package com.lightningkite.lightningserver.admin
 import com.lightningkite.kiteui.QueryParameter
 import com.lightningkite.kiteui.Routable
 import com.lightningkite.kiteui.navigation.Page
+import com.lightningkite.kiteui.views.ElementWriter
 
 import com.lightningkite.kiteui.views.ViewWriter
 import com.lightningkite.kiteui.views.direct.*
@@ -39,7 +40,7 @@ import com.lightningkite.reactive.core.remember
 @Routable("endpoints")
 class EndpointsPage() : Page {
     @QueryParameter val filter = Signal<String>("")
-    override fun ViewWriter.render() {
+    override fun ElementWriter.CanAddTheme.render() {
         val endpoints = remember { serverSchema().endpoints }
         col {
             field("Filter") {

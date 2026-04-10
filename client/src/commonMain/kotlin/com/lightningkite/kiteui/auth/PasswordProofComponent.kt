@@ -4,6 +4,7 @@ import com.lightningkite.kiteui.models.Icon
 import com.lightningkite.kiteui.models.KeyboardHints
 import com.lightningkite.kiteui.models.SubtextSemantic
 import com.lightningkite.kiteui.reactive.Action
+import com.lightningkite.kiteui.views.ElementWriter
 
 import com.lightningkite.kiteui.views.ViewWriter
 import com.lightningkite.kiteui.views.centered
@@ -58,7 +59,7 @@ data class PasswordProofComponent(val p: ProofClientEndpoints.Password, val type
      * @return The root view modifier for the rendered UI
      */
     override fun render(
-        to: ViewWriter,
+        to: ElementWriter.CanAddTheme,
         primaryIdentifier: UserIdentification?,
         option: ProofOption,
         onResult: (Proof?) -> Unit
@@ -97,7 +98,7 @@ data class PasswordProofComponent(val p: ProofClientEndpoints.Password, val type
                 }
             }
             // Error messages appear here when password is incorrect
-            SubtextSemantic.onNext.errorText()
+            errorText()
 
             important.button {
                 debugName = "submitButton"

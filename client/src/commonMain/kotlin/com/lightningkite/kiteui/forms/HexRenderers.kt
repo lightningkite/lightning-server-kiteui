@@ -1,13 +1,12 @@
 package com.lightningkite.kiteui.forms
 
 import com.lightningkite.kiteui.models.Align
-import com.lightningkite.kiteui.views.ViewWriter
+import com.lightningkite.kiteui.views.ElementWriter
 import com.lightningkite.kiteui.views.direct.*
 import com.lightningkite.kiteui.views.fieldTheme
 import com.lightningkite.reactive.core.MutableReactive
 import com.lightningkite.reactive.core.Reactive
 import com.lightningkite.reactive.core.Signal
-import com.lightningkite.reactive.lensing.lens
 
 /**
  * Hex renderer for Byte values.
@@ -21,7 +20,7 @@ object HexByteRenderer : Renderer<Byte> {
 
     override fun priority(context: RenderContext<Byte>, module: FormModule) = 0.5f
 
-    override fun form(context: RenderContext<Byte>, value: MutableReactive<Byte>, module: FormModule): ViewWriter.() -> Unit = {
+    override fun form(context: RenderContext<Byte>, value: MutableReactive<Byte>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
         val errorMessage = Signal<String?>(null)
 
         col {
@@ -48,11 +47,11 @@ object HexByteRenderer : Renderer<Byte> {
         }
     }
 
-    override fun view(context: RenderContext<Byte>, value: Reactive<Byte>, module: FormModule): ViewWriter.() -> Unit = {
+    override fun view(context: RenderContext<Byte>, value: Reactive<Byte>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
         text { ::content { "0x${value().toUByte().toString(16).uppercase().padStart(2, '0')}" } }
     }
 
-    override fun cellForm(context: RenderContext<Byte>, value: MutableReactive<Byte>, module: FormModule) = form(context, value, module)
+    override fun cellForm(context: RenderContext<Byte>, value: MutableReactive<Byte>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = form(context, value, module)
     override fun columnWidth(context: RenderContext<Byte>, module: FormModule) = 6.0
 }
 
@@ -68,7 +67,7 @@ object HexShortRenderer : Renderer<Short> {
 
     override fun priority(context: RenderContext<Short>, module: FormModule) = 0.5f
 
-    override fun form(context: RenderContext<Short>, value: MutableReactive<Short>, module: FormModule): ViewWriter.() -> Unit = {
+    override fun form(context: RenderContext<Short>, value: MutableReactive<Short>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
         val errorMessage = Signal<String?>(null)
 
         col {
@@ -95,11 +94,11 @@ object HexShortRenderer : Renderer<Short> {
         }
     }
 
-    override fun view(context: RenderContext<Short>, value: Reactive<Short>, module: FormModule): ViewWriter.() -> Unit = {
+    override fun view(context: RenderContext<Short>, value: Reactive<Short>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
         text { ::content { "0x${value().toUShort().toString(16).uppercase().padStart(4, '0')}" } }
     }
 
-    override fun cellForm(context: RenderContext<Short>, value: MutableReactive<Short>, module: FormModule) = form(context, value, module)
+    override fun cellForm(context: RenderContext<Short>, value: MutableReactive<Short>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = form(context, value, module)
     override fun columnWidth(context: RenderContext<Short>, module: FormModule) = 8.0
 }
 
@@ -115,7 +114,7 @@ object HexIntRenderer : Renderer<Int> {
 
     override fun priority(context: RenderContext<Int>, module: FormModule) = 0.5f
 
-    override fun form(context: RenderContext<Int>, value: MutableReactive<Int>, module: FormModule): ViewWriter.() -> Unit = {
+    override fun form(context: RenderContext<Int>, value: MutableReactive<Int>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
         val errorMessage = Signal<String?>(null)
 
         col {
@@ -142,11 +141,11 @@ object HexIntRenderer : Renderer<Int> {
         }
     }
 
-    override fun view(context: RenderContext<Int>, value: Reactive<Int>, module: FormModule): ViewWriter.() -> Unit = {
+    override fun view(context: RenderContext<Int>, value: Reactive<Int>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
         text { ::content { "0x${value().toUInt().toString(16).uppercase().padStart(8, '0')}" } }
     }
 
-    override fun cellForm(context: RenderContext<Int>, value: MutableReactive<Int>, module: FormModule) = form(context, value, module)
+    override fun cellForm(context: RenderContext<Int>, value: MutableReactive<Int>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = form(context, value, module)
     override fun columnWidth(context: RenderContext<Int>, module: FormModule) = 12.0
 }
 
@@ -162,7 +161,7 @@ object HexLongRenderer : Renderer<Long> {
 
     override fun priority(context: RenderContext<Long>, module: FormModule) = 0.5f
 
-    override fun form(context: RenderContext<Long>, value: MutableReactive<Long>, module: FormModule): ViewWriter.() -> Unit = {
+    override fun form(context: RenderContext<Long>, value: MutableReactive<Long>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
         val errorMessage = Signal<String?>(null)
 
         col {
@@ -189,11 +188,11 @@ object HexLongRenderer : Renderer<Long> {
         }
     }
 
-    override fun view(context: RenderContext<Long>, value: Reactive<Long>, module: FormModule): ViewWriter.() -> Unit = {
+    override fun view(context: RenderContext<Long>, value: Reactive<Long>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
         text { ::content { "0x${value().toULong().toString(16).uppercase().padStart(16, '0')}" } }
     }
 
-    override fun cellForm(context: RenderContext<Long>, value: MutableReactive<Long>, module: FormModule) = form(context, value, module)
+    override fun cellForm(context: RenderContext<Long>, value: MutableReactive<Long>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = form(context, value, module)
     override fun columnWidth(context: RenderContext<Long>, module: FormModule) = 18.0
 }
 

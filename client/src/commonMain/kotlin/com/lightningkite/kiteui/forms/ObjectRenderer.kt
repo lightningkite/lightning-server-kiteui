@@ -2,7 +2,7 @@
 
 package com.lightningkite.kiteui.forms
 
-import com.lightningkite.kiteui.views.ViewWriter
+import com.lightningkite.kiteui.views.ElementWriter
 import com.lightningkite.kiteui.views.direct.frame
 import com.lightningkite.kiteui.views.direct.text
 import com.lightningkite.reactive.core.MutableReactive
@@ -28,21 +28,21 @@ object ObjectRenderer : Renderer<Any> {
 
     override fun columnWidth(context: RenderContext<Any>, module: FormModule): Double = 10.0
 
-    override fun form(context: RenderContext<Any>, value: MutableReactive<Any>, module: FormModule): ViewWriter.() -> Unit = {
+    override fun form(context: RenderContext<Any>, value: MutableReactive<Any>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
         // Objects have no editable state
         frame { }
     }
 
-    override fun view(context: RenderContext<Any>, value: Reactive<Any>, module: FormModule): ViewWriter.() -> Unit = {
+    override fun view(context: RenderContext<Any>, value: Reactive<Any>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
         // Show the object type name
         text(context.displayName)
     }
 
-    override fun cellView(context: RenderContext<Any>, value: Reactive<Any>, module: FormModule): ViewWriter.() -> Unit = {
+    override fun cellView(context: RenderContext<Any>, value: Reactive<Any>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
         text(context.displayName)
     }
 
-    override fun cellForm(context: RenderContext<Any>, value: MutableReactive<Any>, module: FormModule): ViewWriter.() -> Unit = {
+    override fun cellForm(context: RenderContext<Any>, value: MutableReactive<Any>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
         // Objects have no editable state
         frame { }
     }

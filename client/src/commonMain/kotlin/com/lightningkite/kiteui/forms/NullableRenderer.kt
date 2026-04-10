@@ -2,11 +2,10 @@
 
 package com.lightningkite.kiteui.forms
 
-import com.lightningkite.kiteui.views.ViewWriter
+import com.lightningkite.kiteui.views.ElementWriter
 import com.lightningkite.kiteui.views.centered
 import com.lightningkite.kiteui.views.direct.*
 import com.lightningkite.kiteui.views.expanding
-import com.lightningkite.kiteui.views.l2.field
 import com.lightningkite.reactive.context.reactive
 import com.lightningkite.reactive.core.MutableReactive
 import com.lightningkite.reactive.core.Reactive
@@ -32,7 +31,7 @@ object NullableRenderer : Renderer<Any?> {
     }
 
     @Suppress("UNCHECKED_CAST")
-    override fun form(context: RenderContext<Any?>, value: MutableReactive<Any?>, module: FormModule): ViewWriter.() -> Unit {
+    override fun form(context: RenderContext<Any?>, value: MutableReactive<Any?>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit {
         val innerSerializer = context.serializer.nullElement() as? KSerializer<Any>
             ?: return { /* No inner serializer found */ }
         val innerContext = RenderContext(innerSerializer, context.fieldAnnotations)
@@ -74,7 +73,7 @@ object NullableRenderer : Renderer<Any?> {
     }
 
     @Suppress("UNCHECKED_CAST")
-    override fun view(context: RenderContext<Any?>, value: Reactive<Any?>, module: FormModule): ViewWriter.() -> Unit {
+    override fun view(context: RenderContext<Any?>, value: Reactive<Any?>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit {
         val innerSerializer = context.serializer.nullElement() as? KSerializer<Any>
             ?: return { text("—") }
         val innerContext = RenderContext(innerSerializer, context.fieldAnnotations)
@@ -98,7 +97,7 @@ object NullableRenderer : Renderer<Any?> {
     }
 
     @Suppress("UNCHECKED_CAST")
-    override fun cellView(context: RenderContext<Any?>, value: Reactive<Any?>, module: FormModule): ViewWriter.() -> Unit {
+    override fun cellView(context: RenderContext<Any?>, value: Reactive<Any?>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit {
         val innerSerializer = context.serializer.nullElement() as? KSerializer<Any>
             ?: return { text("—") }
         val innerContext = RenderContext(innerSerializer, context.fieldAnnotations)
@@ -133,7 +132,7 @@ object NullableRenderer : Renderer<Any?> {
         module: FormModule,
         label: String,
         description: String?
-    ): ViewWriter.() -> Unit = { fieldWithoutBorder(label, description) { form(context, value, module)() } }
+    ): ElementWriter.CanAddTheme.() -> Unit = { fieldWithoutBorder(label, description) { form(context, value, module)() } }
 
     override fun labeledView(
         context: RenderContext<Any?>,
@@ -141,7 +140,7 @@ object NullableRenderer : Renderer<Any?> {
         module: FormModule,
         label: String,
         description: String?
-    ): ViewWriter.() -> Unit = { fieldWithoutBorder(label, description) { view(context, value, module)() } }
+    ): ElementWriter.CanAddTheme.() -> Unit = { fieldWithoutBorder(label, description) { view(context, value, module)() } }
 }
 
 fun FormModule.registerNullable() {

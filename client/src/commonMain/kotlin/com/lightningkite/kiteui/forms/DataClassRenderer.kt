@@ -3,13 +3,13 @@
 package com.lightningkite.kiteui.forms
 
 import com.lightningkite.kiteui.models.Icon
-import com.lightningkite.kiteui.models.px
 import com.lightningkite.kiteui.models.rem
+import com.lightningkite.kiteui.views.ElementWriter
 import com.lightningkite.kiteui.views.ViewWriter
 import com.lightningkite.kiteui.views.centered
 import com.lightningkite.kiteui.views.direct.*
 import com.lightningkite.kiteui.views.expanding
-import com.lightningkite.kiteui.views.l2.icon
+import com.lightningkite.kiteui.views.direct.icon
 import com.lightningkite.reactive.core.MutableReactive
 import com.lightningkite.reactive.core.Reactive
 import com.lightningkite.reactive.lensing.lens
@@ -45,7 +45,7 @@ object DataClassRenderer : Renderer<Any> {
     }
 
     @Suppress("UNCHECKED_CAST")
-    override fun form(context: RenderContext<Any>, value: MutableReactive<Any>, module: FormModule): ViewWriter.() -> Unit {
+    override fun form(context: RenderContext<Any>, value: MutableReactive<Any>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit {
         val properties = context.serializer.serializableProperties
             ?: return { /* No properties */ }
 
@@ -97,7 +97,7 @@ object DataClassRenderer : Renderer<Any> {
     }
 
     @Suppress("UNCHECKED_CAST")
-    override fun view(context: RenderContext<Any>, value: Reactive<Any>, module: FormModule): ViewWriter.() -> Unit {
+    override fun view(context: RenderContext<Any>, value: Reactive<Any>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit {
         val properties = context.serializer.serializableProperties
             ?: return { /* No properties */ }
 
@@ -139,7 +139,7 @@ object DataClassRenderer : Renderer<Any> {
     }
 
     @Suppress("UNCHECKED_CAST")
-    override fun cellView(context: RenderContext<Any>, value: Reactive<Any>, module: FormModule): ViewWriter.() -> Unit {
+    override fun cellView(context: RenderContext<Any>, value: Reactive<Any>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit {
         // In cell view, show the "title" fields (name, title, subject, etc.)
         val properties = context.serializer.serializableProperties
             ?: return { text { ::content { value().toString() } } }
@@ -175,7 +175,7 @@ object DataClassRenderer : Renderer<Any> {
         module: FormModule,
         label: String,
         description: String?
-    ): ViewWriter.() -> Unit = {
+    ): ElementWriter.CanAddTheme.() -> Unit = {
         col {
             row {
                 h4(label)
@@ -193,7 +193,7 @@ object DataClassRenderer : Renderer<Any> {
         module: FormModule,
         label: String,
         description: String?
-    ): ViewWriter.() -> Unit = {
+    ): ElementWriter.CanAddTheme.() -> Unit = {
         col {
             row {
                 h4(label)

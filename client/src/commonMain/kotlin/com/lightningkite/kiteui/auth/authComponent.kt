@@ -7,7 +7,7 @@ import com.lightningkite.kiteui.reactive.PersistentProperty
 import com.lightningkite.kiteui.views.*
 import com.lightningkite.kiteui.views.direct.*
 import com.lightningkite.kiteui.views.l2.field
-import com.lightningkite.kiteui.views.l2.icon
+import com.lightningkite.kiteui.views.direct.icon
 import com.lightningkite.lightningserver.auth.AuthEndpoints
 import com.lightningkite.lightningserver.auth.LightningServerAuthentication
 import com.lightningkite.lightningserver.sessions.LogInRequest
@@ -189,7 +189,7 @@ open class AuthComponent(
      * @param to The ViewWriter to render into
      * @return The rendered view
      */
-    open fun render(to: ViewWriter) {
+    open fun render(to: ElementWriter) {
         to.col {
 
             renderPrimaryIdentifier(this)
@@ -210,7 +210,7 @@ open class AuthComponent(
             centered.shownWhen { !authResult.state().ready }.activityIndicator()
             // Error display if proof validation fails
             shownWhen { authResult.state().exception != null }.themed(ErrorSemantic).col {
-                val msg = remember { authResult.state().exception?.let { exceptionToMessage(it) } }
+                val msg = remember { authResult.state().exception?.let { context.exceptionMessage(it) } }
                 text { ::content { msg()?.title ?: "Error" } }
                 subtext { ::content { msg()?.body ?: "" } }
             }
@@ -343,7 +343,7 @@ open class AuthComponent(
                     proofs.value = emptyList()
                 }
             }
-            expanding.centered.text {
+            centered.expanding.text {
                 ::content{ primaryIdentifier()?.takeIf { !it.property.contains("_id") }?.value ?: "Using Passkey" }
             }
         }
@@ -382,7 +382,7 @@ open class AuthComponent(
      *
      * On successful login, calls onAuthentication callback and optionally establishes known device.
      */
-    open fun ViewWriter.renderFinalize() {
+    open fun ElementWriter.renderFinalize() {
         col {
             val desiredSessionLength = Signal<Duration?>(1.days)
             val rememberDevice = Signal(Platform.current != Platform.Web)
@@ -460,7 +460,7 @@ open class AuthComponent(
      *
      * When user selects a method, cancels background tasks and sets currentProof.
      */
-    open fun ViewWriter.pickProof() {
+    open fun ElementWriter.pickProof() {
         col {
             // Launch background tasks for early proofs (e.g., WebAuthN autofill)
             val cancelIfSelected = launch {

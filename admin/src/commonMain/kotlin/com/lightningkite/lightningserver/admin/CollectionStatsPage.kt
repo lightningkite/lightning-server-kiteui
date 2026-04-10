@@ -46,7 +46,10 @@ import com.lightningkite.kiteui.views.*
 import com.lightningkite.kiteui.views.direct.*
 import com.lightningkite.kiteui.views.l2.children
 import com.lightningkite.kiteui.views.l2.field
-import com.lightningkite.kiteui.views.l2.icon
+import com.lightningkite.kiteui.views.direct.icon
+import com.lightningkite.kiteui.views.l2.LabelGapSemantic
+import com.lightningkite.kiteui.views.l2.LabelSemantic
+import com.lightningkite.kiteui.views.themed
 import com.lightningkite.services.database.*
 import com.lightningkite.lightningserver.db.ModelCache
 import com.lightningkite.reactive.context.invoke
@@ -81,7 +84,7 @@ class CollectionStatsPage(val collectionName: String) : Page {
                 as ModelCache<UnknownModel, UnknownId>
     }
 
-    override fun ViewWriter.render() {
+    override fun ElementWriter.CanAddTheme.render() {
         col {
             reactive<Unit> {
                 clearChildren()
@@ -165,8 +168,8 @@ class CollectionStatsPage(val collectionName: String) : Page {
                 }
             }
             weight(1f).shownWhen { aggregateProperty() != null }.col {
-                gap = 0.px
-                FieldLabelSemantic.onNext.text("Aggregation")
+                themeChoice += LabelGapSemantic
+                themed(LabelSemantic).text("Aggregation")
                 form(forms, Aggregate.serializer(), aggregationType)
             }
         }
@@ -188,11 +191,11 @@ class CollectionStatsPage(val collectionName: String) : Page {
                                     )
                                 )
                             }
-                            ListSemantic.onNext.recyclerView {
+                            themed(ListSemantic).recyclerView {
                                 children(remember { counts().entries.sortedByDescending { it.value } }, id = { it.key }) {
                                     card.row {
                                         val ser = groupBy.serializerAny as KSerializer<Any?>
-                                        expanding.centered.view(
+                                        centered.expanding.view(
                                             context = forms,
                                             serializer = ser,
                                             readable = it.lens {

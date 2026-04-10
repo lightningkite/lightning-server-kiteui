@@ -1,28 +1,22 @@
-package com.lightningkite.lightningserver.admin
+package com.lightningkite.lightningserver.admin.tests
 
 import com.lightningkite.kiteui.Routable
 import com.lightningkite.kiteui.fileName
-import com.lightningkite.kiteui.forms.description
 import com.lightningkite.kiteui.forms.*
 import com.lightningkite.kiteui.models.rem
 import com.lightningkite.kiteui.navigation.Page
 import com.lightningkite.kiteui.views.*
 import com.lightningkite.kiteui.views.direct.*
 import com.lightningkite.reactive.core.Signal
-import com.lightningkite.reactive.context.invoke
 import com.lightningkite.services.data.Description
 import com.lightningkite.services.data.GenerateDataClassPaths
 import com.lightningkite.services.data.Group
 import com.lightningkite.services.database.Condition
 import com.lightningkite.services.database.Modification
-import com.lightningkite.services.database.SerializableProperty
 import com.lightningkite.services.database.SortPart
 import com.lightningkite.services.database.default
-import com.lightningkite.services.database.serializableAnnotations
-import com.lightningkite.services.database.serializableProperties
 import com.lightningkite.services.database.sort
 import com.lightningkite.services.files.ServerFile
-import kotlinx.serialization.InternalSerializationApi
 import kotlinx.serialization.Serializable
 
 /**
@@ -85,7 +79,7 @@ enum class TestEnum {
  */
 @Routable("forms2-test")
 class Forms2TestScreen : Page {
-    override fun ViewWriter.render() {
+    override fun ElementWriter.CanAddTheme.render() {
         val module = FormModule().apply {
             defaults()
             // Mock file uploader for testing - by Claude

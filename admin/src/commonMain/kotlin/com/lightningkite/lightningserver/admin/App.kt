@@ -41,7 +41,6 @@ package com.lightningkite.lightningserver.admin
 //    @Suppress("UNUSED_VARIABLE")
 
 import com.lightningkite.kiteui.auth.authComponent
-import com.lightningkite.kiteui.exceptions.ExceptionToMessages
 import com.lightningkite.kiteui.exceptions.installLsError
 import com.lightningkite.kiteui.forms.displayName
 import com.lightningkite.kiteui.models.*
@@ -56,13 +55,13 @@ import com.lightningkite.kiteui.views.direct.*
 import com.lightningkite.kiteui.views.l2.*
 import com.lightningkite.lightningserver.LSError
 import com.lightningkite.lightningserver.sessions.proofs.LiveAuthClientEndpoints
-import com.lightningkite.services.database.Condition
 import com.lightningkite.reactive.context.invoke
 import com.lightningkite.reactive.context.reactive
 import com.lightningkite.reactive.core.remember
 import com.lightningkite.reactive.core.rememberSuspending
 import com.lightningkite.reactive.extensions.debounceWrite
 import com.lightningkite.reactive.extensions.modify
+import com.lightningkite.services.database.Condition
 import com.lightningkite.services.database.SerializableProperty
 import com.lightningkite.services.database.SerializationRegistry
 import com.lightningkite.services.database.serializableProperties
@@ -114,7 +113,7 @@ fun ViewWriter.app(navigator: PageNavigator, dialog: PageNavigator) {
 
     // Install custom error message handlers for Lightning Server errors
     // Provides user-friendly error messages for common Lightning Server API errors
-    ExceptionToMessages.root.installLsError()
+    context.exceptionHandlers.installLsError()
 
     // Configure the navigation factory to use top-and-left navigation layout
     // This sets up the sidebar + top bar layout for the admin panel
@@ -300,13 +299,13 @@ fun ViewWriter.app(navigator: PageNavigator, dialog: PageNavigator) {
 
                                     // Logout button - only visible when credentials exist
                                     // Provides confirmation dialog to prevent accidental logout
-                                    onlyWhen { adminCredentials() != null }.card.button {
+                                    shownWhen { adminCredentials() != null }.card.button {
                                         centered.row {
                                             centered.icon(Icon.logout, "Log Out")
                                             centered.text("Log Out")
                                         }
                                         onClick("Log Out") {
-                                            confirmDanger("Log Out", "Are you sure you want to log out?", "Log Out") {
+                                            context.confirmDanger("Log Out", "Are you sure you want to log out?", "Log Out") {
                                                 // TODO: Preserve current navigation state instead of always resetting to HomePage
                                                 pageNavigator.reset(HomePage())
                                                 adminCredentials.value = null

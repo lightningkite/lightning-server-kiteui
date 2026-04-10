@@ -7,7 +7,7 @@ import com.lightningkite.kiteui.models.dp
 import com.lightningkite.kiteui.views.*
 import com.lightningkite.kiteui.views.direct.*
 import com.lightningkite.kiteui.views.l2.children
-import com.lightningkite.kiteui.views.l2.icon
+import com.lightningkite.kiteui.views.direct.icon
 import com.lightningkite.lightningserver.db.LimitReactiveList
 import com.lightningkite.lightningserver.db.ModelCache
 import com.lightningkite.lightningserver.sessions.proofs.*
@@ -18,7 +18,7 @@ import com.lightningkite.services.database.*
 import kotlin.time.Clock.System.now
 
 
-fun ViewWriter.manageWebAuthNCredentialsComponent(
+fun ElementWriter.manageWebAuthNCredentialsComponent(
     webAuthNCCredentials: Reactive<ModelCache<WebAuthNCredential, String>?>,
     subjectName: Reactive<String>,
     subjectId: Reactive<String>,
@@ -44,7 +44,7 @@ fun ViewWriter.manageWebAuthNCredentialsComponent(
                 centered.button {
                     icon(Icon.delete, "Delete")
                     onClick {
-                        confirmDanger(
+                        context.confirmDanger(
                             "Delete Passkey",
                             "Are you sure you want to delete this passkey? You won't be able to use it to sign in."
                         ) {

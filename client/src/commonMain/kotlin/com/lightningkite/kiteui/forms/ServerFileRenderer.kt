@@ -1,18 +1,16 @@
 package com.lightningkite.kiteui.forms
 
-import com.lightningkite.kiteui.FileReference
 import com.lightningkite.kiteui.models.Icon
 import com.lightningkite.kiteui.models.ImageRemote
 import com.lightningkite.kiteui.models.rem
 import com.lightningkite.kiteui.navigation.Page
 import com.lightningkite.kiteui.requestFile
-import com.lightningkite.kiteui.views.ViewWriter
+import com.lightningkite.kiteui.views.ElementWriter
 import com.lightningkite.kiteui.views.card
 import com.lightningkite.kiteui.views.centered
 import com.lightningkite.kiteui.views.direct.*
 import com.lightningkite.kiteui.views.expanding
-import com.lightningkite.kiteui.views.l2.icon
-import com.lightningkite.reactive.context.invoke
+import com.lightningkite.kiteui.views.direct.icon
 import com.lightningkite.reactive.core.MutableReactive
 import com.lightningkite.reactive.core.Reactive
 import com.lightningkite.services.database.HasId
@@ -40,7 +38,7 @@ object ServerFileRenderer : Renderer<ServerFile?> {
         return if (context.serializer.descriptor.serialName == "com.lightningkite.services.files.ServerFile") 1f else -1f
     }
 
-    override fun form(context: RenderContext<ServerFile?>, value: MutableReactive<ServerFile?>, module: FormModule): ViewWriter.() -> Unit = {
+    override fun form(context: RenderContext<ServerFile?>, value: MutableReactive<ServerFile?>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
         row {
             expanding.externalLink {
                 newTab = true
@@ -80,7 +78,7 @@ object ServerFileRenderer : Renderer<ServerFile?> {
         }
     }
 
-    override fun view(context: RenderContext<ServerFile?>, value: Reactive<ServerFile?>, module: FormModule): ViewWriter.() -> Unit = {
+    override fun view(context: RenderContext<ServerFile?>, value: Reactive<ServerFile?>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
         externalLink {
             newTab = true
             ::to { value()?.location ?: "" }
@@ -105,7 +103,7 @@ object ServerFileRenderer : Renderer<ServerFile?> {
         }
     }
 
-    override fun cellView(context: RenderContext<ServerFile?>, value: Reactive<ServerFile?>, module: FormModule): ViewWriter.() -> Unit = {
+    override fun cellView(context: RenderContext<ServerFile?>, value: Reactive<ServerFile?>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
         text {
             ::content {
                 value()?.location

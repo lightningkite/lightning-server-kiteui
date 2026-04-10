@@ -8,7 +8,7 @@ import com.lightningkite.kiteui.reactive.Action
 import com.lightningkite.kiteui.views.*
 import com.lightningkite.kiteui.views.direct.*
 import com.lightningkite.kiteui.views.l2.errorText
-import com.lightningkite.kiteui.views.l2.icon
+import com.lightningkite.kiteui.views.direct.icon
 import com.lightningkite.lightningserver.sessions.proofs.FinishProof
 import com.lightningkite.lightningserver.sessions.proofs.Proof
 import com.lightningkite.lightningserver.sessions.proofs.ProofClientEndpoints
@@ -67,7 +67,7 @@ data class EmailProofComponent(val p: ProofClientEndpoints.Email) : ProofCompone
      * @return The root view modifier for the rendered UI
      */
     override fun render(
-        to: ViewWriter,
+        to: ElementWriter.CanAddTheme,
         primaryIdentifier: UserIdentification?,
         option: ProofOption,
         onResult: (Proof?) -> Unit
@@ -106,7 +106,7 @@ data class EmailProofComponent(val p: ProofClientEndpoints.Email) : ProofCompone
                     }
                 }
                 // Error messages appear here when proof fails
-                SubtextSemantic.onNext.errorText()
+                errorText()
 
                 important.buttonTheme.button {
                     debugName = "submitButton"

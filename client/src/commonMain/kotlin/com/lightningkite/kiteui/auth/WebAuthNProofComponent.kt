@@ -41,7 +41,7 @@ data class WebAuthNProofComponent(
     } else null
 
     override fun render(
-        to: ViewWriter,
+        to: ElementWriter.CanAddTheme,
         primaryIdentifier: UserIdentification?,
         checks: ProofsCheckResult<*>?,
         onResult: (Proof?) -> Unit,

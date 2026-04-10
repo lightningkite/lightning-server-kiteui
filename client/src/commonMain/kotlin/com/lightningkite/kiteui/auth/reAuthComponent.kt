@@ -4,7 +4,7 @@ import com.lightningkite.kiteui.models.ErrorSemantic
 import com.lightningkite.kiteui.models.rem
 import com.lightningkite.kiteui.views.*
 import com.lightningkite.kiteui.views.direct.*
-import com.lightningkite.kiteui.views.l2.icon
+import com.lightningkite.kiteui.views.direct.icon
 import com.lightningkite.lightningserver.auth.AuthEndpoints
 import com.lightningkite.lightningserver.sessions.LogInRequest
 import com.lightningkite.lightningserver.sessions.ProofsCheckResult
@@ -149,7 +149,7 @@ open class ReAuthComponent(
             centered.shownWhen { !authResult.state().ready }.activityIndicator()
             // Error display if proof validation fails
             shownWhen { authResult.state().exception != null }.themed(ErrorSemantic).col {
-                val msg = remember { authResult.state().exception?.let { exceptionToMessage(it) } }
+                val msg = remember { authResult.state().exception?.let { context.exceptionMessage(it) } }
                 text { ::content { msg()?.title ?: "Error" } }
                 subtext { ::content { msg()?.body ?: "" } }
             }
@@ -189,7 +189,7 @@ open class ReAuthComponent(
      *
      * On successful login, calls onAuthentication callback and optionally establishes known device.
      */
-    open fun ViewWriter.renderFinalize() {
+    open fun ElementWriter.renderFinalize() {
         col {
             centered.h5("Ready to login")
 
@@ -219,7 +219,7 @@ open class ReAuthComponent(
      *
      * When user selects a method, cancels background tasks and sets currentProof.
      */
-    open fun ViewWriter.pickProof() {
+    open fun ElementWriter.pickProof() {
         col {
             // Launch background tasks for early proofs (e.g., WebAuthN autofill)
             val cancelIfSelected = launch {

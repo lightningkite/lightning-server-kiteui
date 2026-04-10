@@ -1,6 +1,7 @@
 package com.lightningkite.kiteui.auth
 
 import com.lightningkite.kiteui.models.Icon
+import com.lightningkite.kiteui.views.ElementWriter
 
 import com.lightningkite.kiteui.views.ViewWriter
 import com.lightningkite.kiteui.views.direct.frame
@@ -80,7 +81,7 @@ interface ProofComponent {
      * @param onResult Callback invoked when proof collection completes (null if user cancels)
      * @return The rendered view
      */
-    fun render(to: ViewWriter, primaryIdentifier: UserIdentification?, checks: ProofsCheckResult<*>?, onResult: (Proof?) -> Unit): Unit {
+    fun render(to: ElementWriter.CanAddTheme, primaryIdentifier: UserIdentification?, checks: ProofsCheckResult<*>?, onResult: (Proof?) -> Unit): Unit {
         // TODO: This error message should be impossible to reach; consider removing or replacing with exception
         val primaryIdentifier = primaryIdentifier ?: run {
             to.frame {
@@ -112,7 +113,7 @@ interface ProofComponent {
      * @param onResult Callback invoked when proof collection completes
      * @return The rendered view
      */
-    fun render(to: ViewWriter, primaryIdentifier: UserIdentification?, option: ProofOption, onResult: (Proof?) -> Unit): Unit = TODO()
+    fun render(to: ElementWriter.CanAddTheme, primaryIdentifier: UserIdentification?, option: ProofOption, onResult: (Proof?) -> Unit)
 }
 
 /*

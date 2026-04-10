@@ -4,17 +4,13 @@ package com.lightningkite.kiteui.forms
 
 import com.lightningkite.kiteui.components.CodeBlockSemantic
 import com.lightningkite.kiteui.models.Dimension
-import com.lightningkite.kiteui.models.PrintSemantic
 import com.lightningkite.kiteui.models.rem
-import com.lightningkite.kiteui.views.ViewWriter
+import com.lightningkite.kiteui.views.ElementWriter
 import com.lightningkite.kiteui.views.direct.*
-import com.lightningkite.kiteui.views.fieldTheme
+import com.lightningkite.kiteui.views.themed
 import com.lightningkite.reactive.core.MutableReactive
 import com.lightningkite.reactive.core.Reactive
 import com.lightningkite.reactive.core.Signal
-import com.lightningkite.reactive.lensing.lens
-import com.lightningkite.services.database.Condition
-import com.lightningkite.services.database.MySealedClassSerializer
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.descriptors.PolymorphicKind
@@ -47,7 +43,7 @@ object JsonRenderer : Renderer<Any?> {
     }
 
     @Suppress("UNCHECKED_CAST")
-    override fun form(context: RenderContext<Any?>, value: MutableReactive<Any?>, module: FormModule): ViewWriter.() -> Unit {
+    override fun form(context: RenderContext<Any?>, value: MutableReactive<Any?>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit {
         val serializer = context.serializer as KSerializer<Any?>
 
         return {
@@ -86,7 +82,7 @@ object JsonRenderer : Renderer<Any?> {
     }
 
     @Suppress("UNCHECKED_CAST")
-    override fun view(context: RenderContext<Any?>, value: Reactive<Any?>, module: FormModule): ViewWriter.() -> Unit {
+    override fun view(context: RenderContext<Any?>, value: Reactive<Any?>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit {
         val serializer = context.serializer as KSerializer<Any?>
 
         return {
@@ -103,7 +99,7 @@ object JsonRenderer : Renderer<Any?> {
         }
     }
 
-    override fun cellView(context: RenderContext<Any?>, value: Reactive<Any?>, module: FormModule): ViewWriter.() -> Unit = {
+    override fun cellView(context: RenderContext<Any?>, value: Reactive<Any?>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
         // Compact JSON (no pretty print) for cells
         val compactJson = Json { encodeDefaults = false }
         @Suppress("UNCHECKED_CAST")
@@ -152,7 +148,7 @@ object JsonRenderer : Renderer<Any?> {
         module: FormModule,
         label: String,
         description: String?
-    ): ViewWriter.() -> Unit = {
+    ): ElementWriter.CanAddTheme.() -> Unit = {
         fieldWithoutBorder(label, description) {
             form(context, value, module)()
         }
@@ -164,7 +160,7 @@ object JsonRenderer : Renderer<Any?> {
         module: FormModule,
         label: String,
         description: String?
-    ): ViewWriter.() -> Unit = {
+    ): ElementWriter.CanAddTheme.() -> Unit = {
         fieldWithoutBorder(label, description) {
             view(context, value, module)()
         }

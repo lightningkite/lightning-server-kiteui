@@ -3,13 +3,11 @@
 package com.lightningkite.kiteui.forms
 
 import com.lightningkite.kiteui.components.CodeBlockSemantic
-import com.lightningkite.kiteui.views.ViewWriter
+import com.lightningkite.kiteui.views.ElementWriter
 import com.lightningkite.kiteui.views.direct.*
-import com.lightningkite.kiteui.views.fieldTheme
 import com.lightningkite.reactive.core.MutableReactive
 import com.lightningkite.reactive.core.Reactive
 import com.lightningkite.reactive.core.Signal
-import com.lightningkite.reactive.lensing.lens
 import com.lightningkite.services.database.SerializableProperty
 import com.lightningkite.services.database.serializableProperties
 import com.lightningkite.services.database.listElement
@@ -41,7 +39,7 @@ object CsvRenderer : Renderer<List<Any?>> {
     }
 
     @Suppress("UNCHECKED_CAST")
-    override fun form(context: RenderContext<List<Any?>>, value: MutableReactive<List<Any?>>, module: FormModule): ViewWriter.() -> Unit {
+    override fun form(context: RenderContext<List<Any?>>, value: MutableReactive<List<Any?>>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit {
         val elementSerializer = context.serializer.listElement() as? KSerializer<Any?> ?: return { text("Not a valid list") }
         val properties = elementSerializer.serializableProperties?.toList() ?: return { text("Not a data class") }
 
@@ -72,7 +70,7 @@ object CsvRenderer : Renderer<List<Any?>> {
     }
 
     @Suppress("UNCHECKED_CAST")
-    override fun view(context: RenderContext<List<Any?>>, value: Reactive<List<Any?>>, module: FormModule): ViewWriter.() -> Unit {
+    override fun view(context: RenderContext<List<Any?>>, value: Reactive<List<Any?>>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit {
         val elementSerializer = context.serializer.listElement() as? KSerializer<Any?> ?: return { text("Not a valid list") }
         val properties = elementSerializer.serializableProperties?.toList() ?: return { text("Not a data class") }
 
@@ -84,7 +82,7 @@ object CsvRenderer : Renderer<List<Any?>> {
         }
     }
 
-    override fun cellView(context: RenderContext<List<Any?>>, value: Reactive<List<Any?>>, module: FormModule): ViewWriter.() -> Unit = {
+    override fun cellView(context: RenderContext<List<Any?>>, value: Reactive<List<Any?>>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
         text { ::content { "${value().size} rows" } }
     }
 

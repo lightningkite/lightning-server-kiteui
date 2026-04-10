@@ -49,7 +49,7 @@ import kotlin.time.Clock.System.now
 
 @Routable("/")
 class HomePage : Page {
-    override fun ViewWriter.render() {
+    override fun ElementWriter.CanAddTheme.render() {
         frame {
             gravity(Align.Center, Align.Stretch).sizeConstraints(width = 40.rem).scrolls.col {
                 h1 {
@@ -58,7 +58,7 @@ class HomePage : Page {
                 card.col {
                     h2("Settings")
                     row {
-                        expanding.centered.text("Show Endpoints")
+                        centered.expanding.text("Show Endpoints")
                         centered.switch {
                             checked bind adminSettings.lens(
                                 get = { it.showEndpoints },
@@ -67,7 +67,7 @@ class HomePage : Page {
                         }
                     }
                     row {
-                        expanding.centered.text("Show Hidden Fields")
+                        centered.expanding.text("Show Hidden Fields")
                         centered.switch {
                             checked bind adminSettings.lens(
                                 get = { it.showHiddenFields },
@@ -76,7 +76,7 @@ class HomePage : Page {
                         }
                     }
                     row {
-                        expanding.centered.text("Edit Unrecommended Fields")
+                        centered.expanding.text("Edit Unrecommended Fields")
                         centered.switch {
                             checked bind adminSettings.lens(
                                 get = { it.editAllFields },
@@ -85,7 +85,7 @@ class HomePage : Page {
                         }
                     }
                     row {
-                        expanding.centered.text("Show View Type Switcher")
+                        centered.expanding.text("Show View Type Switcher")
                         centered.switch {
                             checked bind adminSettings.lens(
                                 get = { it.showAlternativeEditOptions },
@@ -94,7 +94,7 @@ class HomePage : Page {
                         }
                     }
                     row {
-                        expanding.centered.text("Enable destructive actions")
+                        centered.expanding.text("Enable destructive actions")
                         centered.switch {
                             checked bind unlockDestructiveActions
                                 .withWrite {
@@ -104,7 +104,7 @@ class HomePage : Page {
                         }
                     }
                     row {
-                        expanding.centered.text("Live Data")
+                        centered.expanding.text("Live Data")
                         centered.switch {
                             checked bind adminSettings.lens(
                                 get = { it.liveData },

@@ -2,7 +2,7 @@
 
 package com.lightningkite.kiteui.forms
 
-import com.lightningkite.kiteui.views.ViewWriter
+import com.lightningkite.kiteui.views.ElementWriter
 import com.lightningkite.reactive.core.MutableReactive
 import com.lightningkite.reactive.core.Reactive
 import com.lightningkite.reactive.lensing.lens
@@ -27,7 +27,7 @@ object WrapperRenderer : Renderer<Any> {
     }
 
     @Suppress("UNCHECKED_CAST")
-    override fun form(context: RenderContext<Any>, value: MutableReactive<Any>, module: FormModule): ViewWriter.() -> Unit {
+    override fun form(context: RenderContext<Any>, value: MutableReactive<Any>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit {
         val wrapper = context.serializer as WrappingSerializer<Any, Any?>
         val innerSerializer = wrapper.getDeferred() as KSerializer<Any?>
         val innerContext = RenderContext(innerSerializer, context.fieldAnnotations)
@@ -42,7 +42,7 @@ object WrapperRenderer : Renderer<Any> {
     }
 
     @Suppress("UNCHECKED_CAST")
-    override fun view(context: RenderContext<Any>, value: Reactive<Any>, module: FormModule): ViewWriter.() -> Unit {
+    override fun view(context: RenderContext<Any>, value: Reactive<Any>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit {
         val wrapper = context.serializer as WrappingSerializer<Any, Any?>
         val innerSerializer = wrapper.getDeferred() as KSerializer<Any?>
         val innerContext = RenderContext(innerSerializer, context.fieldAnnotations)
@@ -54,7 +54,7 @@ object WrapperRenderer : Renderer<Any> {
     }
 
     @Suppress("UNCHECKED_CAST")
-    override fun cellView(context: RenderContext<Any>, value: Reactive<Any>, module: FormModule): ViewWriter.() -> Unit {
+    override fun cellView(context: RenderContext<Any>, value: Reactive<Any>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit {
         val wrapper = context.serializer as WrappingSerializer<Any, Any?>
         val innerSerializer = wrapper.getDeferred() as KSerializer<Any?>
         val innerContext = RenderContext(innerSerializer, context.fieldAnnotations)
@@ -66,7 +66,7 @@ object WrapperRenderer : Renderer<Any> {
     }
 
     @Suppress("UNCHECKED_CAST")
-    override fun cellForm(context: RenderContext<Any>, value: MutableReactive<Any>, module: FormModule): ViewWriter.() -> Unit {
+    override fun cellForm(context: RenderContext<Any>, value: MutableReactive<Any>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit {
         val wrapper = context.serializer as WrappingSerializer<Any, Any?>
         val innerSerializer = wrapper.getDeferred() as KSerializer<Any?>
         val innerContext = RenderContext(innerSerializer, context.fieldAnnotations)
@@ -94,7 +94,7 @@ object WrapperRenderer : Renderer<Any> {
         module: FormModule,
         label: String,
         description: String?
-    ): ViewWriter.() -> Unit = { fieldWithoutBorder(label, description) { form(context, value, module)() } }
+    ): ElementWriter.CanAddTheme.() -> Unit = { fieldWithoutBorder(label, description) { form(context, value, module)() } }
 
     override fun labeledView(
         context: RenderContext<Any>,
@@ -102,7 +102,7 @@ object WrapperRenderer : Renderer<Any> {
         module: FormModule,
         label: String,
         description: String?
-    ): ViewWriter.() -> Unit = { fieldWithoutBorder(label, description) { view(context, value, module)() } }
+    ): ElementWriter.CanAddTheme.() -> Unit = { fieldWithoutBorder(label, description) { view(context, value, module)() } }
 }
 
 fun FormModule.registerWrapper() {

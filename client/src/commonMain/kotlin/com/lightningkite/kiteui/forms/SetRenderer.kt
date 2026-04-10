@@ -4,19 +4,18 @@ package com.lightningkite.kiteui.forms
 
 import com.lightningkite.kiteui.models.Icon
 import com.lightningkite.kiteui.models.ListSemantic
-import com.lightningkite.kiteui.models.SubtextSemantic
 import com.lightningkite.kiteui.models.px
 import com.lightningkite.kiteui.models.rem
-import com.lightningkite.kiteui.views.ViewWriter
+import com.lightningkite.kiteui.views.ElementWriter
 import com.lightningkite.kiteui.views.card
 import com.lightningkite.kiteui.views.centered
 import com.lightningkite.kiteui.views.direct.*
 import com.lightningkite.kiteui.views.expanding
 import com.lightningkite.kiteui.views.forEachUpdating
-import com.lightningkite.kiteui.views.l2.icon
+import com.lightningkite.kiteui.views.direct.icon
+import com.lightningkite.kiteui.views.themed
 import com.lightningkite.reactive.context.invoke
 import com.lightningkite.reactive.context.reactive
-import com.lightningkite.reactive.core.Constant
 import com.lightningkite.reactive.core.MutableReactive
 import com.lightningkite.reactive.core.Reactive
 import com.lightningkite.reactive.core.Signal
@@ -48,7 +47,7 @@ object SetRenderer : Renderer<Set<Any?>> {
     }
 
     @Suppress("UNCHECKED_CAST")
-    override fun form(context: RenderContext<Set<Any?>>, value: MutableReactive<Set<Any?>>, module: FormModule): ViewWriter.() -> Unit = {
+    override fun form(context: RenderContext<Set<Any?>>, value: MutableReactive<Set<Any?>>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
         val elementSerializer = context.serializer.listElement() as KSerializer<Any?>
         val elementContext = RenderContext(elementSerializer)
 
@@ -109,7 +108,7 @@ object SetRenderer : Renderer<Set<Any?>> {
     }
 
     @Suppress("UNCHECKED_CAST")
-    override fun view(context: RenderContext<Set<Any?>>, value: Reactive<Set<Any?>>, module: FormModule): ViewWriter.() -> Unit = {
+    override fun view(context: RenderContext<Set<Any?>>, value: Reactive<Set<Any?>>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
         val elementSerializer = context.serializer.listElement() as KSerializer<Any?>
         val elementContext = RenderContext(elementSerializer)
 
@@ -144,7 +143,7 @@ object SetRenderer : Renderer<Set<Any?>> {
         }
     }
 
-    override fun cellView(context: RenderContext<Set<Any?>>, value: Reactive<Set<Any?>>, module: FormModule): ViewWriter.() -> Unit = {
+    override fun cellView(context: RenderContext<Set<Any?>>, value: Reactive<Set<Any?>>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
         // Show count in cell view
         text { ::content { "${value().size} items" } }
     }
@@ -160,7 +159,7 @@ object SetRenderer : Renderer<Set<Any?>> {
         module: FormModule,
         label: String,
         description: String?
-    ): ViewWriter.() -> Unit = {
+    ): ElementWriter.CanAddTheme.() -> Unit = {
         col {
             row {
                 h4(label)
@@ -178,7 +177,7 @@ object SetRenderer : Renderer<Set<Any?>> {
         module: FormModule,
         label: String,
         description: String?
-    ): ViewWriter.() -> Unit = {
+    ): ElementWriter.CanAddTheme.() -> Unit = {
         col {
             row {
                 h4(label)

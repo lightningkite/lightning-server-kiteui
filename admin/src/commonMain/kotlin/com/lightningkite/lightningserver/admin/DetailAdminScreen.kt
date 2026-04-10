@@ -45,7 +45,7 @@ import com.lightningkite.kiteui.models.rem
 import com.lightningkite.kiteui.navigation.*
 import com.lightningkite.kiteui.views.*
 import com.lightningkite.kiteui.views.direct.*
-import com.lightningkite.kiteui.views.l2.icon
+import com.lightningkite.kiteui.views.direct.icon
 import com.lightningkite.kiteui.views.l2.toast
 import com.lightningkite.services.database.Condition
 import com.lightningkite.services.database.ConditionSerializer
@@ -71,7 +71,7 @@ class DetailAdminPage(val collectionName: String, val itemId: String) : Page {
 
     override val title: Reactive<String> = remember { "Edit $collectionName" }
 
-    override fun ViewWriter.render() {
+    override fun ElementWriter.CanAddTheme.render() {
         col {
             reactive {
                 clearChildren()

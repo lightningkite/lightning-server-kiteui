@@ -6,13 +6,13 @@ import com.lightningkite.kiteui.FileReference
 import com.lightningkite.kiteui.models.Icon
 import com.lightningkite.kiteui.models.SubtextSemantic
 import com.lightningkite.kiteui.models.rem
-import com.lightningkite.kiteui.views.ViewWriter
+import com.lightningkite.kiteui.views.ElementWriter
 import com.lightningkite.kiteui.views.atTopEnd
 import com.lightningkite.kiteui.views.direct.*
 import com.lightningkite.kiteui.views.expanding
 import com.lightningkite.kiteui.views.l2.dialog
-import com.lightningkite.kiteui.views.l2.field
-import com.lightningkite.kiteui.views.l2.icon
+import com.lightningkite.kiteui.views.direct.icon
+import com.lightningkite.kiteui.views.themed
 import com.lightningkite.reactive.context.reactive
 import com.lightningkite.reactive.core.Constant
 import com.lightningkite.reactive.core.MutableReactive
@@ -237,25 +237,25 @@ class FormModule {
     /**
      * Render an editable form for the value.
      */
-    fun <T> form(context: RenderContext<T>, value: MutableReactive<T>): ViewWriter.() -> Unit =
+    fun <T> form(context: RenderContext<T>, value: MutableReactive<T>): ElementWriter.CanAddTheme.() -> Unit =
         select(context).form(context, value, this)
 
     /**
      * Render a read-only view of the value.
      */
-    fun <T> view(context: RenderContext<T>, value: Reactive<T>): ViewWriter.() -> Unit =
+    fun <T> view(context: RenderContext<T>, value: Reactive<T>): ElementWriter.CanAddTheme.() -> Unit =
         select(context).view(context, value, this)
 
     /**
      * Render a compact editable cell.
      */
-    fun <T> cellForm(context: RenderContext<T>, value: MutableReactive<T>): ViewWriter.() -> Unit =
+    fun <T> cellForm(context: RenderContext<T>, value: MutableReactive<T>): ElementWriter.CanAddTheme.() -> Unit =
         select(context).cellForm(context, value, this)
 
     /**
      * Render a compact read-only cell.
      */
-    fun <T> cellView(context: RenderContext<T>, value: Reactive<T>): ViewWriter.() -> Unit =
+    fun <T> cellView(context: RenderContext<T>, value: Reactive<T>): ElementWriter.CanAddTheme.() -> Unit =
         select(context).cellView(context, value, this)
 
     /**
@@ -276,13 +276,13 @@ class FormModule {
         context: RenderContext<T>,
         value: MutableReactive<T>,
         renderer: Renderer<T>
-    ): ViewWriter.() -> Unit = {
+    ): ElementWriter.CanAddTheme.() -> Unit = {
         row {
             expanding.frame { renderer.cellView(context, value, this@FormModule)() }
             button {
                 icon(Icon.settings, "Edit")
                 onClick {
-                    dialog { _ ->
+                    this.context.dialog { _ ->
                         renderer.form(context, value, this@FormModule)()
                     }
                 }
@@ -307,7 +307,7 @@ class FormModule {
         value: MutableReactive<T>,
         label: String,
         description: String?
-    ): ViewWriter.() -> Unit {
+    ): ElementWriter.CanAddTheme.() -> Unit {
         val renderers = selectAll(context)
         val selectedRenderer = selectWithOverride(context)
 
@@ -348,7 +348,7 @@ class FormModule {
         value: Reactive<T>,
         label: String,
         description: String?
-    ): ViewWriter.() -> Unit {
+    ): ElementWriter.CanAddTheme.() -> Unit {
         val renderers = selectAll(context)
         val selectedRenderer = selectWithOverride(context)
 

@@ -3,17 +3,19 @@
 package com.lightningkite.kiteui.forms
 
 import com.lightningkite.kiteui.models.*
+import com.lightningkite.kiteui.models.DropTargetDelegate
 import com.lightningkite.kiteui.navigation.Page
 import com.lightningkite.kiteui.views.*
 import com.lightningkite.kiteui.views.direct.*
 import com.lightningkite.kiteui.views.l2.children
-import com.lightningkite.kiteui.views.l2.icon
+import com.lightningkite.kiteui.views.direct.icon
 import com.lightningkite.reactive.context.invoke
 import com.lightningkite.reactive.context.reactive
 import com.lightningkite.reactive.core.*
 import com.lightningkite.serialization.lensPath
 import com.lightningkite.kiteui.navigation.DefaultJson
 import com.lightningkite.lightningserver.db.LimitReactiveList
+import com.lightningkite.reactive.context.ReactiveContext
 import com.lightningkite.reactive.extensions.withWrite
 import com.lightningkite.services.database.*
 import kotlinx.coroutines.launch
@@ -21,7 +23,6 @@ import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
-import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.descriptors.StructureKind
 
 /**
@@ -55,29 +56,31 @@ object TableRenderer : Renderer<List<Any?>> {
     }
 
     @Suppress("UNCHECKED_CAST")
-    override fun form(context: RenderContext<List<Any?>>, value: MutableReactive<List<Any?>>, module: FormModule): ViewWriter.() -> Unit {
+    override fun form(context: RenderContext<List<Any?>>, value: MutableReactive<List<Any?>>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit {
         // For now, table form just delegates to ListRenderer form
         // TODO: Implement editable table with inline editing
         return ListRenderer.form(context, value, module)
     }
 
     @Suppress("UNCHECKED_CAST")
-    override fun view(context: RenderContext<List<Any?>>, value: Reactive<List<Any?>>, module: FormModule): ViewWriter.() -> Unit {
+    override fun view(context: RenderContext<List<Any?>>, value: Reactive<List<Any?>>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit {
         val innerSerializer = context.serializer.listElement() as KSerializer<Any?>
         return {
             // by Claude - wrap value in Constant() to match double-wrapped reactive signature
-            sizeConstraints(height = 30.rem).renderTable(
-                module = module,
-                innerSerializer = innerSerializer,
-                items = Constant(value),
-                columns = Signal(innerSerializer.defaultColumns().map { ColumnInfo(it, module) }),
-                linkTo = null,
-                action = null
-            )
+            frame {
+                sizeConstraints(height = 30.rem).renderTable(
+                    module = module,
+                    innerSerializer = innerSerializer,
+                    items = Constant(value),
+                    columns = Signal(innerSerializer.defaultColumns().map { ColumnInfo(it, module) }),
+                    linkTo = null,
+                    action = null
+                )
+            }
         }
     }
 
-    override fun cellView(context: RenderContext<List<Any?>>, value: Reactive<List<Any?>>, module: FormModule): ViewWriter.() -> Unit = {
+    override fun cellView(context: RenderContext<List<Any?>>, value: Reactive<List<Any?>>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
         text { ::content { "${value().size} items" } }
     }
 
@@ -90,7 +93,7 @@ object TableRenderer : Renderer<List<Any?>> {
         module: FormModule,
         label: String,
         description: String?
-    ): ViewWriter.() -> Unit = {
+    ): ElementWriter.CanAddTheme.() -> Unit = {
         col {
             row {
                 h4(label)
@@ -108,7 +111,7 @@ object TableRenderer : Renderer<List<Any?>> {
         module: FormModule,
         label: String,
         description: String?
-    ): ViewWriter.() -> Unit = {
+    ): ElementWriter.CanAddTheme.() -> Unit = {
         col {
             row {
                 h4(label)
@@ -162,7 +165,7 @@ data class ColumnInfo<T>(
  * by Claude - updated to support double-wrapped reactive pattern for LimitReadable support
  */
 @Suppress("UNCHECKED_CAST")
-fun <T> ViewWriter.renderTable(
+fun <T> ElementWriter.CanAddScrolling.renderTable(
     module: FormModule,
     innerSerializer: KSerializer<T>,
     items: Reactive<Reactive<List<T>>>,
@@ -183,7 +186,7 @@ fun <T> ViewWriter.renderTable(
 
     scrollingHorizontally.col {
         // Dynamic width based on columns and selected renderers - by Claude
-        expanding.changingSizeConstraints {
+        expanding.dynamicSizeConstraints {
             val totalWidth = columns().sumOf { it.columnWidth(module) } + 5.0
             SizeConstraints(width = totalWidth.rem)
         }.col {
@@ -246,7 +249,6 @@ fun <T> ViewWriter.renderTable(
 
                 // Add column button
                 menuButton {
-                    gap = 0.px
                     centered.icon(Icon.add.copy(width = 1.rem, height = 1.rem), "Add Column")
                     preferredDirection = PopoverPreferredDirection.belowLeft
                     requireClick = true
@@ -290,7 +292,7 @@ fun <T> ViewWriter.renderTable(
                 // by Claude - items is double-wrapped: Reactive<Reactive<List<T>>>
                 // Use remember { items()() } to unwrap both layers into a single tracked reactive
                 children(remember { items()() }, id = { (it as? HasId<*>)?._id ?: it }) { itemReactive ->
-                    fun ViewWriter.rowContent() = themed(ListSemantic).row {
+                    fun ElementWriter.CanAddTheme.rowContent() = themed(ListSemantic).row {
                         forEach(columns) { col ->
                             col.renderer(module).cellView(col.ctx, itemReactive.lensPath(col.path as DataClassPath<Any?, Any?>), module)(
                                 sizeConstraints(width = col.columnWidth(module).rem)
@@ -315,7 +317,7 @@ fun <T> ViewWriter.renderTable(
             }
 
             // Empty state - by Claude - unwrap double-nested reactive
-            shownWhen { items()().isEmpty() }.centered.text("No items")
+            centered.shownWhen { items()().isEmpty() }.text("No items")
         }
     }
 }

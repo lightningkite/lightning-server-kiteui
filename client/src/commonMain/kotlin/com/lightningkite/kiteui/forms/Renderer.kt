@@ -1,14 +1,6 @@
 package com.lightningkite.kiteui.forms
 
-import com.lightningkite.kiteui.models.FieldLabelSemantic
-import com.lightningkite.kiteui.models.Icon
-import com.lightningkite.kiteui.models.px
-import com.lightningkite.kiteui.models.rem
-import com.lightningkite.kiteui.views.ViewWriter
-import com.lightningkite.kiteui.views.direct.*
-import com.lightningkite.kiteui.views.fieldTheme
-import com.lightningkite.kiteui.views.l2.field
-import com.lightningkite.kiteui.views.l2.icon
+import com.lightningkite.kiteui.views.ElementWriter
 import com.lightningkite.reactive.core.MutableReactive
 import com.lightningkite.reactive.core.Reactive
 
@@ -98,7 +90,7 @@ interface Renderer<T> {
      * @param module The form module for rendering nested types
      * @return A ViewWriter extension function that creates the UI
      */
-    fun form(context: RenderContext<T>, value: MutableReactive<T>, module: FormModule): ViewWriter.() -> Unit
+    fun form(context: RenderContext<T>, value: MutableReactive<T>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit
 
     /**
      * Render a read-only view of the value.
@@ -111,7 +103,7 @@ interface Renderer<T> {
      * @param module The form module for rendering nested types
      * @return A ViewWriter extension function that creates the UI
      */
-    fun view(context: RenderContext<T>, value: Reactive<T>, module: FormModule): ViewWriter.() -> Unit
+    fun view(context: RenderContext<T>, value: Reactive<T>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit
 
     // ===== Cell Rendering (for tables) =====
 
@@ -126,7 +118,7 @@ interface Renderer<T> {
      * @param module The form module for rendering nested types
      * @return A ViewWriter extension function that creates the UI
      */
-    fun cellView(context: RenderContext<T>, value: Reactive<T>, module: FormModule): ViewWriter.() -> Unit =
+    fun cellView(context: RenderContext<T>, value: Reactive<T>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit =
         view(context, value, module)
 
     /**
@@ -141,7 +133,7 @@ interface Renderer<T> {
      * @param module The form module for rendering nested types
      * @return A ViewWriter extension function that creates the UI
      */
-    fun cellForm(context: RenderContext<T>, value: MutableReactive<T>, module: FormModule): ViewWriter.() -> Unit =
+    fun cellForm(context: RenderContext<T>, value: MutableReactive<T>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit =
         module.defaultCellForm(context, value, this)
 
     // ===== Labeled Rendering =====
@@ -168,7 +160,7 @@ interface Renderer<T> {
         module: FormModule,
         label: String,
         description: String? = context.description
-    ): ViewWriter.() -> Unit = {
+    ): ElementWriter.CanAddTheme.() -> Unit = {
         fieldWithDescription(label, description) { form(context, value, module)() }
     }
 
@@ -194,7 +186,7 @@ interface Renderer<T> {
         module: FormModule,
         label: String,
         description: String? = context.description
-    ): ViewWriter.() -> Unit = {
+    ): ElementWriter.CanAddTheme.() -> Unit = {
         fieldWithDescription(label, description) { view(context, value, module)() }
     }
 }

@@ -4,15 +4,14 @@ import com.lightningkite.EmailAddress
 import com.lightningkite.GeoCoordinate
 import com.lightningkite.PhoneNumber
 import com.lightningkite.kiteui.models.Icon
-import com.lightningkite.kiteui.views.ViewWriter
+import com.lightningkite.kiteui.views.ElementWriter
 import com.lightningkite.kiteui.views.direct.*
 import com.lightningkite.kiteui.views.expanding
 import com.lightningkite.kiteui.views.fieldTheme
 import com.lightningkite.kiteui.views.l2.errorText
-import com.lightningkite.kiteui.views.l2.icon
+import com.lightningkite.kiteui.views.direct.icon
 import com.lightningkite.reactive.core.MutableReactive
 import com.lightningkite.reactive.core.Reactive
-import com.lightningkite.reactive.lensing.lens
 import com.lightningkite.toEmailAddress
 import com.lightningkite.toPhoneNumber
 import kotlin.uuid.Uuid
@@ -21,8 +20,8 @@ import kotlin.uuid.Uuid
 // by Claude
 
 object UuidRenderer : Renderer<Uuid> {
-    override val name: String = "UUID"  // by Claude
-    override fun form(context: RenderContext<Uuid>, value: MutableReactive<Uuid>, module: FormModule): ViewWriter.() -> Unit = {
+    override val name: String = "Uuid"  // by Claude
+    override fun form(context: RenderContext<Uuid>, value: MutableReactive<Uuid>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
         row {
             expanding.textInput {
                 content bind value.lens(
@@ -43,7 +42,7 @@ object UuidRenderer : Renderer<Uuid> {
         }
     }
 
-    override fun view(context: RenderContext<Uuid>, value: Reactive<Uuid>, module: FormModule): ViewWriter.() -> Unit = {
+    override fun view(context: RenderContext<Uuid>, value: Reactive<Uuid>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
         text { ::content { value().toString() } }
     }
 
@@ -54,7 +53,7 @@ object UuidRenderer : Renderer<Uuid> {
 
 object EmailAddressRenderer : Renderer<EmailAddress> {
     override val name: String = "Email"  // by Claude
-    override fun form(context: RenderContext<EmailAddress>, value: MutableReactive<EmailAddress>, module: FormModule): ViewWriter.() -> Unit = {
+    override fun form(context: RenderContext<EmailAddress>, value: MutableReactive<EmailAddress>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
         col {
             textInput {
                 content bind value.lens(
@@ -66,7 +65,7 @@ object EmailAddressRenderer : Renderer<EmailAddress> {
         }
     }
 
-    override fun view(context: RenderContext<EmailAddress>, value: Reactive<EmailAddress>, module: FormModule): ViewWriter.() -> Unit = {
+    override fun view(context: RenderContext<EmailAddress>, value: Reactive<EmailAddress>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
         externalLink {
             text {
                 ::content { value().raw }
@@ -77,7 +76,7 @@ object EmailAddressRenderer : Renderer<EmailAddress> {
         }
     }
 
-    override fun cellView(context: RenderContext<EmailAddress>, value: Reactive<EmailAddress>, module: FormModule): ViewWriter.() -> Unit = {
+    override fun cellView(context: RenderContext<EmailAddress>, value: Reactive<EmailAddress>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
         text {
             ::content { value().raw }
             wraps = false
@@ -92,7 +91,7 @@ object EmailAddressRenderer : Renderer<EmailAddress> {
 
 object PhoneNumberRenderer : Renderer<PhoneNumber> {
     override val name: String = "Phone"  // by Claude
-    override fun form(context: RenderContext<PhoneNumber>, value: MutableReactive<PhoneNumber>, module: FormModule): ViewWriter.() -> Unit = {
+    override fun form(context: RenderContext<PhoneNumber>, value: MutableReactive<PhoneNumber>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
         col {
             textInput {
                 content bind value.lens(
@@ -104,7 +103,7 @@ object PhoneNumberRenderer : Renderer<PhoneNumber> {
         }
     }
 
-    override fun view(context: RenderContext<PhoneNumber>, value: Reactive<PhoneNumber>, module: FormModule): ViewWriter.() -> Unit = {
+    override fun view(context: RenderContext<PhoneNumber>, value: Reactive<PhoneNumber>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
         externalLink {
             text {
                 ::content { value().raw }
@@ -115,7 +114,7 @@ object PhoneNumberRenderer : Renderer<PhoneNumber> {
         }
     }
 
-    override fun cellView(context: RenderContext<PhoneNumber>, value: Reactive<PhoneNumber>, module: FormModule): ViewWriter.() -> Unit = {
+    override fun cellView(context: RenderContext<PhoneNumber>, value: Reactive<PhoneNumber>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
         text {
             ::content { value().raw }
             wraps = false
@@ -130,7 +129,7 @@ object PhoneNumberRenderer : Renderer<PhoneNumber> {
 
 object GeoCoordinateRenderer : Renderer<GeoCoordinate> {
     override val name: String = "Coordinates"  // by Claude
-    override fun form(context: RenderContext<GeoCoordinate>, value: MutableReactive<GeoCoordinate>, module: FormModule): ViewWriter.() -> Unit = {
+    override fun form(context: RenderContext<GeoCoordinate>, value: MutableReactive<GeoCoordinate>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
         row {
             expanding.fieldTheme.numberInput {
                 hint = "Latitude"
@@ -149,7 +148,7 @@ object GeoCoordinateRenderer : Renderer<GeoCoordinate> {
         }
     }
 
-    override fun view(context: RenderContext<GeoCoordinate>, value: Reactive<GeoCoordinate>, module: FormModule): ViewWriter.() -> Unit = {
+    override fun view(context: RenderContext<GeoCoordinate>, value: Reactive<GeoCoordinate>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
         text { ::content { "${value().latitude}, ${value().longitude}" } }
     }
 
@@ -161,7 +160,7 @@ object GeoCoordinateRenderer : Renderer<GeoCoordinate> {
         module: FormModule,
         label: String,
         description: String?
-    ): ViewWriter.() -> Unit = {
+    ): ElementWriter.CanAddTheme.() -> Unit = {
         fieldWithoutBorder(label, description) { form(context, value, module)() }
     }
 
@@ -171,7 +170,7 @@ object GeoCoordinateRenderer : Renderer<GeoCoordinate> {
         module: FormModule,
         label: String,
         description: String?
-    ): ViewWriter.() -> Unit = {
+    ): ElementWriter.CanAddTheme.() -> Unit = {
         fieldWithoutBorder(label, description) { view(context, value, module)() }
     }
 }

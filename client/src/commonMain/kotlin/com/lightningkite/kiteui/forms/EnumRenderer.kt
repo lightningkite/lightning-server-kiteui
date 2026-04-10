@@ -2,7 +2,7 @@
 
 package com.lightningkite.kiteui.forms
 
-import com.lightningkite.kiteui.views.ViewWriter
+import com.lightningkite.kiteui.views.ElementWriter
 import com.lightningkite.kiteui.views.direct.*
 import com.lightningkite.kiteui.views.fieldTheme
 import com.lightningkite.reactive.core.Constant
@@ -58,17 +58,17 @@ class EnumRendererInstance<T>(serializer: KSerializer<T>) : Renderer<T> {
 
     override fun priority(context: RenderContext<T>, module: FormModule) = 0.9f
 
-    override fun form(context: RenderContext<T>, value: MutableReactive<T>, module: FormModule): ViewWriter.() -> Unit = {
+    override fun form(context: RenderContext<T>, value: MutableReactive<T>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
         fieldTheme.select {
             bind(value, options, ::toDisplayName)
         }
     }
 
-    override fun view(context: RenderContext<T>, value: Reactive<T>, module: FormModule): ViewWriter.() -> Unit = {
+    override fun view(context: RenderContext<T>, value: Reactive<T>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
         text { ::content { toDisplayName(value()) } }
     }
 
-    override fun cellForm(context: RenderContext<T>, value: MutableReactive<T>, module: FormModule) = form(context, value, module)
+    override fun cellForm(context: RenderContext<T>, value: MutableReactive<T>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = form(context, value, module)
     override fun columnWidth(context: RenderContext<T>, module: FormModule) = 15.0
 }
 
@@ -88,18 +88,18 @@ object EnumRenderer : Renderer<Any> {
     override fun priority(context: RenderContext<Any>, module: FormModule) = 0.9f
 
     @Suppress("UNCHECKED_CAST")
-    override fun form(context: RenderContext<Any>, value: MutableReactive<Any>, module: FormModule): ViewWriter.() -> Unit {
+    override fun form(context: RenderContext<Any>, value: MutableReactive<Any>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit {
         val instance = getInstance(context.serializer)
         return instance.form(context as RenderContext<Any>, value, module)
     }
 
     @Suppress("UNCHECKED_CAST")
-    override fun view(context: RenderContext<Any>, value: Reactive<Any>, module: FormModule): ViewWriter.() -> Unit {
+    override fun view(context: RenderContext<Any>, value: Reactive<Any>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit {
         val instance = getInstance(context.serializer)
         return instance.view(context as RenderContext<Any>, value, module)
     }
 
-    override fun cellForm(context: RenderContext<Any>, value: MutableReactive<Any>, module: FormModule) = form(context, value, module)
+    override fun cellForm(context: RenderContext<Any>, value: MutableReactive<Any>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = form(context, value, module)
     override fun columnWidth(context: RenderContext<Any>, module: FormModule) = 15.0
 }
 
