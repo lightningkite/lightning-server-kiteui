@@ -153,12 +153,11 @@ object DataClassRenderer : Renderer<Any> {
             @Suppress("UNCHECKED_CAST")
             val typedProp = titleProp as SerializableProperty<Any, Any?>
             val fieldContext = RenderContext(typedProp.serializer as KSerializer<Any?>, typedProp.serializableAnnotations)
-            val fieldRenderer = module.select(fieldContext)
-            val lambda: ViewWriter.() -> Unit = {
+            val fieldRenderer = module.select(fieldContext);
+            {
                 val fieldValue = value.lens { typedProp.get(it) }
                 fieldRenderer.cellView(fieldContext, fieldValue, module)()
             }
-            lambda
         } else {
             { text { ::content { value().toString() } } }
         }

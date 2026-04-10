@@ -160,7 +160,7 @@ open class ReAuthComponent(
                 // Debounce to prevent rapid re-renders during proof transitions
 
                 forEachAnimated(remember { listOfNotNull(currentProof()) }.debounce(10.milliseconds)) { (component, option) ->
-                    component.render(
+                    (component as? EasierProofComponent)?.render(
                         this@forEachAnimated,
                         primaryIdentifier = UserIdentification("$subjectType/_id", subjectId),
                         option

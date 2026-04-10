@@ -81,7 +81,23 @@ interface ProofComponent {
      * @param onResult Callback invoked when proof collection completes (null if user cancels)
      * @return The rendered view
      */
-    fun render(to: ElementWriter.CanAddTheme, primaryIdentifier: UserIdentification?, checks: ProofsCheckResult<*>?, onResult: (Proof?) -> Unit): Unit {
+    fun render(to: ElementWriter.CanAddTheme, primaryIdentifier: UserIdentification?, checks: ProofsCheckResult<*>?, onResult: (Proof?) -> Unit): Unit
+}
+
+interface EasierProofComponent: ProofComponent {
+    /**
+     * Renders the proof collection UI with automatic option extraction.
+     *
+     * This is a convenience method that extracts the appropriate ProofOption from the server's
+     * ProofsCheckResult and delegates to the full render method.
+     *
+     * @param to The ViewWriter to render into
+     * @param primaryIdentifier The user's primary identifier (email/phone/username), or null if not yet set
+     * @param checks The server's response containing available proof options and requirements
+     * @param onResult Callback invoked when proof collection completes (null if user cancels)
+     * @return The rendered view
+     */
+    override fun render(to: ElementWriter.CanAddTheme, primaryIdentifier: UserIdentification?, checks: ProofsCheckResult<*>?, onResult: (Proof?) -> Unit): Unit {
         // TODO: This error message should be impossible to reach; consider removing or replacing with exception
         val primaryIdentifier = primaryIdentifier ?: run {
             to.frame {

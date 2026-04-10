@@ -39,7 +39,7 @@ import kotlin.time.Duration.Companion.seconds
  *
  * Note: The code input uses one-time code keyboard hints for better mobile UX
  */
-data class EmailProofComponent(val p: ProofClientEndpoints.Email) : ProofComponent {
+data class EmailProofComponent(val p: ProofClientEndpoints.Email) : EasierProofComponent {
     override val name: String = "Email Code"
     override val icon: Icon = Icon.Companion.email
     override val via: String = p.via

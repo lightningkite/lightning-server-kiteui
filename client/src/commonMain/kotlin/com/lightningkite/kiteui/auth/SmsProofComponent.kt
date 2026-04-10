@@ -40,7 +40,7 @@ import kotlin.time.Duration.Companion.seconds
  * Note: The code input uses one-time code keyboard hints for better mobile UX.
  * Implementation is nearly identical to EmailProofComponent but uses SMS-specific endpoints.
  */
-data class SmsProofComponent(val p: ProofClientEndpoints.Sms) : ProofComponent {
+data class SmsProofComponent(val p: ProofClientEndpoints.Sms) : EasierProofComponent {
     override val name: String = "Text Code"
     override val icon: Icon = Icon.Companion.chat
     override val via: String = p.via
