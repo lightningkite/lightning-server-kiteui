@@ -40,20 +40,23 @@ object ForeignKeyRenderer : Renderer<Any?> {
     private const val REFERENCES_FQN = "com.lightningkite.services.data.References"
     private const val MULTIPLE_REFERENCES_FQN = "com.lightningkite.services.data.MultipleReferences"
 
-    override fun priority(context: RenderContext<Any?>, module: FormModule): Float {
-        // Only match if we have a @References annotation (on field or type) and typeInfo is available
-        val anno =
-            context.fieldAnnotations    // @References on field takes priority
-                .find { it.fqn == REFERENCES_FQN || it.fqn == MULTIPLE_REFERENCES_FQN }
-            ?: context.serializer.descriptor.annotations    // look for @References on type
+    private fun RenderContext<*>.getReferencesAnno(): SerializableAnnotation? =
+        fieldAnnotations
+            .find { it.fqn == REFERENCES_FQN || it.fqn == MULTIPLE_REFERENCES_FQN } // @References on field takes priority
+            // look for @References on type
+            ?: serializer.descriptor.annotations
                 .asSequence()
                 .mapNotNull(SerializableAnnotation::parseOrNull)
                 .find { it.fqn == REFERENCES_FQN } // only @References can be applied to classes
-            ?: return -1f
+
+    override fun priority(context: RenderContext<Any?>, module: FormModule): Float {
+        // Only match if we have a @References annotation (on field or type) and typeInfo is available
+        val anno = context.getReferencesAnno() ?: return -1f
 
         val typeName = anno.values["references"]
             ?.let { it as? SerializableAnnotationValue.ClassValue }
-            ?.fqn ?: return -1f
+            ?.fqn
+            ?: return -1f
 
         // Check that we can resolve this type
         if (module.typeInfo(typeName) == null) return -1f
@@ -63,9 +66,7 @@ object ForeignKeyRenderer : Renderer<Any?> {
 
     @Suppress("UNCHECKED_CAST")
     override fun form(context: RenderContext<Any?>, value: MutableReactive<Any?>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit {
-        val anno = context.fieldAnnotations.find {
-            it.fqn == REFERENCES_FQN || it.fqn == MULTIPLE_REFERENCES_FQN
-        }!!
+        val anno = context.getReferencesAnno()!!    // checked for in priority
 
         val typeName = anno.values["references"]!!
             .let { it as SerializableAnnotationValue.ClassValue }.fqn
