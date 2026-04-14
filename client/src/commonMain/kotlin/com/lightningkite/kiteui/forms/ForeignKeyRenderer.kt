@@ -41,10 +41,15 @@ object ForeignKeyRenderer : Renderer<Any?> {
     private const val MULTIPLE_REFERENCES_FQN = "com.lightningkite.services.data.MultipleReferences"
 
     override fun priority(context: RenderContext<Any?>, module: FormModule): Float {
-        // Only match if we have a @References annotation and typeInfo is available
-        val anno = context.fieldAnnotations.find {
-            it.fqn == REFERENCES_FQN || it.fqn == MULTIPLE_REFERENCES_FQN
-        } ?: return -1f
+        // Only match if we have a @References annotation (on field or type) and typeInfo is available
+        val anno =
+            context.fieldAnnotations    // @References on field takes priority
+                .find { it.fqn == REFERENCES_FQN || it.fqn == MULTIPLE_REFERENCES_FQN }
+            ?: context.serializer.descriptor.annotations    // look for @References on type
+                .asSequence()
+                .mapNotNull(SerializableAnnotation::parseOrNull)
+                .find { it.fqn == REFERENCES_FQN } // only @References can be applied to classes
+            ?: return -1f
 
         val typeName = anno.values["references"]
             ?.let { it as? SerializableAnnotationValue.ClassValue }
