@@ -5,14 +5,52 @@ import com.lightningkite.lightningserver.typed.ClientModelRestEndpoints
 import com.lightningkite.lightningserver.typed.sdk.SDK.processToModules
 import com.lightningkite.lightningserver.typed.sdk.SDK.sdk
 import com.lightningkite.services.data.ExperimentalLightningServer
+import kotlinx.serialization.KSerializer
 import kotlin.reflect.full.isSubclassOf
 
 @OptIn(ExperimentalLightningServer::class)
 public class CachingSdk(
     public val packageName: String,
     public val rootInfo: SdkModule.Info = SdkModule.Info("Api"),
-    public val filename: String = "Cached${rootInfo.interfaceName}.kt"
+    public val filename: String = "Cached${rootInfo.interfaceName}.kt",
+    public val namingScheme: NamingScheme = NamingScheme.SerialName()
 ) : SDK.Format {
+    public fun interface NamingScheme {
+        public fun getParameterName(path: List<SDK.Module>, serializer: KSerializer<*>): String
+
+        public class SerialName(public val qualifiedNames: Boolean = true) : NamingScheme {
+            private val usedNames = mutableSetOf<String>()
+
+            override fun getParameterName(path: List<SDK.Module>, serializer: KSerializer<*>): String = serializer
+                .descriptor
+                .serialName
+                .let { serialName ->
+                    if (qualifiedNames) serialName
+                        .split('.')
+                        .takeLastWhile { it.firstOrNull()?.isUpperCase() == true }
+                        .joinToPluralized("")
+                    else serialName
+                        .substringAfterLast('.')
+                        .pluralize()
+                }
+                .camelCase()
+                .let {
+                    if (usedNames.add(it)) return@let it
+
+                    var updated = it
+                    var count = 1
+                    while (!usedNames.add(updated)) updated = it + (++count)
+                    updated
+                }
+        }
+
+        public class SdkPath : NamingScheme {
+            override fun getParameterName(path: List<SDK.Module>, serializer: KSerializer<*>): String = path
+                .joinToPluralized("") { it.info.valueName }
+                .camelCase()
+        }
+    }
+
     context(server: ServerRuntime)
     override fun write(archive: Archive) {
         val processed = server.server.sdk(rootInfo).processToModules().ensureUniqueNames()
@@ -31,35 +69,17 @@ public class CachingSdk(
 
         appendLine("open class Cached${data.info.interfaceName}(val uncached: ${data.info.interfaceName}) {")
 
-        val usedNames = mutableSetOf<String>()
-
         fun SDK.Module.appendCaches(chain: List<SDK.Module>) {
             extendsInterfaces
                 .asSequence()
                 .map { it.item }
                 .firstOrNull { it.type.isSubclassOf(ClientModelRestEndpoints::class) }
                 ?.let { interfaceInfo ->
-                    val typeName = interfaceInfo.typeParameters
-                        .first()
-                        .descriptor
-                        .serialName
-                        .substringAfterLast('.')
-                        .camelCase()
-                        .pluralize()
-                        .let {
-                            if (it !in usedNames) {
-                                usedNames += it
-                                return@let it
-                            }
-
-                            val appended = it.plus(this.info.valueName)
-                            var updated = appended
-                            var count = 1
-                            while (updated in usedNames) updated = appended + (++count)
-
-                            usedNames += updated
-                            updated
-                        }
+                    val typeName = namingScheme.getParameterName(
+                        chain + this,
+                        interfaceInfo.typeParameters.firstOrNull()
+                            ?: throw IllegalArgumentException("${info.interfaceName} inherits ClientModelRestEndpoints but does not have a type parameter serializer")
+                    )
 
                     appendLine("\topen val $typeName = ModelCache(uncached.${(chain + this).drop(1).joinToString(".") { it.info.valueName }}, ${interfaceInfo.typeParameters[0].kotlinSerializer()})")
                 }
@@ -127,3 +147,10 @@ internal fun String.pluralize(): String {
     // Default: just add 's'
     return "${word}s"
 }
+
+internal inline fun <T> List<T>.joinToPluralized(separator: CharSequence, crossinline transform: (T) -> String = { it.toString() }): String = this
+    .withIndex()
+    .joinToString(separator) { (idx, value) ->
+        if (idx == lastIndex) transform(value).pluralize().pascalCase()
+        else transform(value).pascalCase()
+    }

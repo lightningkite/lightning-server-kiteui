@@ -8,6 +8,7 @@ import com.lightningkite.lightningserver.definition.generalSettings
 import com.lightningkite.lightningserver.typed.ModelRestEndpoints
 import com.lightningkite.lightningserver.typed.auth
 import com.lightningkite.lightningserver.typed.modelInfo
+import com.lightningkite.lightningserver.typed.sdk.module
 import com.lightningkite.lightningserver.typed.startupOnce
 import com.lightningkite.lskiteuistarter.*
 import com.lightningkite.lskiteuistarter.UserAuth.RoleCache.userRole
@@ -68,5 +69,17 @@ object UserEndpoints : ServerBuilder() {
         if (generalSettings().debug) {
             println("Admin token: '${UserAuth.session.createSession(Uuid.fromLongs(0L, 10L)).second}'")
         }
+    }
+
+    val nested = path.path("nested") module NestedTypeModelEndpoints
+
+
+    object NestedTypeModelEndpoints : ServerBuilder() {
+        val info = Server.database.modelInfo(
+            auth = UserAuth.require(),
+            permissions = { ModelPermissions<User.NestedTypeModel>() }
+        )
+
+        val rest = path.path("rest") include ModelRestEndpoints(info)
     }
 }

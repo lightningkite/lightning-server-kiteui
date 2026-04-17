@@ -38,7 +38,14 @@ data class User(
     val email: EmailAddress,
     val name: String = "No Name Specified",
     val role: UserRole = UserRole.User,
-) : HasId<Uuid>
+) : HasId<Uuid> {
+    @Serializable
+    @GenerateDataClassPaths
+    data class NestedTypeModel(
+        override val _id: Uuid = Uuid.random(),
+        val name: String = ""
+    ) : HasId<Uuid>
+}
 
 @Serializable
 enum class UserRole {

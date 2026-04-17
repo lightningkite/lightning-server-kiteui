@@ -7,24 +7,25 @@ import com.lightningkite.kiteui.views.direct.*
 import com.lightningkite.kiteui.views.l2.toast
 
 
+@Suppress("DEPRECATION")
 class UpdateDialog(
     val newVersion: String,
     val forceUpdate: Boolean,
 ) : Page {
-    override fun ViewWriter.render() {
+    override fun ElementWriter.CanAddTheme.render() {
         dismissBackground {
             onClick {
                 if (!forceUpdate)
-                    pageNavigator.dismiss()
+                    context.pageNavigator.dismiss()
             }
-            DialogSemantic.onNext.centered.frame {
+            centered.themed(DialogSemantic).frame {
                 col {
                     h1 {
                         align = Align.Center
                         content = "New App Version Available"
                     }
 
-                    sizeConstraints(maxWidth = 40.rem, minWidth = 10.rem).centered.padded.text {
+                    centered.sizeConstraints(maxWidth = 40.rem, minWidth = 10.rem).padded.text {
                         align = Align.Center
                         content =
                             if (forceUpdate)
@@ -38,14 +39,14 @@ class UpdateDialog(
                             expanding.buttonTheme.button {
                                 centered.text("OK")
                                 onClick {
-                                    dialogPageNavigator.dismiss()
+                                    context.dialogPageNavigator.dismiss()
                                 }
                             }
 
                         expanding.buttonTheme.button {
                             centered.text("Go To Store")
                             onClick {
-                                toast("Replace toast with store url")
+                                context.toast("Replace toast with store url")
 //                                ExternalServices.openTab("")
                             }
                         }

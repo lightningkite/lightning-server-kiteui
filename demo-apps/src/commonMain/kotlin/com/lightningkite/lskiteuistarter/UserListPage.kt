@@ -19,7 +19,7 @@ import com.lightningkite.services.database.condition
 @Routable("/users")
 class UserListPage : Page {
     override val title: Reactive<String> get() = Constant("Users")
-    override fun ViewWriter.render() {
+    override fun ElementWriter.CanAddTheme.render() {
         // Double-wrapped: Reactive<Reactive<List<User>>>
         // Outer reactive tracks session changes, inner is the ModelCacheLimitReadable
         val users = remember {

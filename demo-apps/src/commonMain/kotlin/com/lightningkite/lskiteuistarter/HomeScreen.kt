@@ -15,11 +15,11 @@ import com.lightningkite.reactive.core.Reactive
 @Routable("/dashboard")
 class HomePage : Page {
     override val title: Reactive<String> get() = Constant("Home")
-    override fun ViewWriter.render() {
+    override fun ElementWriter.CanAddTheme.render() {
 
         reactive {
             if (currentSession() == null)
-                pageNavigator.reset(LandingPage())
+                context.pageNavigator.reset(LandingPage())
         }
 
         col {
@@ -44,7 +44,7 @@ class HomePage : Page {
 
                     } finally {
                         sessionToken set null
-                        pageNavigator.reset(LoginPage())
+                        context.pageNavigator.reset(LoginPage())
                     }
                 }
             }

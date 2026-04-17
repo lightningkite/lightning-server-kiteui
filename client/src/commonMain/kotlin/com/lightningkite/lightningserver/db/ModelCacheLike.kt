@@ -3,6 +3,7 @@ package com.lightningkite.lightningserver.db
 import com.lightningkite.services.database.HasId
 import com.lightningkite.services.database.MassModification
 import com.lightningkite.services.database.Query
+import kotlinx.serialization.KSerializer
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
@@ -26,6 +27,8 @@ import kotlin.time.Duration.Companion.seconds
  * @param ID The ID type, must be [Comparable]
  */
 interface ModelCacheLike<T : HasId<ID>, ID : Comparable<ID>> {
+    val serializer: KSerializer<T>
+
     /**
      * Gets a reactive reference to a single item by ID.
      *

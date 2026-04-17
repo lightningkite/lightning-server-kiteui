@@ -117,7 +117,7 @@ import kotlin.time.Duration.Companion.seconds
  */
 class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
     val skipCache: ClientModelRestEndpoints<T, ID>,
-    val serializer: KSerializer<T>,
+    override val serializer: KSerializer<T>,
 //    val newest: (T?, T?) -> T? = { _, it -> it },
     val onUpdate: ((CollectionUpdates<T, ID>) -> Unit)? = null,
     val scope: CoroutineScope = AppScope,

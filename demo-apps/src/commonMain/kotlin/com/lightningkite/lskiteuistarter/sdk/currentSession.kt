@@ -68,11 +68,12 @@ suspend fun deregisterToken() {
     }
 }
 
-fun ExceptionToMessages.installLoggedOutErrors() {
+fun ExceptionHandlersTree.installLoggedOutErrors() {
     this += ExceptionToMessage<LsErrorException>(
         priority = 3.0f,
-        additionalCondition = { it.error.message == "Session has been terminated." }
     ) {
+        if (it.error.message != "Session has been terminated.") return@ExceptionToMessage null
+
         currentSessionFailed.invokeAll()
         ExceptionMessage(
             "Logged Out",

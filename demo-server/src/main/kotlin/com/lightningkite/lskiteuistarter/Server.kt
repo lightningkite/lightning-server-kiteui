@@ -5,6 +5,7 @@ import com.lightningkite.lightningserver.cors.CorsInterceptor
 import com.lightningkite.lightningserver.cors.CorsSettings
 import com.lightningkite.lightningserver.definition.Runtime
 import com.lightningkite.lightningserver.definition.builder.ServerBuilder
+import com.lightningkite.lightningserver.definition.set
 import com.lightningkite.lightningserver.files.FileSystemEndpoints
 import com.lightningkite.lightningserver.files.UploadEarlyEndpoint
 import com.lightningkite.lightningserver.http.*
@@ -49,7 +50,7 @@ object Server : ServerBuilder() {
         JavaSmtpEmailService
         S3PublicFileSystem
 
-        AuthRequirement.isSuperUser = UserAuth.require { it.userRole() >= UserRole.Root }
+        AuthRequirement.IsSuperUser set UserAuth.require { it.userRole() >= UserRole.Root }
     }
 
     // Endpoints, tasks, and schedules

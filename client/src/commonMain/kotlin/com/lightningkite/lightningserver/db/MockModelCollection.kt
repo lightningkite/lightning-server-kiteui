@@ -11,7 +11,7 @@ import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Instant
 
-class MockModelCollection<T : HasId<ID>, ID : Comparable<ID>>(val serializer: KSerializer<T>) : ModelCacheLike<T, ID> {
+class MockModelCollection<T : HasId<ID>, ID : Comparable<ID>>(override val serializer: KSerializer<T>) : ModelCacheLike<T, ID> {
     val models = HashMap<ID, MockWritableModel>()
 
     fun populate(item: T) {

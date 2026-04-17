@@ -135,7 +135,7 @@ class ProductPage(val id: String) : Page, SsrPreloadable {
         ))
     }
 
-    override fun ViewWriter.render() = col {
+    override fun ElementWriter.CanAddTheme.render() = col {
         // product is populated during SSR, null on client until hydration
         // ...
     }

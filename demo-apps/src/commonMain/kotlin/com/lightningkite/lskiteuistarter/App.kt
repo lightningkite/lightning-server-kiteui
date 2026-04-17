@@ -1,7 +1,6 @@
 package com.lightningkite.lskiteuistarter
 
 import com.lightningkite.kiteui.*
-import com.lightningkite.kiteui.exceptions.ExceptionToMessages
 import com.lightningkite.kiteui.exceptions.installLsError
 import com.lightningkite.kiteui.models.*
 import com.lightningkite.kiteui.navigation.PageNavigator
@@ -74,7 +73,8 @@ fun ViewWriter.app(navigator: PageNavigator, dialog: PageNavigator) {
             val currentRelease = releases.find { it.version == currentBuild } ?: return@launch
             val latestRelease = releases.maxByOrNull { it.releaseDate } ?: return@launch
             if (latestRelease._id != currentRelease._id) {
-                dialogPageNavigator.navigate(
+                @Suppress("DEPRECATION")
+                context.dialogPageNavigator.navigate(
                     UpdateDialog(
                         newVersion = latestRelease.version,
                         forceUpdate = releases.any { it.requiredUpdate && it.releaseDate > currentRelease.releaseDate }

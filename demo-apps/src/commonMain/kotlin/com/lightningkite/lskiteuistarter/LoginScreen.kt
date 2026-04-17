@@ -8,6 +8,7 @@ import com.lightningkite.kiteui.models.rem
 import com.lightningkite.kiteui.navigation.Page
 import com.lightningkite.kiteui.navigation.pageNavigator
 import com.lightningkite.kiteui.reactive.PersistentProperty
+import com.lightningkite.kiteui.views.ElementWriter
 import com.lightningkite.kiteui.views.ViewWriter
 import com.lightningkite.kiteui.views.centered
 import com.lightningkite.kiteui.views.direct.*
@@ -27,7 +28,7 @@ class LoginPage : Page, UseFullPage {
 
     val backendSelectorEnabled = PersistentProperty("backendSelectorEnabled", false)
 
-    override fun ViewWriter.render() {
+    override fun ElementWriter.CanAddTheme.render() {
 
         val authUI = remember {
             val api = selectedApi().api
@@ -43,7 +44,7 @@ class LoginPage : Page, UseFullPage {
                 subject = api.userAuth,
                 onAuthentication = { token ->
                     sessionToken set token
-                    pageNavigator.reset(HomePage())
+                    context.pageNavigator.reset(HomePage())
                 }
             )
         }
