@@ -211,7 +211,7 @@ class FormModule {
             .filter { (selector, _) -> selector.matches(context) }
             .maxByOrNull { (_, renderer) ->
                 (renderer as Renderer<T>).priority(context, this)
-            }
+            }.also{println("DEBUG it ${it?.first} ${it?.second?.name}")}
             ?.second as? Renderer<T>
             ?: error("No renderer for ${context.serializer.descriptor.serialName}")
     }

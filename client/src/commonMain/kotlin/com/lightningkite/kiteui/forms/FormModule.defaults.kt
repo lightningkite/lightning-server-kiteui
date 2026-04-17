@@ -39,6 +39,8 @@ fun FormModule.defaults() {
     registerEnum()
     registerWrapper()
     registerMySealed()         // by Claude - MySealedClassSerializerInterface support
+    registerVirtualSealed()    // VirtualSealed.Concrete support for schema-generated sealed classes
+//    registerSealedClass()      // Standard kotlinx PolymorphicKind.SEALED support
     registerSingletonObject()  // by Claude - Kotlin object singletons
     registerCollections()
     registerSet()              // by Claude - Set<T> support

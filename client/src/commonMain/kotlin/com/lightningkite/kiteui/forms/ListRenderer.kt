@@ -71,7 +71,11 @@ object ListRenderer : Renderer<List<Any?>> {
 
             // Show empty text
             text {
-                ::shown { value().isEmpty() }
+                ::shown {
+                    val v = value()
+                    try { println("DEBUG ListRenderer form value type: ${v::class.simpleName}, value: $v") } catch(_: Throwable) {}
+                    (v as? List<*>)?.isEmpty() ?: true
+                }
                 content = "Empty"
             }
 
@@ -155,7 +159,11 @@ object ListRenderer : Renderer<List<Any?>> {
             }
 
             text {
-                ::shown { value().isEmpty() }
+                ::shown {
+                    val v = value()
+                    try { println("DEBUG ListRenderer view value type: ${v::class.simpleName}, value: $v") } catch(_: Throwable) {}
+                    (v as? List<*>)?.isEmpty() ?: true
+                }
                 content = "Empty"
             }
             themed(ListSemantic).col {
