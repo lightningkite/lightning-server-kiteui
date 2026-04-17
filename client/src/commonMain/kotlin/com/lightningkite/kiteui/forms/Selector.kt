@@ -33,15 +33,9 @@ data class Selector(
      */
     fun matches(context: RenderContext<*>): Boolean {
         val descriptor = context.serializer.descriptor
-//        println("DEBUG description ${descriptor.serialName}")
         if (annotation != null && !context.hasAnnotation(annotation)) return false
-//        println("DEBUG after annotation check")
         if (type != null && descriptor.serialName.substringBefore('/') != type) return false
-//        println("DEBUG pe != null && descriptor.serialName.substringBefore('/') != typ")
-//        println("DEBUG description.kind ${descriptor.kind}")
-//        println("DEBUG kind ${kind}")
         if (kind != null && descriptor.kind != kind) return false
-//        println("DEBUG kind != null && descriptor.kind != kind ${kind != null && descriptor.kind != kind}")
         return true
     }
 }

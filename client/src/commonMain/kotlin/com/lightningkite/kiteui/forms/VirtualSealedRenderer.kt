@@ -37,15 +37,7 @@ object VirtualSealedRenderer : Renderer<Any> {
     override fun columnWidth(context: RenderContext<Any>, module: FormModule): Double = 20.0
 
     private fun extractOptions(serializer: KSerializer<*>): List<VirtualSealedOption> {
-        println("DEBUG extract options")
-        println("DEBUG serializer: ${serializer.descriptor.serialName}")
-        println("DEBUG serializer ${serializer}")
         val concrete = serializer as? VirtualSealed.Concrete ?: return emptyList()
-        println("DEBUG concrete: ${concrete.descriptor.serialName}")
-        println("DEBUG sealed: ${concrete.sealed}")
-        concrete.sealed.options.map{
-            println("DEBUG it ${concrete}")
-        }
         return concrete.sealed.options.mapIndexed { index, opt ->
             VirtualSealedOption(
                 index = index,
