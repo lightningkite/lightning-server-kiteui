@@ -51,6 +51,7 @@ object HorizontalListRenderer : Renderer<List<Any?>> {
     override val name: String = "Horizontal List"  // by Claude
 
     override fun priority(context: RenderContext<List<Any?>>, module: FormModule): Float {
+        if (context.serializer.descriptor.isNullable) return -1f
         if (context.serializer.descriptor.kind != StructureKind.LIST) return -1f
 
         // Higher priority for explicit annotation - by Claude

@@ -43,6 +43,7 @@ object TableRenderer : Renderer<List<Any?>> {
     override val name: String = "Table"  // by Claude
 
     override fun priority(context: RenderContext<List<Any?>>, module: FormModule): Float {
+        if (context.serializer.descriptor.isNullable) return -1f
         // Only match lists where inner type has serializableProperties
         if (context.serializer.descriptor.kind != StructureKind.LIST) return -1f
 

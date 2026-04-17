@@ -43,6 +43,7 @@ object SetRenderer : Renderer<Set<Any?>> {
 
     override fun priority(context: RenderContext<Set<Any?>>, module: FormModule): Float {
         val descriptor = context.serializer.descriptor
+        if (descriptor.isNullable) return -1f
         // Match sets specifically - they have StructureKind.LIST but serialName contains "Set"
         return if (descriptor.kind == StructureKind.LIST && descriptor.serialName.contains("Set")) 0.85f else -1f
     }
