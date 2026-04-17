@@ -28,7 +28,6 @@ data class Selector(
     /**
      * Check if this selector matches the given context.
      *
-     *
      * All non-null criteria must match. Null criteria are wildcards.
      */
     fun matches(context: RenderContext<*>): Boolean {
