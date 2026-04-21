@@ -5,6 +5,7 @@ package com.lightningkite.kiteui.forms
 import com.lightningkite.kiteui.models.rem
 import com.lightningkite.kiteui.views.ViewWriter
 import com.lightningkite.kiteui.views.atTop
+import com.lightningkite.kiteui.views.centered
 import com.lightningkite.kiteui.views.direct.*
 import com.lightningkite.kiteui.views.expanding
 import com.lightningkite.kiteui.views.fieldTheme
@@ -12,119 +13,94 @@ import com.lightningkite.reactive.context.reactive
 import com.lightningkite.reactive.core.Constant
 import com.lightningkite.reactive.core.MutableReactive
 import com.lightningkite.reactive.core.Reactive
+import com.lightningkite.reactive.core.remember
 import com.lightningkite.reactive.lensing.lens
 import com.lightningkite.services.database.VirtualInstance
 import com.lightningkite.services.database.VirtualSealed
+import com.lightningkite.services.database.VirtualSealedInstance
+import com.lightningkite.services.database.VirtualSealedOption
 import com.lightningkite.services.database.default
 import com.lightningkite.titleCase
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 
-private data class VirtualSealedOption(
-    val index: Int,
-    val name: String,
-    val displayName: String,
-    val serializer: KSerializer<Any?>
-)
+object VirtualSealedRenderer : Renderer<VirtualSealedInstance> {
+    override val name: String = "Options"
 
-object VirtualSealedRenderer : Renderer<Any> {
-    override val name: String = "Sealed Options"
-
-    override fun priority(context: RenderContext<Any>, module: FormModule): Float {
+    override fun priority(context: RenderContext<VirtualSealedInstance>, module: FormModule): Float {
         return if (context.serializer is VirtualSealed.Concrete) 1f else -1f
     }
 
-    override fun columnWidth(context: RenderContext<Any>, module: FormModule): Double = 20.0
-
-    private fun extractOptions(serializer: KSerializer<*>): List<VirtualSealedOption> {
-        val concrete = serializer as? VirtualSealed.Concrete ?: return emptyList()
-        return concrete.sealed.options.mapIndexed { index, opt ->
-            VirtualSealedOption(
-                index = index,
-                name = opt.name,
-                displayName = opt.name.substringAfterLast('.').titleCase(),
-                serializer = concrete.optionSerializers[index]
-            )
-        }
-    }
-
-    private fun findOption(value: Any?, options: List<VirtualSealedOption>): VirtualSealedOption? {
-        if (value !is VirtualInstance) return null
-        return options.find { it.name == value.type.serialName }
-    }
+    override fun columnWidth(context: RenderContext<VirtualSealedInstance>, module: FormModule): Double = 20.0
 
     @Suppress("UNCHECKED_CAST")
-    override fun form(context: RenderContext<Any>, value: MutableReactive<Any>, module: FormModule): ViewWriter.() -> Unit {
-        val options = extractOptions(context.serializer)
-        if (options.isEmpty()) return { text("No sealed subtypes found") }
+    override fun form(context: RenderContext<VirtualSealedInstance>, value: MutableReactive<VirtualSealedInstance>, module: FormModule): ViewWriter.() -> Unit {
+        val ser = context.serializer as VirtualSealed.Concrete
 
         return {
             val type = value.lens(
-                get = { v -> findOption(v, options) ?: options.first() },
-                set = { option -> option.serializer.default() as Any }
+                get = { v -> v.option },
+                set = { option -> VirtualSealedInstance(option, ser.serializableOptions[option.index].serializer.default()!!) }
             )
+            val tt = remember { type() }
             row {
-                atTop.sizeConstraints(width = 10.rem).fieldTheme.select {
-                    bind(type, Constant(options)) { it.displayName }
+                centered.sizeConstraints(width = 10.rem).fieldTheme.select {
+                    bind(type, Constant(ser.sealed.options.toList())) { it.name.substringAfterLast('.').titleCase() }
                 }
-                expanding.frame {
-                    reactive {
-                        val selectedType = type()
-                        clearChildren()
-                        val subSerializer = selectedType.serializer as KSerializer<Any>
-                        val subContext = RenderContext(subSerializer, context.fieldAnnotations)
-                        val subValue = value.lens(
-                            get = { v ->
-                                val matched = findOption(v, options)
-                                if (matched?.index == selectedType.index) v
-                                else subSerializer.default()
-                            },
-                            set = { it }
-                        )
-                        module.form(subContext, subValue)()
-                    }
+                expanding.swapView {
+                    swapping(
+                        current = { tt() },
+                        views = { selectedType ->
+                            val subSerializer = ser.serializableOptions[selectedType.index].serializer
+                            val subContext = RenderContext(subSerializer, context.fieldAnnotations)
+                            val subValue = value.lens(
+                                get = { v ->
+                                    if (v.option.index == selectedType.index) v.value
+                                    else subSerializer.default()
+                                },
+                                set = { VirtualSealedInstance(selectedType, it!!) }
+                            )
+                            module.form(subContext, subValue)()
+                        }
+                    )
                 }
             }
         }
     }
 
     @Suppress("UNCHECKED_CAST")
-    override fun view(context: RenderContext<Any>, value: Reactive<Any>, module: FormModule): ViewWriter.() -> Unit {
-        val options = extractOptions(context.serializer)
-        if (options.isEmpty()) return { text("No sealed subtypes found") }
+    override fun view(context: RenderContext<VirtualSealedInstance>, value: Reactive<VirtualSealedInstance>, module: FormModule): ViewWriter.() -> Unit {
+        val ser = context.serializer as VirtualSealed.Concrete
 
         return {
+            val tt = remember { value().option }
             row {
-                reactive {
-                    clearChildren()
-                    val currentValue = value()
-                    val selectedType = findOption(currentValue, options) ?: options.first()
-
-                    text(selectedType.displayName)
-                    space()
-                    val subSerializer = selectedType.serializer as KSerializer<Any>
-                    val subContext = RenderContext(subSerializer, context.fieldAnnotations)
-                    val subValue = value.lens { v ->
-                        val matched = findOption(v, options)
-                        if (matched?.index == selectedType.index) v
-                        else subSerializer.default()
-                    }
-                    module.view(subContext, subValue)()
+                centered.text { ::content { tt().name.substringAfterLast('.').titleCase() } }
+                expanding.swapView {
+                    swapping(
+                        current = { tt() },
+                        views = { selectedType ->
+                            val subSerializer = ser.serializableOptions[selectedType.index].serializer
+                            val subContext = RenderContext(subSerializer, context.fieldAnnotations)
+                            val subValue = value.lens(
+                                get = { v ->
+                                    if (v.option.index == selectedType.index) v.value
+                                    else subSerializer.default()
+                                },
+                            )
+                            module.view(subContext, subValue)()
+                        }
+                    )
                 }
             }
         }
     }
 
     @Suppress("UNCHECKED_CAST")
-    override fun cellView(context: RenderContext<Any>, value: Reactive<Any>, module: FormModule): ViewWriter.() -> Unit {
-        val options = extractOptions(context.serializer)
+    override fun cellView(context: RenderContext<VirtualSealedInstance>, value: Reactive<VirtualSealedInstance>, module: FormModule): ViewWriter.() -> Unit {
         return {
-            text {
-                ::content {
-                    val currentValue = value()
-                    val selectedType = findOption(currentValue, options) ?: options.firstOrNull()
-                    selectedType?.displayName ?: "Unknown"
-                }
+            centered.text {
+                ::content { value().option.name.substringAfterLast('.').titleCase() }
             }
         }
     }
