@@ -45,11 +45,7 @@ object TableRenderer : FormRenderer.Generator, ViewRenderer.Generator {
 
     @Suppress("UNCHECKED_CAST")
     override fun <T> form(module: FormModule, selector: FormSelector<T>): FormRenderer<T> {
-        val innerSer = selector.serializer.listElement()!!
-        val inner = module.form(selector.copy(innerSer, desiredSize = flp)) as FormRenderer<Any?>
-        return FormRenderer(module, this, selector as FormSelector<List<Any?>>) { _, mutable ->
-            text("TODO")
-        } as FormRenderer<T>
+        return VerticalListRenderer.form(module, selector)
     }
 
     @Suppress("UNCHECKED_CAST")

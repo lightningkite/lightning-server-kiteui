@@ -1,21 +1,21 @@
 
 [versions]
-agp = "8.11.2"
+agp = "8.12.3"
 androidDesugaring = "2.1.5"
 dokka = "2.1.0"
-graalVmNative = "0.11.3"
+graalVmNative = "0.11.4"
 kiteui = "6.0.1-96"
-kotlin = "2.2.21"
+kotlin = "2.2.20"
 kotlinerCli = "1.0.5"
 kotlinxCoroutinesTest = "1.10.2"
 kotlinxSerializationCsvDurable = "0.2.21-1"
 ksp = "2.2.20-2.0.4"
-lightningServer = "4.1.143"
+lightningServer = "4.1.151"
 lkGradleHelpers = "4.0.6"
-log4jToSlf4j = "2.25.2"
+log4jToSlf4j = "2.25.3"
 proguard = "7.8.2"
 shadow = "8.1.1"
-vanniktechPublishing = "0.34.0"
+vanniktechPublishing = "0.35.0"
 vite = "0.6.0" # Don't update to 0.6.3, it is broke
 
 [libraries]
