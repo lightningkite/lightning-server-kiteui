@@ -42,5 +42,7 @@ module "web" {
   domain_name = "ls5admin.cs.lightningkite.com"
   domain_name_zone = "cs.lightningkite.com"
   react_mode = true
+
+  cors_allowed_origins = ["*"]
 }
 
