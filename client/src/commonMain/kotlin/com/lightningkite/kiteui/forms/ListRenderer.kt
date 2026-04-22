@@ -97,7 +97,6 @@ object ListRenderer : Renderer<List<Any?>> {
                                                 val otherCol = t.removeAt(otherOldIndex)
                                                 if (myOldIndex < otherOldIndex) t.add(myOldIndex, otherCol)
                                                 else t.add(myOldIndex, otherCol)
-                                                println("Rewrote $it to $t")
                                                 t
                                             }
                                     }

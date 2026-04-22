@@ -4,11 +4,11 @@ export default defineConfig({
     root: "kotlin",
     server: {
         host: true,
-        port: 8091,
-        allowedHosts: ["localhost:8091"],
+        port: 8010,
+        allowedHosts: ["jivie.lightningkite.com", "localhost:8080"],
         proxy: {
             '/api': {
-                target: 'http://localhost:8090',
+                target: 'http://localhost:8080',
                 // changeOrigin: true,
                 rewrite: (path) => path.replace(/^\/api/, ''),
                 ws: true,

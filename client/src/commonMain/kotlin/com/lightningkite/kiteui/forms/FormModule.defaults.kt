@@ -39,6 +39,8 @@ fun FormModule.defaults() {
     registerEnum()
     registerWrapper()
     registerMySealed()         // by Claude - MySealedClassSerializerInterface support
+    registerVirtualSealed()
+    registerNormalSealed()
     registerSingletonObject()  // by Claude - Kotlin object singletons
     registerCollections()
     registerSet()              // by Claude - Set<T> support
