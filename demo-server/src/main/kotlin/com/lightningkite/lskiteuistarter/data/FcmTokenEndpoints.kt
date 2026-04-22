@@ -46,7 +46,7 @@ object FcmTokenEndpoints : ServerBuilder() {
             info.table().upsertOne(
                 condition { it._id eq id },
                 modification { it.user assign auth.id },
-                FcmToken(id, auth.id, userAgent = request.headers["User-Agent"]?.root ?: "?")
+                FcmToken(id, auth.id)
             )
         }
     )

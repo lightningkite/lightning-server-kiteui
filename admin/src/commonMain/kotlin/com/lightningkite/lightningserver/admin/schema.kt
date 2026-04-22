@@ -67,6 +67,7 @@ fun SerializationRegistry.register(schema: LightningServerKSchema) {
     schema.structures.values.forEach { register(it) }
     schema.enums.values.forEach { register(it) }
     schema.aliases.values.forEach { register(it) }
+    schema.sealedStructures.values.forEach { register(it) }
     if(schema.aliases.containsKey("com.lightningkite.services.files.ServerFile")) throw IllegalStateException()
 }
 
