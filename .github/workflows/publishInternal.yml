@@ -37,8 +37,11 @@ jobs:
       - name: Clean
         run: ./gradlew clean
 
-      - name: Test
-        run: ./gradlew allTests
+      - name: Run JVM Only Tests
+        run: ./gradlew test
+
+      - name: Run MP/JVM Tests
+        run: ./gradlew jvmTest
 
       - uses: actions/upload-artifact@v4
         if: failure()
