@@ -14,16 +14,19 @@ import com.lightningkite.reactive.core.Reactive
 import com.lightningkite.reactive.core.remember
 import com.lightningkite.reactive.lensing.lens
 import com.lightningkite.services.database.MySealedClassSerializerInterface
+import com.lightningkite.services.database.SealedSerializableOption
 import com.lightningkite.services.database.default
 import com.lightningkite.services.database.serializableOptions
-import com.lightningkite.services.database.serializableOptionsIdentify
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.InternalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.descriptors.PolymorphicKind
 import kotlinx.serialization.descriptors.SerialKind
 import kotlinx.serialization.descriptors.StructureKind
+import kotlinx.serialization.encoding.AbstractEncoder
 import kotlinx.serialization.internal.AbstractPolymorphicSerializer
+import kotlinx.serialization.modules.EmptySerializersModule
+import kotlinx.serialization.modules.SerializersModule
 
 /**
  * Renderer for sealed class types using MySealedClassSerializerInterface.
@@ -130,4 +133,19 @@ object NormalSealedRenderer : Renderer<Any> {
 fun FormModule.registerNormalSealed() {
     // Use wildcard selector - priority() handles the matching
     register(Selector(), NormalSealedRenderer)
+}
+
+
+@OptIn(ExperimentalSerializationApi::class, InternalSerializationApi::class)
+@Suppress("UNCHECKED_CAST")
+private fun <T> KSerializer<T>.serializableOptionsIdentify(item: T): SealedSerializableOption<T>? {
+    val poly = this as? AbstractPolymorphicSerializer<Any> ?: return null
+    if (descriptor.kind != PolymorphicKind.SEALED) return null
+    val ser = poly.findPolymorphicSerializerOrNull(StubPolymorphicEncoder, item as Any) ?: return null
+    return serializableOptions?.firstOrNull { it.serializer.descriptor.serialName == ser.descriptor.serialName }?.let { it as SealedSerializableOption<T>? }
+}
+
+@OptIn(ExperimentalSerializationApi::class)
+private object StubPolymorphicEncoder : AbstractEncoder() {
+    override val serializersModule: SerializersModule = EmptySerializersModule()
 }
