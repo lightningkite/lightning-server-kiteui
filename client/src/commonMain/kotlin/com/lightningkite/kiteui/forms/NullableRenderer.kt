@@ -9,6 +9,7 @@ import com.lightningkite.kiteui.views.expanding
 import com.lightningkite.reactive.context.reactive
 import com.lightningkite.reactive.core.MutableReactive
 import com.lightningkite.reactive.core.Reactive
+import com.lightningkite.reactive.core.remember
 import com.lightningkite.reactive.lensing.lens
 import com.lightningkite.services.database.default
 import com.lightningkite.services.database.nullElement
@@ -51,22 +52,28 @@ object NullableRenderer : Renderer<Any?> {
                 }
 
                 // Inner renderer (shown when not null)
-                expanding.frame {
-                    reactive {
-                        clearChildren()
-                        val current = value()
-                        if (current != null) {
-                            ifNotNull = current
-                            // Use set since we're just unwrapping/wrapping the nullable
-                            val nonNullValue = value.lens(
-                                get = { it ?: ifNotNull },
-                                set = { it }
-                            )
-                            innerRenderer.form(innerContext, nonNullValue, module)()
-                        } else {
-                            text("N/A")
+                // Use swapping so the inner form is only recreated when null/non-null state changes,
+                // not on every keystroke (which would destroy focus).
+                val nn = remember {
+                    val current = value()
+                    if (current != null) ifNotNull = current  // keep ifNotNull fresh for checkbox restore
+                    current != null
+                }
+                expanding.swapView {
+                    swapping(
+                        current = { nn() },
+                        views = { isNotNull ->
+                            if (isNotNull) {
+                                val nonNullValue = value.lens(
+                                    get = { it ?: ifNotNull },
+                                    set = { it }
+                                )
+                                innerRenderer.form(innerContext, nonNullValue, module)()
+                            } else {
+                                text("N/A")
+                            }
                         }
-                    }
+                    )
                 }
             }
         }

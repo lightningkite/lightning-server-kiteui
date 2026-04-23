@@ -38,9 +38,11 @@ module "web" {
     aws.acm = aws.acm
   }
   deployment_name = "ls5admin"
-  dist_folder = "../../build/vite/dist"
+  dist_folder = "../../build/dist/js/production"
   domain_name = "ls5admin.cs.lightningkite.com"
   domain_name_zone = "cs.lightningkite.com"
   react_mode = true
+
+  cors_allowed_origins = ["*"]
 }
 

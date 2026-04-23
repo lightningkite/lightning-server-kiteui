@@ -308,7 +308,7 @@ class CollectionAdminPage(val collectionName: String) : Page {
                     visibleIf = { permissions().updateRestrictions.fields.isNotEmpty() }
                 ) {
                     permissions().updateRestrictions.fields
-                        .joinToString(", ") { it.path.properties.joinToString("'s ") { it.displayName } }
+                        .joinToString(", ") { it.property.properties.joinToString("'s ") { it.displayName } }
                 }
                 permissionRow("Delete") { permissions().delete.simplify().friendly() }
             }

@@ -9,7 +9,8 @@ plugins {
     alias(libs.plugins.ksp)
     alias(libs.plugins.kotlin.serialization)
 //    alias(libs.plugins.dokka)
-    alias(libs.plugins.vite)
+    alias(libs.plugins.kjsplain)
+    alias(libs.plugins.kfc)
     alias(libs.plugins.comLightningkiteKiteui)
 }
 apply<KiteUiPlugin>()
@@ -77,6 +78,7 @@ kotlin {
 //        }
         val jsMain by getting {
             dependencies {
+                implementation(npm("@js-joda/core", "3.2.0"))
                 implementation(npm("@js-joda/timezone", "2.3.0"))
             }
         }
@@ -97,14 +99,10 @@ configure<KiteUiPluginExtension> {
     this.iosProjectRoot = project.file("../example-app-ios/KiteUI Example App")
 }
 
-vite {
-    publicDir.set(project.file("src/jsMain/resources").absolutePath)
-}
-
 fun env(name: String, profile: String) {
     tasks.create("deployWeb${name}Init", Exec::class.java) {
         group = "deploy"
-        this.dependsOn("viteBuild")
+        this.dependsOn("jsBundleProduction")
         this.environment("AWS_PROFILE", "$profile")
         val props = Properties()
         props.entries.forEach {

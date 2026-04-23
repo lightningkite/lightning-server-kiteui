@@ -88,4 +88,6 @@ object Server : ServerBuilder() {
         database,
         cache
     )
+
+    val sealedPolymorphicTableTests = path.path("test-sealed-classes") module SealedPolymorphicModel
 }
