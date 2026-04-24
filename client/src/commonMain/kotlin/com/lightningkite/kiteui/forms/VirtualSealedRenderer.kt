@@ -3,6 +3,7 @@
 package com.lightningkite.kiteui.forms
 
 import com.lightningkite.kiteui.models.rem
+import com.lightningkite.kiteui.views.ElementWriter
 import com.lightningkite.kiteui.views.ViewWriter
 import com.lightningkite.kiteui.views.atTop
 import com.lightningkite.kiteui.views.centered
@@ -34,7 +35,7 @@ object VirtualSealedRenderer : Renderer<VirtualSealedInstance> {
     override fun columnWidth(context: RenderContext<VirtualSealedInstance>, module: FormModule): Double = 20.0
 
     @Suppress("UNCHECKED_CAST")
-    override fun form(context: RenderContext<VirtualSealedInstance>, value: MutableReactive<VirtualSealedInstance>, module: FormModule): ViewWriter.() -> Unit {
+    override fun form(context: RenderContext<VirtualSealedInstance>, value: MutableReactive<VirtualSealedInstance>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit {
         val ser = context.serializer as VirtualSealed.Concrete
 
         return {
@@ -69,7 +70,7 @@ object VirtualSealedRenderer : Renderer<VirtualSealedInstance> {
     }
 
     @Suppress("UNCHECKED_CAST")
-    override fun view(context: RenderContext<VirtualSealedInstance>, value: Reactive<VirtualSealedInstance>, module: FormModule): ViewWriter.() -> Unit {
+    override fun view(context: RenderContext<VirtualSealedInstance>, value: Reactive<VirtualSealedInstance>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit {
         val ser = context.serializer as VirtualSealed.Concrete
 
         return {
@@ -97,9 +98,9 @@ object VirtualSealedRenderer : Renderer<VirtualSealedInstance> {
     }
 
     @Suppress("UNCHECKED_CAST")
-    override fun cellView(context: RenderContext<VirtualSealedInstance>, value: Reactive<VirtualSealedInstance>, module: FormModule): ViewWriter.() -> Unit {
+    override fun cellView(context: RenderContext<VirtualSealedInstance>, value: Reactive<VirtualSealedInstance>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit {
         return {
-            centered.text {
+            text {
                 ::content { value().option.name.substringAfterLast('.').titleCase() }
             }
         }

@@ -3,6 +3,7 @@
 package com.lightningkite.kiteui.forms
 
 import com.lightningkite.kiteui.models.rem
+import com.lightningkite.kiteui.views.ElementWriter
 import com.lightningkite.kiteui.views.ViewWriter
 import com.lightningkite.kiteui.views.atTop
 import com.lightningkite.kiteui.views.direct.*
@@ -48,7 +49,7 @@ object NormalSealedRenderer : Renderer<Any> {
     override fun columnWidth(context: RenderContext<Any>, module: FormModule): Double = 20.0
 
     @Suppress("UNCHECKED_CAST")
-    override fun form(context: RenderContext<Any>, value: MutableReactive<Any>, module: FormModule): ViewWriter.() -> Unit {
+    override fun form(context: RenderContext<Any>, value: MutableReactive<Any>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit {
         val serializer = context.serializer
         val options = (serializer.serializableOptions ?: arrayOf()).toList()
 
@@ -81,7 +82,7 @@ object NormalSealedRenderer : Renderer<Any> {
     }
 
     @Suppress("UNCHECKED_CAST")
-    override fun view(context: RenderContext<Any>, value: Reactive<Any>, module: FormModule): ViewWriter.() -> Unit {
+    override fun view(context: RenderContext<Any>, value: Reactive<Any>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit {
         val serializer = context.serializer
         val options = (serializer.serializableOptions ?: arrayOf()).toList()
 
@@ -107,7 +108,7 @@ object NormalSealedRenderer : Renderer<Any> {
     }
 
     @Suppress("UNCHECKED_CAST")
-    override fun cellView(context: RenderContext<Any>, value: Reactive<Any>, module: FormModule): ViewWriter.() -> Unit {
+    override fun cellView(context: RenderContext<Any>, value: Reactive<Any>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit {
         val serializer = context.serializer as MySealedClassSerializerInterface<Any>
 
         return {

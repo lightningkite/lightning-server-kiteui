@@ -30,7 +30,7 @@ import com.lightningkite.kiteui.navigation.DefaultJson
 import com.lightningkite.kiteui.navigation.PageNavigator
 import com.lightningkite.kiteui.printStackTrace2
 import com.lightningkite.kiteui.root
-import com.lightningkite.kiteui.views.RView
+import com.lightningkite.kiteui.views.Element
 import com.lightningkite.lightningserver.admin.AutoRoutes
 import com.lightningkite.lightningserver.admin.app
 import com.lightningkite.lightningserver.admin.appTheme
@@ -41,7 +41,7 @@ import kotlinx.serialization.Serializable
 import org.w3c.dom.HTMLScriptElement
 
 fun main() {
-    var created: RView? = null
+    var created: Element? = null
     window.onerror = { a, b, c, d, e ->
         println("ON ERROR HANDLER $a $b $c $d $e")
         if (e is Exception) e.printStackTrace2()

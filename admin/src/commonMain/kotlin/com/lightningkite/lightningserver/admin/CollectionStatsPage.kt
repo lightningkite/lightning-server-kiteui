@@ -242,13 +242,13 @@ class CollectionStatsPage(val collectionName: String) : Page {
                                     )
                                 )
                             }
-                            ListSemantic.onNext.recyclerView {
+                            themed(ListSemantic).recyclerView {
                                 children(
                                     remember { aggregation().entries.sortedByDescending { it.value } },
                                     id = { it.key }) {
                                     card.row {
                                         val ser = groupBy.serializerAny as KSerializer<Any?>
-                                        expanding.centered.view(
+                                        centered.expanding.view(
                                             context = forms,
                                             serializer = ser,
                                             readable = it.lens {

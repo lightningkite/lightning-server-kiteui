@@ -2,6 +2,7 @@ import { defineConfig } from 'vite'
 
 export default defineConfig({
     root: "kotlin",
+    base: './', // Or base: ''
     server: {
         host: true,
         port: 8010,
