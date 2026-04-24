@@ -17,7 +17,7 @@ import com.lightningkite.lightningserver.sessions.proofs.ProofClientEndpoints
 import com.lightningkite.lightningserver.sessions.proofs.WebAuthN
 import kotlinx.coroutines.launch
 
-data class WebAuthNProofComponent(
+public data class WebAuthNProofComponent(
     val p: ProofClientEndpoints.WebAuthN,
     val type: String,
     val usePasskeyUI: Boolean,

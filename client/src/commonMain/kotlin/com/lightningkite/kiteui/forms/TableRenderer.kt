@@ -40,7 +40,7 @@ import kotlinx.serialization.descriptors.StructureKind
  *
  * by Claude
  */
-object TableRenderer : Renderer<List<Any?>> {
+public object TableRenderer : Renderer<List<Any?>> {
     override val name: String = "Table"  // by Claude
 
     override fun priority(context: RenderContext<List<Any?>>, module: FormModule): Float {
@@ -125,19 +125,19 @@ object TableRenderer : Renderer<List<Any?>> {
 }
 
 @Serializable
-data class ColumnInfo<T>(
+public data class ColumnInfo<T>(
     val path: DataClassPathPartial<T>,
     val rendererSelected: String? = null
 ) {
-    constructor(path: DataClassPathPartial<T>, renderer: Renderer<*>): this(path, renderer.name)
-    constructor(path: DataClassPathPartial<T>, formModule: FormModule): this(path, formModule.select(RenderContext(path.serializerAny, path.properties.lastOrNull()?.serializableAnnotations ?: listOf())))
+    public constructor(path: DataClassPathPartial<T>, renderer: Renderer<*>): this(path, renderer.name)
+    public constructor(path: DataClassPathPartial<T>, formModule: FormModule): this(path, formModule.select(RenderContext(path.serializerAny, path.properties.lastOrNull()?.serializableAnnotations ?: listOf())))
     @Transient private var cached: Renderer<Any?>? = null
     @Suppress("UNCHECKED_CAST")
-    @Transient val ctx = RenderContext(
+    @Transient val ctx: RenderContext<Any?> = RenderContext(
         path.serializerAny as KSerializer<Any?>,
         path.properties.lastOrNull()?.serializableAnnotations ?: listOf()
     )
-    fun renderer(formModule: FormModule): Renderer<Any?> {
+    public fun renderer(formModule: FormModule): Renderer<Any?> {
         return cached ?: run {
             val n = formModule.selectAll(ctx).find { it.name == rendererSelected }
                 ?: formModule.select(ctx)
@@ -145,7 +145,7 @@ data class ColumnInfo<T>(
             n
         }
     }
-    fun columnWidth(formModule: FormModule): Double = renderer(formModule).columnWidth(ctx, formModule) ?: 8.0
+    public fun columnWidth(formModule: FormModule): Double = renderer(formModule).columnWidth(ctx, formModule) ?: 8.0
 }
 
 /**
@@ -165,7 +165,7 @@ data class ColumnInfo<T>(
  * by Claude - updated to support double-wrapped reactive pattern for LimitReadable support
  */
 @Suppress("UNCHECKED_CAST")
-fun <T> ElementWriter.CanAddScrolling.renderTable(
+public fun <T> ElementWriter.CanAddScrolling.renderTable(
     module: FormModule,
     innerSerializer: KSerializer<T>,
     items: Reactive<Reactive<List<T>>>,
@@ -322,6 +322,6 @@ fun <T> ElementWriter.CanAddScrolling.renderTable(
     }
 }
 
-fun FormModule.registerTable() {
+public fun FormModule.registerTable() {
     register(Selector(kind = StructureKind.LIST), TableRenderer)
 }

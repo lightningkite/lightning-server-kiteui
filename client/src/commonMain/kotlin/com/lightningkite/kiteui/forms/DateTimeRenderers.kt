@@ -13,7 +13,7 @@ import kotlin.time.Instant
 // ===== Instant (UTC timestamp) =====
 // by Claude
 
-object InstantRenderer : Renderer<Instant> {
+public object InstantRenderer : Renderer<Instant> {
     override val name: String = "Date & Time"  // by Claude
     override fun form(context: RenderContext<Instant>, value: MutableReactive<Instant>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
         fieldTheme.localDateTimeField {
@@ -29,10 +29,10 @@ object InstantRenderer : Renderer<Instant> {
     }
 
     override fun cellForm(context: RenderContext<Instant>, value: MutableReactive<Instant>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = form(context, value, module)
-    override fun columnWidth(context: RenderContext<Instant>, module: FormModule) = 17.0
+    override fun columnWidth(context: RenderContext<Instant>, module: FormModule): Double = 17.0
 }
 
-object NullableInstantRenderer : Renderer<Instant?> {
+public object NullableInstantRenderer : Renderer<Instant?> {
     override val name: String = "Date & Time"  // by Claude
     override fun form(context: RenderContext<Instant?>, value: MutableReactive<Instant?>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
         fieldTheme.localDateTimeField {
@@ -48,12 +48,12 @@ object NullableInstantRenderer : Renderer<Instant?> {
     }
 
     override fun cellForm(context: RenderContext<Instant?>, value: MutableReactive<Instant?>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = form(context, value, module)
-    override fun columnWidth(context: RenderContext<Instant?>, module: FormModule) = 17.0
+    override fun columnWidth(context: RenderContext<Instant?>, module: FormModule): Double = 17.0
 }
 
 // ===== LocalDateTime =====
 
-object LocalDateTimeRenderer : Renderer<LocalDateTime> {
+public object LocalDateTimeRenderer : Renderer<LocalDateTime> {
     override val name: String = "Date & Time"  // by Claude
     override fun form(context: RenderContext<LocalDateTime>, value: MutableReactive<LocalDateTime>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
         fieldTheme.localDateTimeField {
@@ -69,10 +69,10 @@ object LocalDateTimeRenderer : Renderer<LocalDateTime> {
     }
 
     override fun cellForm(context: RenderContext<LocalDateTime>, value: MutableReactive<LocalDateTime>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = form(context, value, module)
-    override fun columnWidth(context: RenderContext<LocalDateTime>, module: FormModule) = 17.0
+    override fun columnWidth(context: RenderContext<LocalDateTime>, module: FormModule): Double = 17.0
 }
 
-object NullableLocalDateTimeRenderer : Renderer<LocalDateTime?> {
+public object NullableLocalDateTimeRenderer : Renderer<LocalDateTime?> {
     override val name: String = "Date & Time"  // by Claude
     override fun form(context: RenderContext<LocalDateTime?>, value: MutableReactive<LocalDateTime?>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
         fieldTheme.localDateTimeField { content bind value }
@@ -83,12 +83,12 @@ object NullableLocalDateTimeRenderer : Renderer<LocalDateTime?> {
     }
 
     override fun cellForm(context: RenderContext<LocalDateTime?>, value: MutableReactive<LocalDateTime?>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = form(context, value, module)
-    override fun columnWidth(context: RenderContext<LocalDateTime?>, module: FormModule) = 17.0
+    override fun columnWidth(context: RenderContext<LocalDateTime?>, module: FormModule): Double = 17.0
 }
 
 // ===== LocalDate =====
 
-object LocalDateRenderer : Renderer<LocalDate> {
+public object LocalDateRenderer : Renderer<LocalDate> {
     override val name: String = "Date"  // by Claude
     override fun form(context: RenderContext<LocalDate>, value: MutableReactive<LocalDate>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
         fieldTheme.localDateField {
@@ -104,10 +104,10 @@ object LocalDateRenderer : Renderer<LocalDate> {
     }
 
     override fun cellForm(context: RenderContext<LocalDate>, value: MutableReactive<LocalDate>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = form(context, value, module)
-    override fun columnWidth(context: RenderContext<LocalDate>, module: FormModule) = 11.0
+    override fun columnWidth(context: RenderContext<LocalDate>, module: FormModule): Double = 11.0
 }
 
-object NullableLocalDateRenderer : Renderer<LocalDate?> {
+public object NullableLocalDateRenderer : Renderer<LocalDate?> {
     override val name: String = "Date"  // by Claude
     override fun form(context: RenderContext<LocalDate?>, value: MutableReactive<LocalDate?>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
         fieldTheme.localDateField { content bind value }
@@ -118,12 +118,12 @@ object NullableLocalDateRenderer : Renderer<LocalDate?> {
     }
 
     override fun cellForm(context: RenderContext<LocalDate?>, value: MutableReactive<LocalDate?>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = form(context, value, module)
-    override fun columnWidth(context: RenderContext<LocalDate?>, module: FormModule) = 11.0
+    override fun columnWidth(context: RenderContext<LocalDate?>, module: FormModule): Double = 11.0
 }
 
 // ===== LocalTime =====
 
-object LocalTimeRenderer : Renderer<LocalTime> {
+public object LocalTimeRenderer : Renderer<LocalTime> {
     override val name: String = "Time"  // by Claude
     override fun form(context: RenderContext<LocalTime>, value: MutableReactive<LocalTime>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
         fieldTheme.localTimeField {
@@ -139,10 +139,10 @@ object LocalTimeRenderer : Renderer<LocalTime> {
     }
 
     override fun cellForm(context: RenderContext<LocalTime>, value: MutableReactive<LocalTime>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = form(context, value, module)
-    override fun columnWidth(context: RenderContext<LocalTime>, module: FormModule) = 6.0
+    override fun columnWidth(context: RenderContext<LocalTime>, module: FormModule): Double = 6.0
 }
 
-object NullableLocalTimeRenderer : Renderer<LocalTime?> {
+public object NullableLocalTimeRenderer : Renderer<LocalTime?> {
     override val name: String = "Time"  // by Claude
     override fun form(context: RenderContext<LocalTime?>, value: MutableReactive<LocalTime?>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
         fieldTheme.localTimeField { content bind value }
@@ -153,12 +153,12 @@ object NullableLocalTimeRenderer : Renderer<LocalTime?> {
     }
 
     override fun cellForm(context: RenderContext<LocalTime?>, value: MutableReactive<LocalTime?>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = form(context, value, module)
-    override fun columnWidth(context: RenderContext<LocalTime?>, module: FormModule) = 6.0
+    override fun columnWidth(context: RenderContext<LocalTime?>, module: FormModule): Double = 6.0
 }
 
 // ===== TimeZone =====
 
-object TimeZoneRenderer : Renderer<TimeZone> {
+public object TimeZoneRenderer : Renderer<TimeZone> {
     override val name: String = "Time Zone"  // by Claude
     private val allTimeZones by lazy { Constant(TimeZone.availableZoneIds.map { TimeZone.of(it) }) }
 
@@ -173,10 +173,10 @@ object TimeZoneRenderer : Renderer<TimeZone> {
     }
 
     override fun cellForm(context: RenderContext<TimeZone>, value: MutableReactive<TimeZone>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = form(context, value, module)
-    override fun columnWidth(context: RenderContext<TimeZone>, module: FormModule) = 20.0
+    override fun columnWidth(context: RenderContext<TimeZone>, module: FormModule): Double = 20.0
 }
 
-object NullableTimeZoneRenderer : Renderer<TimeZone?> {
+public object NullableTimeZoneRenderer : Renderer<TimeZone?> {
     override val name: String = "Time Zone"  // by Claude
     private val allTimeZones by lazy { Constant(listOf(null) + TimeZone.availableZoneIds.map { TimeZone.of(it) }) }
 
@@ -191,12 +191,12 @@ object NullableTimeZoneRenderer : Renderer<TimeZone?> {
     }
 
     override fun cellForm(context: RenderContext<TimeZone?>, value: MutableReactive<TimeZone?>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = form(context, value, module)
-    override fun columnWidth(context: RenderContext<TimeZone?>, module: FormModule) = 20.0
+    override fun columnWidth(context: RenderContext<TimeZone?>, module: FormModule): Double = 20.0
 }
 
 // ===== Registration =====
 
-fun FormModule.registerDateTimes() {
+public fun FormModule.registerDateTimes() {
     register(Selector(type = "kotlin.time.Instant"), InstantRenderer)
     register(Selector(type = "kotlin.time.Instant?"), NullableInstantRenderer)
     register(Selector(type = "kotlinx.datetime.LocalDateTime"), LocalDateTimeRenderer)

@@ -2,7 +2,6 @@ package com.lightningkite.lightningserver.typed.sdk
 
 import com.lightningkite.lightningserver.runtime.ServerRuntime
 import com.lightningkite.services.data.ExperimentalLightningServer
-import com.lightningkite.services.data.KFile
 
 @OptIn(ExperimentalLightningServer::class)
 private class MergedFormat(val formats: List<SDK.Format>): SDK.Format {

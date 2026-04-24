@@ -23,7 +23,7 @@ import kotlinx.serialization.KSerializer
  *
  * by Claude
  */
-data class RenderContext<T>(
+public data class RenderContext<T>(
     val serializer: KSerializer<T>,
     val fieldAnnotations: List<SerializableAnnotation> = emptyList(),
 ) {
@@ -36,22 +36,22 @@ data class RenderContext<T>(
         get() = fieldAnnotations + typeAnnotations
 
     /** Check if any annotation (field or type) has the given fully-qualified name */
-    fun hasAnnotation(fqn: String): Boolean =
+    public fun hasAnnotation(fqn: String): Boolean =
         allAnnotations.any { it.fqn == fqn }
 
     /** Get the first annotation with the given FQN, or null if not found */
-    fun annotation(fqn: String): SerializableAnnotation? =
+    public fun annotation(fqn: String): SerializableAnnotation? =
         allAnnotations.firstOrNull { it.fqn == fqn }
 
     /** Get a string value from an annotation parameter */
-    fun annotationString(fqn: String, param: String = "value"): String? =
+    public fun annotationString(fqn: String, param: String = "value"): String? =
         annotation(fqn)?.values?.get(param)?.let { it as? SerializableAnnotationValue.StringValue }?.value
 
     /** Get an int value from an annotation parameter */
-    fun annotationInt(fqn: String, param: String = "value"): Int? =
+    public fun annotationInt(fqn: String, param: String = "value"): Int? =
         annotation(fqn)?.values?.get(param)?.let { it as? SerializableAnnotationValue.IntValue }?.value
 
     /** Get a boolean value from an annotation parameter */
-    fun annotationBoolean(fqn: String, param: String = "value"): Boolean? =
+    public fun annotationBoolean(fqn: String, param: String = "value"): Boolean? =
         annotation(fqn)?.values?.get(param)?.let { it as? SerializableAnnotationValue.BooleanValue }?.value
 }

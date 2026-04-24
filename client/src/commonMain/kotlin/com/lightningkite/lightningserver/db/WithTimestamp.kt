@@ -12,7 +12,7 @@ import kotlin.time.Instant
  * @param item The cached value
  * @param at When this value was fetched or last confirmed fresh
  */
-data class WithTimestamp<T>(val item: T, val at: Instant)
+public data class WithTimestamp<T>(val item: T, val at: Instant)
 
 /**
  * Extends [WithTimestamp] with information about the requested limit for query results.
@@ -36,4 +36,4 @@ data class WithTimestamp<T>(val item: T, val at: Instant)
  * @param requestedLimit The limit that was requested when fetching this data
  * @param at When this value was fetched or last confirmed fresh
  */
-data class WithTimestampAndLimit<T>(val item: T, val requestedLimit: Int, val at: Instant)
+public data class WithTimestampAndLimit<T>(val item: T, val requestedLimit: Int, val at: Instant)

@@ -21,7 +21,7 @@ import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
-open class ClientModelRestEndpointsPlusUpdatesWebsocketMock<T : HasId<ID>, ID : Comparable<ID>>(
+public open class ClientModelRestEndpointsPlusUpdatesWebsocketMock<T : HasId<ID>, ID : Comparable<ID>>(
     scope: CoroutineScope,
     delayAmount: Duration = 0.1.seconds,
 ) :
@@ -37,7 +37,7 @@ open class ClientModelRestEndpointsPlusUpdatesWebsocketMock<T : HasId<ID>, ID : 
                 updatesWs.onOpenList.forEach { it.invoke() }
         }
 
-    val entryChanges = Signal<List<EntryChange<T>>>(listOf())
+    public val entryChanges: Signal<List<EntryChange<T>>> = Signal<List<EntryChange<T>>>(listOf())
     override fun change(collectionUpdates: CollectionUpdates<T, ID>) {
         val before = collectionUpdates.updates.associate { it._id to data[it._id] } + collectionUpdates.remove.associate { it to data[it] }
         super.change(collectionUpdates)
@@ -49,19 +49,19 @@ open class ClientModelRestEndpointsPlusUpdatesWebsocketMock<T : HasId<ID>, ID : 
         entryChanges.value = changes
     }
 
-    inner class UpdatesWs : ClientWebSocket<Condition<T>, CollectionUpdates<T, ID>> {
-        var filter: Condition<T> = Condition.Never
+    public inner class UpdatesWs : ClientWebSocket<Condition<T>, CollectionUpdates<T, ID>> {
+        public var filter: Condition<T> = Condition.Never
 
-        override val connected = MutableStateFlow(true)
+        override val connected: MutableStateFlow<Boolean> = MutableStateFlow(true)
 
-        val listeners = ArrayList<(CollectionUpdates<T, ID>)->Unit>()
+        public val listeners: ArrayList<(CollectionUpdates<T, ID>) -> Unit> = ArrayList<(CollectionUpdates<T, ID>)->Unit>()
 
         override fun send(data: Condition<T>) {
             filter = data
             listeners.forEach { it(CollectionUpdates(condition = data)) }
         }
 
-        val onOpenList = ArrayList<()->Unit>()
+        public val onOpenList: ArrayList<() -> Unit> = ArrayList<()->Unit>()
         override fun onOpen(action: () -> Unit) {
             onOpenList.add(action)
         }
@@ -70,7 +70,7 @@ open class ClientModelRestEndpointsPlusUpdatesWebsocketMock<T : HasId<ID>, ID : 
             listeners.add(action)
         }
 
-        val onCloseList = ArrayList<(Short)->Unit>()
+        public val onCloseList: ArrayList<(Short) -> Unit> = ArrayList<(Short)->Unit>()
         override fun onClose(action: (Short) -> Unit) {
             onCloseList.add(action)
         }
@@ -114,6 +114,6 @@ open class ClientModelRestEndpointsPlusUpdatesWebsocketMock<T : HasId<ID>, ID : 
         }
     }
 
-    val updatesWs = UpdatesWs()
+    public val updatesWs: ClientModelRestEndpointsPlusUpdatesWebsocketMock<T, ID>.UpdatesWs = UpdatesWs()
     override fun updates(): UpdatesWs = updatesWs
 }

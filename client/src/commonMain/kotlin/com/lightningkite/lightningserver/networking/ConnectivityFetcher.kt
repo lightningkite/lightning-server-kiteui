@@ -20,12 +20,12 @@ import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 
 @OptIn(ExperimentalSerializationApi::class)
-class ConnectivityFetcher(
-    val http: String,
-    val ws: String,
-    val json: Json = DefaultJson,
-    val pingTime: Duration = 5_000.milliseconds,
-    val calculator: suspend () -> List<Pair<String, String>> = { listOf() },
+public class ConnectivityFetcher(
+    public val http: String,
+    public val ws: String,
+    public val json: Json = DefaultJson,
+    public val pingTime: Duration = 5_000.milliseconds,
+    public val calculator: suspend () -> List<Pair<String, String>> = { listOf() },
 ) : Fetcher {
     override fun withHeaderCalculator(calculator: suspend () -> List<Pair<String, String>>): Fetcher =
         ConnectivityFetcher(http, ws, json, pingTime, calculator)

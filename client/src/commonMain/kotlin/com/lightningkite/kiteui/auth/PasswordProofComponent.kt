@@ -39,7 +39,7 @@ import com.lightningkite.reactive.core.Signal
  * Note: This component assumes the user identity (property/value) is already known
  * from the primaryIdentifier or option parameters. It only collects the password.
  */
-data class PasswordProofComponent(val p: ProofClientEndpoints.Password, val type: String) : EasierProofComponent {
+public data class PasswordProofComponent(val p: ProofClientEndpoints.Password, val type: String) : EasierProofComponent {
     override val name: String = "Enter Password"
     override val icon: Icon = Icon.Companion.password
     override val via: String = p.via

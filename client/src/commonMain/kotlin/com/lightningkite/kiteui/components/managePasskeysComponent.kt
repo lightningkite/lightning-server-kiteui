@@ -18,7 +18,7 @@ import com.lightningkite.services.database.*
 import kotlin.time.Clock.System.now
 
 
-fun ElementWriter.manageWebAuthNCredentialsComponent(
+public fun ElementWriter.manageWebAuthNCredentialsComponent(
     webAuthNCCredentials: Reactive<ModelCache<WebAuthNCredential, String>?>,
     subjectName: Reactive<String>,
     subjectId: Reactive<String>,

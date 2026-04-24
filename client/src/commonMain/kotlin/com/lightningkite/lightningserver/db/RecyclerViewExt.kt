@@ -14,7 +14,7 @@ import com.lightningkite.services.database.HasId
  * Handles unwrapping both layers and auto-pagination for [LimitReactiveList].
  */
 // by Claude
-fun <T, ID> Recycler2.children(
+public fun <T, ID> Recycler2.children(
     items: Reactive<Reactive<List<T>>>,
     id: (T) -> ID,
     render: ViewWriter.(value: Reactive<T>) -> Unit
@@ -34,7 +34,7 @@ fun <T, ID> Recycler2.children(
  * [HasId] overload — `id` defaults to `{ it._id }`.
  */
 // by Claude
-fun <T : HasId<ID>, ID : Comparable<ID>> Recycler2.children(
+public fun <T : HasId<ID>, ID : Comparable<ID>> Recycler2.children(
     items: Reactive<Reactive<List<T>>>,
     render: ViewWriter.(value: Reactive<T>) -> Unit
 ) {

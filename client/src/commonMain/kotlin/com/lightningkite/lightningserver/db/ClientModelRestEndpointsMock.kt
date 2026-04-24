@@ -12,15 +12,15 @@ import kotlinx.coroutines.delay
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
-open class ClientModelRestEndpointsMock<T : HasId<ID>, ID : Comparable<ID>>(
-    val scope: CoroutineScope,
-    val delayAmount: Duration = 0.1.seconds,
-    val log: Log? = null,
+public open class ClientModelRestEndpointsMock<T : HasId<ID>, ID : Comparable<ID>>(
+    public val scope: CoroutineScope,
+    public val delayAmount: Duration = 0.1.seconds,
+    public val log: Log? = null,
 ) : ClientModelRestEndpoints<T, ID> {
-    open var connectivityFailure: Boolean = false
+    public open var connectivityFailure: Boolean = false
 
-    val data = HashMap<ID, T>()
-    open fun change(collectionUpdates: CollectionUpdates<T, ID>) {
+    public val data: HashMap<ID, T> = HashMap<ID, T>()
+    public open fun change(collectionUpdates: CollectionUpdates<T, ID>) {
         log?.log("changes: $collectionUpdates")
         collectionUpdates.updates.forEach {
             data[it._id] = it

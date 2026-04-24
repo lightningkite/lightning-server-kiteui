@@ -4,7 +4,7 @@ import com.lightningkite.kiteui.report
 import com.lightningkite.kiteui.views.ElementContext
 import com.lightningkite.lightningserver.LsErrorException
 
-fun ExceptionHandlersTree.installLsError() {
+public fun ExceptionHandlersTree.installLsError() {
     this += ExceptionToMessage<LsErrorException> {
         it.report()
         ExceptionMessage(

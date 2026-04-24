@@ -20,6 +20,7 @@ import com.lightningkite.reactive.context.rerunOn
 import com.lightningkite.reactive.core.BasicListenable
 import com.lightningkite.reactive.core.Signal
 import com.lightningkite.reactive.core.rememberSuspending
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
 /**
@@ -40,17 +41,17 @@ import kotlin.time.Duration.Companion.seconds
  * Note: The code input uses one-time code keyboard hints for better mobile UX.
  * Implementation is nearly identical to EmailProofComponent but uses SMS-specific endpoints.
  */
-data class SmsProofComponent(val p: ProofClientEndpoints.Sms) : EasierProofComponent {
+public data class SmsProofComponent(val p: ProofClientEndpoints.Sms) : EasierProofComponent {
     override val name: String = "Text Code"
-    override val icon: Icon = Icon.Companion.chat
+    override val icon: Icon = Icon.chat
     override val via: String = p.via
     override val property: String? = p.property
 
     /** Holds the user-entered verification code */
-    val code = Signal("")
+    val code: Signal<String> = Signal("")
 
     /** Minimum time between resend attempts to prevent SMS spam and carrier rate limiting */
-    val resendTime = 15.seconds
+    val resendTime: Duration = 15.seconds
 
     /**
      * Renders the SMS verification UI.
@@ -85,7 +86,7 @@ data class SmsProofComponent(val p: ProofClientEndpoints.Sms) : EasierProofCompo
             }
 
             // Action to submit the verification code to the server
-            val proveSmsOwnership = Action("Submit", Icon.Companion.done) {
+            val proveSmsOwnership = Action("Submit", Icon.done) {
                 onResult(p.provePhoneOwnership(FinishProof(challenge().value, code.await())))
             }
 
@@ -102,7 +103,7 @@ data class SmsProofComponent(val p: ProofClientEndpoints.Sms) : EasierProofCompo
                         reactive { if (challenge.state().ready) requestFocus() }
                         content bind code
                         action = proveSmsOwnership
-                        keyboardHints = KeyboardHints.Companion.oneTimeCodeLetters
+                        keyboardHints = KeyboardHints.oneTimeCodeLetters
                     }
                 }
                 // Error messages appear here when proof fails
@@ -128,7 +129,7 @@ data class SmsProofComponent(val p: ProofClientEndpoints.Sms) : EasierProofCompo
 
                     // State 1: Just sent confirmation
                     centered.shownWhen { nowBySecond() < challenge().timestamp + 3.seconds }.row {
-                        centered.icon(Icon.Companion.done.copy(1.rem, 1.rem), "")
+                        centered.icon(Icon.done.copy(1.rem, 1.rem), "")
                         centered.text("Sent!")
                     }
 

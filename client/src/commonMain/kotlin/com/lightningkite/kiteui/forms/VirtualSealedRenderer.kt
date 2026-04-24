@@ -21,11 +21,11 @@ import com.lightningkite.services.database.VirtualSealed
 import com.lightningkite.services.database.VirtualSealedInstance
 import com.lightningkite.services.database.VirtualSealedOption
 import com.lightningkite.services.database.default
-import com.lightningkite.titleCase
+import com.lightningkite.services.data.titleCase
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 
-object VirtualSealedRenderer : Renderer<VirtualSealedInstance> {
+public object VirtualSealedRenderer : Renderer<VirtualSealedInstance> {
     override val name: String = "Options"
 
     override fun priority(context: RenderContext<VirtualSealedInstance>, module: FormModule): Float {
@@ -107,6 +107,6 @@ object VirtualSealedRenderer : Renderer<VirtualSealedInstance> {
     }
 }
 
-fun FormModule.registerVirtualSealed() {
+public fun FormModule.registerVirtualSealed() {
     register(Selector(), VirtualSealedRenderer)
 }

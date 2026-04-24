@@ -15,7 +15,7 @@ import com.lightningkite.reactive.core.Constant
 // ===== Boolean Renderers =====
 // by Claude
 
-object BooleanRenderer : Renderer<Boolean> {
+public object BooleanRenderer : Renderer<Boolean> {
     override val name: String = "Checkbox"  // by Claude
     override fun form(context: RenderContext<Boolean>, value: MutableReactive<Boolean>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
         checkbox { checked bind value }
@@ -26,7 +26,7 @@ object BooleanRenderer : Renderer<Boolean> {
     }
 
     override fun cellForm(context: RenderContext<Boolean>, value: MutableReactive<Boolean>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = form(context, value, module)
-    override fun columnWidth(context: RenderContext<Boolean>, module: FormModule) = 3.0
+    override fun columnWidth(context: RenderContext<Boolean>, module: FormModule): Double = 3.0
 
     // by Claude - Boolean renders better as inline row with checkbox + label
     override fun labeledForm(
@@ -62,7 +62,7 @@ object BooleanRenderer : Renderer<Boolean> {
     }
 }
 
-object NullableBooleanRenderer : Renderer<Boolean?> {
+public object NullableBooleanRenderer : Renderer<Boolean?> {
     override val name: String = "Yes/No/N/A"  // by Claude
     override fun form(context: RenderContext<Boolean?>, value: MutableReactive<Boolean?>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
         fieldTheme.select {
@@ -89,12 +89,12 @@ object NullableBooleanRenderer : Renderer<Boolean?> {
     }
 
     override fun cellForm(context: RenderContext<Boolean?>, value: MutableReactive<Boolean?>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = form(context, value, module)
-    override fun columnWidth(context: RenderContext<Boolean?>, module: FormModule) = 5.0
+    override fun columnWidth(context: RenderContext<Boolean?>, module: FormModule): Double = 5.0
 }
 
 // ===== String Renderers =====
 
-object StringRenderer : Renderer<String> {
+public object StringRenderer : Renderer<String> {
     override val name: String = "Text"  // by Claude
     override fun priority(context: RenderContext<String>, module: FormModule): Float {
         // Lower priority if @Multiline present (let MultilineStringRenderer win)
@@ -120,9 +120,9 @@ object StringRenderer : Renderer<String> {
     }
 }
 
-object MultilineStringRenderer : Renderer<String> {
+public object MultilineStringRenderer : Renderer<String> {
     override val name: String = "Multiline Text"  // by Claude
-    override fun priority(context: RenderContext<String>, module: FormModule) = 2f
+    override fun priority(context: RenderContext<String>, module: FormModule): Float = 2f
 
     override fun form(context: RenderContext<String>, value: MutableReactive<String>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
         fieldTheme.textArea {
@@ -147,12 +147,12 @@ object MultilineStringRenderer : Renderer<String> {
         }
     }
 
-    override fun columnWidth(context: RenderContext<String>, module: FormModule) = 30.0
+    override fun columnWidth(context: RenderContext<String>, module: FormModule): Double = 30.0
 }
 
 // ===== Number Renderers =====
 
-object IntRenderer : Renderer<Int> {
+public object IntRenderer : Renderer<Int> {
     override val name: String = "Number"  // by Claude
     override fun form(context: RenderContext<Int>, value: MutableReactive<Int>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
         fieldTheme.numberInput {
@@ -169,10 +169,10 @@ object IntRenderer : Renderer<Int> {
     }
 
     override fun cellForm(context: RenderContext<Int>, value: MutableReactive<Int>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = form(context, value, module)
-    override fun columnWidth(context: RenderContext<Int>, module: FormModule) = 10.0
+    override fun columnWidth(context: RenderContext<Int>, module: FormModule): Double = 10.0
 }
 
-object NullableIntRenderer : Renderer<Int?> {
+public object NullableIntRenderer : Renderer<Int?> {
     override val name: String = "Number"  // by Claude
     override fun form(context: RenderContext<Int?>, value: MutableReactive<Int?>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
         fieldTheme.numberInput {
@@ -189,10 +189,10 @@ object NullableIntRenderer : Renderer<Int?> {
     }
 
     override fun cellForm(context: RenderContext<Int?>, value: MutableReactive<Int?>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = form(context, value, module)
-    override fun columnWidth(context: RenderContext<Int?>, module: FormModule) = 10.0
+    override fun columnWidth(context: RenderContext<Int?>, module: FormModule): Double = 10.0
 }
 
-object LongRenderer : Renderer<Long> {
+public object LongRenderer : Renderer<Long> {
     override val name: String = "Number"  // by Claude
     override fun form(context: RenderContext<Long>, value: MutableReactive<Long>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
         fieldTheme.numberInput {
@@ -209,10 +209,10 @@ object LongRenderer : Renderer<Long> {
     }
 
     override fun cellForm(context: RenderContext<Long>, value: MutableReactive<Long>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = form(context, value, module)
-    override fun columnWidth(context: RenderContext<Long>, module: FormModule) = 12.0
+    override fun columnWidth(context: RenderContext<Long>, module: FormModule): Double = 12.0
 }
 
-object NullableLongRenderer : Renderer<Long?> {
+public object NullableLongRenderer : Renderer<Long?> {
     override val name: String = "Number"  // by Claude
     override fun form(context: RenderContext<Long?>, value: MutableReactive<Long?>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
         fieldTheme.numberInput {
@@ -229,10 +229,10 @@ object NullableLongRenderer : Renderer<Long?> {
     }
 
     override fun cellForm(context: RenderContext<Long?>, value: MutableReactive<Long?>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = form(context, value, module)
-    override fun columnWidth(context: RenderContext<Long?>, module: FormModule) = 12.0
+    override fun columnWidth(context: RenderContext<Long?>, module: FormModule): Double = 12.0
 }
 
-object DoubleRenderer : Renderer<Double> {
+public object DoubleRenderer : Renderer<Double> {
     override val name: String = "Decimal"  // by Claude
     override fun form(context: RenderContext<Double>, value: MutableReactive<Double>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
         fieldTheme.numberInput {
@@ -249,10 +249,10 @@ object DoubleRenderer : Renderer<Double> {
     }
 
     override fun cellForm(context: RenderContext<Double>, value: MutableReactive<Double>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = form(context, value, module)
-    override fun columnWidth(context: RenderContext<Double>, module: FormModule) = 12.0
+    override fun columnWidth(context: RenderContext<Double>, module: FormModule): Double = 12.0
 }
 
-object NullableDoubleRenderer : Renderer<Double?> {
+public object NullableDoubleRenderer : Renderer<Double?> {
     override val name: String = "Decimal"  // by Claude
     override fun form(context: RenderContext<Double?>, value: MutableReactive<Double?>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
         fieldTheme.numberInput {
@@ -266,12 +266,12 @@ object NullableDoubleRenderer : Renderer<Double?> {
     }
 
     override fun cellForm(context: RenderContext<Double?>, value: MutableReactive<Double?>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = form(context, value, module)
-    override fun columnWidth(context: RenderContext<Double?>, module: FormModule) = 12.0
+    override fun columnWidth(context: RenderContext<Double?>, module: FormModule): Double = 12.0
 }
 
 // ===== Registration =====
 
-fun FormModule.registerPrimitives() {
+public fun FormModule.registerPrimitives() {
     // Boolean
     register(Selector(type = "kotlin.Boolean"), BooleanRenderer)
     register(Selector(type = "kotlin.Boolean?"), NullableBooleanRenderer)

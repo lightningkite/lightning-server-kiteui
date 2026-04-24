@@ -13,8 +13,6 @@ import com.lightningkite.reactive.extensions.use
 import com.lightningkite.reactive.extensions.value
 import com.lightningkite.reactive.lensing.lens
 import com.lightningkite.reactive.lensing.lensListenable
-import com.lightningkite.services.ClockContextElement
-import com.lightningkite.services.default
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -115,13 +113,13 @@ import kotlin.time.Duration.Companion.seconds
  * @param scope Coroutine scope for background operations (defaults to AppScope)
  * @param log Optional logger for debugging
  */
-class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
-    val skipCache: ClientModelRestEndpoints<T, ID>,
+public class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
+    public val skipCache: ClientModelRestEndpoints<T, ID>,
     override val serializer: KSerializer<T>,
 //    val newest: (T?, T?) -> T? = { _, it -> it },
-    val onUpdate: ((CollectionUpdates<T, ID>) -> Unit)? = null,
-    val scope: CoroutineScope = AppScope,
-    val log: Log? = null
+    public val onUpdate: ((CollectionUpdates<T, ID>) -> Unit)? = null,
+    public val scope: CoroutineScope = AppScope,
+    public val log: Log? = null
 ) : ModelCacheLike<T, ID> {
     /** Property accessor for the ID field of type T, extracted from serializer metadata */
     private val idProp = serializer._id()
@@ -136,13 +134,13 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
      *
      * Initialized with [CacheUpdate.SocketOverload] to indicate empty state.
      */
-    val newData = Signal<CacheUpdate<T, ID>>(CacheUpdate.SocketOverload())
+    public val newData: Signal<CacheUpdate<T, ID>> = Signal<CacheUpdate<T, ID>>(CacheUpdate.SocketOverload())
 
     /**
      * Global interrupt mechanism for canceling pending delays in polling loops.
      * Child interrupts are created for each item/query to allow selective interruption.
      */
-    val interrupt = InterruptibleDelay()
+    public val interrupt: InterruptibleDelay = InterruptibleDelay()
 
     /**
      * WebSocket manager for real-time updates, if the API supports it.
@@ -157,7 +155,7 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
      * ensuring consistency with polling-based updates.
      */
     @Suppress("UNCHECKED_CAST")
-    val sockets: SharedCollectionUpdatesSocket<T, ID>? =
+    public val sockets: SharedCollectionUpdatesSocket<T, ID>? =
         (skipCache as? ClientModelRestUpdatesWebsocket<T, ID>)?.let {
             SharedCollectionUpdatesSocket(
                 scope = scope,
@@ -189,7 +187,7 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
      *
      * @return For each requested ID, either the found item or null if missing
      */
-    val multiget = BatchAndQueue<ID, T?>(scope, log = log?.tag("multiget")) {
+    public val multiget: BatchAndQueue<ID, T?> = BatchAndQueue<ID, T?>(scope, log = log?.tag("multiget")) {
         val r = skipCache.query(
             Query(
                 condition = Condition.OnField(idProp, Condition.Inside(it))
@@ -211,7 +209,7 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
      *
      * @return For each requested query, the list of matching items
      */
-    val queryInternal = BatchAndQueue<Query<T>, List<T>>(scope, log = log?.tag("queryInternal")) {
+    public val queryInternal: BatchAndQueue<Query<T>, List<T>> = BatchAndQueue<Query<T>, List<T>>(scope, log = log?.tag("queryInternal")) {
         coroutineScope {
             it.map {
                 async {
@@ -233,7 +231,7 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
      * Signals are created lazily on first access and persist for the lifetime of the cache.
      * They are updated by the [newData] listener below.
      */
-    val lastIndividualValues = HashMap<ID, LateInitSignal<WithTimestamp<T?>>>()
+    public val lastIndividualValues: HashMap<ID, LateInitSignal<WithTimestamp<T?>>> = HashMap<ID, LateInitSignal<WithTimestamp<T?>>>()
 
     init {
         /**
@@ -267,7 +265,7 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
     }
 
     /** Helper to create a condition that matches a specific ID */
-    fun idIs(id: ID) = Condition.OnField(idProp, Condition.Equal(id))
+    public fun idIs(id: ID): Condition.OnField<T, ID> = Condition.OnField(idProp, Condition.Equal(id))
 
     /**
      * Extension property to check if a cached item value is "live" (actively monitored by WebSocket).
@@ -284,7 +282,7 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
      * The `at > activatedAt` check is critical: if we cached data before the socket connected,
      * we might have missed changes that occurred during that gap.
      */
-    val WithTimestamp<T?>.isLive
+    public val WithTimestamp<T?>.isLive: Boolean
         get() = item != null && sockets?.listeningStatus?.value?.requirements
             ?.asSequence()
             ?.filter { it.condition.invoke(item) }
@@ -301,7 +299,7 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
      * @param timestamp The timestamp of the cached data
      * @return true if the socket has been watching this condition since before [timestamp]
      */
-    fun Condition<T>.isLiveAt(timestamp: Instant) = sockets?.listeningStatus?.value?.requirements
+    public fun Condition<T>.isLiveAt(timestamp: Instant): Boolean = sockets?.listeningStatus?.value?.requirements
         ?.asSequence()
         ?.filter { it.condition == this }
         ?.minOfOrNull { it.activatedAt ?: Instant.DISTANT_FUTURE }
@@ -313,7 +311,7 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
      * @param recencyRequirement The maximum age before data is considered stale
      * @return How long until expiration (negative if already expired, full [recencyRequirement] if live)
      */
-    suspend fun WithTimestamp<T?>.couldExpireAt(recencyRequirement: Duration): Duration = when {
+    public suspend fun WithTimestamp<T?>.couldExpireAt(recencyRequirement: Duration): Duration = when {
         isLive -> recencyRequirement
         else -> recencyRequirement - (Clock.default().now() - at)
     }
@@ -365,26 +363,26 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
      * - Mutations go directly to the API and then update the cache via [newData]
      * - [set] uses modification diffing to avoid unnecessary field updates
      */
-    inner class ModelCacheItemReadableImpl(
-        val id: ID,
-        val maximumAge: Duration,
-        val pullFrequency: Duration,
+    public inner class ModelCacheItemReadableImpl(
+        public val id: ID,
+        public val maximumAge: Duration,
+        public val pullFrequency: Duration,
     ) : ModelCacheItemReadable<T> {
         /** Tagged logger for this specific item */
-        val log = this@ModelCache.log?.tag("$id")
+        public val log: Log? = this@ModelCache.log?.tag("$id")
 
         /** Child interrupt for canceling this item's polling loop without affecting others */
-        val interrupt = this@ModelCache.interrupt.child()
+        public val interrupt: InterruptibleDelay = this@ModelCache.interrupt.child()
 
         /** The underlying signal holding the cached item value with timestamp */
-        val basis = lastIndividualValues.getOrPut(id, ::LateInitSignal)
+        public val basis: LateInitSignal<WithTimestamp<T?>> = lastIndividualValues.getOrPut(id, ::LateInitSignal)
 
         /**
          * Background coroutine that manages fetching and polling.
          * Started lazily when [state] or [diff] is accessed for the first time.
          * Canceled automatically when all observers are removed.
          */
-        val processWhileRunning = ResourceUse(scope) {
+        public val processWhileRunning: ResourceUse = ResourceUse(scope) {
             onRemove { log?.log("No longer needed") }
 
             // Decide whether to use WebSocket for real-time updates
@@ -489,7 +487,7 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
          * A listenable view of just the item (without timestamp/state wrapper).
          * Ensures [processWhileRunning] stays active while there are listeners.
          */
-        val diff = basis.lens { it.item }.uses(processWhileRunning)
+        public val diff: Reactive<T?> = basis.lens { it.item }.uses(processWhileRunning)
 
         override fun addListener(listener: () -> Unit): () -> Unit = diff.addListener(listener)
 
@@ -500,7 +498,7 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
          * Computed property indicating whether this item is currently "live" (monitored by WebSocket).
          * Recomputes when socket listening status changes.
          */
-        val live = remember(coroutineContext = scope.coroutineContext) {
+        public val live: Reactive<Boolean> = remember(coroutineContext = scope.coroutineContext) {
             sockets?.listeningStatus?.let(::rerunOn)
             basis().isLive
         }
@@ -577,7 +575,7 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
      * updates from [newData] are fed into this cache, which intelligently merges them
      * with existing query results without requiring full refetches.
      */
-    val cache: ListReconstructionCalculator<T, ID> = OptimizedListReconstructionCalculator<T, ID>(
+    public val cache: ListReconstructionCalculator<T, ID> = OptimizedListReconstructionCalculator<T, ID>(
         serializer,
         log = log?.tag("CollectionCache"),
         clock = scope.coroutineContext[ClockContextElement]?.clock ?: Clock.System
@@ -623,25 +621,25 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
      *
      * See [ModelCacheItemReadableImpl] for detailed lifecycle and polling documentation.
      */
-    inner class ModelCacheLimitReadableImpl(
-        val query: Query<T>,
-        val maximumAge: Duration,
-        val pullFrequency: Duration,
+    public inner class ModelCacheLimitReadableImpl(
+        public val query: Query<T>,
+        public val maximumAge: Duration,
+        public val pullFrequency: Duration,
     ) : ModelCacheLimitReadable<T> {
         /** Child interrupt for canceling this query's polling loop */
-        val interrupt = this@ModelCache.interrupt.child()
+        public val interrupt: InterruptibleDelay = this@ModelCache.interrupt.child()
 
         /**
          * The active query being tracked. Can be modified dynamically via [limit] setter.
          * When changed, triggers a new fetch by interrupting the polling loop.
          */
-        var currentQuery = query
+        public var currentQuery: Query<T> = query
 
         /**
          * Background coroutine managing fetching and polling for this query.
          * Similar to [ModelCacheItemReadableImpl.processWhileRunning] but with query-specific logic.
          */
-        val processWhileRunning = ResourceUse(scope) {
+        public val processWhileRunning: ResourceUse = ResourceUse(scope) {
             val log = log?.tag("${currentQuery.condition} ${currentQuery.orderBy}")
 
             // Use WebSocket if pullFrequency is low (< 30 seconds)
@@ -744,7 +742,7 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
          * Fires when [cache] updates and data freshness changes.
          * Ensures [processWhileRunning] stays active while there are listeners.
          */
-        val diff = cache.updates(query).lensListenable {
+        public val diff: Reactive<List<T>?> = cache.updates(query).lensListenable {
             cache.cached(currentQuery)?.let { lastKnown ->
                 if (currentQuery.condition.isLiveAt(lastKnown.at) || scope.now() - lastKnown.at < maximumAge) {
                     lastKnown.item
@@ -753,7 +751,7 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
         }.uses(processWhileRunning)
 
         /** Like [diff] but includes timestamp information */
-        val diffWithTs = cache.updates(query).lensListenable {
+        public val diffWithTs: Reactive<WithTimestampAndLimit<List<T>>?> = cache.updates(query).lensListenable {
             cache.cached(currentQuery)?.let { lastKnown ->
                 if (currentQuery.condition.isLiveAt(lastKnown.at) || scope.now() - lastKnown.at < maximumAge) {
                     lastKnown
@@ -770,7 +768,7 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
          * Computed property indicating whether this query is currently "live" (monitored by WebSocket).
          * Recomputes when socket listening status changes.
          */
-        val live = remember(coroutineContext = scope.coroutineContext) {
+        public val live: Reactive<Boolean> = remember(coroutineContext = scope.coroutineContext) {
             sockets?.listeningStatus?.let(::rerunOn)
             cache.cached(currentQuery)?.at?.let { time ->
                 currentQuery.condition.isLiveAt(time)
@@ -855,14 +853,14 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
      * Flow for total cache invalidation events.
      * Emits Unit when [totallyInvalidate] is called.
      */
-    val totalInvalidation =
+    public val totalInvalidation: MutableSharedFlow<Unit> =
         MutableSharedFlow<Unit>(onBufferOverflow = BufferOverflow.DROP_OLDEST, extraBufferCapacity = 1)
 
     /**
      * Completely invalidates all caches and interrupts all polling loops.
      * Useful for forcing a full refresh or handling auth changes.
      */
-    suspend fun totallyInvalidate() {
+    public suspend fun totallyInvalidate() {
         totalInvalidation.tryEmit(Unit)
         newData.value = CacheUpdate.SocketOverload()  // by Claude - clear all caches
         interrupt.interrupt()
@@ -881,7 +879,7 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
      * @param matching Predicate to filter items
      * @param modify Transformation function (return null to mark as deleted)
      */
-    fun localSignalUpdate(matching: (T) -> Boolean, modify: (T) -> T?) {
+    public fun localSignalUpdate(matching: (T) -> Boolean, modify: (T) -> T?) {
         val updates = HashSet<T>()
         val removals = HashSet<ID>()
         lastIndividualValues.values.asSequence()
@@ -904,7 +902,7 @@ class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
      * @param item The item to insert locally
      * @return The same item (unchanged)
      */
-    fun localInsert(item: T): T {
+    public fun localInsert(item: T): T {
         newData.value = CacheUpdate.MutationResult(items = setOf(item))
         return item
     }

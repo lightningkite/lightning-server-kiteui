@@ -25,40 +25,40 @@ import com.lightningkite.lightningserver.sessions.*
  *
  * @see AuthComponent2 for the main authentication flow that uses these components
  */
-interface ProofComponent {
+public interface ProofComponent {
     /**
      * The user property this proof validates (e.g., "email", "phone", "_id").
      * Null if the proof doesn't validate a specific user property.
      */
-    val property: String? get() = null
+    public val property: String? get() = null
 
     /**
      * Unique identifier for this proof method (e.g., "email", "sms", "password", "totp").
      * Used to match against server-provided proof options and track which proofs have been completed.
      */
-    val via: String
+    public val via: String
 
     /**
      * Human-readable display name for this proof method (e.g., "Email Code", "Text Message").
      */
-    val name: String
+    public val name: String
 
     /**
      * Icon to display alongside this proof method in the UI.
      */
-    val icon: Icon
+    public val icon: Icon
 
     /**
      * Whether this proof method requires a primary identifier (email/phone/username) to be set first.
      * Default is true. WebAuthN may set this to false for passkey-only flows.
      */
-    val primaryIdentifierRequired: Boolean get() = true
+    public val primaryIdentifierRequired: Boolean get() = true
 
     /**
      * Checks if this proof method is supported on the current platform/environment.
      * Default implementation returns true. Override to check platform capabilities.
      */
-    suspend fun supported(): Boolean = true
+    public suspend fun supported(): Boolean = true
 
     /**
      * Returns an asynchronous task that's attempting to authenticate using this method.
@@ -67,7 +67,7 @@ interface ProofComponent {
      * The task runs in the background and may complete before the user explicitly selects this proof method.
      * If the task succeeds, the proof is automatically added to the authentication flow.
      */
-    val earlyProof: (suspend (ViewWriter) -> Proof?)? get() = null
+    public val earlyProof: (suspend (ViewWriter) -> Proof?)? get() = null
 
     /**
      * Renders the proof collection UI with automatic option extraction.
@@ -81,10 +81,10 @@ interface ProofComponent {
      * @param onResult Callback invoked when proof collection completes (null if user cancels)
      * @return The rendered view
      */
-    fun render(to: ElementWriter.CanAddTheme, primaryIdentifier: UserIdentification?, checks: ProofsCheckResult<*>?, onResult: (Proof?) -> Unit): Unit
+    public fun render(to: ElementWriter.CanAddTheme, primaryIdentifier: UserIdentification?, checks: ProofsCheckResult<*>?, onResult: (Proof?) -> Unit): Unit
 }
 
-interface EasierProofComponent: ProofComponent {
+public interface EasierProofComponent: ProofComponent {
     /**
      * Renders the proof collection UI with automatic option extraction.
      *
@@ -129,7 +129,7 @@ interface EasierProofComponent: ProofComponent {
      * @param onResult Callback invoked when proof collection completes
      * @return The rendered view
      */
-    fun render(to: ElementWriter.CanAddTheme, primaryIdentifier: UserIdentification?, option: ProofOption, onResult: (Proof?) -> Unit)
+    public fun render(to: ElementWriter.CanAddTheme, primaryIdentifier: UserIdentification?, option: ProofOption, onResult: (Proof?) -> Unit)
 }
 
 /*

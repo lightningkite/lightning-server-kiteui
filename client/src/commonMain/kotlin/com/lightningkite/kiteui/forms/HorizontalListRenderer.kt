@@ -47,7 +47,7 @@ import kotlin.collections.plus
  *
  * by Claude
  */
-object HorizontalListRenderer : Renderer<List<Any?>> {
+public object HorizontalListRenderer : Renderer<List<Any?>> {
     override val name: String = "Horizontal List"  // by Claude
 
     override fun priority(context: RenderContext<List<Any?>>, module: FormModule): Float {
@@ -125,7 +125,7 @@ object HorizontalListRenderer : Renderer<List<Any?>> {
                             }
                             // Remove button - by Claude
                             button {
-                                centered.icon(Icon.Companion.close.copy(width = 1.rem, height = 1.rem), "Remove")
+                                centered.icon(Icon.close.copy(width = 1.rem, height = 1.rem), "Remove")
                                 onClick {
                                     val i = itemLens().index()
                                     value set value().filterIndexed { index, _ -> index != i }
@@ -137,7 +137,7 @@ object HorizontalListRenderer : Renderer<List<Any?>> {
 
                 // Add button inline - by Claude
                 button {
-                    centered.icon(Icon.Companion.add.copy(width = 1.rem, height = 1.rem), "Add")
+                    centered.icon(Icon.add.copy(width = 1.rem, height = 1.rem), "Add")
                     onClick {
                         value set (value() + elementSerializer.default())
                     }
@@ -186,7 +186,7 @@ object HorizontalListRenderer : Renderer<List<Any?>> {
         text { ::content { "${value().size} items" } }
     }
 
-    override fun columnWidth(context: RenderContext<List<Any?>>, module: FormModule) = 15.0
+    override fun columnWidth(context: RenderContext<List<Any?>>, module: FormModule): Double = 15.0
 
     // by Claude - Horizontal lists use section header instead of field() wrapper
     override fun labeledForm(
@@ -200,7 +200,7 @@ object HorizontalListRenderer : Renderer<List<Any?>> {
             row {
                 h4(label)
                 description?.let { desc ->
-                    centered.textPopover(desc).icon(Icon.Companion.info.copy(width = 1.rem, height = 1.rem), "Info")
+                    centered.textPopover(desc).icon(Icon.info.copy(width = 1.rem, height = 1.rem), "Info")
                 }
             }
             form(context, value, module)()
@@ -218,7 +218,7 @@ object HorizontalListRenderer : Renderer<List<Any?>> {
             row {
                 h4(label)
                 description?.let { desc ->
-                    centered.textPopover(desc).icon(Icon.Companion.info.copy(width = 1.rem, height = 1.rem), "Info")
+                    centered.textPopover(desc).icon(Icon.info.copy(width = 1.rem, height = 1.rem), "Info")
                 }
             }
             view(context, value, module)()

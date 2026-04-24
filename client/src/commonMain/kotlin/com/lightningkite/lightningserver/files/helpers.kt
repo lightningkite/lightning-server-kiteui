@@ -17,13 +17,13 @@ import com.lightningkite.kiteui.requestCaptureSelf
 import com.lightningkite.kiteui.views.RContext
 import com.lightningkite.services.files.ServerFile
 
-object LocalFileRegistry {
-    val fileReference = mutableMapOf<ServerFile, FileReference>()
+public object LocalFileRegistry {
+    public val fileReference: MutableMap<ServerFile, FileReference> = mutableMapOf<ServerFile, FileReference>()
 }
-fun ServerFile.asImage(): ImageSource = LocalFileRegistry.fileReference[this]?.let(::ImageLocal) ?: ImageRemote(this.location)
-fun ServerFile.asVideo(): VideoSource = LocalFileRegistry.fileReference[this]?.let(::VideoLocal) ?: VideoRemote(this.location)
-fun ServerFile.asAudio(): AudioSource = LocalFileRegistry.fileReference[this]?.let(::AudioLocal) ?: AudioRemote(this.location)
-suspend fun FileReference.toServerFile(api: ClientUploadEarlyEndpoints): ServerFile? {
+public fun ServerFile.asImage(): ImageSource = LocalFileRegistry.fileReference[this]?.let(::ImageLocal) ?: ImageRemote(this.location)
+public fun ServerFile.asVideo(): VideoSource = LocalFileRegistry.fileReference[this]?.let(::VideoLocal) ?: VideoRemote(this.location)
+public fun ServerFile.asAudio(): AudioSource = LocalFileRegistry.fileReference[this]?.let(::AudioLocal) ?: AudioRemote(this.location)
+public suspend fun FileReference.toServerFile(api: ClientUploadEarlyEndpoints): ServerFile? {
     val local = this
     val early = api.uploadFileForRequest()
     val result = fetch(early.uploadUrl, HttpMethod.PUT, body = local)

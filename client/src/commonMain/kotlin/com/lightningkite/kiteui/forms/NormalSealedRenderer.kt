@@ -37,7 +37,7 @@ import kotlinx.serialization.modules.SerializersModule
  *
  * by Claude
  */
-object NormalSealedRenderer : Renderer<Any> {
+public object NormalSealedRenderer : Renderer<Any> {
     override val name: String = "Options"
 
     @OptIn(InternalSerializationApi::class)
@@ -131,7 +131,7 @@ object NormalSealedRenderer : Renderer<Any> {
  *
  * by Claude
  */
-fun FormModule.registerNormalSealed() {
+public fun FormModule.registerNormalSealed() {
     // Use wildcard selector - priority() handles the matching
     register(Selector(), NormalSealedRenderer)
 }

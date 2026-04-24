@@ -28,14 +28,14 @@ import kotlin.time.Duration.Companion.milliseconds
 import kotlin.uuid.Uuid
 
 @OptIn(ExperimentalSerializationApi::class)
-class BulkFetcher(
-    val httpBulk: String,
-    val wsMultiplex: String,
-    val json: Json = DefaultJson,
-    val pingTime: Duration = 5_000.milliseconds,
-    val delay: Duration = 100.milliseconds,
-    val log: Log? = null,
-    val calculator: suspend () -> List<Pair<String, String>> = { listOf() },
+public class BulkFetcher(
+    public val httpBulk: String,
+    public val wsMultiplex: String,
+    public val json: Json = DefaultJson,
+    public val pingTime: Duration = 5_000.milliseconds,
+    public val delay: Duration = 100.milliseconds,
+    public val log: Log? = null,
+    public val calculator: suspend () -> List<Pair<String, String>> = { listOf() },
 ) : Fetcher {
     private val stringArrayFormat = StringArrayFormat(json.serializersModule)
     override fun <T> url(value: T, serializer: KSerializer<T>): String = stringArrayFormat.encodeToString(serializer, value)
@@ -115,7 +115,7 @@ class BulkFetcher(
         }
     }
 
-    val wsMuxer = retryWebsocket(
+    public val wsMuxer: TypedWebSocket<MultiplexMessage, MultiplexMessage> = retryWebsocket(
         underlyingSocket = {
             val headers = calculator()
 

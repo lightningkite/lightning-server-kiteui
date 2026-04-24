@@ -34,29 +34,29 @@ private suspend fun <I, T> funnelHit(path: String, inSerializer: KSerializer<I>,
 //step
 //success
 
-class FunnelControl(val id: Deferred<Uuid?>) {
-    fun error(error: String) = AppScope.async {
+public class FunnelControl(public val id: Deferred<Uuid?>) {
+    public fun error(error: String): Deferred<Unit?> = AppScope.async {
         id.await()?.let {
             funnelHit("error/$it", String.serializer(), error, Unit.serializer())
         }
     }
-    fun step(step: Int) = AppScope.async {
+    public fun step(step: Int): Deferred<Unit?> = AppScope.async {
         id.await()?.let {
             funnelHit("step/$it", Int.serializer(), step, Unit.serializer())
         }
     }
-    fun success() = AppScope.async {
+    public fun success(): Deferred<Unit?> = AppScope.async {
         id.await()?.let {
             funnelHit("success/$it", Unit.serializer(), Unit, Unit.serializer())
         }
     }
 }
 
-object Funnels {
-    var fetcher: Fetcher? = null
-    val completableDeferredNull = CompletableDeferred<Uuid?>(null)
+public object Funnels {
+    public var fetcher: Fetcher? = null
+    public val completableDeferredNull: CompletableDeferred<Uuid?> = CompletableDeferred<Uuid?>(null)
 }
-fun funnel(name: String, expirationMinutes: Int = 20): FunnelControl {
+public fun funnel(name: String, expirationMinutes: Int = 20): FunnelControl {
     return FunnelControl(AppScope.async {
         funnelHit("start",  FunnelStart.serializer(), FunnelStart(
             funnel = name,

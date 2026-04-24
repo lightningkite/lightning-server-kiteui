@@ -5,14 +5,14 @@ import com.lightningkite.services.database.*
 import com.lightningkite.reactive.core.Reactive
 
 
-typealias WritableModel<T> = ModelCacheItemReadable<T>
+public typealias WritableModel<T> = ModelCacheItemReadable<T>
 
-@Deprecated("Use LimitReactiveList instead", ReplaceWith("LimitReactiveList")) typealias LimitReadable<T> = LimitReactiveList<T>
-interface LimitReactiveList<T>: Reactive<List<T>> {
-    var limit: Int
+@Deprecated("Use LimitReactiveList instead", ReplaceWith("LimitReactiveList")) public typealias LimitReadable<T> = LimitReactiveList<T>
+public interface LimitReactiveList<T>: Reactive<List<T>> {
+    public var limit: Int
 }
 
-typealias ModelCollection<T, ID> = ModelCacheLike<T,ID>
+public typealias ModelCollection<T, ID> = ModelCacheLike<T,ID>
 
-typealias CachingModelRestEndpoints<T, ID> = ModelCacheLike<T,ID>
+public typealias CachingModelRestEndpoints<T, ID> = ModelCacheLike<T,ID>
 

@@ -44,7 +44,7 @@ internal inline fun ElementWriter.fieldWithoutBorder(label: String, description:
     }
 }
 
-fun ElementWriter.CanAddTheme.subrendererSelector(
+public fun ElementWriter.CanAddTheme.subrendererSelector(
     selectedRenderer: MutableReactive<Renderer<Any?>>,
     elementRenderers: List<Renderer<Any?>>
 ) {
@@ -63,7 +63,7 @@ fun ElementWriter.CanAddTheme.subrendererSelector(
  *
  * by Claude
  */
-inline fun ElementWriter.fieldWithDescription(label: String, description: String?, content: ElementWriter.CanAddTheme.() -> Unit) {
+public inline fun ElementWriter.fieldWithDescription(label: String, description: String?, content: ElementWriter.CanAddTheme.() -> Unit) {
     if (description == null) {
         // No description - use standard field layout
         field(label, content)
@@ -90,7 +90,7 @@ inline fun ElementWriter.fieldWithDescription(label: String, description: String
  * @param readable The reactive data source
  * @param annotations Optional field annotations to pass to the renderer
  */
-fun <T> ElementWriter.CanAddTheme.view(
+public fun <T> ElementWriter.CanAddTheme.view(
     context: FormModule,
     serializer: KSerializer<T>,
     readable: Reactive<T>,
@@ -103,22 +103,22 @@ fun <T> ElementWriter.CanAddTheme.view(
 /**
  * Render an editable form for a value.
  */
-inline fun <reified T> ElementWriter.CanAddTheme.form(module: FormModule, value: MutableReactive<T>) = form(module, serializer(), value)
+public inline fun <reified T> ElementWriter.CanAddTheme.form(module: FormModule, value: MutableReactive<T>): Unit = form(module, serializer(), value)
 
 /**
  * Render a read-only view of a value.
  */
-inline fun <reified T> ElementWriter.CanAddTheme.view(module: FormModule, value: Reactive<T>) = view(module, serializer(), value)
+public inline fun <reified T> ElementWriter.CanAddTheme.view(module: FormModule, value: Reactive<T>): Unit = view(module, serializer(), value)
 
 /**
  * Render a compact editable cell (for tables).
  */
-inline fun <reified T> ElementWriter.CanAddTheme.cellForm(module: FormModule, value: MutableReactive<T>) = cellForm(module, serializer(), value)
+public inline fun <reified T> ElementWriter.CanAddTheme.cellForm(module: FormModule, value: MutableReactive<T>): Unit = cellForm(module, serializer(), value)
 
 /**
  * Render a compact read-only cell (for tables).
  */
-inline fun <reified T> ElementWriter.CanAddTheme.cellView(module: FormModule, value: Reactive<T>) = cellView(module, serializer(), value)
+public inline fun <reified T> ElementWriter.CanAddTheme.cellView(module: FormModule, value: Reactive<T>): Unit = cellView(module, serializer(), value)
 
 /**
  * Render an editable form with its label.
@@ -127,7 +127,7 @@ inline fun <reified T> ElementWriter.CanAddTheme.cellView(module: FormModule, va
  *
  * @param description Optional description text shown via info icon popover
  */
-inline fun <reified T> ElementWriter.CanAddTheme.labeledForm(module: FormModule, value: MutableReactive<T>, label: String, description: String? = null) = labeledForm(module, serializer(), value, label, description)
+public inline fun <reified T> ElementWriter.CanAddTheme.labeledForm(module: FormModule, value: MutableReactive<T>, label: String, description: String? = null): Unit = labeledForm(module, serializer(), value, label, description)
 
 /**
  * Render a read-only view with its label.
@@ -136,13 +136,13 @@ inline fun <reified T> ElementWriter.CanAddTheme.labeledForm(module: FormModule,
  *
  * @param description Optional description text shown via info icon popover
  */
-inline fun <reified T> ElementWriter.CanAddTheme.labeledView(module: FormModule, value: Reactive<T>, label: String, description: String? = null) = labeledView(module, serializer(), value, label, description)
+public inline fun <reified T> ElementWriter.CanAddTheme.labeledView(module: FormModule, value: Reactive<T>, label: String, description: String? = null): Unit = labeledView(module, serializer(), value, label, description)
 
 
 /**
  * Render an editable form for a value.
  */
-fun <T> ElementWriter.CanAddTheme.form(module: FormModule, serializer: KSerializer<T>, value: MutableReactive<T>) {
+public fun <T> ElementWriter.CanAddTheme.form(module: FormModule, serializer: KSerializer<T>, value: MutableReactive<T>) {
     val context = RenderContext(serializer)
     module.form(context, value)(this)
 }
@@ -150,7 +150,7 @@ fun <T> ElementWriter.CanAddTheme.form(module: FormModule, serializer: KSerializ
 /**
  * Render a read-only view of a value.
  */
-fun <T> ElementWriter.CanAddTheme.view(module: FormModule, serializer: KSerializer<T>, value: Reactive<T>) {
+public fun <T> ElementWriter.CanAddTheme.view(module: FormModule, serializer: KSerializer<T>, value: Reactive<T>) {
     val context = RenderContext(serializer)
     module.view(context, value)(this)
 }
@@ -158,7 +158,7 @@ fun <T> ElementWriter.CanAddTheme.view(module: FormModule, serializer: KSerializ
 /**
  * Render a compact editable cell (for tables).
  */
-fun <T> ElementWriter.CanAddTheme.cellForm(module: FormModule, serializer: KSerializer<T>, value: MutableReactive<T>) {
+public fun <T> ElementWriter.CanAddTheme.cellForm(module: FormModule, serializer: KSerializer<T>, value: MutableReactive<T>) {
     val context = RenderContext(serializer)
     module.cellForm(context, value)(this)
 }
@@ -166,7 +166,7 @@ fun <T> ElementWriter.CanAddTheme.cellForm(module: FormModule, serializer: KSeri
 /**
  * Render a compact read-only cell (for tables).
  */
-fun <T> ElementWriter.CanAddTheme.cellView(module: FormModule, serializer: KSerializer<T>, value: Reactive<T>) {
+public fun <T> ElementWriter.CanAddTheme.cellView(module: FormModule, serializer: KSerializer<T>, value: Reactive<T>) {
     val context = RenderContext(serializer)
     module.cellView(context, value)(this)
 }
@@ -178,7 +178,7 @@ fun <T> ElementWriter.CanAddTheme.cellView(module: FormModule, serializer: KSeri
  *
  * @param description Optional description text shown via info icon popover
  */
-fun <T> ElementWriter.CanAddTheme.labeledForm(module: FormModule, serializer: KSerializer<T>, value: MutableReactive<T>, label: String, description: String? = null) {
+public fun <T> ElementWriter.CanAddTheme.labeledForm(module: FormModule, serializer: KSerializer<T>, value: MutableReactive<T>, label: String, description: String? = null) {
     val context = RenderContext(serializer)
     module.labeledFormWithSwitcher(context, value, label, description ?: context.description)(this)
 }
@@ -190,7 +190,7 @@ fun <T> ElementWriter.CanAddTheme.labeledForm(module: FormModule, serializer: KS
  *
  * @param description Optional description text shown via info icon popover
  */
-fun <T> ElementWriter.CanAddTheme.labeledView(module: FormModule, serializer: KSerializer<T>, value: Reactive<T>, label: String, description: String? = null) {
+public fun <T> ElementWriter.CanAddTheme.labeledView(module: FormModule, serializer: KSerializer<T>, value: Reactive<T>, label: String, description: String? = null) {
     val context = RenderContext(serializer)
     module.labeledViewWithSwitcher(context, value, label, description ?: context.description)(this)
 }
@@ -200,7 +200,7 @@ fun <T> ElementWriter.CanAddTheme.labeledView(module: FormModule, serializer: KS
  * Converts a Condition into a human-readable string for display.
  * Used in the UI to show users what filters are currently applied.
  */
-fun Condition<*>.friendly(): String {
+public fun Condition<*>.friendly(): String {
     return when (this) {
         Condition.Always -> "All"
         is Condition.And<*> -> conditions.joinToString(" and ") { it.friendly() }

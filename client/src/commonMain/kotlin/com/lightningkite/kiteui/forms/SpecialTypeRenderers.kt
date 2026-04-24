@@ -1,8 +1,8 @@
 package com.lightningkite.kiteui.forms
 
-import com.lightningkite.EmailAddress
-import com.lightningkite.GeoCoordinate
-import com.lightningkite.PhoneNumber
+import com.lightningkite.services.data.EmailAddress
+import com.lightningkite.services.data.GeoCoordinate
+import com.lightningkite.services.data.PhoneNumber
 import com.lightningkite.kiteui.models.Icon
 import com.lightningkite.kiteui.views.ElementWriter
 import com.lightningkite.kiteui.views.direct.*
@@ -12,14 +12,14 @@ import com.lightningkite.kiteui.views.l2.errorText
 import com.lightningkite.kiteui.views.direct.icon
 import com.lightningkite.reactive.core.MutableReactive
 import com.lightningkite.reactive.core.Reactive
-import com.lightningkite.toEmailAddress
-import com.lightningkite.toPhoneNumber
+import com.lightningkite.services.data.toEmailAddress
+import com.lightningkite.services.data.toPhoneNumber
 import kotlin.uuid.Uuid
 
 // ===== UUID =====
 // by Claude
 
-object UuidRenderer : Renderer<Uuid> {
+public object UuidRenderer : Renderer<Uuid> {
     override val name: String = "Uuid"  // by Claude
     override fun form(context: RenderContext<Uuid>, value: MutableReactive<Uuid>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
         row {
@@ -46,12 +46,12 @@ object UuidRenderer : Renderer<Uuid> {
         text { ::content { value().toString() } }
     }
 
-    override fun columnWidth(context: RenderContext<Uuid>, module: FormModule) = 24.0
+    override fun columnWidth(context: RenderContext<Uuid>, module: FormModule): Double = 24.0
 }
 
 // ===== EmailAddress =====
 
-object EmailAddressRenderer : Renderer<EmailAddress> {
+public object EmailAddressRenderer : Renderer<EmailAddress> {
     override val name: String = "Email"  // by Claude
     override fun form(context: RenderContext<EmailAddress>, value: MutableReactive<EmailAddress>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
         col {
@@ -84,12 +84,12 @@ object EmailAddressRenderer : Renderer<EmailAddress> {
         }
     }
 
-    override fun columnWidth(context: RenderContext<EmailAddress>, module: FormModule) = 20.0
+    override fun columnWidth(context: RenderContext<EmailAddress>, module: FormModule): Double = 20.0
 }
 
 // ===== PhoneNumber =====
 
-object PhoneNumberRenderer : Renderer<PhoneNumber> {
+public object PhoneNumberRenderer : Renderer<PhoneNumber> {
     override val name: String = "Phone"  // by Claude
     override fun form(context: RenderContext<PhoneNumber>, value: MutableReactive<PhoneNumber>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
         col {
@@ -122,12 +122,12 @@ object PhoneNumberRenderer : Renderer<PhoneNumber> {
         }
     }
 
-    override fun columnWidth(context: RenderContext<PhoneNumber>, module: FormModule) = 15.0
+    override fun columnWidth(context: RenderContext<PhoneNumber>, module: FormModule): Double = 15.0
 }
 
 // ===== GeoCoordinate =====
 
-object GeoCoordinateRenderer : Renderer<GeoCoordinate> {
+public object GeoCoordinateRenderer : Renderer<GeoCoordinate> {
     override val name: String = "Coordinates"  // by Claude
     override fun form(context: RenderContext<GeoCoordinate>, value: MutableReactive<GeoCoordinate>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
         row {
@@ -152,7 +152,7 @@ object GeoCoordinateRenderer : Renderer<GeoCoordinate> {
         text { ::content { "${value().latitude}, ${value().longitude}" } }
     }
 
-    override fun columnWidth(context: RenderContext<GeoCoordinate>, module: FormModule) = 20.0
+    override fun columnWidth(context: RenderContext<GeoCoordinate>, module: FormModule): Double = 20.0
 
     override fun labeledForm(
         context: RenderContext<GeoCoordinate>,
@@ -177,7 +177,7 @@ object GeoCoordinateRenderer : Renderer<GeoCoordinate> {
 
 // ===== Registration =====
 
-fun FormModule.registerSpecialTypes() {
+public fun FormModule.registerSpecialTypes() {
     register(Selector(type = "kotlin.uuid.Uuid"), UuidRenderer)
     register(Selector(type = "com.lightningkite.uuid.Uuid"), UuidRenderer)
     register(Selector(type = "com.lightningkite.Uuid"), UuidRenderer)

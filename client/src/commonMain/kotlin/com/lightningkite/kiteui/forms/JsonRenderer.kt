@@ -29,7 +29,7 @@ import kotlinx.serialization.json.Json
  *
  * by Claude
  */
-object JsonRenderer : Renderer<Any?> {
+public object JsonRenderer : Renderer<Any?> {
     override val name: String = "JSON"
 
     private val json = Json {
@@ -117,8 +117,8 @@ object JsonRenderer : Renderer<Any?> {
         }
     }
 
-    override fun columnWidth(context: RenderContext<Any?>, module: FormModule) = 20.0
-    fun height(context: RenderContext<Any?>, module: FormModule): Dimension {
+    override fun columnWidth(context: RenderContext<Any?>, module: FormModule): Double = 20.0
+    public fun height(context: RenderContext<Any?>, module: FormModule): Dimension {
         val seen = HashSet<String>()
         fun traverse(descriptor: SerialDescriptor): Int {
             if(!seen.add(descriptor.serialName)) return 1
@@ -167,7 +167,7 @@ object JsonRenderer : Renderer<Any?> {
     }
 }
 
-fun FormModule.registerJson() {
+public fun FormModule.registerJson() {
     // Register for all types via catch-all selector
     register(Selector(), JsonRenderer)
 }

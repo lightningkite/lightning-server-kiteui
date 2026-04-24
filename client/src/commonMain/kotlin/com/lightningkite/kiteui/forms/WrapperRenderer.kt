@@ -18,7 +18,7 @@ import kotlinx.serialization.KSerializer
  *
  * by Claude
  */
-object WrapperRenderer : Renderer<Any> {
+public object WrapperRenderer : Renderer<Any> {
     override val name: String = "Value"  // by Claude
 
     override fun priority(context: RenderContext<Any>, module: FormModule): Float {
@@ -105,6 +105,6 @@ object WrapperRenderer : Renderer<Any> {
     ): ElementWriter.CanAddTheme.() -> Unit = { fieldWithoutBorder(label, description) { view(context, value, module)() } }
 }
 
-fun FormModule.registerWrapper() {
+public fun FormModule.registerWrapper() {
     register(Selector(), WrapperRenderer)
 }

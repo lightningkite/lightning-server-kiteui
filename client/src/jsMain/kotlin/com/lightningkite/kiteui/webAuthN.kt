@@ -12,24 +12,24 @@ import kotlin.io.encoding.ExperimentalEncodingApi
 
 @Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
 @OptIn(ExperimentalSerializationApi::class)
-actual class ClientAuthenticator {
+public actual class ClientAuthenticator {
 
-    actual companion object {
+    public actual companion object {
         private val default = ClientAuthenticator()
-        actual fun getClientAuthenticator(): ClientAuthenticator = default
+        public actual fun getClientAuthenticator(): ClientAuthenticator = default
     }
 
-    fun getCredentials(): CredentialContainer = js("(navigator.credentials)")
+    public fun getCredentials(): CredentialContainer = js("(navigator.credentials)")
 
     private val webauthnAPIAvailable: Boolean
         get() = js("window.PublicKeyCredential")
 
 
-    actual suspend fun webAuthNAvailable(): Boolean {
+    public actual suspend fun webAuthNAvailable(): Boolean {
         return webauthnAPIAvailable
     }
 
-    actual suspend fun autofillAvailable(): Boolean {
+    public actual suspend fun autofillAvailable(): Boolean {
         return suspendCancellableCoroutine { cont ->
             PublicKeyCredential.isConditionalMediationAvailable().then(
                 onFulfilled = { cont.resume(it) },
@@ -39,7 +39,7 @@ actual class ClientAuthenticator {
     }
 
     @OptIn(ExperimentalEncodingApi::class)
-    actual suspend fun createWebAuthNCredentials(request: WebAuthN.Registration.PublicKeyCredentialCreationOptions): WebAuthN.Registration.AttestedPublicKeyCredential =
+    public actual suspend fun createWebAuthNCredentials(request: WebAuthN.Registration.PublicKeyCredentialCreationOptions): WebAuthN.Registration.AttestedPublicKeyCredential =
         suspendCancellableCoroutine<WebAuthN.Registration.AttestedPublicKeyCredential> { cont ->
 
             val controller = AbortController()
@@ -141,7 +141,7 @@ actual class ClientAuthenticator {
         }
 
     @OptIn(ExperimentalEncodingApi::class)
-    actual suspend fun getWebAuthNCredentials(
+    public actual suspend fun getWebAuthNCredentials(
         request: WebAuthN.Authentication.PublicKeyCredentialRequestOptions,
         mediation: WebAuthNMediationType,
     ): WebAuthN.Authentication.AssertedPublicKeyCredential =

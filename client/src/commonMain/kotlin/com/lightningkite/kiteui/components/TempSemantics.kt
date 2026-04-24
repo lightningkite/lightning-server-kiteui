@@ -11,7 +11,7 @@ import com.lightningkite.kiteui.models.systemDefaultFixedWidthFont
  * Semantic for markdown code blocks.
  * Applies a monospace font with contrasting background and rounded corners.
  */
-data object CodeBlockSemantic : Semantic("mdc") {
+public data object CodeBlockSemantic : Semantic("mdc") {
     override fun default(theme: Theme): ThemeAndBack = theme.withBack(
         font = theme.font.copy(font = systemDefaultFixedWidthFont),
         background = theme.background.closestColor().highlight(-0.1f),

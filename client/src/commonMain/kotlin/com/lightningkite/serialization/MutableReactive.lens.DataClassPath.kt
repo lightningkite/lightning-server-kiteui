@@ -9,7 +9,7 @@ import com.lightningkite.reactive.lensing.validation.MutableValidatedValue
 import com.lightningkite.services.database.DataClassPath
 import com.lightningkite.services.database.path
 
-fun <O, T> MutableReactive<O>.lensPath(path: DataClassPath<O, T>): MutableReactive<T> {
+public fun <O, T> MutableReactive<O>.lensPath(path: DataClassPath<O, T>): MutableReactive<T> {
     return lens(
         get = {
             @Suppress("UNCHECKED_CAST")
@@ -18,9 +18,9 @@ fun <O, T> MutableReactive<O>.lensPath(path: DataClassPath<O, T>): MutableReacti
         modify = { o, it -> path.set(o, it) }
     )
 }
-inline fun <reified O, T> MutableReactive<O>.lensPath(makePath: (DataClassPath<O, O>) -> DataClassPath<O, T>): MutableReactive<T> = lensPath(makePath(path()))
+public inline fun <reified O, T> MutableReactive<O>.lensPath(makePath: (DataClassPath<O, O>) -> DataClassPath<O, T>): MutableReactive<T> = lensPath(makePath(path()))
 
-fun <O, T> MutableReactiveValue<O>.lensPath(path: DataClassPath<O, T>): MutableReactiveValue<T> {
+public fun <O, T> MutableReactiveValue<O>.lensPath(path: DataClassPath<O, T>): MutableReactiveValue<T> {
     return lens(
         get = {
             @Suppress("UNCHECKED_CAST")
@@ -29,9 +29,9 @@ fun <O, T> MutableReactiveValue<O>.lensPath(path: DataClassPath<O, T>): MutableR
         modify = { o, it -> path.set(o, it) }
     )
 }
-inline fun <reified O, T> MutableReactiveValue<O>.lensPath(makePath: (DataClassPath<O, O>) -> DataClassPath<O, T>): MutableReactiveValue<T> = lensPath(makePath(path()))
+public inline fun <reified O, T> MutableReactiveValue<O>.lensPath(makePath: (DataClassPath<O, O>) -> DataClassPath<O, T>): MutableReactiveValue<T> = lensPath(makePath(path()))
 
-fun <O, T> MutableValidated<O>.lensPath(path: DataClassPath<O, T>): MutableValidated<T> {
+public fun <O, T> MutableValidated<O>.lensPath(path: DataClassPath<O, T>): MutableValidated<T> {
     return lens(
         get = {
             @Suppress("UNCHECKED_CAST")
@@ -40,9 +40,9 @@ fun <O, T> MutableValidated<O>.lensPath(path: DataClassPath<O, T>): MutableValid
         modify = { o, it -> path.set(o, it) }
     )
 }
-inline fun <reified O, T> MutableValidated<O>.lensPath(makePath: (DataClassPath<O, O>) -> DataClassPath<O, T>): MutableValidated<T> = lensPath(makePath(path()))
+public inline fun <reified O, T> MutableValidated<O>.lensPath(makePath: (DataClassPath<O, O>) -> DataClassPath<O, T>): MutableValidated<T> = lensPath(makePath(path()))
 
-fun <O, T> MutableValidatedValue<O>.lensPath(path: DataClassPath<O, T>): MutableValidatedValue<T> {
+public fun <O, T> MutableValidatedValue<O>.lensPath(path: DataClassPath<O, T>): MutableValidatedValue<T> {
     return lens(
         get = {
             @Suppress("UNCHECKED_CAST")
@@ -51,9 +51,9 @@ fun <O, T> MutableValidatedValue<O>.lensPath(path: DataClassPath<O, T>): Mutable
         modify = { o, it -> path.set(o, it) }
     )
 }
-inline fun <reified O, T> MutableValidatedValue<O>.lensPath(makePath: (DataClassPath<O, O>) -> DataClassPath<O, T>): MutableValidatedValue<T> = lensPath(makePath(path()))
+public inline fun <reified O, T> MutableValidatedValue<O>.lensPath(makePath: (DataClassPath<O, O>) -> DataClassPath<O, T>): MutableValidatedValue<T> = lensPath(makePath(path()))
 
-fun <O, T> Reactive<O>.lensPath(path: DataClassPath<O, T>): Reactive<T> {
+public fun <O, T> Reactive<O>.lensPath(path: DataClassPath<O, T>): Reactive<T> {
     return lens(
         get = {
             @Suppress("UNCHECKED_CAST")
@@ -61,4 +61,4 @@ fun <O, T> Reactive<O>.lensPath(path: DataClassPath<O, T>): Reactive<T> {
         },
     )
 }
-inline fun <reified O, T> Reactive<O>.lensPath(makePath: (DataClassPath<O, O>) -> DataClassPath<O, T>): Reactive<T> = lensPath(makePath(path()))
+public inline fun <reified O, T> Reactive<O>.lensPath(makePath: (DataClassPath<O, O>) -> DataClassPath<O, T>): Reactive<T> = lensPath(makePath(path()))

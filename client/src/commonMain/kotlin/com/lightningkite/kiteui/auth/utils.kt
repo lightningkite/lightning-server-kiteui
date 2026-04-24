@@ -30,14 +30,15 @@ internal val nowBySecond = reactiveProcess {
 internal data class WithTimestamp<T>(val value: T, val timestamp: Instant = now())
 internal fun <T> T.withTimestamp(): WithTimestamp<T> = WithTimestamp(this)
 
-val KeyboardHints.Companion.oneTimeCodeLetters get() = KeyboardHints(
+public val KeyboardHints.Companion.oneTimeCodeLetters: KeyboardHints
+    get() = KeyboardHints(
     case = KeyboardCase.Letters,
     type = KeyboardType.Text,
     autocomplete = AutoComplete.OneTimeCode,
     autocorrect = false
 )
 
-val Icon.Companion.password: Icon
+public val Icon.Companion.password: Icon
     get() = Icon(
         1.5.rem,
         1.5.rem,
@@ -47,7 +48,7 @@ val Icon.Companion.password: Icon
         1440,
         listOf("M80-200v-80h800v80H80Zm46-242-52-30 34-60H40v-60h68l-34-58 52-30 34 58 34-58 52 30-34 58h68v60h-68l34 60-52 30-34-60-34 60Zm320 0-52-30 34-60h-68v-60h68l-34-58 52-30 34 58 34-58 52 30-34 58h68v60h-68l34 60-52 30-34-60-34 60Zm320 0-52-30 34-60h-68v-60h68l-34-58 52-30 34 58 34-58 52 30-34 58h68v60h-68l34 60-52 30-34-60-34 60Z")
     )
-val Icon.Companion.security: Icon
+public val Icon.Companion.security: Icon
     get() = Icon(
         1.5.rem,
         1.5.rem,
@@ -57,7 +58,7 @@ val Icon.Companion.security: Icon
         1440,
         listOf("M420-360h120l-23-129q20-10 31.5-29t11.5-42q0-33-23.5-56.5T480-640q-33 0-56.5 23.5T400-560q0 23 11.5 42t31.5 29l-23 129Zm60 280q-139-35-229.5-159.5T160-516v-244l320-120 320 120v244q0 152-90.5 276.5T480-80Zm0-84q104-33 172-132t68-220v-189l-240-90-240 90v189q0 121 68 220t172 132Zm0-316Z")
     )
-val Icon.Companion.pinCode: Icon
+public val Icon.Companion.pinCode: Icon
     get() = Icon(
         1.5.rem,
         1.5.rem,
@@ -70,7 +71,7 @@ val Icon.Companion.pinCode: Icon
 
 
 @OptIn(ExperimentalContracts::class)
-inline fun ViewWriter.fieldNoErrorText(label: String, content: ElementWriter.CanAddTheme.() -> Unit) {
+public inline fun ViewWriter.fieldNoErrorText(label: String, content: ElementWriter.CanAddTheme.() -> Unit) {
     contract { callsInPlace(content, InvocationKind.EXACTLY_ONCE) }
     label(label) {
         fieldTheme.content()

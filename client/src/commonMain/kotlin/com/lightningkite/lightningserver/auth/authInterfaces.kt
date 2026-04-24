@@ -20,15 +20,15 @@ import kotlin.time.Instant
 import kotlin.uuid.Uuid
 
 
-data class LightningServerAuthentication(
+public data class LightningServerAuthentication(
     val subject: AuthClientEndpoints<*, *>,
     val subjectPath: String,
     val sessionToken: String,
 ) {
-    val accessToken = subject.accessToken(sessionToken)
+    val accessToken: suspend () -> List<Pair<String, String>> = subject.accessToken(sessionToken)
 }
 
-data class AuthEndpoints(
+public data class AuthEndpoints(
     val subjects: Map<String, AuthClientEndpoints<*, *>>,
     val authentication: LightningServerAuthentication? = null,
     val smsProof: ProofClientEndpoints.Sms? = null,
@@ -43,13 +43,13 @@ data class AuthEndpoints(
         copy(authentication = it)
     },
 ) {
-    fun withAuth(auth: LightningServerAuthentication?) =
+    public fun withAuth(auth: LightningServerAuthentication?): AuthEndpoints =
         if (auth == authentication) this
         else withAuthentication(auth)
 
-    operator fun get(auth: LightningServerAuthentication) = withAuth(auth)
+    public operator fun get(auth: LightningServerAuthentication): AuthEndpoints = withAuth(auth)
 
-    companion object {
+    public companion object {
         private val methodLookup = mapOf(
             "all" to listOf(
                 ProofOption(ProofMethodInfo("email", "email"), "test@test.com"),
@@ -91,7 +91,7 @@ data class AuthEndpoints(
             ),
         )
 
-        val dummy = AuthEndpoints(
+        public val dummy: AuthEndpoints = AuthEndpoints(
             subjects = mapOf("User" to object : AuthClientEndpoints<HasId<String>, String> {
                 //                override suspend fun getToken(input: OauthTokenRequest): OauthResponse = OauthResponse("")
                 override suspend fun getTokenSimple(input: String): String = ""
@@ -316,10 +316,10 @@ data class AuthEndpoints(
     }
 }
 
-fun <USER : HasId<ID>, ID : Comparable<ID>> AuthClientEndpoints<USER, ID>.accessToken(sessionToken: String): suspend () -> List<Pair<String, String>> =
+public fun <USER : HasId<ID>, ID : Comparable<ID>> AuthClientEndpoints<USER, ID>.accessToken(sessionToken: String): suspend () -> List<Pair<String, String>> =
     accessToken(sessionToken, null)
 
-fun <USER : HasId<ID>, ID : Comparable<ID>> AuthClientEndpoints<USER, ID>.accessToken(
+public fun <USER : HasId<ID>, ID : Comparable<ID>> AuthClientEndpoints<USER, ID>.accessToken(
     sessionToken: String,
     forceInvalidate: Listenable?,
 ): suspend () -> List<Pair<String, String>> {
