@@ -33,7 +33,7 @@ import kotlinx.serialization.KSerializer
  *
  * by Claude
  */
-object ServerFileRenderer : Renderer<ServerFile?> {
+public object ServerFileRenderer : Renderer<ServerFile?> {
     override val name: String = "File Upload"  // by Claude
 
     override fun priority(context: RenderContext<ServerFile?>, module: FormModule): Float {
@@ -131,13 +131,13 @@ object ServerFileRenderer : Renderer<ServerFile?> {
  *
  * by Claude
  */
-class TypeInfo<T : HasId<ID>, ID : Comparable<ID>>(
-    val serializer: KSerializer<T>,
-    val cache: () -> com.lightningkite.lightningserver.db.ModelCache<T, ID>,
-    val page: (ID) -> (() -> Page)?,
-    val renderToString: suspend (ID) -> String
+public class TypeInfo<T : HasId<ID>, ID : Comparable<ID>>(
+    public val serializer: KSerializer<T>,
+    public val cache: () -> com.lightningkite.lightningserver.db.ModelCache<T, ID>,
+    public val page: (ID) -> (() -> Page)?,
+    public val renderToString: suspend (ID) -> String
 )
 
-fun FormModule.registerServerFile() {
+public fun FormModule.registerServerFile() {
     register(Selector(type = "com.lightningkite.services.files.ServerFile"), ServerFileRenderer)
 }

@@ -41,7 +41,7 @@ import com.lightningkite.reactive.core.Listenable
  * @param T The model type, must have an ID
  * @param ID The ID type, must be comparable
  */
-interface ListReconstructionCalculator<T : HasId<ID>, ID : Comparable<ID>> {
+public interface ListReconstructionCalculator<T : HasId<ID>, ID : Comparable<ID>> {
     /**
      * Returns a [Listenable] that fires when the cache is updated in ways that might affect the given query.
      *
@@ -52,7 +52,7 @@ interface ListReconstructionCalculator<T : HasId<ID>, ID : Comparable<ID>> {
      * @param query The query to listen for updates to
      * @return A listenable that fires on relevant cache changes
      */
-    fun updates(query: Query<T>): Listenable
+    public fun updates(query: Query<T>): Listenable
 
     /**
      * Applies an update to the cache, merging new data with existing cached queries.
@@ -69,7 +69,7 @@ interface ListReconstructionCalculator<T : HasId<ID>, ID : Comparable<ID>> {
      *
      * @param update The cache update to apply
      */
-    fun update(update: CacheUpdate<T, ID>): Unit
+    public fun update(update: CacheUpdate<T, ID>): Unit
 
     /**
      * Retrieves the cached result for a query, if available.
@@ -84,7 +84,7 @@ interface ListReconstructionCalculator<T : HasId<ID>, ID : Comparable<ID>> {
      * @param query The query to look up
      * @return The cached result with metadata, or null if not cached
      */
-    fun cached(query: Query<T>): WithTimestampAndLimit<List<T>>?
+    public fun cached(query: Query<T>): WithTimestampAndLimit<List<T>>?
 
     /**
      * Recommends an optimized query to fetch for satisfying the given query.
@@ -99,7 +99,7 @@ interface ListReconstructionCalculator<T : HasId<ID>, ID : Comparable<ID>> {
      * @param query The original query
      * @return The recommended query to actually fetch (may be the same)
      */
-    fun recommendQuery(query: Query<T>): Query<T> = query
+    public fun recommendQuery(query: Query<T>): Query<T> = query
 
     /**
      * Clears all cached data.
@@ -107,7 +107,7 @@ interface ListReconstructionCalculator<T : HasId<ID>, ID : Comparable<ID>> {
      * After calling this, [cached] will return null for all queries until new results are provided.
      * Implementations should also clear any internal state (dirty flags, item caches, etc.).
      */
-    fun clear()
+    public fun clear()
 }
 
 /*

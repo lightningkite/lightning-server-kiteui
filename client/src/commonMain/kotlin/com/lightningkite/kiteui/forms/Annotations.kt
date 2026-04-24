@@ -13,7 +13,7 @@ import com.lightningkite.services.database.SerializableProperty
 import com.lightningkite.services.database.SortPart
 import com.lightningkite.services.database.serializableAnnotations
 import com.lightningkite.services.database.serializableProperties
-import com.lightningkite.titleCase
+import com.lightningkite.services.data.titleCase
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.builtins.serializer
 import kotlin.time.Instant
@@ -28,47 +28,47 @@ import kotlin.time.Instant
  *
  * by Claude
  */
-object Annotations {
+public object Annotations {
     // Display & Labeling
-    const val DisplayName = "com.lightningkite.services.data.DisplayName"
-    const val Description = "com.lightningkite.services.data.Description"
-    const val Hint = "com.lightningkite.services.data.Hint"
-    const val Sentence = "com.lightningkite.services.data.Sentence"
-    const val DoesNotNeedLabel = "com.lightningkite.services.data.DoesNotNeedLabel"
+    public const val DisplayName: String = "com.lightningkite.services.data.DisplayName"
+    public const val Description: String = "com.lightningkite.services.data.Description"
+    public const val Hint: String = "com.lightningkite.services.data.Hint"
+    public const val Sentence: String = "com.lightningkite.services.data.Sentence"
+    public const val DoesNotNeedLabel: String = "com.lightningkite.services.data.DoesNotNeedLabel"
 
     // Field Organization
-    const val Group = "com.lightningkite.services.data.Group"
-    const val Importance = "com.lightningkite.services.data.Importance"
+    public const val Group: String  = "com.lightningkite.services.data.Group"
+    public const val Importance: String  = "com.lightningkite.services.data.Importance"
 
     // Visibility & Access
-    const val AdminHidden = "com.lightningkite.services.data.AdminHidden"
-    const val AdminViewOnly = "com.lightningkite.services.data.AdminViewOnly"
-    const val Denormalized = "com.lightningkite.services.data.Denormalized"
+    public const val AdminHidden: String  = "com.lightningkite.services.data.AdminHidden"
+    public const val AdminViewOnly: String  = "com.lightningkite.services.data.AdminViewOnly"
+    public const val Denormalized: String  = "com.lightningkite.services.data.Denormalized"
 
     // String Constraints
-    const val MaxLength = "com.lightningkite.services.data.MaxLength"
-    const val Multiline = "com.lightningkite.services.data.Multiline"
+    public const val MaxLength: String  = "com.lightningkite.services.data.MaxLength"
+    public const val Multiline: String  = "com.lightningkite.services.data.Multiline"
 
     // References
-    const val References = "com.lightningkite.services.data.References"
-    const val MultipleReferences = "com.lightningkite.services.data.MultipleReferences"
+    public const val References: String  = "com.lightningkite.services.data.References"
+    public const val MultipleReferences: String  = "com.lightningkite.services.data.MultipleReferences"
 
     // Indexing
-    const val Index = "com.lightningkite.services.data.Index"
+    public const val Index: String  = "com.lightningkite.services.data.Index"
 
     // Admin Configuration
-    const val NaturalSort = "com.lightningkite.services.data.NaturalSort"
-    const val AdminTableColumns = "com.lightningkite.services.data.AdminTableColumns"
-    const val AdminTitleFields = "com.lightningkite.services.data.AdminTitleFields"
+    public const val NaturalSort: String  = "com.lightningkite.services.data.NaturalSort"
+    public const val AdminTableColumns: String  = "com.lightningkite.services.data.AdminTableColumns"
+    public const val AdminTitleFields: String  = "com.lightningkite.services.data.AdminTitleFields"
 
     // Layout Control - by Claude
-    const val HorizontalLayout = "com.lightningkite.services.data.HorizontalLayout"
+    public const val HorizontalLayout: String = "com.lightningkite.services.data.HorizontalLayout"
 }
 
 // ===== RenderContext Annotation Helpers =====
 
 /** Get the display name, falling back to context-appropriate defaults */
-val RenderContext<*>.displayName: String
+public val RenderContext<*>.displayName: String
     get() = annotationString(Annotations.DisplayName, "text")
         ?: serializer.descriptor.serialName
             .substringBefore('<')
@@ -76,63 +76,63 @@ val RenderContext<*>.displayName: String
             .titleCase()
 
 /** Get the description text, if any */
-val RenderContext<*>.description: String?
+public val RenderContext<*>.description: String?
     get() = annotationString(Annotations.Description, "text")
 
 /** Get hint text for input fields, falling back to description or display name */
-val RenderContext<*>.hint: String?
+public val RenderContext<*>.hint: String?
     get() = annotationString(Annotations.Hint, "text")
         ?: description
 
 /** Get the max length constraint, if specified */
-val RenderContext<*>.maxLength: Int?
+public val RenderContext<*>.maxLength: Int?
     get() = annotationInt(Annotations.MaxLength, "size")?.takeIf { it != -1 }
 
 /** Get the average length hint for sizing, if specified */
-val RenderContext<*>.averageLength: Int?
+public val RenderContext<*>.averageLength: Int?
     get() = annotationInt(Annotations.MaxLength, "average")?.takeIf { it != -1 } ?: maxLength?.div(4)
 
 /** Check if this should be rendered as multiline */
-val RenderContext<*>.isMultiline: Boolean
+public val RenderContext<*>.isMultiline: Boolean
     get() = hasAnnotation(Annotations.Multiline)
 
 /** Check if this field should be hidden */
-val RenderContext<*>.isHidden: Boolean
+public val RenderContext<*>.isHidden: Boolean
     get() = hasAnnotation(Annotations.AdminHidden)
 
 /** Check if this field is view-only (not editable) */
-val RenderContext<*>.isViewOnly: Boolean
+public val RenderContext<*>.isViewOnly: Boolean
     get() = hasAnnotation(Annotations.AdminViewOnly) || hasAnnotation(Annotations.Denormalized)
 
-val KSerializer<*>.displayName: String
+public val KSerializer<*>.displayName: String
     get() = serializableAnnotations.find { it.fqn == Annotations.DisplayName }?.values?.get(
         "text"
     )?.let { it as? SerializableAnnotationValue.StringValue }?.value ?: descriptor.serialName.substringBefore('<')
         .substringAfterLast('.').titleCase()
 
-val SerializableProperty<*, *>.description: String?
+public val SerializableProperty<*, *>.description: String?
     get() = this.serializableAnnotations.find { it.fqn == Annotations.Description }?.values?.get(
         "text"
     )?.let { it as? SerializableAnnotationValue.StringValue }?.value
-val KSerializer<*>.description: String?
+public val KSerializer<*>.description: String?
     get() = serializableAnnotations.find { it.fqn == Annotations.Description }?.values?.get(
         "text"
     )?.let { it as? SerializableAnnotationValue.StringValue }?.value
 
-val SerializableProperty<*, *>.descriptionOrDisplayName get() = description ?: displayName
-val SerializableProperty<*, *>.hint
+public val SerializableProperty<*, *>.descriptionOrDisplayName: String get() = description ?: displayName
+public val SerializableProperty<*, *>.hint: String
     get() = serializableAnnotations.find { it.fqn == Annotations.Hint }?.values?.get(
         "text"
     )?.let { it as? SerializableAnnotationValue.StringValue }?.value
         ?: description
         ?: displayName
 
-val SerializableProperty<*, *>.indexed
+public val SerializableProperty<*, *>.indexed: Boolean
     get() = serializableAnnotations.any {
         it.fqn == Annotations.Index
     }
 
-fun SerializableProperty<*, *>.visibility(module: FormModule): FieldVisibility =
+public fun SerializableProperty<*, *>.visibility(module: FormModule): FieldVisibility =
     serializableAnnotations.mapNotNull { module.visibilitySettings[it.fqn] }.minOrNull()
         ?: when {
             name == "_id" &&
@@ -160,7 +160,7 @@ private val titleFieldNames = setOf("name", "title", "label", "email", "slug", "
  *
  * @return List of sort parts defining the natural sort order, or empty list if no sortable fields exist
  */
-fun <T> KSerializer<T>.naturalSort(): List<SortPart<T>> {
+public fun <T> KSerializer<T>.naturalSort(): List<SortPart<T>> {
     return serializableAnnotations.find {
         it.fqn == "com.lightningkite.services.data.NaturalSort"
     }?.values?.entries?.firstOrNull()?.let { it.value as? SerializableAnnotationValue.ArrayValue }?.value?.mapNotNull {
@@ -197,14 +197,14 @@ fun <T> KSerializer<T>.naturalSort(): List<SortPart<T>> {
  * Returns a list of data class paths representing the fields to display as columns.
  * The selection strategy is:
  * 1. Use @AdminTableColumns annotation if present (explicit configuration)
- * 2. Otherwise, select the 5 most important fields based on [SerializableProperty.importance]
+ * 2. Otherwise, select the 5 most important fields based on [importance]
  *
  * ## Usage
  * Used by admin panels to configure which fields are visible in list/table views of this type.
  *
  * @return List of paths to fields that should be displayed as columns
  */
-fun <T> KSerializer<T>.defaultColumns(): List<DataClassPath<T, *>> {
+public fun <T> KSerializer<T>.defaultColumns(): List<DataClassPath<T, *>> {
     return serializableAnnotations.find {
         it.fqn == "com.lightningkite.services.data.AdminTableColumns"
     }?.values?.entries?.firstOrNull()?.let { it.value as? SerializableAnnotationValue.ArrayValue }?.value?.mapNotNull {
@@ -241,7 +241,7 @@ fun <T> KSerializer<T>.defaultColumns(): List<DataClassPath<T, *>> {
  *
  * @return List of paths to fields that should be used to display a title/label for instances
  */
-fun <T> KSerializer<T>.defaultTitleFields(): List<DataClassPath<T, *>> {
+public fun <T> KSerializer<T>.defaultTitleFields(): List<DataClassPath<T, *>> {
     val serializer = this
     val it = serializer.serializableProperties!!
     val dcps = DataClassPathSerializer(serializer)
@@ -270,7 +270,7 @@ fun <T> KSerializer<T>.defaultTitleFields(): List<DataClassPath<T, *>> {
 /**
  * Convert a camelCase or PascalCase string to Title Case with spaces.
  */
-fun String.titleCase(): String = buildString {
+public fun String.titleCase(): String = buildString {
     this@titleCase.forEachIndexed { index, c ->
         if (index > 0 && c.isUpperCase()) append(' ')
         append(if (index == 0) c.uppercaseChar() else c)
@@ -304,7 +304,7 @@ private val pluralizeRules = listOf(
     "s$" to "s"
 ).map { (pattern, replacement) -> Regex(pattern, RegexOption.IGNORE_CASE) to replacement }
 
-fun String.pluralize(): String {
+public fun String.pluralize(): String {
     val word = this
     if (word.isBlank()) return word
 
@@ -327,4 +327,4 @@ fun String.pluralize(): String {
  * - READ: Field is shown as read-only (uses view renderer even in forms)
  * - EDIT: Field is editable (uses form renderer)
  */
-enum class FieldVisibility { HIDDEN, READ, EDIT }
+public enum class FieldVisibility { HIDDEN, READ, EDIT }

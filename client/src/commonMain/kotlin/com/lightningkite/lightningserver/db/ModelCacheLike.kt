@@ -25,7 +25,7 @@ import kotlin.time.Duration.Companion.seconds
  * @param T The model type, must implement [HasId]
  * @param ID The ID type, must be [Comparable]
  */
-interface ModelCacheLike<T : HasId<ID>, ID : Comparable<ID>> {
+public interface ModelCacheLike<T : HasId<ID>, ID : Comparable<ID>> {
     /**
      * Gets a reactive reference to a single item by ID.
      *
@@ -40,7 +40,7 @@ interface ModelCacheLike<T : HasId<ID>, ID : Comparable<ID>> {
      * @param pullFrequency How often to poll for updates (default: no polling)
      * @return A reactive reference to the item that updates automatically
      */
-    fun item(
+    public fun item(
         id: ID,
         maximumAge: Duration = Duration.INFINITE,
         pullFrequency: Duration = 0.seconds,
@@ -63,7 +63,7 @@ interface ModelCacheLike<T : HasId<ID>, ID : Comparable<ID>> {
      * @param pullFrequency How often to poll for updates (default: no polling)
      * @return A reactive reference to the query results that updates automatically
      */
-    fun list(
+    public fun list(
         query: Query<T>,
         maximumAge: Duration = Duration.INFINITE,
         pullFrequency: Duration = 0.seconds,
@@ -81,7 +81,7 @@ interface ModelCacheLike<T : HasId<ID>, ID : Comparable<ID>> {
      * @param item The item to add (typically with an unset or temporary ID)
      * @return The added item with server-generated fields populated
      */
-    suspend fun add(item: T): T
+    public suspend fun add(item: T): T
 
     /**
      * Adds multiple items to the backend in a single batch operation.
@@ -91,7 +91,7 @@ interface ModelCacheLike<T : HasId<ID>, ID : Comparable<ID>> {
      * @param items The items to add
      * @return The added items with server-generated fields populated
      */
-    suspend fun addAll(items: List<T>): List<T>
+    public suspend fun addAll(items: List<T>): List<T>
 
     /**
      * Updates or inserts an item (upsert operation).
@@ -101,7 +101,7 @@ interface ModelCacheLike<T : HasId<ID>, ID : Comparable<ID>> {
      * @param item The item to upsert
      * @return A reactive reference to the upserted item
      */
-    suspend fun upsert(item: T): ModelCacheItemReadable<T>
+    public suspend fun upsert(item: T): ModelCacheItemReadable<T>
 
     /**
      * Performs a bulk modification operation on items matching a condition.
@@ -115,7 +115,7 @@ interface ModelCacheLike<T : HasId<ID>, ID : Comparable<ID>> {
      * @param bulkUpdate The mass modification specification (condition and modifications)
      * @return The number of items affected
      */
-    suspend fun bulkModify(bulkUpdate: MassModification<T>): Int
+    public suspend fun bulkModify(bulkUpdate: MassModification<T>): Int
 
     // ========== Backwards Compatibility / Convenience Methods ==========
 
@@ -124,14 +124,14 @@ interface ModelCacheLike<T : HasId<ID>, ID : Comparable<ID>> {
      *
      * Equivalent to `item(id, pullFrequency = 1.minutes)`
      */
-    operator fun get(id: ID) = this.item(id, pullFrequency = 1.minutes)
+    public operator fun get(id: ID): ModelCacheItemReadable<T> = this.item(id, pullFrequency = 1.minutes)
 
     /**
      * Convenience method for querying with default polling (1 minute).
      *
      * Equivalent to `list(query, pullFrequency = 1.minutes)`
      */
-    fun query(query: Query<T>) = this.list(query, pullFrequency = 1.minutes)
+    public fun query(query: Query<T>): ModelCacheLimitReadable<T> = this.list(query, pullFrequency = 1.minutes)
 
     /**
      * Convenience method for watching an item with real-time updates (no polling).
@@ -139,7 +139,7 @@ interface ModelCacheLike<T : HasId<ID>, ID : Comparable<ID>> {
      * Relies on WebSocket updates and [maximumAge] only.
      * Equivalent to `item(id)`
      */
-    fun watch(id: ID) = this.item(id)
+    public fun watch(id: ID): ModelCacheItemReadable<T> = this.item(id)
 
     /**
      * Convenience method for watching a query with real-time updates (no polling).
@@ -147,19 +147,19 @@ interface ModelCacheLike<T : HasId<ID>, ID : Comparable<ID>> {
      * Relies on WebSocket updates and [maximumAge] only.
      * Equivalent to `list(query)`
      */
-    fun watch(query: Query<T>) = this.list(query)
+    public fun watch(query: Query<T>): ModelCacheLimitReadable<T> = this.list(query)
 
     /**
      * @deprecated Use [add] instead. This method will be removed in a future version.
      */
     @Deprecated("Use add instead")
-    suspend fun insert(item: T): ModelCacheItemReadable<T> = add(item).let { this[it._id] }
+    public suspend fun insert(item: T): ModelCacheItemReadable<T> = add(item).let { this[it._id] }
 
     /**
      * @deprecated Use [addAll] instead. This method will be removed in a future version.
      */
     @Deprecated("Use addAll instead")
-    suspend fun insert(items: List<T>): List<T> = addAll(items)
+    public suspend fun insert(items: List<T>): List<T> = addAll(items)
 }
 
 /*

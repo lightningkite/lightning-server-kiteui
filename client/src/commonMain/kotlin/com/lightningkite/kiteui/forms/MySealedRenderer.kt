@@ -26,7 +26,7 @@ import kotlinx.serialization.KSerializer
  *
  * by Claude
  */
-object MySealedRenderer : Renderer<Any> {
+public object MySealedRenderer : Renderer<Any> {
     override val name: String = "Options"
 
     override fun priority(context: RenderContext<Any>, module: FormModule): Float {
@@ -116,7 +116,7 @@ object MySealedRenderer : Renderer<Any> {
  *
  * by Claude
  */
-fun FormModule.registerMySealed() {
+public fun FormModule.registerMySealed() {
     // Use wildcard selector - priority() handles the matching
     register(Selector(), MySealedRenderer)
 }

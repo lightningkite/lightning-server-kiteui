@@ -22,7 +22,7 @@ import kotlinx.serialization.descriptors.StructureKind
  *
  * by Claude
  */
-object MapRenderer : Renderer<Map<Any?, Any?>> {
+public object MapRenderer : Renderer<Map<Any?, Any?>> {
     override val name: String = "Key-Value Pairs"  // by Claude
 
     override fun priority(context: RenderContext<Map<Any?, Any?>>, module: FormModule): Float {
@@ -207,7 +207,7 @@ object MapRenderer : Renderer<Map<Any?, Any?>> {
         text { ::content { "${value().size} entries" } }
     }
 
-    override fun columnWidth(context: RenderContext<Map<Any?, Any?>>, module: FormModule) = 10.0
+    override fun columnWidth(context: RenderContext<Map<Any?, Any?>>, module: FormModule): Double = 10.0
 
     // by Claude - Maps use section header instead of field() wrapper to avoid nesting
     override fun labeledForm(
@@ -247,6 +247,6 @@ object MapRenderer : Renderer<Map<Any?, Any?>> {
     }
 }
 
-fun FormModule.registerMap() {
+public fun FormModule.registerMap() {
     register(Selector(kind = StructureKind.MAP), MapRenderer)
 }

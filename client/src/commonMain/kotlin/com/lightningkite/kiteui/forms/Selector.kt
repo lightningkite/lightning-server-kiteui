@@ -17,7 +17,7 @@ import kotlinx.serialization.descriptors.SerialKind
  *
  * by Claude
  */
-data class Selector(
+public data class Selector(
     /** Match only if this annotation FQN is present (field or type level) */
     val annotation: String? = null,
     /** Match only this fully-qualified type name (e.g., "kotlin.String") */
@@ -30,7 +30,7 @@ data class Selector(
      *
      * All non-null criteria must match. Null criteria are wildcards.
      */
-    fun matches(context: RenderContext<*>): Boolean {
+    public fun matches(context: RenderContext<*>): Boolean {
         val descriptor = context.serializer.descriptor
         if (annotation != null && !context.hasAnnotation(annotation)) return false
         if (type != null && descriptor.serialName.substringBefore('/') != type) return false

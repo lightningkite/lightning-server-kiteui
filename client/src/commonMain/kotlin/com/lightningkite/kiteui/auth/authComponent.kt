@@ -16,8 +16,8 @@ import com.lightningkite.lightningserver.sessions.proofs.*
 import com.lightningkite.reactive.context.*
 import com.lightningkite.reactive.core.*
 import com.lightningkite.reactive.extensions.debounce
-import com.lightningkite.toEmailAddress
-import com.lightningkite.toPhoneNumber
+import com.lightningkite.services.data.toEmailAddress
+import com.lightningkite.services.data.toPhoneNumber
 import kotlinx.coroutines.*
 import kotlinx.serialization.Serializable
 import kotlin.math.roundToInt
@@ -33,7 +33,7 @@ import kotlin.time.DurationUnit
  * @property property The type of identifier (e.g., "email", "phone", "username", "_id")
  * @property value The actual identifier value (e.g., "user@example.com", "+1234567890")
  */
-data class UserIdentification(val property: String, val value: String)
+public data class UserIdentification(val property: String, val value: String)
 
 // Pattern to detect email addresses
 private val emailRegex = Regex("""[\w\-+._]+@(?:[\w\-]+\w\.)+[\w\-]+\w$""")
@@ -56,7 +56,7 @@ private val phoneRegex = Regex("""\+?(?:[0-9][-. ]?){6,}[0-9]$""")
  * @param onAuthentication Callback invoked with the refresh token when authentication succeeds
  * @return The rendered view
  */
-fun ViewWriter.authComponent(
+public fun ViewWriter.authComponent(
     endpoints: AuthEndpoints,
     subjectType: String = endpoints.subjects.keys.single(),
     subject: AuthClientEndpoints<*, *> = endpoints.subjects[subjectType]!!,
@@ -64,7 +64,7 @@ fun ViewWriter.authComponent(
     knownDeviceLocalStorageName: String? = "known-device",
     filterMethods: suspend (UserIdentification?, List<ProofComponent>) -> List<ProofComponent> = { _, it -> it },
     onAuthentication: suspend (token: String) -> Unit,
-) = AuthComponent(
+): Unit = AuthComponent(
     endpoints = endpoints,
     supportUsernames = supportUsernames,
     subjectType = subjectType,
@@ -101,31 +101,31 @@ fun ViewWriter.authComponent(
  * @property filterMethods Function to filter/reorder available auth methods dynamically
  * @property onAuthentication Callback invoked with refresh token on successful authentication
  */
-open class AuthComponent(
-    val endpoints: AuthEndpoints,
-    val subjectType: String = endpoints.subjects.keys.single(),
-    val subject: AuthClientEndpoints<*, *> = endpoints.subjects[subjectType]!!,
-    val supportUsernames: Boolean = false,
-    val knownDeviceLocalStorageName: String? = "known-device",
-    val filterMethods: suspend (UserIdentification?, List<ProofComponent>) -> List<ProofComponent> = { _, it -> it },
-    val onAuthentication: suspend (token: String) -> Unit,
+public open class AuthComponent(
+    public val endpoints: AuthEndpoints,
+    public val subjectType: String = endpoints.subjects.keys.single(),
+    public val subject: AuthClientEndpoints<*, *> = endpoints.subjects[subjectType]!!,
+    public val supportUsernames: Boolean = false,
+    public val knownDeviceLocalStorageName: String? = "known-device",
+    public val filterMethods: suspend (UserIdentification?, List<ProofComponent>) -> List<ProofComponent> = { _, it -> it },
+    public val onAuthentication: suspend (token: String) -> Unit,
 ) {
     /** The user's current primary identifier (email/phone/username/passkey ID), or null if not yet determined */
-    val primaryIdentifier = Signal<UserIdentification?>(null)
-    val rawPrimaryInput = Signal("")
+    public val primaryIdentifier: Signal<UserIdentification?> = Signal<UserIdentification?>(null)
+    public val rawPrimaryInput: Signal<String> = Signal("")
 
     /** List of successfully collected proofs. Accumulates as user completes authentication steps. */
-    val proofs = Signal(listOf<Proof>())
+    public val proofs: Signal<List<Proof>> = Signal(listOf<Proof>())
 
     /** The currently active proof component being rendered, or null if showing proof selection screen */
-    val currentProof = Signal<ProofComponent?>(null)
+    public val currentProof: Signal<ProofComponent?> = Signal<ProofComponent?>(null)
 
     /**
      * Server validation result for the current set of proofs.
      * Automatically re-checks whenever proofs change.
      * Contains available next proof options, strength requirements, and ready-to-login status.
      */
-    val authResult: Reactive<ProofsCheckResult<out Comparable<*>>?> = rememberSuspending {
+    public val authResult: Reactive<ProofsCheckResult<out Comparable<*>>?> = rememberSuspending {
         subject.checkProofs(proofs().also { if (it.isEmpty()) return@rememberSuspending null })
     }
 
@@ -139,7 +139,7 @@ open class AuthComponent(
      *
      * This list updates reactively as authentication progresses.
      */
-    val proofOptions = rememberSuspending {
+    public val proofOptions: Reactive<List<ProofComponent>> = rememberSuspending {
         val primaryIdentifier = primaryIdentifier()
         val result = authResult()
         // Track which proof methods have already been used
@@ -168,7 +168,7 @@ open class AuthComponent(
      * Action to automatically select the first available proof method.
      * Used on web platform when user presses enter in the primary identifier field.
      */
-    val selectFirstAction = Action("Select First", Icon.done) {
+    public val selectFirstAction: Action = Action("Select First", Icon.done) {
         if (currentProof.value == null) {
             proofOptions().firstOrNull()?.let {
                 currentProof.value = it
@@ -189,7 +189,7 @@ open class AuthComponent(
      * @param to The ViewWriter to render into
      * @return The rendered view
      */
-    open fun render(to: ViewWriter) {
+    public open fun render(to: ViewWriter) {
         to.col {
 
             renderPrimaryIdentifier(this)
@@ -249,7 +249,7 @@ open class AuthComponent(
      *
      * Automatically detects identifier type (email vs phone vs username) based on input format.
      */
-    open fun renderPrimaryIdentifier(to: RowOrCol): Unit = with(to) {
+    public open fun renderPrimaryIdentifier(to: RowOrCol): Unit = with(to) {
 
         shownWhen { proofs().isEmpty() && currentProof() == null }.field(
             when {
@@ -359,7 +359,7 @@ open class AuthComponent(
                     card.buttonTheme.button {
                         debugName = "usePasskeyButton"
                         centered.row {
-                            icon(Icon.Companion.passkey, "")
+                            icon(Icon.passkey, "")
                             text("Use Passkey")
                         }
                         onClick {
@@ -382,7 +382,7 @@ open class AuthComponent(
      *
      * On successful login, calls onAuthentication callback and optionally establishes known device.
      */
-    open fun ViewWriter.renderFinalize() {
+    public open fun ViewWriter.renderFinalize() {
         col {
             val desiredSessionLength = Signal<Duration?>(1.days)
             val rememberDevice = Signal(Platform.current != Platform.Web)
@@ -460,7 +460,7 @@ open class AuthComponent(
      *
      * When user selects a method, cancels background tasks and sets currentProof.
      */
-    open fun ViewWriter.pickProof() {
+    public open fun ViewWriter.pickProof() {
         col {
             // Launch background tasks for early proofs (e.g., WebAuthN autofill)
             val cancelIfSelected = launch {
@@ -503,7 +503,7 @@ open class AuthComponent(
  * @property primaryIdentifier The user's primary identifier (email/phone) for this device
  */
 @Serializable
-data class KnownDeviceSecretInfoStuff(
+public data class KnownDeviceSecretInfoStuff(
     val info: KnownDeviceSecretAndExpiration,
     val primaryIdentifier: String,
 )

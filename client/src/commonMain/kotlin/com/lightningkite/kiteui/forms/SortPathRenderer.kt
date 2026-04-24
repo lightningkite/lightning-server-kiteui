@@ -2,9 +2,9 @@
 
 package com.lightningkite.kiteui.forms
 
-import com.lightningkite.CaselessStringSerializer
-import com.lightningkite.TrimmedCaselessStringSerializer
-import com.lightningkite.TrimmedStringSerializer
+import com.lightningkite.services.data.CaselessStringSerializer
+import com.lightningkite.services.data.TrimmedCaselessStringSerializer
+import com.lightningkite.services.data.TrimmedStringSerializer
 import com.lightningkite.kiteui.views.ViewWriter
 import com.lightningkite.kiteui.views.direct.select
 import com.lightningkite.kiteui.views.direct.text
@@ -32,7 +32,7 @@ import kotlin.uuid.Uuid
  *
  * by Claude
  */
-object SortPathRenderer : Renderer<Any> {
+public object SortPathRenderer : Renderer<Any> {
     override val name: String = "Sort Part"
 
     private val stringTypes = setOf(
@@ -147,10 +147,10 @@ object SortPathRenderer : Renderer<Any> {
         }
     }
 
-    override fun cellForm(context: RenderContext<Any>, value: MutableReactive<Any>, module: FormModule) =
+    override fun cellForm(context: RenderContext<Any>, value: MutableReactive<Any>, module: FormModule): ViewWriter.() -> Unit =
         form(context, value, module)
 
-    override fun cellView(context: RenderContext<Any>, value: Reactive<Any>, module: FormModule) =
+    override fun cellView(context: RenderContext<Any>, value: Reactive<Any>, module: FormModule): ViewWriter.() -> Unit =
         view(context, value, module)
 }
 
@@ -159,6 +159,6 @@ object SortPathRenderer : Renderer<Any> {
  *
  * by Claude
  */
-fun FormModule.registerSortPath() {
+public fun FormModule.registerSortPath() {
     register(Selector(type = "com.lightningkite.services.database.SortPart"), SortPathRenderer)
 }

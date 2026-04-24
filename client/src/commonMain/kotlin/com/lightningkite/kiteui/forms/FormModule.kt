@@ -11,7 +11,6 @@ import com.lightningkite.kiteui.views.atTopEnd
 import com.lightningkite.kiteui.views.direct.*
 import com.lightningkite.kiteui.views.expanding
 import com.lightningkite.kiteui.views.l2.dialog
-import com.lightningkite.kiteui.views.l2.field
 import com.lightningkite.kiteui.views.l2.icon
 import com.lightningkite.reactive.context.reactive
 import com.lightningkite.reactive.core.Constant
@@ -50,7 +49,7 @@ import kotlinx.serialization.modules.SerializersModule
  *
  * by Claude
  */
-class FormModule {
+public class FormModule {
 
     private val renderers = mutableListOf<Pair<Selector, Renderer<*>>>()
 
@@ -62,7 +61,7 @@ class FormModule {
      * When set, ServerFileRenderer will show an upload button that calls this function.
      * The function should upload the file and return the resulting ServerFile.
      */
-    var fileUpload: (suspend (FileReference) -> ServerFile)? = null
+    public var fileUpload: (suspend (FileReference) -> ServerFile)? = null
 
     /**
      * Type info resolver for foreign keys. Set this to enable foreign key rendering.
@@ -73,7 +72,7 @@ class FormModule {
      * @param typeName The fully qualified class name of the referenced type
      * @return TypeInfo for the type, or null if not available
      */
-    var typeInfo: (typeName: String) -> TypeInfo<*, *>? = { null }
+    public var typeInfo: (typeName: String) -> TypeInfo<*, *>? = { null }
 
     /**
      * Kotlinx serialization module for resolving contextual serializers.
@@ -82,7 +81,7 @@ class FormModule {
      *
      * by Claude
      */
-    var serializersModule: SerializersModule = EmptySerializersModule()
+    public var serializersModule: SerializersModule = EmptySerializersModule()
 
     // ===== Field Visibility Control =====
     // by Claude - migrated from forms for admin panel support
@@ -97,7 +96,7 @@ class FormModule {
      *
      * Default settings hide admin-only fields and make denormalized fields read-only.
      */
-    val visibilitySettings: MutableMap<String, FieldVisibility> = mutableMapOf(
+    public val visibilitySettings: MutableMap<String, FieldVisibility> = mutableMapOf(
         "com.lightningkite.services.data.AdminHidden" to FieldVisibility.HIDDEN,
         "com.lightningkite.services.data.Denormalized" to FieldVisibility.READ,
         "com.lightningkite.services.data.AdminViewOnly" to FieldVisibility.READ
@@ -109,7 +108,7 @@ class FormModule {
      * Checks annotations against [visibilitySettings] and returns the minimum visibility found.
      * Also handles special case of UUID _id fields which are typically hidden.
      */
-    fun effectiveVisibility(context: RenderContext<*>): FieldVisibility {
+    public fun effectiveVisibility(context: RenderContext<*>): FieldVisibility {
         val annotationVisibility = context.allAnnotations
             .mapNotNull { visibilitySettings[it.fqn] }
             .minOrNull()
@@ -134,7 +133,7 @@ class FormModule {
      * compatible renderers. Useful for debugging or when multiple renderers
      * are valid for a type.
      */
-    var enableRendererSwitching: Boolean = false
+    public var enableRendererSwitching: Boolean = false
 
     /**
      * Stores user-selected renderers, keyed by [selectionKey].
@@ -146,7 +145,7 @@ class FormModule {
      * Generate a unique key for storing renderer selection.
      * Based on serializer name and field annotations.
      */
-    fun <T> selectionKey(context: RenderContext<T>): String {
+    public fun <T> selectionKey(context: RenderContext<T>): String {
         val typeName = context.serializer.descriptor.serialName
         val annotations = context.fieldAnnotations.joinToString(",") { it.fqn }
         return if (annotations.isEmpty()) typeName else "$typeName|$annotations"
@@ -158,7 +157,7 @@ class FormModule {
      * Only includes renderers with priority >= 0.
      */
     @Suppress("UNCHECKED_CAST")
-    fun <T> selectAll(context: RenderContext<T>): List<Renderer<T>> {
+    public fun <T> selectAll(context: RenderContext<T>): List<Renderer<T>> {
         return renderers
             .filter { (selector, _) -> selector.matches(context) }
             .map { (_, renderer) -> renderer as Renderer<T> }
@@ -173,7 +172,7 @@ class FormModule {
      * returns that selection. Otherwise returns the highest priority renderer.
      */
     @Suppress("UNCHECKED_CAST")
-    fun <T> selectWithOverride(context: RenderContext<T>): Renderer<T> {
+    public fun <T> selectWithOverride(context: RenderContext<T>): Renderer<T> {
         if (!enableRendererSwitching) return select(context)
         val key = selectionKey(context)
         return rendererSelections[key] as? Renderer<T> ?: select(context)
@@ -185,7 +184,7 @@ class FormModule {
      * Renderers are evaluated in the order that produces highest priority for each context.
      * Multiple renderers can match; the one with highest [Renderer.priority] wins.
      */
-    fun <T> register(selector: Selector, renderer: Renderer<T>) {
+    public fun <T> register(selector: Selector, renderer: Renderer<T>) {
         renderers.add(selector to renderer)
     }
 
@@ -195,7 +194,7 @@ class FormModule {
      * Useful for debugging/testing to see what renderers are available.
      * by Claude
      */
-    val allRenderers: List<Pair<Selector, Renderer<*>>>
+    public val allRenderers: List<Pair<Selector, Renderer<*>>>
         get() = renderers.toList()
 
     /**
@@ -206,7 +205,7 @@ class FormModule {
      * @throws IllegalStateException if no renderer matches
      */
     @Suppress("UNCHECKED_CAST")
-    fun <T> select(context: RenderContext<T>): Renderer<T> {
+    public fun <T> select(context: RenderContext<T>): Renderer<T> {
         return renderers
             .filter { (selector, _) -> selector.matches(context) }
             .maxByOrNull { (_, renderer) ->
@@ -221,13 +220,13 @@ class FormModule {
     /**
      * Create a [RenderContext] for a top-level value (no field annotations).
      */
-    fun <T> context(serializer: KSerializer<T>): RenderContext<T> =
+    public fun <T> context(serializer: KSerializer<T>): RenderContext<T> =
         RenderContext(serializer)
 
     /**
      * Create a [RenderContext] for a field with its annotations.
      */
-    fun <T> context(
+    public fun <T> context(
         serializer: KSerializer<T>,
         fieldAnnotations: List<SerializableAnnotation>
     ): RenderContext<T> = RenderContext(serializer, fieldAnnotations)
@@ -237,31 +236,31 @@ class FormModule {
     /**
      * Render an editable form for the value.
      */
-    fun <T> form(context: RenderContext<T>, value: MutableReactive<T>): ViewWriter.() -> Unit =
+    public fun <T> form(context: RenderContext<T>, value: MutableReactive<T>): ViewWriter.() -> Unit =
         select(context).form(context, value, this)
 
     /**
      * Render a read-only view of the value.
      */
-    fun <T> view(context: RenderContext<T>, value: Reactive<T>): ViewWriter.() -> Unit =
+    public fun <T> view(context: RenderContext<T>, value: Reactive<T>): ViewWriter.() -> Unit =
         select(context).view(context, value, this)
 
     /**
      * Render a compact editable cell.
      */
-    fun <T> cellForm(context: RenderContext<T>, value: MutableReactive<T>): ViewWriter.() -> Unit =
+    public fun <T> cellForm(context: RenderContext<T>, value: MutableReactive<T>): ViewWriter.() -> Unit =
         select(context).cellForm(context, value, this)
 
     /**
      * Render a compact read-only cell.
      */
-    fun <T> cellView(context: RenderContext<T>, value: Reactive<T>): ViewWriter.() -> Unit =
+    public fun <T> cellView(context: RenderContext<T>, value: Reactive<T>): ViewWriter.() -> Unit =
         select(context).cellView(context, value, this)
 
     /**
      * Get the suggested column width for a type.
      */
-    fun <T> columnWidth(context: RenderContext<T>): Double? =
+    public fun <T> columnWidth(context: RenderContext<T>): Double? =
         select(context).columnWidth(context, this)
 
     // ===== Default Cell Form Implementation =====
@@ -272,7 +271,7 @@ class FormModule {
      * This is used by [Renderer.cellForm] default implementation. Renderers for primitive
      * types should override cellForm to provide inline editing instead.
      */
-    fun <T> defaultCellForm(
+    public fun <T> defaultCellForm(
         context: RenderContext<T>,
         value: MutableReactive<T>,
         renderer: Renderer<T>
@@ -302,7 +301,7 @@ class FormModule {
      * When [enableRendererSwitching] is true and multiple renderers match,
      * shows a small dropdown to switch between them.
      */
-    fun <T> labeledFormWithSwitcher(
+    public fun <T> labeledFormWithSwitcher(
         context: RenderContext<T>,
         value: MutableReactive<T>,
         label: String,
@@ -343,7 +342,7 @@ class FormModule {
      * When [enableRendererSwitching] is true and multiple renderers match,
      * shows a small dropdown to switch between them.
      */
-    fun <T> labeledViewWithSwitcher(
+    public fun <T> labeledViewWithSwitcher(
         context: RenderContext<T>,
         value: Reactive<T>,
         label: String,

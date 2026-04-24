@@ -26,7 +26,7 @@ import kotlinx.serialization.descriptors.StructureKind
  *
  * by Claude
  */
-object CsvRenderer : Renderer<List<Any?>> {
+public object CsvRenderer : Renderer<List<Any?>> {
     override val name: String = "CSV"
 
     override fun priority(context: RenderContext<List<Any?>>, module: FormModule): Float {
@@ -88,7 +88,7 @@ object CsvRenderer : Renderer<List<Any?>> {
         text { ::content { "${value().size} rows" } }
     }
 
-    override fun columnWidth(context: RenderContext<List<Any?>>, module: FormModule) = 15.0
+    override fun columnWidth(context: RenderContext<List<Any?>>, module: FormModule): Double = 15.0
 
     // ===== CSV Helpers =====
 
@@ -211,6 +211,6 @@ object CsvRenderer : Renderer<List<Any?>> {
     }
 }
 
-fun FormModule.registerCsv() {
+public fun FormModule.registerCsv() {
     register(Selector(kind = StructureKind.LIST), CsvRenderer)
 }

@@ -20,7 +20,7 @@ import com.lightningkite.lightningserver.auth.AuthEndpoints
  *                    Defaults to the single subject type if only one exists.
  * @return List of available ProofComponent instances, in display order, excluding null entries
  */
-fun AuthEndpoints.components(
+public fun AuthEndpoints.components(
     subjectType: String = subjects.keys.single()
 ): List<ProofComponent> = listOfNotNull(
     smsProof?.let { SmsProofComponent(it) },

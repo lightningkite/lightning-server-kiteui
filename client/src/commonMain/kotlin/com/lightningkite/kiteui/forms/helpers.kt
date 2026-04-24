@@ -44,7 +44,7 @@ internal inline fun ViewWriter.fieldWithoutBorder(label: String, description: St
         SubtextSemantic.onNext.errorText()
     }
 }
-fun ViewWriter.subrendererSelector(
+public fun ViewWriter.subrendererSelector(
     selectedRenderer: MutableReactive<Renderer<Any?>>,
     elementRenderers: List<Renderer<Any?>>
 ) {
@@ -63,7 +63,7 @@ fun ViewWriter.subrendererSelector(
  *
  * by Claude
  */
-inline fun ViewWriter.fieldWithDescription(label: String, description: String?, content: ViewWriter.() -> Unit) {
+public inline fun ViewWriter.fieldWithDescription(label: String, description: String?, content: ViewWriter.() -> Unit) {
     if (description == null) {
         // No description - use standard field layout
         field(label, content)
@@ -90,7 +90,7 @@ inline fun ViewWriter.fieldWithDescription(label: String, description: String?, 
  * @param readable The reactive data source
  * @param annotations Optional field annotations to pass to the renderer
  */
-fun <T> ViewWriter.view(
+public fun <T> ViewWriter.view(
     context: FormModule,
     serializer: KSerializer<T>,
     readable: Reactive<T>,
@@ -103,22 +103,22 @@ fun <T> ViewWriter.view(
 /**
  * Render an editable form for a value.
  */
-inline fun <reified T> ViewWriter.form(module: FormModule, value: MutableReactive<T>) = form(module, serializer(), value)
+public inline fun <reified T> ViewWriter.form(module: FormModule, value: MutableReactive<T>): Unit = form(module, serializer(), value)
 
 /**
  * Render a read-only view of a value.
  */
-inline fun <reified T> ViewWriter.view(module: FormModule, value: Reactive<T>) = view(module, serializer(), value)
+public inline fun <reified T> ViewWriter.view(module: FormModule, value: Reactive<T>): Unit = view(module, serializer(), value)
 
 /**
  * Render a compact editable cell (for tables).
  */
-inline fun <reified T> ViewWriter.cellForm(module: FormModule, value: MutableReactive<T>) = cellForm(module, serializer(), value)
+public inline fun <reified T> ViewWriter.cellForm(module: FormModule, value: MutableReactive<T>): Unit = cellForm(module, serializer(), value)
 
 /**
  * Render a compact read-only cell (for tables).
  */
-inline fun <reified T> ViewWriter.cellView(module: FormModule, value: Reactive<T>) = cellView(module, serializer(), value)
+public inline fun <reified T> ViewWriter.cellView(module: FormModule, value: Reactive<T>): Unit = cellView(module, serializer(), value)
 
 /**
  * Render an editable form with its label.
@@ -127,7 +127,7 @@ inline fun <reified T> ViewWriter.cellView(module: FormModule, value: Reactive<T
  *
  * @param description Optional description text shown via info icon popover
  */
-inline fun <reified T> ViewWriter.labeledForm(module: FormModule, value: MutableReactive<T>, label: String, description: String? = null) = labeledForm(module, serializer(), value, label, description)
+public inline fun <reified T> ViewWriter.labeledForm(module: FormModule, value: MutableReactive<T>, label: String, description: String? = null): Unit = labeledForm(module, serializer(), value, label, description)
 
 /**
  * Render a read-only view with its label.
@@ -136,13 +136,13 @@ inline fun <reified T> ViewWriter.labeledForm(module: FormModule, value: Mutable
  *
  * @param description Optional description text shown via info icon popover
  */
-inline fun <reified T> ViewWriter.labeledView(module: FormModule, value: Reactive<T>, label: String, description: String? = null) = labeledView(module, serializer(), value, label, description)
+public inline fun <reified T> ViewWriter.labeledView(module: FormModule, value: Reactive<T>, label: String, description: String? = null): Unit = labeledView(module, serializer(), value, label, description)
 
 
 /**
  * Render an editable form for a value.
  */
-fun <T> ViewWriter.form(module: FormModule, serializer: KSerializer<T>, value: MutableReactive<T>) {
+public fun <T> ViewWriter.form(module: FormModule, serializer: KSerializer<T>, value: MutableReactive<T>) {
     val context = RenderContext(serializer)
     module.form(context, value)(this)
 }
@@ -150,7 +150,7 @@ fun <T> ViewWriter.form(module: FormModule, serializer: KSerializer<T>, value: M
 /**
  * Render a read-only view of a value.
  */
-fun <T> ViewWriter.view(module: FormModule, serializer: KSerializer<T>, value: Reactive<T>) {
+public fun <T> ViewWriter.view(module: FormModule, serializer: KSerializer<T>, value: Reactive<T>) {
     val context = RenderContext(serializer)
     module.view(context, value)(this)
 }
@@ -158,7 +158,7 @@ fun <T> ViewWriter.view(module: FormModule, serializer: KSerializer<T>, value: R
 /**
  * Render a compact editable cell (for tables).
  */
-fun <T> ViewWriter.cellForm(module: FormModule, serializer: KSerializer<T>, value: MutableReactive<T>) {
+public fun <T> ViewWriter.cellForm(module: FormModule, serializer: KSerializer<T>, value: MutableReactive<T>) {
     val context = RenderContext(serializer)
     module.cellForm(context, value)(this)
 }
@@ -166,7 +166,7 @@ fun <T> ViewWriter.cellForm(module: FormModule, serializer: KSerializer<T>, valu
 /**
  * Render a compact read-only cell (for tables).
  */
-fun <T> ViewWriter.cellView(module: FormModule, serializer: KSerializer<T>, value: Reactive<T>) {
+public fun <T> ViewWriter.cellView(module: FormModule, serializer: KSerializer<T>, value: Reactive<T>) {
     val context = RenderContext(serializer)
     module.cellView(context, value)(this)
 }
@@ -178,7 +178,7 @@ fun <T> ViewWriter.cellView(module: FormModule, serializer: KSerializer<T>, valu
  *
  * @param description Optional description text shown via info icon popover
  */
-fun <T> ViewWriter.labeledForm(module: FormModule, serializer: KSerializer<T>, value: MutableReactive<T>, label: String, description: String? = null) {
+public fun <T> ViewWriter.labeledForm(module: FormModule, serializer: KSerializer<T>, value: MutableReactive<T>, label: String, description: String? = null) {
     val context = RenderContext(serializer)
     module.labeledFormWithSwitcher(context, value, label, description ?: context.description)(this)
 }
@@ -190,7 +190,7 @@ fun <T> ViewWriter.labeledForm(module: FormModule, serializer: KSerializer<T>, v
  *
  * @param description Optional description text shown via info icon popover
  */
-fun <T> ViewWriter.labeledView(module: FormModule, serializer: KSerializer<T>, value: Reactive<T>, label: String, description: String? = null) {
+public fun <T> ViewWriter.labeledView(module: FormModule, serializer: KSerializer<T>, value: Reactive<T>, label: String, description: String? = null) {
     val context = RenderContext(serializer)
     module.labeledViewWithSwitcher(context, value, label, description ?: context.description)(this)
 }
@@ -200,7 +200,7 @@ fun <T> ViewWriter.labeledView(module: FormModule, serializer: KSerializer<T>, v
  * Converts a Condition into a human-readable string for display.
  * Used in the UI to show users what filters are currently applied.
  */
-fun Condition<*>.friendly(): String {
+public fun Condition<*>.friendly(): String {
     return when (this) {
         Condition.Always -> "All"
         is Condition.And<*> -> conditions.joinToString(" and ") { it.friendly() }

@@ -31,7 +31,7 @@ import com.lightningkite.services.database.DataClassPathNotNull
  * @see SortPart
  * @see Condition
  */
-fun <T> List<SortPart<T>>.after(after: T): Condition<T> {
+public fun <T> List<SortPart<T>>.after(after: T): Condition<T> {
     // Generate one OR branch for each prefix of the sort list
     // For [A, B, C], this creates conditions for [A], [A, B], and [A, B, C]
     return Condition.Or<T>((1..this.size).map { count ->

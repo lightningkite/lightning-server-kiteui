@@ -20,6 +20,7 @@ import com.lightningkite.reactive.context.rerunOn
 import com.lightningkite.reactive.core.BasicListenable
 import com.lightningkite.reactive.core.Signal
 import com.lightningkite.reactive.core.rememberSuspending
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
 /**
@@ -39,17 +40,17 @@ import kotlin.time.Duration.Companion.seconds
  *
  * Note: The code input uses one-time code keyboard hints for better mobile UX
  */
-data class EmailProofComponent(val p: ProofClientEndpoints.Email) : ProofComponent {
+public class EmailProofComponent(private val p: ProofClientEndpoints.Email) : ProofComponent {
     override val name: String = "Email Code"
-    override val icon: Icon = Icon.Companion.email
+    override val icon: Icon = Icon.email
     override val via: String = p.via
     override val property: String? = p.property
 
     /** Holds the user-entered verification code */
-    val code = Signal("")
+    public val code: Signal<String> = Signal("")
 
     /** Minimum time between resend attempts to prevent spam */
-    val resendTime = 15.seconds
+    public val resendTime: Duration = 15.seconds
 
     /**
      * Renders the email verification UI.
@@ -84,7 +85,7 @@ data class EmailProofComponent(val p: ProofClientEndpoints.Email) : ProofCompone
             }
 
             // Action to submit the verification code to the server
-            val proveEmailOwnership = Action("Submit", Icon.Companion.done) {
+            val proveEmailOwnership = Action("Submit", Icon.done) {
                 onResult(p.proveEmailOwnership(FinishProof(challenge().value, code.await())))
             }
 
@@ -102,7 +103,7 @@ data class EmailProofComponent(val p: ProofClientEndpoints.Email) : ProofCompone
                         reactive { if (challenge.state().ready) requestFocus() }
                         content bind code
                         action = proveEmailOwnership
-                        keyboardHints = KeyboardHints.Companion.oneTimeCodeLetters
+                        keyboardHints = KeyboardHints.oneTimeCodeLetters
                     }
                 }
                 // Error messages appear here when proof fails
@@ -128,7 +129,7 @@ data class EmailProofComponent(val p: ProofClientEndpoints.Email) : ProofCompone
 
                     // State 1: Just sent confirmation
                     centered.shownWhen { nowBySecond() < challenge().timestamp + 3.seconds }.row {
-                        centered.icon(Icon.Companion.done.copy(1.rem, 1.rem), "")
+                        centered.icon(Icon.done.copy(1.rem, 1.rem), "")
                         centered.text("Sent!")
                     }
 

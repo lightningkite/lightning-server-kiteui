@@ -18,7 +18,7 @@ import kotlinx.serialization.descriptors.StructureKind
  *
  * by Claude
  */
-object ObjectRenderer : Renderer<Any> {
+public object ObjectRenderer : Renderer<Any> {
     override val name: String = "Object"
 
     override fun priority(context: RenderContext<Any>, module: FormModule): Float {
@@ -53,6 +53,6 @@ object ObjectRenderer : Renderer<Any> {
  *
  * by Claude
  */
-fun FormModule.registerSingletonObject() {
+public fun FormModule.registerSingletonObject() {
     register(Selector(kind = StructureKind.OBJECT), ObjectRenderer)
 }

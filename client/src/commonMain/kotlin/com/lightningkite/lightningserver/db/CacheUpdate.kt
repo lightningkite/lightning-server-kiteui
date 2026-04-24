@@ -31,13 +31,13 @@ import kotlin.time.Instant
  * @param T The model type
  * @param ID The ID type
  */
-sealed class CacheUpdate<T : HasId<ID>, ID : Comparable<ID>> {
+public sealed class CacheUpdate<T : HasId<ID>, ID : Comparable<ID>> {
     /**
      * Items affected by this update, if any.
      * Used as a convenience property to extract items regardless of the specific update type.
      * Returns null for [SocketOverload], empty for [DeletionResult], and the relevant items otherwise.
      */
-    abstract val items: Collection<T>?
+    public abstract val items: Collection<T>?
 
     /**
      * Socket overload event - clears ALL caches.
@@ -54,7 +54,7 @@ sealed class CacheUpdate<T : HasId<ID>, ID : Comparable<ID>> {
      *
      * This is intentionally aggressive to avoid serving stale data when we've lost track of changes.
      */
-    class SocketOverload<T : HasId<ID>, ID : Comparable<ID>>(): CacheUpdate<T, ID>() {
+    public class SocketOverload<T : HasId<ID>, ID : Comparable<ID>>(): CacheUpdate<T, ID>() {
         override val items: Collection<T>? get() = null
         override fun toString(): String = "SocketOverload"
     }
@@ -80,11 +80,11 @@ sealed class CacheUpdate<T : HasId<ID>, ID : Comparable<ID>> {
      * @param fromCondition The overall condition being monitored (may be broader than individual requirements)
      * @param fromRequirements Specific conditions with activation timestamps for validation
      */
-    class SocketChanges<T : HasId<ID>, ID : Comparable<ID>>(
-        val changed: Set<T>,
-        val removed: Set<ID>,
-        val fromCondition: Condition<T>,
-        val fromRequirements: Set<ConditionAndTimestamp<T>>
+    public class SocketChanges<T : HasId<ID>, ID : Comparable<ID>>(
+        public val changed: Set<T>,
+        public val removed: Set<ID>,
+        public val fromCondition: Condition<T>,
+        public val fromRequirements: Set<ConditionAndTimestamp<T>>
     ): CacheUpdate<T, ID>(){
         /**
          * Interface representing a condition that has been actively monitored since a specific time.
@@ -93,12 +93,12 @@ sealed class CacheUpdate<T : HasId<ID>, ID : Comparable<ID>> {
          * If [activatedAt] is null, the condition has been active since an unknown time
          * (treat conservatively as not having complete knowledge).
          */
-        interface ConditionAndTimestamp<T> {
+        public interface ConditionAndTimestamp<T> {
             /** The condition being monitored */
-            val condition: Condition<T>
+            public val condition: Condition<T>
 
             /** When monitoring of this condition started, or null if unknown */
-            val activatedAt: Instant?
+            public val activatedAt: Instant?
         }
 
         override val items: Collection<T> get() = changed
@@ -117,9 +117,9 @@ sealed class CacheUpdate<T : HasId<ID>, ID : Comparable<ID>> {
      * @param query The query that was executed (condition, sort, limit)
      * @param result The list of items that matched the query
      */
-    class QueryResult<T : HasId<ID>, ID : Comparable<ID>>(
-        val query: Query<T>,
-        val result: List<T>
+    public class QueryResult<T : HasId<ID>, ID : Comparable<ID>>(
+        public val query: Query<T>,
+        public val result: List<T>
     ): CacheUpdate<T, ID>(){
         override val items: Collection<T> get() = result
         override fun toString(): String = "QueryResult(query=$query, ${result.size} items)"
@@ -139,9 +139,9 @@ sealed class CacheUpdate<T : HasId<ID>, ID : Comparable<ID>> {
      * @param missing IDs that were requested but don't exist
      * @param result Items that were found
      */
-    class MultiGetResult<T : HasId<ID>, ID : Comparable<ID>>(
-        val missing: Set<ID>,
-        val result: List<T>
+    public class MultiGetResult<T : HasId<ID>, ID : Comparable<ID>>(
+        public val missing: Set<ID>,
+        public val result: List<T>
     ): CacheUpdate<T, ID>(){
         override val items: Collection<T> get() = result
         override fun toString(): String = "MultiGetResult(missing=${missing.size} ids, found=${result.size} items)"
@@ -161,7 +161,7 @@ sealed class CacheUpdate<T : HasId<ID>, ID : Comparable<ID>> {
      *
      * @param items The items that were mutated (in their post-mutation state)
      */
-    class MutationResult<T : HasId<ID>, ID : Comparable<ID>>(
+    public class MutationResult<T : HasId<ID>, ID : Comparable<ID>>(
         override val items: Collection<T>
     ): CacheUpdate<T, ID>() {
         override fun toString(): String = "MutationResult(${items.size} items)"
@@ -177,8 +177,8 @@ sealed class CacheUpdate<T : HasId<ID>, ID : Comparable<ID>> {
      *
      * @param deletedIds IDs of items that were deleted
      */
-    class DeletionResult<T : HasId<ID>, ID : Comparable<ID>>(
-        val deletedIds: Set<ID>
+    public class DeletionResult<T : HasId<ID>, ID : Comparable<ID>>(
+        public val deletedIds: Set<ID>
     ): CacheUpdate<T, ID>() {
         override val items: Collection<T> = emptyList()
         override fun toString(): String = "DeletionResult(${deletedIds.size} ids)"

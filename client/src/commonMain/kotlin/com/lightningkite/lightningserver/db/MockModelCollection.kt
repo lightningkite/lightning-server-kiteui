@@ -11,18 +11,18 @@ import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Instant
 
-class MockModelCollection<T : HasId<ID>, ID : Comparable<ID>>(val serializer: KSerializer<T>) : ModelCacheLike<T, ID> {
-    val models = HashMap<ID, MockWritableModel>()
+public class MockModelCollection<T : HasId<ID>, ID : Comparable<ID>>(public val serializer: KSerializer<T>) : ModelCacheLike<T, ID> {
+    public val models: HashMap<ID, MockModelCollection<T, ID>.MockWritableModel> = HashMap<ID, MockWritableModel>()
 
-    fun populate(item: T) {
+    public fun populate(item: T) {
         val id = item._id
         models.getOrPut(id) { MockWritableModel(id) }.property.value = item
     }
 
-    inner class MockWritableModel(val id: ID) : ModelCacheItemReadable<T> {
+    public inner class MockWritableModel(public val id: ID) : ModelCacheItemReadable<T> {
         override val lastUpdatedAt: Reactive<Instant?> = Constant(Clock.System.now())
-        val property = LateInitSignal<T?>()
-        val value: T? get() = property.state.let { if(it.success) it.raw else null }
+        public val property: LateInitSignal<T?> = LateInitSignal<T?>()
+        public val value: T? get() = property.state.let { if(it.success) it.raw else null }
 
         override suspend fun modify(modification: Modification<T>): T? {
             property.value = property.state.getOrNull()?.let { modification(it) }
@@ -53,7 +53,7 @@ class MockModelCollection<T : HasId<ID>, ID : Comparable<ID>>(val serializer: KS
     }
 
     private val listeners = ArrayList<() -> Unit>()
-    fun addListener(listener: () -> Unit): () -> Unit {
+    public fun addListener(listener: () -> Unit): () -> Unit {
         listeners.add(listener)
         return {
             val pos = listeners.indexOfFirst { it === listener }
@@ -63,7 +63,7 @@ class MockModelCollection<T : HasId<ID>, ID : Comparable<ID>>(val serializer: KS
         }
     }
 
-    fun actionPerformed() {
+    public fun actionPerformed() {
         listeners.toList().forEach { it() }
     }
 

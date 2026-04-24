@@ -45,10 +45,10 @@ import kotlin.time.Instant
  *
  * @see NaiveListReconstructionCalculator for a simpler implementation with isolated per-query caches
  */
-class OptimizedListReconstructionCalculator<T : HasId<ID>, ID : Comparable<ID>>(
-    val serializer: KSerializer<T>,
-    val log: Log? = null,
-    val clock: Clock = Clock.System
+public class OptimizedListReconstructionCalculator<T : HasId<ID>, ID : Comparable<ID>>(
+    public val serializer: KSerializer<T>,
+    public val log: Log? = null,
+    public val clock: Clock = Clock.System
 ) : ListReconstructionCalculator<T, ID> {
 
     /**

@@ -52,23 +52,23 @@ import kotlin.time.Duration.Companion.seconds
  * @param log Optional console for debugging batching behavior
  * @param fulfill Function that executes a batch: receives list of inputs, returns list of outputs in same order
  */
-class BatchAndQueue<T, R>(
-    val scope: CoroutineScope,
-    val batchWait: Duration = 0.1.seconds,
-    val log: Log? = null,
-    val fulfill: suspend (List<T>) -> List<R>
+public class BatchAndQueue<T, R>(
+    public val scope: CoroutineScope,
+    public val batchWait: Duration = 0.1.seconds,
+    public val log: Log? = null,
+    public val fulfill: suspend (List<T>) -> List<R>
 ) {
     /**
      * Maps inputs to all callers waiting for that input's result.
      * Multiple callers requesting the same input share the same deferred result.
      */
-    val outgoing = HashMap<T, ArrayList<CompletableDeferred<R>>>()
+    public val outgoing: HashMap<T, ArrayList<CompletableDeferred<R>>> = HashMap<T, ArrayList<CompletableDeferred<R>>>()
 
     /**
      * The current queue collecting requests. Null when no queue is active (all requests have been fulfilled).
      * Set to null after [batchWait] to seal the queue and start fulfillment.
      */
-    var multigetQueue: HashSet<T>? = null
+    public var multigetQueue: HashSet<T>? = null
 
     /**
      * Requests a result for the given input, batching with other concurrent requests.
@@ -85,7 +85,7 @@ class BatchAndQueue<T, R>(
      * @return The result for this input
      * @throws Exception If [fulfill] throws, all waiting callers receive the exception
      */
-    suspend operator fun invoke(input: T): R {
+    public suspend operator fun invoke(input: T): R {
         // Create a deferred result for this caller
         val deferred = CompletableDeferred<R>()
         log?.log("$input starting with deferred ${deferred.identityHashCode()}")

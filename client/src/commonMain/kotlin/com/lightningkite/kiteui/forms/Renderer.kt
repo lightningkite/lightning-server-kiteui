@@ -51,7 +51,7 @@ import com.lightningkite.reactive.core.Reactive
  *
  * by Claude
  */
-interface Renderer<T> {
+public interface Renderer<T> {
 
     // ===== Metadata =====
 
@@ -63,7 +63,7 @@ interface Renderer<T> {
      *
      * by Claude
      */
-    val name: String get() = this::class.simpleName ?: "Unknown"
+    public val name: String get() = this::class.simpleName ?: "Unknown"
 
     /**
      * Priority for renderer selection. Higher values win.
@@ -73,7 +73,7 @@ interface Renderer<T> {
      *
      * @return Priority value, typically 1.0 for standard renderers, higher for specialized ones
      */
-    fun priority(context: RenderContext<T>, module: FormModule): Float = 1f
+    public fun priority(context: RenderContext<T>, module: FormModule): Float = 1f
 
     /**
      * Suggested column width for table display.
@@ -83,7 +83,7 @@ interface Renderer<T> {
      *
      * @return Approximate character width, or null for auto-sizing
      */
-    fun columnWidth(context: RenderContext<T>, module: FormModule): Double? = null
+    public fun columnWidth(context: RenderContext<T>, module: FormModule): Double? = null
 
     // ===== Full Rendering =====
 
@@ -98,7 +98,7 @@ interface Renderer<T> {
      * @param module The form module for rendering nested types
      * @return A ViewWriter extension function that creates the UI
      */
-    fun form(context: RenderContext<T>, value: MutableReactive<T>, module: FormModule): ViewWriter.() -> Unit
+    public fun form(context: RenderContext<T>, value: MutableReactive<T>, module: FormModule): ViewWriter.() -> Unit
 
     /**
      * Render a read-only view of the value.
@@ -111,7 +111,7 @@ interface Renderer<T> {
      * @param module The form module for rendering nested types
      * @return A ViewWriter extension function that creates the UI
      */
-    fun view(context: RenderContext<T>, value: Reactive<T>, module: FormModule): ViewWriter.() -> Unit
+    public fun view(context: RenderContext<T>, value: Reactive<T>, module: FormModule): ViewWriter.() -> Unit
 
     // ===== Cell Rendering (for tables) =====
 
@@ -126,7 +126,7 @@ interface Renderer<T> {
      * @param module The form module for rendering nested types
      * @return A ViewWriter extension function that creates the UI
      */
-    fun cellView(context: RenderContext<T>, value: Reactive<T>, module: FormModule): ViewWriter.() -> Unit =
+    public fun cellView(context: RenderContext<T>, value: Reactive<T>, module: FormModule): ViewWriter.() -> Unit =
         view(context, value, module)
 
     /**
@@ -141,7 +141,7 @@ interface Renderer<T> {
      * @param module The form module for rendering nested types
      * @return A ViewWriter extension function that creates the UI
      */
-    fun cellForm(context: RenderContext<T>, value: MutableReactive<T>, module: FormModule): ViewWriter.() -> Unit =
+    public fun cellForm(context: RenderContext<T>, value: MutableReactive<T>, module: FormModule): ViewWriter.() -> Unit =
         module.defaultCellForm(context, value, this)
 
     // ===== Labeled Rendering =====
@@ -162,7 +162,7 @@ interface Renderer<T> {
      *
      * by Claude
      */
-    fun labeledForm(
+    public fun labeledForm(
         context: RenderContext<T>,
         value: MutableReactive<T>,
         module: FormModule,
@@ -188,7 +188,7 @@ interface Renderer<T> {
      *
      * by Claude
      */
-    fun labeledView(
+    public fun labeledView(
         context: RenderContext<T>,
         value: Reactive<T>,
         module: FormModule,

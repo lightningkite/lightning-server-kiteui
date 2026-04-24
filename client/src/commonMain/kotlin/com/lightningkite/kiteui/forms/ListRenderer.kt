@@ -42,7 +42,7 @@ import kotlinx.serialization.descriptors.StructureKind
  *
  * by Claude
  */
-object ListRenderer : Renderer<List<Any?>> {
+public object ListRenderer : Renderer<List<Any?>> {
     override val name: String = "List"  // by Claude
 
     override fun priority(context: RenderContext<List<Any?>>, module: FormModule): Float {
@@ -181,7 +181,7 @@ object ListRenderer : Renderer<List<Any?>> {
 
     // cellForm uses default dialog behavior
 
-    override fun columnWidth(context: RenderContext<List<Any?>>, module: FormModule) = 10.0
+    override fun columnWidth(context: RenderContext<List<Any?>>, module: FormModule): Double = 10.0
 
     // by Claude - Lists use section header instead of field() wrapper to avoid nesting
     override fun labeledForm(
@@ -221,7 +221,7 @@ object ListRenderer : Renderer<List<Any?>> {
     }
 }
 
-fun FormModule.registerCollections() {
+public fun FormModule.registerCollections() {
     register(Selector(kind = StructureKind.LIST), ListRenderer)
     register(Selector(kind = StructureKind.LIST), HorizontalListRenderer)
 }

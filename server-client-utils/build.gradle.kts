@@ -2,7 +2,6 @@ import com.lightningkite.deployhelpers.*
 
 plugins {
     alias(libs.plugins.kotlin.jvm)
-    alias(libs.plugins.ksp)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.dokka)
     id("signing")
@@ -10,13 +9,8 @@ plugins {
 }
 
 dependencies {
-//    api(project(":client"))
     api(libs.lightningServer.typed)
     api(libs.kitui.jvm.ssr)
-}
-
-ksp {
-    arg("generateFields", "true")
 }
 
 kotlin {
@@ -25,12 +19,6 @@ kotlin {
         optIn.add("kotlin.time.ExperimentalTime")
         optIn.add("kotlin.uuid.ExperimentalUuidApi")
         freeCompilerArgs.add("-Xcontext-parameters")
-    }
-    sourceSets.main {
-        kotlin.srcDir("build/generated/ksp/main/kotlin")
-    }
-    sourceSets.test {
-        kotlin.srcDir("build/generated/ksp/test/kotlin")
     }
 }
 

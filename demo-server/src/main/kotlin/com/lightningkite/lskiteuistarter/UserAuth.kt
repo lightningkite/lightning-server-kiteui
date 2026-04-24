@@ -16,7 +16,7 @@ import com.lightningkite.lskiteuistarter.data.UserEndpoints
 import com.lightningkite.services.database.*
 import com.lightningkite.services.email.Email
 import com.lightningkite.services.email.EmailAddressWithName
-import com.lightningkite.toEmailAddress
+import com.lightningkite.services.data.toEmailAddress
 import kotlinx.html.html
 import kotlinx.html.stream.createHTML
 import kotlinx.serialization.KSerializer

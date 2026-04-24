@@ -33,7 +33,7 @@ import kotlin.time.Duration.Companion.minutes
  * @property onAuthentication Callback invoked with refresh token on successful authentication
  * @return The rendered view
  */
-fun ViewWriter.reAuthComponent(
+public fun ViewWriter.reAuthComponent(
     endpoints: AuthEndpoints,
     subjectId: String,
     subjectType: String = endpoints.subjects.keys.single(),
@@ -41,7 +41,7 @@ fun ViewWriter.reAuthComponent(
     knownDeviceLocalStorageName: String? = "known-device",
     newSessionDuration: Duration = 15.minutes,
     onAuthentication: suspend (token: String) -> Unit,
-) = ReAuthComponent(
+): Unit = ReAuthComponent(
     subjectId = subjectId,
     endpoints = endpoints,
     subjectType = subjectType,
@@ -66,36 +66,36 @@ fun ViewWriter.reAuthComponent(
  * @property knownDeviceLocalStorageName Key for storing known device credentials. Null disables feature.
  * @property onAuthentication Callback invoked with refresh token on successful authentication
  */
-open class ReAuthComponent(
-    val endpoints: AuthEndpoints,
-    val subjectId: String,
-    val subjectType: String = endpoints.subjects.keys.single(),
-    val subject: AuthClientEndpoints<*, *> = endpoints.subjects[subjectType]!!,
-    val knownDeviceLocalStorageName: String? = "known-device",
-    val newSessionDuration: Duration = 15.minutes,
-    val onAuthentication: suspend (token: String) -> Unit,
+public open class ReAuthComponent(
+    public val endpoints: AuthEndpoints,
+    public val subjectId: String,
+    public val subjectType: String = endpoints.subjects.keys.single(),
+    public val subject: AuthClientEndpoints<*, *> = endpoints.subjects[subjectType]!!,
+    public val knownDeviceLocalStorageName: String? = "known-device",
+    public val newSessionDuration: Duration = 15.minutes,
+    public val onAuthentication: suspend (token: String) -> Unit,
 ) {
 
     /** List of successfully collected proofs. Accumulates as user completes authentication steps. */
-    val proofs = Signal(listOf<Proof>())
+    public val proofs: Signal<List<Proof>> = Signal(listOf<Proof>())
 
     /** The currently active proof component being rendered, or null if showing proof selection screen */
-    val currentProof = Signal<Pair<ProofComponent, ProofOption>?>(null)
+    public val currentProof: Signal<Pair<ProofComponent, ProofOption>?> = Signal<Pair<ProofComponent, ProofOption>?>(null)
 
     /** Whether authentication is in progress (checking proofs with server) */
-    val authenticating = Signal(false)
+    public val authenticating: Signal<Boolean> = Signal(false)
 
     /**
      * Server validation result for the current set of proofs.
      * Automatically re-checks whenever proofs change.
      * Contains available next proof options, strength requirements, and ready-to-login status.
      */
-    val authResult: Reactive<ProofsCheckResult<out Comparable<*>>?> = rememberSuspending {
+    public val authResult: Reactive<ProofsCheckResult<out Comparable<*>>?> = rememberSuspending {
         subject.checkProofs(proofs().also { if (it.isEmpty()) return@rememberSuspending null })
     }
 
     /** Server's authentication requirements for this user */
-    val requirements = rememberSuspending { subject.authRequirements() }
+    public val requirements: Reactive<AuthRequirements> = rememberSuspending { subject.authRequirements() }
 
     /**
      * Calculates the list of currently available proof methods based on:
@@ -106,7 +106,7 @@ open class ReAuthComponent(
      *
      * This list updates reactively as authentication progresses.
      */
-    val proofOptions = rememberSuspending {
+    public val proofOptions: Reactive<List<Pair<ProofComponent, ProofOption>>> = rememberSuspending {
         // Track which proof methods have already been used
         val solved = proofs.value.mapTo(HashSet()) { it.via }
         // Get server-provided available methods (if known)
@@ -130,7 +130,7 @@ open class ReAuthComponent(
      * @param to The ViewWriter to render into
      * @return The rendered view
      */
-    open fun render(to: ViewWriter) {
+    public open fun render(to: ViewWriter) {
         to.col {
 
             // Calculate authentication progress as a percentage
@@ -189,7 +189,7 @@ open class ReAuthComponent(
      *
      * On successful login, calls onAuthentication callback and optionally establishes known device.
      */
-    open fun ViewWriter.renderFinalize() {
+    public open fun ViewWriter.renderFinalize() {
         col {
             centered.h5("Ready to login")
 
@@ -219,7 +219,7 @@ open class ReAuthComponent(
      *
      * When user selects a method, cancels background tasks and sets currentProof.
      */
-    open fun ViewWriter.pickProof() {
+    public open fun ViewWriter.pickProof() {
         col {
             // Launch background tasks for early proofs (e.g., WebAuthN autofill)
             val cancelIfSelected = launch {

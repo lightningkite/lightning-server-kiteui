@@ -6,7 +6,6 @@ import com.lightningkite.kiteui.identityHashCode
 import com.lightningkite.services.database.SortPart
 import com.lightningkite.reactive.core.*
 import com.lightningkite.reactive.lensing.lens
-import com.lightningkite.services.ClockContextElement
 import com.lightningkite.services.database.DataClassPathAccess
 import com.lightningkite.services.database.DataClassPathSelf
 import com.lightningkite.services.database.SerializableProperty
@@ -19,10 +18,65 @@ import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.first
 import kotlin.time.Instant
 import kotlinx.serialization.KSerializer
+import kotlin.coroutines.AbstractCoroutineContextElement
+import kotlin.coroutines.CoroutineContext
+import kotlin.coroutines.coroutineContext
 import kotlin.coroutines.resume
 import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
+
+
+/**
+ * Retrieves the current clock from coroutine context, or system clock if none is set.
+ *
+ * This allows suspending functions to respect test clocks without explicitly
+ * passing them as parameters. The clock can be set via [withClock].
+ *
+ * ## Usage
+ *
+ * In production code:
+ * ```kotlin
+ * suspend fun timestampNow(): Instant {
+ *     return Clock.default().now()
+ * }
+ * ```
+ *
+ * In tests:
+ * ```kotlin
+ * @Test
+ * fun testWithFixedTime() = runTest {
+ *     val fixedClock = object : Clock {
+ *         override fun now() = Instant.parse("2025-01-01T00:00:00Z")
+ *     }
+ *
+ *     withClock(fixedClock) {
+ *         val timestamp = timestampNow()
+ *         assertEquals(Instant.parse("2025-01-01T00:00:00Z"), timestamp)
+ *     }
+ * }
+ * ```
+ *
+ * @return The clock from coroutine context, or [Clock.System] if not in a [withClock] block
+ * @see withClock to set a custom clock
+ * @see ClockContextElement for the context element implementation
+ */
+public suspend fun Clock.Companion.default(): Clock {
+    return coroutineContext[ClockContextElement]?.clock ?: Clock.System
+}
+
+/**
+ * Coroutine context element that carries a [Clock] instance.
+ *
+ * Used by [withClock] and [Clock.Companion.default] to propagate custom clocks
+ * through coroutine contexts. This enables testable time-dependent code without
+ * explicit clock parameters.
+ *
+ * @property clock The clock instance carried by this context element
+ */
+public class ClockContextElement(public val clock: Clock) : AbstractCoroutineContextElement(Key) {
+    public companion object Key : CoroutineContext.Key<ClockContextElement>
+}
 
 /**
  * Creates a delay function that synchronizes to even intervals of the given duration.
@@ -38,7 +92,7 @@ import kotlin.time.Duration.Companion.milliseconds
  * @param clock The clock to use for time calculations. Defaults to [Clock.System].
  * @return A suspend function that delays until the next boundary of the given duration.
  */
-fun synchronizingDelay(clock: Clock = Clock.System): suspend (duration: Duration) -> Unit {
+public fun synchronizingDelay(clock: Clock = Clock.System): suspend (duration: Duration) -> Unit {
     return {
         val inMillis = it.inWholeMilliseconds
         val n = clock.now()
@@ -54,8 +108,8 @@ fun synchronizingDelay(clock: Clock = Clock.System): suspend (duration: Duration
  * Extends [AutoCloseable] to allow proper cleanup of flow resources
  * when the flow is no longer needed.
  */
-interface CloseableFlow<T> : AutoCloseable {
-    val flow: Flow<T>
+public interface CloseableFlow<T> : AutoCloseable {
+    public val flow: Flow<T>
 }
 
 /**
@@ -75,7 +129,7 @@ interface CloseableFlow<T> : AutoCloseable {
  * @param log Optional logger for debugging connection events and message flow.
  * @return A Flow that emits inner Flows for each WebSocket connection session, or null when disconnected.
  */
-fun <SEND, RECEIVE> TypedWebSocket<SEND, RECEIVE>.toFlow(scope: CoroutineScope, log: Log? = null): Flow<Flow<RECEIVE>?> {
+public fun <SEND, RECEIVE> TypedWebSocket<SEND, RECEIVE>.toFlow(scope: CoroutineScope, log: Log? = null): Flow<Flow<RECEIVE>?> {
     val out = MutableSharedFlow<Flow<RECEIVE>?>(replay = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST, extraBufferCapacity = 1)
     var current: MutableSharedFlow<RECEIVE> = MutableSharedFlow(replay = 0, onBufferOverflow = BufferOverflow.DROP_OLDEST, extraBufferCapacity = 1)
 
@@ -114,7 +168,7 @@ fun <SEND, RECEIVE> TypedWebSocket<SEND, RECEIVE>.toFlow(scope: CoroutineScope, 
  * @throws NullPointerException if the serializer doesn't have serializable properties.
  * @throws ClassCastException if the `_id` field is not Comparable.
  */
-fun <T> List<SortPart<T>>.ensureTotal(serializer: KSerializer<T>): List<SortPart<T>> {
+public fun <T> List<SortPart<T>>.ensureTotal(serializer: KSerializer<T>): List<SortPart<T>> {
     // Check if already sorting by _id as the last field
     if (lastOrNull()?.field?.properties?.singleOrNull()?.name == "_id") return this
 
@@ -141,7 +195,7 @@ fun <T> List<SortPart<T>>.ensureTotal(serializer: KSerializer<T>): List<SortPart
  * **Thread Safety**: This implementation is NOT thread-safe. It should only be
  * used from a single thread or with external synchronization.
  */
-abstract class BaseResourceUse : ResourceUse {
+public abstract class BaseResourceUse : ResourceUse {
     /**
      * Called when the resource transitions from 0 uses to 1 use.
      * Override to implement resource initialization logic.
@@ -155,7 +209,7 @@ abstract class BaseResourceUse : ResourceUse {
     protected open fun deactivate() {}
 
     /** Current number of active uses of this resource. */
-    var uses = 0
+    public var uses: Int = 0
         private set
 
     override fun beginUse(): () -> Unit {
@@ -184,7 +238,7 @@ abstract class BaseResourceUse : ResourceUse {
  *
  * @param matching Predicate that tests whether the current value satisfies the wait condition.
  */
-suspend fun <T> Reactive<T>.waitFor(matching: (T)->Boolean) {
+public suspend fun <T> Reactive<T>.waitFor(matching: (T)->Boolean) {
     // Quick check: if already matches, return immediately
     state.onSuccess {
         if(matching(it)) return
@@ -214,7 +268,7 @@ suspend fun <T> Reactive<T>.waitFor(matching: (T)->Boolean) {
  * This is useful for expensive operations that should only happen after the user
  * has stopped making changes (e.g., auto-save, search-as-you-type).
  */
-data class DebounceReactive<T>(val source: Reactive<T>, val scope: CoroutineScope, val duration: Duration) : Reactive<T>, Listenable by DebounceListenable(source, scope, duration) {
+public data class DebounceReactive<T>(val source: Reactive<T>, val scope: CoroutineScope, val duration: Duration) : Reactive<T>, Listenable by DebounceListenable(source, scope, duration) {
     override val state: ReactiveState<T> get() = source.state
 }
 
@@ -227,7 +281,7 @@ data class DebounceReactive<T>(val source: Reactive<T>, val scope: CoroutineScop
  * **Thread Safety**: The changeCount increment is not atomic, so this should be used with
  * care in multi-threaded scenarios.
  */
-data class DebounceListenable(val source: Listenable, val scope:CoroutineScope, val duration: Duration) : Listenable {
+public data class DebounceListenable(val source: Listenable, val scope:CoroutineScope, val duration: Duration) : Listenable {
     private var changeCount = 0
 
     override fun addListener(listener: () -> Unit): () -> Unit {
@@ -249,7 +303,7 @@ data class DebounceListenable(val source: Listenable, val scope:CoroutineScope, 
  * @param timeMs The debounce delay in milliseconds.
  * @see DebounceReactive
  */
-fun <T> Reactive<T>.debounce(scope: CoroutineScope, timeMs: Long): Reactive<T> = DebounceReactive(this, scope, timeMs.milliseconds)
+public fun <T> Reactive<T>.debounce(scope: CoroutineScope, timeMs: Long): Reactive<T> = DebounceReactive(this, scope, timeMs.milliseconds)
 
 /**
  * Creates a debounced version of this [Reactive] that delays listener notifications.
@@ -258,7 +312,7 @@ fun <T> Reactive<T>.debounce(scope: CoroutineScope, timeMs: Long): Reactive<T> =
  * @param duration The debounce delay duration.
  * @see DebounceReactive
  */
-fun <T> Reactive<T>.debounce(scope: CoroutineScope, duration: Duration): Reactive<T> = DebounceReactive(this, scope, duration)
+public fun <T> Reactive<T>.debounce(scope: CoroutineScope, duration: Duration): Reactive<T> = DebounceReactive(this, scope, duration)
 
 /**
  * Creates a [Reactive] that only notifies listeners when the value actually changes.
@@ -268,7 +322,7 @@ fun <T> Reactive<T>.debounce(scope: CoroutineScope, duration: Duration): Reactiv
  *
  * Useful for preventing unnecessary UI updates when the same value is set repeatedly.
  */
-fun <T> Reactive<T>.requireDifferenceForListener(): Reactive<T> = lens { it }
+public fun <T> Reactive<T>.requireDifferenceForListener(): Reactive<T> = lens { it }
 
 /**
  * Wraps a [Reactive] so that it automatically manages a [ResourceUse] based on listener count.
@@ -280,7 +334,7 @@ fun <T> Reactive<T>.requireDifferenceForListener(): Reactive<T> = lens { it }
  * @param resource The resource to manage based on listener lifecycle.
  * @return A new [Reactive] that delegates to this one but manages the resource.
  */
-fun <T> Reactive<T>.uses(resource: ResourceUse): Reactive<T> {
+public fun <T> Reactive<T>.uses(resource: ResourceUse): Reactive<T> {
     return object : Reactive<T> {
         override val state: ReactiveState<T>
             get() = this@uses.state
@@ -318,7 +372,7 @@ fun <T> Reactive<T>.uses(resource: ResourceUse): Reactive<T> {
  * @param action The suspend function to execute while the resource is in use.
  * @return A [ResourceUse] that manages the coroutine lifecycle.
  */
-fun ResourceUse(parentScope: CoroutineScope = AppScope, action: suspend CoroutineScope.() -> Unit) =
+public fun ResourceUse(parentScope: CoroutineScope = AppScope, action: suspend CoroutineScope.() -> Unit): ResourceUse =
     object : ResourceUse {
         override fun beginUse(): () -> Unit {
             val job = Job(parentScope.coroutineContext[Job])
@@ -338,28 +392,28 @@ fun ResourceUse(parentScope: CoroutineScope = AppScope, action: suspend Coroutin
  *
  * @param parent Optional parent delay that can also interrupt this one.
  */
-class InterruptibleDelay(val parent: InterruptibleDelay? = null) {
+public class InterruptibleDelay(public val parent: InterruptibleDelay? = null) {
     private val listenable = BasicListenable()
 
     /**
      * Interrupts any active delays on this instance, causing them to complete immediately.
      * Does not affect delays on parent or child instances.
      */
-    fun interrupt() { listenable.invokeAll() }
+    public fun interrupt() { listenable.invokeAll() }
 
     /**
      * Creates a child [InterruptibleDelay] that will be interrupted if this one is interrupted.
      *
      * @return A new child delay instance.
      */
-    fun child(): InterruptibleDelay = InterruptibleDelay(this)
+    public fun child(): InterruptibleDelay = InterruptibleDelay(this)
 
     /**
      * Delays for the specified duration, or until this delay (or any parent) is interrupted.
      *
      * @param duration How long to delay (if not interrupted).
      */
-    suspend fun delay(duration: Duration) {
+    public suspend fun delay(duration: Duration) {
         // Race between the time delay and interrupt signals from this and all parents
         val toRace = listOf(suspend { kotlinx.coroutines.delay(duration) })
             .plus(generateSequence(this) { it.parent }.map { inter ->
@@ -389,7 +443,7 @@ class InterruptibleDelay(val parent: InterruptibleDelay? = null) {
  * @param races Suspend functions to race against each other.
  * @return The result of the first function to complete.
  */
-suspend fun <R> race(vararg races: suspend () -> R): R {
+public suspend fun <R> race(vararg races: suspend () -> R): R {
     return channelFlow {
         for (race in races) {
             launch { send(race()) }

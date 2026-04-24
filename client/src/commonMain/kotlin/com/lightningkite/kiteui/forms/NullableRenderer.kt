@@ -25,7 +25,7 @@ import kotlinx.serialization.KSerializer
  *
  * by Claude
  */
-object NullableRenderer : Renderer<Any?> {
+public object NullableRenderer : Renderer<Any?> {
     override val name: String = "Optional"  // by Claude
 
     override fun priority(context: RenderContext<Any?>, module: FormModule): Float {
@@ -151,6 +151,6 @@ object NullableRenderer : Renderer<Any?> {
     ): ViewWriter.() -> Unit = { fieldWithoutBorder(label, description) { view(context, value, module)() } }
 }
 
-fun FormModule.registerNullable() {
+public fun FormModule.registerNullable() {
     register(Selector(), NullableRenderer)
 }

@@ -70,7 +70,7 @@ private class EnumValueGetter(var index: Int = 0): Decoder {
 
 }
 
-fun <T> KSerializer<T>.enumValues(): List<T> {
+public fun <T> KSerializer<T>.enumValues(): List<T> {
     val e = EnumValueGetter(0)
     return (0..<descriptor.elementsCount).map {
         e.index = it
@@ -79,7 +79,7 @@ fun <T> KSerializer<T>.enumValues(): List<T> {
 }
 
 @OptIn(ExperimentalSerializationApi::class)
-fun <T: Any> SerializersModule.getContextual(contextualSerializer: ContextualSerializer<T>): KSerializer<T> {
+public fun <T: Any> SerializersModule.getContextual(contextualSerializer: ContextualSerializer<T>): KSerializer<T> {
     try {
         contextualSerializer.deserialize(object : AbstractDecoder() {
             override val serializersModule: SerializersModule get() = this@getContextual

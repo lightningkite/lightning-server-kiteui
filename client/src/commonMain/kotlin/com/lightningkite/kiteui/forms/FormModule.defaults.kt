@@ -22,7 +22,7 @@ package com.lightningkite.kiteui.forms
  *
  * by Claude
  */
-fun FormModule.defaults() {
+public fun FormModule.defaults() {
     // Specific type renderers (higher priority)
     registerPrimitives()
     registerDateTimes()

@@ -2,12 +2,12 @@ package com.lightningkite.lightningserver.db
 
 import com.lightningkite.kiteui.Log
 import com.lightningkite.kiteui.TypedWebSocket
-import com.lightningkite.kiteui.navigation.DefaultJson
 import com.lightningkite.services.database.CollectionUpdates
 import com.lightningkite.services.database.Condition
 import com.lightningkite.services.database.HasId
 import com.lightningkite.services.database.simplify
 import com.lightningkite.reactive.context.reactive
+import com.lightningkite.reactive.core.ReactiveValue
 import com.lightningkite.reactive.core.Signal
 import com.lightningkite.reactive.extensions.use
 import com.lightningkite.reactive.lensing.lens
@@ -66,11 +66,11 @@ import kotlin.time.Duration.Companion.seconds
  * @param onChange Callback invoked for every update received (shared by all consumers)
  * @param log Optional console for debugging socket operations
  */
-class SharedCollectionUpdatesSocket<T : HasId<ID>, ID : Comparable<ID>>(
-    val scope: CoroutineScope,
-    val socket: TypedWebSocket<Condition<T>, CollectionUpdates<T, ID>>,
-    val onChange: (CollectionUpdates<T, ID>) -> Unit,
-    val log: Log? = null,  // TODO: log this somewhere that I can access later
+public class SharedCollectionUpdatesSocket<T : HasId<ID>, ID : Comparable<ID>>(
+    public val scope: CoroutineScope,
+    public val socket: TypedWebSocket<Condition<T>, CollectionUpdates<T, ID>>,
+    public val onChange: (CollectionUpdates<T, ID>) -> Unit,
+    public val log: Log? = null,  // TODO: log this somewhere that I can access later
 ) {
     /**
      * Creates a requirement for monitoring a specific condition.
@@ -81,7 +81,7 @@ class SharedCollectionUpdatesSocket<T : HasId<ID>, ID : Comparable<ID>>(
      * @param condition The condition to monitor (e.g., `item.active eq true`)
      * @return A resource handle that adds/removes the condition from the socket
      */
-    fun require(condition: Condition<T>) = Req(condition)
+    public fun require(condition: Condition<T>): SharedCollectionUpdatesSocket<T, ID>.Req = Req(condition)
 
     /**
      * Signal holding the set of conditions that consumers currently want monitored.
@@ -92,7 +92,7 @@ class SharedCollectionUpdatesSocket<T : HasId<ID>, ID : Comparable<ID>>(
      * The actual socket subscription state is tracked in [listeningStatus] and may lag behind
      * due to network delays or socket closure.
      */
-    val desiredRequirements = Signal<Set<Req>>(setOf()).also {
+    public val desiredRequirements: Signal<Set<SharedCollectionUpdatesSocket<T, ID>.Req>> = Signal<Set<Req>>(setOf()).also {
         it.addListener {
             log?.log("desiredRequirements is now ${it.value.joinToString { it.condition.toString() }}")
         }
@@ -123,7 +123,7 @@ class SharedCollectionUpdatesSocket<T : HasId<ID>, ID : Comparable<ID>>(
      * @property activatedAt Timestamp when this requirement was activated (null if inactive)
      * @property satisfied Reactive boolean indicating if socket is currently listening to this condition
      */
-    inner class Req(override val condition: Condition<T>) : BaseResourceUse(), CacheUpdate.SocketChanges.ConditionAndTimestamp<T> {
+    public inner class Req(override val condition: Condition<T>) : BaseResourceUse(), CacheUpdate.SocketChanges.ConditionAndTimestamp<T> {
         override var activatedAt: Instant? = null
 
         override fun activate() {
@@ -137,10 +137,10 @@ class SharedCollectionUpdatesSocket<T : HasId<ID>, ID : Comparable<ID>>(
         }
 
         /** Reactive boolean: true when socket is confirmed to be listening to this exact condition */
-        val satisfied = listeningStatus.lens { it.requirements.any { it.condition == condition } }
+        public val satisfied: ReactiveValue<Boolean> = listeningStatus.lens { it.requirements.any { it.condition == condition } }
 
         /** Suspends until [satisfied] becomes true (socket acknowledges this condition) */
-        suspend fun wait() = satisfied.waitFor { it }
+        public suspend fun wait(): Unit = satisfied.waitFor { it }
     }
 
     /**
@@ -153,7 +153,7 @@ class SharedCollectionUpdatesSocket<T : HasId<ID>, ID : Comparable<ID>>(
      *
      * May lag behind [desiredRequirements] while waiting for network roundtrip.
      */
-    val listeningStatus = Signal<ListeningStatus<T>>(ListeningStatus()).also {
+    public val listeningStatus: Signal<SharedCollectionUpdatesSocket<T, ID>.ListeningStatus<T>> = Signal<ListeningStatus<T>>(ListeningStatus()).also {
         it.addListener {
             log?.log("listeningStatus is now ${it.value.fullCondition} / ${it.value.requirements.joinToString { it.condition.toString() }}")
         }
@@ -165,9 +165,9 @@ class SharedCollectionUpdatesSocket<T : HasId<ID>, ID : Comparable<ID>>(
      * @property fullCondition The combined OR of all [requirements] conditions (simplified)
      * @property requirements The individual requirements that are satisfied
      */
-    inner class ListeningStatus<T>(
-        val fullCondition: Condition<T> = Condition.Never,
-        val requirements: Set<Req> = setOf()
+    public inner class ListeningStatus<T>(
+        public val fullCondition: Condition<T> = Condition.Never,
+        public val requirements: Set<Req> = setOf()
     )
 
     init {

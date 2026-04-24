@@ -38,7 +38,7 @@ import com.lightningkite.reactive.core.Signal
  * Note: This is typically used as a second factor after password authentication,
  * but can be configured as a standalone proof method depending on security requirements.
  */
-data class TotpProofComponent(val p: ProofClientEndpoints.TimeBasedOTP, val type: String) : ProofComponent {
+public class TotpProofComponent(private val p: ProofClientEndpoints.TimeBasedOTP, private val type: String) : ProofComponent {
     override val name: String = "Use Authenticator App"
     override val icon: Icon = Icon.Companion.pinCode
     override val via: String = p.via

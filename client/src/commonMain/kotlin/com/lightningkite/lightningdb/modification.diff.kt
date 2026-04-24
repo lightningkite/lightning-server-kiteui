@@ -10,8 +10,8 @@ import com.lightningkite.services.database.serializerOrContextual
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 
-inline fun <reified T> modification(old: T, new: T): Modification<T>? = modification(serializerOrContextual(), old, new)
-fun <T> modification(serializer: KSerializer<T>, old: T, new: T): Modification<T>? = run {
+public inline fun <reified T> modification(old: T, new: T): Modification<T>? = modification(serializerOrContextual(), old, new)
+public fun <T> modification(serializer: KSerializer<T>, old: T, new: T): Modification<T>? = run {
     if(old == new) return@run null
     if(old == null || new == null) return@run Modification.Assign(new)
     return@run (serializer.nullElement() ?: serializer).serializableProperties?.let {

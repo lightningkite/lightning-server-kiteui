@@ -12,7 +12,7 @@ import com.lightningkite.services.database.SerializableAnnotationValue
 import com.lightningkite.services.database.VirtualEnumValue
 import com.lightningkite.services.database.getElementSerializableAnnotations
 import com.lightningkite.services.database.listElement
-import com.lightningkite.titleCase
+import com.lightningkite.services.data.titleCase
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.descriptors.SerialKind
@@ -31,7 +31,7 @@ import kotlinx.serialization.descriptors.StructureKind
  *
  * by Claude
  */
-object EnumSetRenderer : Renderer<Set<Any?>> {
+public object EnumSetRenderer : Renderer<Set<Any?>> {
     override val name: String = "Checkboxes"  // by Claude
 
     override fun priority(context: RenderContext<Set<Any?>>, module: FormModule): Float {
@@ -101,7 +101,7 @@ object EnumSetRenderer : Renderer<Set<Any?>> {
         }
     }
 
-    override fun columnWidth(context: RenderContext<Set<Any?>>, module: FormModule) = 15.0
+    override fun columnWidth(context: RenderContext<Set<Any?>>, module: FormModule): Double = 15.0
 
     // by Claude - copied from EnumRenderer for consistency
     private fun toDisplayName(value: Any?, serializer: KSerializer<*>): String {
@@ -123,6 +123,6 @@ object EnumSetRenderer : Renderer<Set<Any?>> {
     }
 }
 
-fun FormModule.registerEnumSet() {
+public fun FormModule.registerEnumSet() {
     register(Selector(kind = StructureKind.LIST), EnumSetRenderer)
 }

@@ -2,8 +2,8 @@
 
 package com.lightningkite.kiteui.forms
 
-import com.lightningkite.IsRawString
-import com.lightningkite.TrimmedString
+import com.lightningkite.services.data.IsRawString
+import com.lightningkite.services.data.TrimmedString
 import com.lightningkite.kiteui.load
 import com.lightningkite.kiteui.models.*
 import com.lightningkite.kiteui.reactive.Action
@@ -36,7 +36,7 @@ import kotlinx.serialization.ExperimentalSerializationApi
  *
  * by Claude
  */
-object ForeignKeyRenderer : Renderer<Any?> {
+public object ForeignKeyRenderer : Renderer<Any?> {
     override val name: String = "Reference"  // by Claude
 
     private const val REFERENCES_FQN = "com.lightningkite.services.data.References"
@@ -271,7 +271,7 @@ object ForeignKeyRenderer : Renderer<Any?> {
 private const val REFERENCES_FQN = "com.lightningkite.services.data.References"
 private const val MULTIPLE_REFERENCES_FQN = "com.lightningkite.services.data.MultipleReferences"
 
-fun FormModule.registerForeignKey() {
+public fun FormModule.registerForeignKey() {
     register(Selector(annotation = REFERENCES_FQN), ForeignKeyRenderer)
     register(Selector(annotation = MULTIPLE_REFERENCES_FQN), ForeignKeyRenderer)
 }

@@ -39,7 +39,7 @@ import com.lightningkite.reactive.core.Signal
  * Important: Backup codes should be stored securely by users as they are the last
  * resort for account recovery when other authentication methods fail.
  */
-data class BackupCodeProofComponent(val p: ProofClientEndpoints.BackupCode, val type: String) : ProofComponent {
+public data class BackupCodeProofComponent(val p: ProofClientEndpoints.BackupCode, val type: String) : ProofComponent {
     override val name: String = "Enter Backup Code"
     override val icon: Icon = Icon.security
     override val via: String = p.via

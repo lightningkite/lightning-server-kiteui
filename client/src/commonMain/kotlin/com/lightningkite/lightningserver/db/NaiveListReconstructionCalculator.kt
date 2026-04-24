@@ -44,16 +44,16 @@ import kotlin.time.Clock
  *
  * @see OptimizedListReconstructionCalculator for a more sophisticated implementation
  */
-class NaiveListReconstructionCalculator<T : HasId<ID>, ID : Comparable<ID>>(
-    val serializer: KSerializer<T>,
-    val log: Log? = null,
-    val clock: Clock = Clock.System
+public class NaiveListReconstructionCalculator<T : HasId<ID>, ID : Comparable<ID>>(
+    public val serializer: KSerializer<T>,
+    public val log: Log? = null,
+    public val clock: Clock = Clock.System
 ) : ListReconstructionCalculator<T, ID> {
     /** Cache of query results, keyed by the exact Query object (uses Query's equals/hashCode) */
-    val byQuery = HashMap<Query<T>, WithTimestampAndLimit<List<T>>>()
+    public val byQuery: HashMap<Query<T>, WithTimestampAndLimit<List<T>>> = HashMap<Query<T>, WithTimestampAndLimit<List<T>>>()
 
     /** Single listenable that fires whenever any cache update occurs (not query-specific) */
-    val all = BasicListenable()
+    public val all: BasicListenable = BasicListenable()
 
     /**
      * Returns a listenable that fires whenever the cache is updated.
@@ -185,7 +185,7 @@ class NaiveListReconstructionCalculator<T : HasId<ID>, ID : Comparable<ID>>(
      * @param removed IDs of items to remove from the list
      * @return The updated, filtered, sorted, and limited list
      */
-    fun List<T>.update(query: Query<T>, edits: Collection<T>, removed: Collection<ID> = emptyList()): List<T> {
+    public fun List<T>.update(query: Query<T>, edits: Collection<T>, removed: Collection<ID> = emptyList()): List<T> {
         // Get the IDs of items to be removed (either explicitly removed or updated)
         val rem = removed + edits.map { it._id }.toSet()
 

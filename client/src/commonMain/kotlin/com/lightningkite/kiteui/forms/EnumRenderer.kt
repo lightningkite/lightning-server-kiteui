@@ -12,7 +12,7 @@ import com.lightningkite.services.database.SerializableAnnotationValue
 import com.lightningkite.services.database.VirtualEnumValue
 import com.lightningkite.services.database.getElementSerializableAnnotations
 import com.lightningkite.services.database.nullElement
-import com.lightningkite.titleCase
+import com.lightningkite.services.data.titleCase
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.descriptors.SerialKind
@@ -27,7 +27,7 @@ import kotlinx.serialization.descriptors.SerialKind
  *
  * by Claude
  */
-class EnumRendererInstance<T>(serializer: KSerializer<T>) : Renderer<T> {
+public class EnumRendererInstance<T>(serializer: KSerializer<T>) : Renderer<T> {
     override val name: String = "Dropdown"  // by Claude
     @Suppress("UNCHECKED_CAST")
     private val options = Constant(
@@ -56,7 +56,7 @@ class EnumRendererInstance<T>(serializer: KSerializer<T>) : Renderer<T> {
         ?: it.toString().titleCase()
     }
 
-    override fun priority(context: RenderContext<T>, module: FormModule) = 0.9f
+    override fun priority(context: RenderContext<T>, module: FormModule): Float = 0.9f
 
     override fun form(context: RenderContext<T>, value: MutableReactive<T>, module: FormModule): ViewWriter.() -> Unit = {
         fieldTheme.select {
@@ -68,15 +68,15 @@ class EnumRendererInstance<T>(serializer: KSerializer<T>) : Renderer<T> {
         text { ::content { toDisplayName(value()) } }
     }
 
-    override fun cellForm(context: RenderContext<T>, value: MutableReactive<T>, module: FormModule) = form(context, value, module)
-    override fun columnWidth(context: RenderContext<T>, module: FormModule) = 15.0
+    override fun cellForm(context: RenderContext<T>, value: MutableReactive<T>, module: FormModule): ViewWriter.() -> Unit = form(context, value, module)
+    override fun columnWidth(context: RenderContext<T>, module: FormModule): Double = 15.0
 }
 
 /**
  * Generic enum renderer that creates type-specific instances.
  * This is registered with the module and delegates to EnumRendererInstance.
  */
-object EnumRenderer : Renderer<Any> {
+public object EnumRenderer : Renderer<Any> {
     override val name: String = "Dropdown"  // by Claude
     private val cache = mutableMapOf<KSerializer<*>, EnumRendererInstance<*>>()
 
@@ -85,7 +85,7 @@ object EnumRenderer : Renderer<Any> {
         return cache.getOrPut(serializer) { EnumRendererInstance(serializer) } as EnumRendererInstance<T>
     }
 
-    override fun priority(context: RenderContext<Any>, module: FormModule) = 0.9f
+    override fun priority(context: RenderContext<Any>, module: FormModule): Float = 0.9f
 
     @Suppress("UNCHECKED_CAST")
     override fun form(context: RenderContext<Any>, value: MutableReactive<Any>, module: FormModule): ViewWriter.() -> Unit {
@@ -99,10 +99,10 @@ object EnumRenderer : Renderer<Any> {
         return instance.view(context as RenderContext<Any>, value, module)
     }
 
-    override fun cellForm(context: RenderContext<Any>, value: MutableReactive<Any>, module: FormModule) = form(context, value, module)
-    override fun columnWidth(context: RenderContext<Any>, module: FormModule) = 15.0
+    override fun cellForm(context: RenderContext<Any>, value: MutableReactive<Any>, module: FormModule): ViewWriter.() -> Unit = form(context, value, module)
+    override fun columnWidth(context: RenderContext<Any>, module: FormModule): Double = 15.0
 }
 
-fun FormModule.registerEnum() {
+public fun FormModule.registerEnum() {
     register(Selector(kind = SerialKind.ENUM), EnumRenderer)
 }

@@ -27,9 +27,9 @@ import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.builtins.NothingSerializer
 
-object ModificationRenderer : Renderer<Modification<Any?>> {
+public object ModificationRenderer : Renderer<Modification<Any?>> {
     override val name: String = "Fill In The Blank"
-    val matchesSerializer = "com.lightningkite.services.database.Modification"
+    public val matchesSerializer: String = "com.lightningkite.services.database.Modification"
 
     override fun priority(context: RenderContext<Modification<Any?>>, module: FormModule): Float {
         return if (context.serializer.descriptor.serialName == matchesSerializer) 1f else -1f
@@ -37,113 +37,113 @@ object ModificationRenderer : Renderer<Modification<Any?>> {
 
     override fun columnWidth(context: RenderContext<Modification<Any?>>, module: FormModule): Double = 20.0
 
-    data class ExtendedSubtypeData(
+    public data class ExtendedSubtypeData(
         val serialName: String,
         val niceName: String,
     )
 
-    val nothing = ExtendedSubtypeData(
+    public val nothing: ExtendedSubtypeData = ExtendedSubtypeData(
         serialName = Modification.Nothing.serializer().descriptor.serialName,
         niceName = "no change",
     )
-    val chain = ExtendedSubtypeData(
+    public val chain: ExtendedSubtypeData = ExtendedSubtypeData(
         serialName = Modification.Chain.serializer(NothingSerializer()).descriptor.serialName,
         niceName = "multiple",
     )
-    val ifNotNull = ExtendedSubtypeData(
+    public val ifNotNull: ExtendedSubtypeData = ExtendedSubtypeData(
         serialName = Modification.IfNotNull.serializer(NothingSerializer()).descriptor.serialName,
         niceName = "if present",
     )
-    val assign = ExtendedSubtypeData(
+    public val assign: ExtendedSubtypeData = ExtendedSubtypeData(
         serialName = Modification.Assign.serializer(NothingSerializer()).descriptor.serialName,
         niceName = "set to",
     )
-    val coerceAtMost = ExtendedSubtypeData(
+    public val coerceAtMost: ExtendedSubtypeData = ExtendedSubtypeData(
         serialName = Modification.CoerceAtMost.serializer(NothingSerializer()).descriptor.serialName,
         niceName = "cap at",
     )
-    val coerceAtLeast = ExtendedSubtypeData(
+    public val coerceAtLeast: ExtendedSubtypeData = ExtendedSubtypeData(
         serialName = Modification.CoerceAtLeast.serializer(NothingSerializer()).descriptor.serialName,
         niceName = "floor at",
     )
-    val increment = ExtendedSubtypeData(
+    public val increment: ExtendedSubtypeData = ExtendedSubtypeData(
         serialName = Modification.Increment.serializer(NothingSerializer()).descriptor.serialName,
         niceName = "add",
     )
-    val multiply = ExtendedSubtypeData(
+    public val multiply: ExtendedSubtypeData = ExtendedSubtypeData(
         serialName = Modification.Multiply.serializer(NothingSerializer()).descriptor.serialName,
         niceName = "multiply by",
     )
-    val appendString = ExtendedSubtypeData(
+    public val appendString: ExtendedSubtypeData = ExtendedSubtypeData(
         serialName = Modification.AppendString.serializer().descriptor.serialName,
         niceName = "append",
     )
-    val appendRawString = ExtendedSubtypeData(
+    public val appendRawString: ExtendedSubtypeData = ExtendedSubtypeData(
         serialName = Modification.AppendRawString.serializer(NothingSerializer()).descriptor.serialName,
         niceName = "append",
     )
-    val listAppend = ExtendedSubtypeData(
+    public val listAppend: ExtendedSubtypeData = ExtendedSubtypeData(
         serialName = Modification.ListAppend.serializer(NothingSerializer()).descriptor.serialName,
         niceName = "add items",
     )
-    val listRemove = ExtendedSubtypeData(
+    public val listRemove: ExtendedSubtypeData = ExtendedSubtypeData(
         serialName = Modification.ListRemove.serializer(NothingSerializer()).descriptor.serialName,
         niceName = "remove where",
     )
-    val listRemoveInstances = ExtendedSubtypeData(
+    public val listRemoveInstances: ExtendedSubtypeData = ExtendedSubtypeData(
         serialName = Modification.ListRemoveInstances.serializer(NothingSerializer()).descriptor.serialName,
         niceName = "remove items",
     )
-    val listDropFirst = ExtendedSubtypeData(
+    public val listDropFirst: ExtendedSubtypeData = ExtendedSubtypeData(
         serialName = Modification.ListDropFirst.serializer(NothingSerializer()).descriptor.serialName,
         niceName = "drop first",
     )
-    val listDropLast = ExtendedSubtypeData(
+    public val listDropLast: ExtendedSubtypeData = ExtendedSubtypeData(
         serialName = Modification.ListDropLast.serializer(NothingSerializer()).descriptor.serialName,
         niceName = "drop last",
     )
-    val listPerElement = ExtendedSubtypeData(
+    public val listPerElement: ExtendedSubtypeData = ExtendedSubtypeData(
         serialName = "ListPerElement",
         niceName = "for each",
     )
-    val setAppend = ExtendedSubtypeData(
+    public val setAppend: ExtendedSubtypeData = ExtendedSubtypeData(
         serialName = Modification.SetAppend.serializer(NothingSerializer()).descriptor.serialName,
         niceName = "add items",
     )
-    val setRemove = ExtendedSubtypeData(
+    public val setRemove: ExtendedSubtypeData = ExtendedSubtypeData(
         serialName = Modification.SetRemove.serializer(NothingSerializer()).descriptor.serialName,
         niceName = "remove where",
     )
-    val setRemoveInstances = ExtendedSubtypeData(
+    public val setRemoveInstances: ExtendedSubtypeData = ExtendedSubtypeData(
         serialName = Modification.SetRemoveInstances.serializer(NothingSerializer()).descriptor.serialName,
         niceName = "remove items",
     )
-    val setDropFirst = ExtendedSubtypeData(
+    public val setDropFirst: ExtendedSubtypeData = ExtendedSubtypeData(
         serialName = Modification.SetDropFirst.serializer(NothingSerializer()).descriptor.serialName,
         niceName = "drop first",
     )
-    val setDropLast = ExtendedSubtypeData(
+    public val setDropLast: ExtendedSubtypeData = ExtendedSubtypeData(
         serialName = Modification.SetDropLast.serializer(NothingSerializer()).descriptor.serialName,
         niceName = "drop last",
     )
-    val setPerElement = ExtendedSubtypeData(
+    public val setPerElement: ExtendedSubtypeData = ExtendedSubtypeData(
         serialName = "SetPerElement",
         niceName = "for each",
     )
-    val combine = ExtendedSubtypeData(
+    public val combine: ExtendedSubtypeData = ExtendedSubtypeData(
         serialName = Modification.Combine.serializer(NothingSerializer()).descriptor.serialName,
         niceName = "merge",
     )
-    val modifyByKey = ExtendedSubtypeData(
+    public val modifyByKey: ExtendedSubtypeData = ExtendedSubtypeData(
         serialName = Modification.ModifyByKey.serializer(NothingSerializer()).descriptor.serialName,
         niceName = "modify keys",
     )
-    val removeKeys = ExtendedSubtypeData(
+    public val removeKeys: ExtendedSubtypeData = ExtendedSubtypeData(
         serialName = Modification.RemoveKeys.serializer(NothingSerializer()).descriptor.serialName,
         niceName = "remove keys",
     )
 
-    val all = listOf(
+    public val all: Map<String, ExtendedSubtypeData> = listOf(
         nothing,
         chain,
         ifNotNull,
@@ -171,7 +171,7 @@ object ModificationRenderer : Renderer<Modification<Any?>> {
         removeKeys,
     ).associateBy { it.serialName }
 
-    val MySealedClassSerializer.Option<Modification<Any?>, *>.extended
+    public val MySealedClassSerializer.Option<Modification<Any?>, *>.extended: ExtendedSubtypeData?
         get() = all[serializer.descriptor.serialName]
 
     @Suppress("UNCHECKED_CAST")
@@ -279,6 +279,6 @@ object ModificationRenderer : Renderer<Modification<Any?>> {
     }
 }
 
-fun FormModule.registerModification() {
+public fun FormModule.registerModification() {
     register(Selector(type = "com.lightningkite.services.database.Modification"), ModificationRenderer)
 }

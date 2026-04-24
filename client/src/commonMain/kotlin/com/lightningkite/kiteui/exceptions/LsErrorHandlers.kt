@@ -3,7 +3,7 @@ package com.lightningkite.kiteui.exceptions
 import com.lightningkite.kiteui.report
 import com.lightningkite.lightningserver.LsErrorException
 
-fun ExceptionToMessages.installLsError() {
+public fun ExceptionToMessages.installLsError() {
     this += ExceptionToMessage<LsErrorException> {
         it.report()
         ExceptionMessage(

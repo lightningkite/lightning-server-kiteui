@@ -26,6 +26,7 @@ dokka {
 }
 
 kotlin {
+    explicitApi()
     applyDefaultHierarchyTemplate()
     androidTarget {
         publishLibraryVariants("release", "debug")

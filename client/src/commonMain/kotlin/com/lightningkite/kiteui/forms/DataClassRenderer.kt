@@ -16,7 +16,7 @@ import com.lightningkite.reactive.lensing.lens
 import com.lightningkite.services.database.SerializableAnnotationValue
 import com.lightningkite.services.database.SerializableProperty
 import com.lightningkite.services.database.serializableProperties
-import com.lightningkite.titleCase
+import com.lightningkite.services.data.titleCase
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.descriptors.StructureKind
@@ -32,7 +32,7 @@ private const val MAX_GROUP_WIDTH = 50.0
  *
  * by Claude
  */
-object DataClassRenderer : Renderer<Any> {
+public object DataClassRenderer : Renderer<Any> {
     override val name: String = "Fields"  // by Claude
 
     override fun priority(context: RenderContext<Any>, module: FormModule): Float {
@@ -166,7 +166,7 @@ object DataClassRenderer : Renderer<Any> {
 
     // cellForm uses default dialog behavior
 
-    override fun columnWidth(context: RenderContext<Any>, module: FormModule) = 20.0
+    override fun columnWidth(context: RenderContext<Any>, module: FormModule): Double = 20.0
 
     // by Claude - Data classes use section header instead of field() wrapper to avoid nesting
     override fun labeledForm(
@@ -284,27 +284,27 @@ object DataClassRenderer : Renderer<Any> {
  *
  * by Claude - migrated to use FormModule.effectiveVisibility for admin settings support
  */
-fun SerializableProperty<*, *>.fieldVisibility(module: FormModule): FieldVisibility {
+public fun SerializableProperty<*, *>.fieldVisibility(module: FormModule): FieldVisibility {
     @Suppress("UNCHECKED_CAST")
     val context = RenderContext(serializer as KSerializer<Any?>, serializableAnnotations)
     return module.effectiveVisibility(context)
 }
 
-val SerializableProperty<*, *>.displayName: String
+public val SerializableProperty<*, *>.displayName: String
     get() = serializableAnnotations.find { it.fqn == Annotations.DisplayName }
         ?.values?.get("text")
         ?.let { it as? SerializableAnnotationValue.StringValue }?.value
         ?: if (name == "_id") "ID" else name.titleCase()
 
-val SerializableProperty<*, *>.doesNotNeedLabel: Boolean
+public val SerializableProperty<*, *>.doesNotNeedLabel: Boolean
     get() = serializableAnnotations.any { it.fqn == Annotations.DoesNotNeedLabel }
 
-val SerializableProperty<*, *>.sentence: String?
+public val SerializableProperty<*, *>.sentence: String?
     get() = serializableAnnotations.find { it.fqn == Annotations.Sentence }
         ?.values?.values?.firstOrNull()
         ?.let { it as? SerializableAnnotationValue.StringValue }?.value
 
-val SerializableProperty<*, *>.importance: Int
+public val SerializableProperty<*, *>.importance: Int
     get() = serializableAnnotations.find { it.fqn == Annotations.Importance }
         ?.values?.values?.firstOrNull()
         ?.let { it as? SerializableAnnotationValue.ByteValue }?.value?.toInt()
@@ -316,7 +316,7 @@ val SerializableProperty<*, *>.importance: Int
         }
 
 /** Get the @Group annotation value, if present - by Claude */
-val SerializableProperty<*, *>.group: String?
+public val SerializableProperty<*, *>.group: String?
     get() = serializableAnnotations.find { it.fqn == Annotations.Group }
         ?.values?.values?.firstOrNull()
         ?.let { it as? SerializableAnnotationValue.StringValue }?.value
@@ -374,6 +374,6 @@ private fun groupProperties(
     return result
 }
 
-fun FormModule.registerObject() {
+public fun FormModule.registerObject() {
     register(Selector(kind = StructureKind.CLASS), DataClassRenderer)
 }

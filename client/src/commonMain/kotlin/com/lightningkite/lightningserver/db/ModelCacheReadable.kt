@@ -10,20 +10,20 @@ import com.lightningkite.reactive.core.remember
 import kotlinx.coroutines.launch
 import kotlin.time.Instant
 
-interface ModelCacheReadable<T> : Reactive<T> {
+public interface ModelCacheReadable<T> : Reactive<T> {
 //    val disconnectedAt: Reactive<Instant?>
-    val lastUpdatedAt: Reactive<Instant?>
+public val lastUpdatedAt: Reactive<Instant?>
 }
-interface ModelCacheItemReadable<T> : MutableReactive<T?>, ModelCacheReadable<T?> {
-    suspend fun modify(modification: Modification<T>): T?
-    suspend fun delete(): Unit
-    suspend fun invalidate(): Unit
-}
-
-interface ModelCacheLimitReadable<T> : LimitReactiveList<T>, ModelCacheReadable<List<T>> {
+public interface ModelCacheItemReadable<T> : MutableReactive<T?>, ModelCacheReadable<T?> {
+    public suspend fun modify(modification: Modification<T>): T?
+    public suspend fun delete(): Unit
+    public suspend fun invalidate(): Unit
 }
 
-fun <T> Reactive<ModelCacheItemReadable<T>>.flatten(): ModelCacheItemReadable<T> {
+public interface ModelCacheLimitReadable<T> : LimitReactiveList<T>, ModelCacheReadable<List<T>> {
+}
+
+public fun <T> Reactive<ModelCacheItemReadable<T>>.flatten(): ModelCacheItemReadable<T> {
     val root = this
     return object : ModelCacheItemReadable<T>, Reactive<T?> by (remember { root()() }) {
         override suspend fun modify(modification: Modification<T>): T? = root.awaitOnce().modify(modification)
@@ -34,7 +34,7 @@ fun <T> Reactive<ModelCacheItemReadable<T>>.flatten(): ModelCacheItemReadable<T>
         override suspend fun invalidate() = root.awaitOnce().invalidate()
     }
 }
-fun <T> Reactive<ModelCacheLimitReadable<T>>.flatten(): ModelCacheLimitReadable<T> {
+public fun <T> Reactive<ModelCacheLimitReadable<T>>.flatten(): ModelCacheLimitReadable<T> {
     val root = this
     return object : ModelCacheLimitReadable<T>, Reactive<List<T>> by (remember { root()() }) {
         override var limit: Int

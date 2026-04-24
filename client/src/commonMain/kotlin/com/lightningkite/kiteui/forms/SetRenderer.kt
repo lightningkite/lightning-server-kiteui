@@ -38,7 +38,7 @@ import kotlinx.serialization.descriptors.StructureKind
  *
  * by Claude
  */
-object SetRenderer : Renderer<Set<Any?>> {
+public object SetRenderer : Renderer<Set<Any?>> {
     override val name: String = "Set"  // by Claude
 
     override fun priority(context: RenderContext<Set<Any?>>, module: FormModule): Float {
@@ -151,7 +151,7 @@ object SetRenderer : Renderer<Set<Any?>> {
 
     // cellForm uses default dialog behavior
 
-    override fun columnWidth(context: RenderContext<Set<Any?>>, module: FormModule) = 10.0
+    override fun columnWidth(context: RenderContext<Set<Any?>>, module: FormModule): Double = 10.0
 
     // by Claude - Sets use section header instead of field() wrapper to avoid nesting
     override fun labeledForm(
@@ -192,6 +192,6 @@ object SetRenderer : Renderer<Set<Any?>> {
 }
 
 
-fun FormModule.registerSet() {
+public fun FormModule.registerSet() {
     register(Selector(kind = StructureKind.LIST), SetRenderer)
 }

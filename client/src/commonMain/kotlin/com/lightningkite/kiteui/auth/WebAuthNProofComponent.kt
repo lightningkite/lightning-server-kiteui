@@ -16,10 +16,10 @@ import com.lightningkite.lightningserver.sessions.proofs.ProofClientEndpoints
 import com.lightningkite.lightningserver.sessions.proofs.WebAuthN
 import kotlinx.coroutines.launch
 
-data class WebAuthNProofComponent(
-    val p: ProofClientEndpoints.WebAuthN,
-    val type: String,
-    val usePasskeyUI: Boolean,
+public class WebAuthNProofComponent(
+    private val p: ProofClientEndpoints.WebAuthN,
+    private val type: String,
+    usePasskeyUI: Boolean,
 ) : ProofComponent {
     override val name: String = "Use Passkey"
     override val icon: Icon = Icon.Companion.passkey
