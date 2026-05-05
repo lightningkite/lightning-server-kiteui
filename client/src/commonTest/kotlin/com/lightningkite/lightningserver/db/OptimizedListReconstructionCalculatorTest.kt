@@ -4,9 +4,7 @@ import kotlin.uuid.Uuid
 import com.lightningkite.kiteui.Log
 import com.lightningkite.kiteui.Platform
 import com.lightningkite.kiteui.current
-import com.lightningkite.services.ClockContextElement
 import com.lightningkite.services.database.*
-import com.lightningkite.services.default
 import kotlin.time.Instant
 import kotlin.test.Test
 import kotlin.test.assertEquals

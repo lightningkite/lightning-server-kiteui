@@ -1,6 +1,5 @@
 package com.lightningkite.lskiteuistarter
 
-import com.lightningkite.EmailAddress
 import com.lightningkite.services.data.*
 import com.lightningkite.services.database.HasId
 import kotlinx.datetime.*

@@ -73,11 +73,11 @@ class LiveApi(val fetcher: Fetcher) : Api {
                 fetcher,
                 "auth/proof/email",
             ) {
-            override suspend fun verifyNewEmail(input: com.lightningkite.EmailAddress): kotlin.String =
+            override suspend fun verifyNewEmail(input: com.lightningkite.services.data.EmailAddress): kotlin.String =
                 fetcher(
                     "auth/proof/email/verify-new-email",
                     HttpMethod.POST,
-                    com.lightningkite.EmailAddress.serializer(),
+                    com.lightningkite.services.data.EmailAddress.serializer(),
                     input,
                     kotlin.String.serializer()
                 )
