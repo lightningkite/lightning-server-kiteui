@@ -1,10 +1,10 @@
 package com.lightningkite.lightningserver.db
 
-import com.lightningkite.Temperature
 import kotlin.uuid.Uuid
 import com.lightningkite.kiteui.forms.get
 import com.lightningkite.kiteui.forms.serializationCast
 import com.lightningkite.kiteui.forms.set
+import com.lightningkite.services.data.Temperature
 import com.lightningkite.services.database.Query
 import com.lightningkite.services.database.default
 import kotlin.time.Instant

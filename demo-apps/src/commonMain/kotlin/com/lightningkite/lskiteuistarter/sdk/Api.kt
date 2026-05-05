@@ -37,7 +37,7 @@ interface Api {
 			 * 
 			 * **Auth Requirements:** User with root access
 			 * */
-			suspend fun verifyNewEmail(input: com.lightningkite.EmailAddress): kotlin.String
+			suspend fun verifyNewEmail(input: com.lightningkite.services.data.EmailAddress): kotlin.String
 		}
 		val email: EmailApi
 

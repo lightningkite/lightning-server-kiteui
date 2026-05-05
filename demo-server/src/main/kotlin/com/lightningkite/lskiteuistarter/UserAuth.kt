@@ -1,6 +1,5 @@
 package com.lightningkite.lskiteuistarter
 
-import com.lightningkite.EmailAddress
 import com.lightningkite.lightningserver.NotFoundException
 import com.lightningkite.lightningserver.auth.*
 import com.lightningkite.lightningserver.definition.builder.ServerBuilder
@@ -13,10 +12,11 @@ import com.lightningkite.lightningserver.sessions.proofs.extensions.constrainAtt
 import com.lightningkite.lightningserver.typed.*
 import com.lightningkite.lightningserver.typed.sdk.module
 import com.lightningkite.lskiteuistarter.data.UserEndpoints
+import com.lightningkite.services.data.EmailAddress
 import com.lightningkite.services.database.*
 import com.lightningkite.services.email.Email
 import com.lightningkite.services.email.EmailAddressWithName
-import com.lightningkite.toEmailAddress
+import com.lightningkite.services.data.toEmailAddress
 import kotlinx.html.html
 import kotlinx.html.stream.createHTML
 import kotlinx.serialization.KSerializer
@@ -144,7 +144,7 @@ object UserAuth : PrincipalType<User, Uuid>, ServerBuilder() {
 
             val methods = server.proofMethods
                 .filter { it.established(UserAuth, subject) }
-                .filter { it.info.via != backupCodes.info.via }
+                .filter { it.info.via != this@UserAuth.backupCodes.info.via }
 
             return if (methods.size > 1) 20 else 10
         }

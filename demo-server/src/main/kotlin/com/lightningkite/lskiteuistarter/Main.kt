@@ -34,6 +34,7 @@ import com.lightningkite.services.data.*
 import com.lightningkite.services.database.*
 import com.lightningkite.services.email.*
 import com.lightningkite.services.files.*
+import com.lightningkite.services.kfile.KFile
 import com.lightningkite.services.notifications.*
 import com.lightningkite.services.sms.*
 import io.github.oshai.kotlinlogging.KLogger

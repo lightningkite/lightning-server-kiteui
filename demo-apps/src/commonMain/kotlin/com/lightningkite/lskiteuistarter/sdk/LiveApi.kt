@@ -29,8 +29,8 @@ class LiveApi(val fetcher: Fetcher) : Api {
 	inner class LiveUserAuthApi : Api.UserAuthApi, com.lightningkite.lightningserver.sessions.proofs.AuthClientEndpoints<com.lightningkite.lskiteuistarter.User, kotlin.uuid.Uuid> by com.lightningkite.lightningserver.sessions.proofs.LiveAuthClientEndpoints(fetcher, "auth/session", com.lightningkite.lskiteuistarter.User.serializer(), kotlin.uuid.Uuid.serializer()), com.lightningkite.lightningserver.typed.ClientModelRestEndpoints<com.lightningkite.lightningserver.sessions.Session<com.lightningkite.lskiteuistarter.User, kotlin.uuid.Uuid>, kotlin.uuid.Uuid> by com.lightningkite.lightningserver.typed.LiveClientModelRestEndpoints(fetcher, "auth/session/sessions", com.lightningkite.lightningserver.sessions.Session.serializer(com.lightningkite.lskiteuistarter.User.serializer(), kotlin.uuid.Uuid.serializer()), kotlin.uuid.Uuid.serializer()) {
 
 		inner class LiveEmailApi : Api.UserAuthApi.EmailApi, com.lightningkite.lightningserver.sessions.proofs.ProofClientEndpoints.Email by com.lightningkite.lightningserver.sessions.proofs.LiveProofClientEndpoints.Email(fetcher, "auth/proof/email", ) {
-			override suspend fun verifyNewEmail(input: com.lightningkite.EmailAddress): kotlin.String =
-				fetcher("auth/proof/email/verify-new-email", HttpMethod.POST, com.lightningkite.EmailAddress.serializer(), input, kotlin.String.serializer())
+			override suspend fun verifyNewEmail(input: com.lightningkite.services.data.EmailAddress): kotlin.String =
+				fetcher("auth/proof/email/verify-new-email", HttpMethod.POST, com.lightningkite.services.data.EmailAddress.serializer(), input, kotlin.String.serializer())
 		}
 		override val email = LiveEmailApi()
 

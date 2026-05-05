@@ -24,7 +24,6 @@ import com.lightningkite.services.database.insertOne
 import com.lightningkite.services.database.inside
 import com.lightningkite.services.database.or
 import com.lightningkite.services.database.updateRestrictions
-import com.lightningkite.toEmailAddress
 import kotlin.uuid.Uuid
 
 object SealedPolymorphicModel : ServerBuilder() {

@@ -15,6 +15,7 @@ import com.lightningkite.lskiteuistarter.UserAuth.RoleCache.userRole
 import com.lightningkite.lskiteuistarter._id
 import com.lightningkite.lskiteuistarter.email
 import com.lightningkite.lskiteuistarter.role
+import com.lightningkite.services.data.toEmailAddress
 import com.lightningkite.services.database.Condition
 import com.lightningkite.services.database.ModelPermissions
 import com.lightningkite.services.database.condition
@@ -23,7 +24,6 @@ import com.lightningkite.services.database.insertOne
 import com.lightningkite.services.database.inside
 import com.lightningkite.services.database.or
 import com.lightningkite.services.database.updateRestrictions
-import com.lightningkite.toEmailAddress
 import kotlin.uuid.Uuid
 
 object UserEndpoints : ServerBuilder() {

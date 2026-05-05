@@ -1,9 +1,7 @@
 package com.lightningkite.lightningserver.db
 
 import kotlin.uuid.Uuid
-import com.lightningkite.services.ClockContextElement
 import com.lightningkite.services.database.*
-import com.lightningkite.services.default
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
