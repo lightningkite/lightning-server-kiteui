@@ -1,6 +1,8 @@
 package com.lightningkite.kiteui.forms
 
+import com.lightningkite.kiteui.FileReference
 import com.lightningkite.kiteui.models.Icon
+import com.lightningkite.kiteui.models.ImageLocal
 import com.lightningkite.kiteui.models.ImageRemote
 import com.lightningkite.kiteui.models.rem
 import com.lightningkite.kiteui.navigation.Page
@@ -13,6 +15,8 @@ import com.lightningkite.kiteui.views.expanding
 import com.lightningkite.kiteui.views.direct.icon
 import com.lightningkite.reactive.core.MutableReactive
 import com.lightningkite.reactive.core.Reactive
+import com.lightningkite.reactive.core.Signal
+import com.lightningkite.services.data.serialNameFQN
 import com.lightningkite.services.database.HasId
 import com.lightningkite.services.files.ServerFile
 import kotlinx.serialization.KSerializer
@@ -35,11 +39,12 @@ public object ServerFileRenderer : Renderer<ServerFile?> {
     override val name: String = "File Upload"  // by Claude
 
     override fun priority(context: RenderContext<ServerFile?>, module: FormModule): Float {
-        return if (context.serializer.descriptor.serialName == "com.lightningkite.services.files.ServerFile") 1f else -1f
+        return if (context.serializer.descriptor.serialNameFQN() == "com.lightningkite.services.files.ServerFile") 1f else -1f
     }
 
     override fun form(context: RenderContext<ServerFile?>, value: MutableReactive<ServerFile?>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
         row {
+            val localFile = Signal<FileReference?>(null)
             expanding.externalLink {
                 newTab = true
                 ::enabled { value() != null }
@@ -48,7 +53,7 @@ public object ServerFileRenderer : Renderer<ServerFile?> {
                     sizeConstraints(width = 3.rem, height = 3.rem).card.unpadded.frame {
                         centered.icon(Icon.download, "File")
                         image {
-                            ::source { value()?.location?.let(::ImageRemote) }
+                            ::source { localFile()?.let(::ImageLocal) ?: value()?.location?.let(::ImageRemote) }
                         }
                     }
                     centered.expanding.text {
@@ -71,6 +76,7 @@ public object ServerFileRenderer : Renderer<ServerFile?> {
                 onClick {
                     val fileUpload = module.fileUpload ?: return@onClick
                     rContext.requestFile()?.let { fileRef ->
+                        localFile.set(fileRef)
                         value set fileUpload(fileRef)
                     }
                 }

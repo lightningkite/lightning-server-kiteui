@@ -16,6 +16,7 @@ import com.lightningkite.reactive.core.MutableReactive
 import com.lightningkite.reactive.core.Reactive
 import com.lightningkite.reactive.core.Signal
 import com.lightningkite.reactive.core.remember
+import com.lightningkite.services.data.serialNameFQN
 import com.lightningkite.services.database.*
 import kotlinx.serialization.ExperimentalSerializationApi
 
@@ -124,7 +125,7 @@ public object ForeignKeyRenderer : Renderer<Any?> {
                                         val stringConditions = props.mapNotNull { prop ->
                                             val serialName = prop.serializer.let {
                                                 it.nullElement() ?: it
-                                            }.descriptor.serialName.substringBefore('/')
+                                            }.descriptor.serialNameFQN()
 
                                             when {
                                                 serialName == "kotlin.String" -> {

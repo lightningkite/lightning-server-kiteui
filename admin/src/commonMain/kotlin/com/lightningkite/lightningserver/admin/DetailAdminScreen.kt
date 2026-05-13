@@ -58,6 +58,7 @@ import com.lightningkite.reactive.core.Reactive
 import com.lightningkite.reactive.core.remember
 import com.lightningkite.reactive.extensions.flatten
 import com.lightningkite.reactive.extensions.notNull
+import com.lightningkite.services.data.serialNameFQN
 import com.lightningkite.services.database.SerializableAnnotationValue
 import com.lightningkite.services.database.SerializableProperty
 import com.lightningkite.services.database.default
@@ -72,7 +73,7 @@ class DetailAdminPage(val collectionName: String, val itemId: String) : Page {
     override val title: Reactive<String> = remember { "Edit $collectionName" }
 
     override fun ElementWriter.CanAddTheme.render() {
-        col {
+        scrolling.col {
             reactive {
                 clearChildren()
                 if (mcOrNull() == null) {
@@ -99,7 +100,7 @@ class DetailAdminPage(val collectionName: String, val itemId: String) : Page {
                 mc.serializer._id().setCopy(it, actualId)
             })
         }.flatten())
-        scrolling.rowCollapsingToColumn(100.rem) {
+        rowCollapsingToColumn(100.rem) {
             space { reactive { item() } }
             weight(2f).card.col {
                 reactive {
@@ -180,7 +181,7 @@ class DetailAdminPage(val collectionName: String, val itemId: String) : Page {
                         clearChildren()
                         val mc = mc()
                         val itemId = itemId()
-                        val myTypeName = mc.serializer.descriptor.serialName.substringBefore('/')
+                        val myTypeName = mc.serializer.descriptor.serialNameFQN()
                         adminServer().models.entries.forEach { model ->
                             model.value.serializer.serializableProperties?.forEach {
                                 val anno =

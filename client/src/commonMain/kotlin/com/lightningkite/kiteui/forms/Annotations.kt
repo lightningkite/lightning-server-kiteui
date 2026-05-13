@@ -1,6 +1,7 @@
 package com.lightningkite.kiteui.forms
 
 import com.lightningkite.kiteui.navigation.DefaultUriFormat
+import com.lightningkite.services.data.serialNameFQN
 import com.lightningkite.services.data.titleCase
 import com.lightningkite.services.database.*
 import kotlinx.serialization.KSerializer
@@ -125,7 +126,7 @@ public fun SerializableProperty<*, *>.visibility(module: FormModule): FieldVisib
     serializableAnnotations.mapNotNull { module.visibilitySettings[it.fqn] }.minOrNull()
         ?: when {
             name == "_id" &&
-                    serializer.descriptor.serialName.substringBefore('/') == ("com.lightningkite.Uuid") &&
+                    serializer.descriptor.serialNameFQN() == "com.lightningkite.Uuid" &&
                     serializableAnnotations.none { it.fqn == Annotations.References } &&
                     serializableAnnotations.none { it.fqn == Annotations.MultipleReferences }
                 -> module.visibilitySettings[Annotations.AdminHidden]!!

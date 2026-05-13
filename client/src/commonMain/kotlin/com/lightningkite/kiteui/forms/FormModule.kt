@@ -18,6 +18,7 @@ import com.lightningkite.reactive.core.Constant
 import com.lightningkite.reactive.core.MutableReactive
 import com.lightningkite.reactive.core.Reactive
 import com.lightningkite.reactive.core.Signal
+import com.lightningkite.services.data.serialNameFQN
 import com.lightningkite.services.database.SerializableAnnotation
 import com.lightningkite.services.files.ServerFile
 import kotlinx.serialization.ExperimentalSerializationApi
@@ -115,7 +116,7 @@ public class FormModule {
             .minOrNull()
 
         // Special case: UUID _id fields are hidden by default (unless they have @References)
-        val isUuidId = context.serializer.descriptor.serialName.substringBefore('/') == "com.lightningkite.Uuid"
+        val isUuidId = context.serializer.descriptor.serialNameFQN() == "com.lightningkite.Uuid"
                 && !context.hasAnnotation("com.lightningkite.services.data.References")
                 && !context.hasAnnotation("com.lightningkite.services.data.MultipleReferences")
 

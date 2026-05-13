@@ -2,6 +2,7 @@
 
 package com.lightningkite.kiteui.forms
 
+import com.lightningkite.services.data.serialNameFQN
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.descriptors.SerialKind
 
@@ -33,7 +34,7 @@ public data class Selector(
     public fun matches(context: RenderContext<*>): Boolean {
         val descriptor = context.serializer.descriptor
         if (annotation != null && !context.hasAnnotation(annotation)) return false
-        if (type != null && descriptor.serialName.substringBefore('/') != type) return false
+        if (type != null && descriptor.serialNameFQN() != type) return false
         if (kind != null && descriptor.kind != kind) return false
         return true
     }

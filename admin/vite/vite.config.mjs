@@ -6,7 +6,7 @@ export default defineConfig({
     server: {
         host: true,
         port: 8010,
-        allowedHosts: ["jivie.lightningkite.com", "localhost:8080"],
+        allowedHosts: ["jivie.lightningkite.com", "localhost:8080", "localhost:5174"],
         proxy: {
             '/api': {
                 target: 'http://localhost:8080',

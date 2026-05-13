@@ -100,10 +100,11 @@ configure<KiteUiPluginExtension> {
 }
 
 fun env(name: String, profile: String) {
-    tasks.create("deployWeb${name}Init", Exec::class.java) {
+    tasks.register("deployWeb${name}Init", Exec::class.java) {
+        description = "Build project and initialize terraform for deploying to the $name environment"
         group = "deploy"
         this.dependsOn("jsBundleProduction")
-        this.environment("AWS_PROFILE", "$profile")
+        this.environment("AWS_PROFILE", profile)
         val props = Properties()
         props.entries.forEach {
             environment(it.key.toString().trim('"', ' '), it.value.toString().trim('"', ' '))
@@ -112,10 +113,11 @@ fun env(name: String, profile: String) {
         this.args("init")
         this.workingDir = file("terraform/$name")
     }
-    tasks.create("deployWeb${name}", Exec::class.java) {
+    tasks.register("deployWeb${name}", Exec::class.java) {
+        description = "Deploy the app to the $name environment"
         group = "deploy"
         this.dependsOn("deployWeb${name}Init")
-        this.environment("AWS_PROFILE", "$profile")
+        this.environment("AWS_PROFILE", profile)
         val props = Properties()
         props.entries.forEach { environment(it.key.toString().trim('"', ' '), it.value.toString().trim('"', ' ')) }
         this.executable = "terraform"
