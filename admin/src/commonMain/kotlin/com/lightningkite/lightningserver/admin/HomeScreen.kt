@@ -43,7 +43,7 @@ import com.lightningkite.reactive.context.invoke
 import com.lightningkite.reactive.core.remember
 import com.lightningkite.reactive.extensions.asyncReactive
 import com.lightningkite.reactive.extensions.withWrite
-import com.lightningkite.services.HealthStatus
+import com.lightningkite.services.data.HealthStatus
 import kotlinx.serialization.builtins.serializer
 import kotlin.time.Clock.System.now
 

@@ -43,6 +43,7 @@ package com.lightningkite.lightningserver.admin
 import com.lightningkite.kiteui.auth.authComponent
 import com.lightningkite.kiteui.exceptions.installLsError
 import com.lightningkite.kiteui.forms.displayName
+import com.lightningkite.kiteui.forms.titleCase
 import com.lightningkite.kiteui.models.*
 import com.lightningkite.kiteui.navigation.PageNavigator
 import com.lightningkite.kiteui.navigation.pageNavigator
@@ -66,7 +67,6 @@ import com.lightningkite.services.database.SerializableProperty
 import com.lightningkite.services.database.SerializationRegistry
 import com.lightningkite.services.database.serializableProperties
 import com.lightningkite.services.files.ServerFile
-import com.lightningkite.titleCase
 import kotlin.time.Duration.Companion.milliseconds
 
 /**
@@ -140,6 +140,7 @@ fun ViewWriter.app(navigator: PageNavigator, dialog: PageNavigator) {
                 // Useful for debugging and API exploration
                 if (adminSettings().showEndpoints) {
                     add(NavLink("Endpoints", icon = Icon.menu) { EndpointsPage() })
+                    add(NavLink("Renderer Gallery", icon = Icon.list) { com.lightningkite.lightningserver.admin.tests.RendererGalleryScreen() })
                 }
 
                 // Auto-generate navigation items for each collection in the schema

@@ -1,7 +1,5 @@
 package com.lightningkite.lightningserver.admin
 
-import com.lightningkite.IsRawString
-import com.lightningkite.TrimmedString
 import com.lightningkite.kiteui.*
 import com.lightningkite.kiteui.forms.defaultColumns
 import com.lightningkite.kiteui.forms.displayName
@@ -29,6 +27,8 @@ import com.lightningkite.reactive.context.invoke
 import com.lightningkite.reactive.context.reactive
 import com.lightningkite.reactive.core.*
 import com.lightningkite.reactive.extensions.debounce
+import com.lightningkite.services.data.IsRawString
+import com.lightningkite.services.data.TrimmedString
 import kotlinx.serialization.builtins.ListSerializer
 
 
