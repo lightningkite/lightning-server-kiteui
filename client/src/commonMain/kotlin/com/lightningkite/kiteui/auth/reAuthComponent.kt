@@ -254,9 +254,11 @@ public open class ReAuthComponent(
             forEachAnimated(proofOptions) {
                 card.buttonTheme.button {
                     debugName = it.first.name(true)
-                    centered.sizeConstraints(width = 16.rem).row {
-                        icon(it.first.icon, "")
-                        text(it.first.name(true))
+                    centered.sizeConstraints(width = 16.rem).frame {
+                        centered.row {
+                            centered.icon(it.first.icon, "")
+                            centered.text { ::content{ it.first.name(proofs().isEmpty()) } }
+                        }
                     }
                     onClick {
                         // User made explicit selection; cancel background tasks

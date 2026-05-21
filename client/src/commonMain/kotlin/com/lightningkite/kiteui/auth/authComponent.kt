@@ -356,9 +356,11 @@ public open class AuthComponent(
 
                     card.buttonTheme.button {
                         debugName = "usePasskeyButton"
-                        centered.row {
-                            centered.icon(Icon.passkey, "")
-                            centered.text("Use Passkey")
+                        centered.sizeConstraints(width = 16.rem).frame {
+                            centered.row {
+                                centered.icon(Icon.passkey, "")
+                                centered.text("Use Passkey")
+                            }
                         }
                         onClick {
                             currentProof.value =
@@ -476,9 +478,11 @@ public open class AuthComponent(
             forEachAnimated(proofOptions) {
                 card.buttonTheme.button {
                     debugName = it.name(true)
-                    centered.sizeConstraints(width = 16.rem).row {
-                        centered.icon(it.icon, "")
-                        centered.text { ::content{ it.name(proofs().isEmpty()) } }
+                    centered.sizeConstraints(width = 16.rem).frame {
+                        centered.row {
+                            centered.icon(it.icon, "")
+                            centered.text { ::content{ it.name(proofs().isEmpty()) } }
+                        }
                     }
                     onClick {
                         // User made explicit selection; cancel background tasks
