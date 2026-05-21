@@ -2,12 +2,10 @@ package com.lightningkite.kiteui.auth
 
 import com.lightningkite.kiteui.models.Icon
 import com.lightningkite.kiteui.views.ElementWriter
-
-import com.lightningkite.kiteui.views.ViewWriter
 import com.lightningkite.kiteui.views.direct.frame
 import com.lightningkite.kiteui.views.direct.text
+import com.lightningkite.lightningserver.sessions.ProofsCheckResult
 import com.lightningkite.lightningserver.sessions.proofs.*
-import com.lightningkite.lightningserver.sessions.*
 
 /**
  * Base interface for authentication proof components.
@@ -23,7 +21,7 @@ import com.lightningkite.lightningserver.sessions.*
  * - BackupCodeProofComponent (backup recovery codes)
  * - WebAuthNProofComponent (passkeys/security keys)
  *
- * @see AuthComponent2 for the main authentication flow that uses these components
+ * @see AuthComponent for the main authentication flow that uses these components
  */
 public interface ProofComponent {
     /**
@@ -39,11 +37,6 @@ public interface ProofComponent {
     public val via: String
 
     /**
-     * Human-readable display name for this proof method (e.g., "Email Code", "Text Message").
-     */
-    public val name: String
-
-    /**
      * Icon to display alongside this proof method in the UI.
      */
     public val icon: Icon
@@ -53,6 +46,11 @@ public interface ProofComponent {
      * Default is true. WebAuthN may set this to false for passkey-only flows.
      */
     public val primaryIdentifierRequired: Boolean get() = true
+
+    /**
+     * Human-readable display name for this proof method (e.g., "Email Code", "Text Message").
+     */
+    public fun name(isPrimary: Boolean): String
 
     /**
      * Checks if this proof method is supported on the current platform/environment.
@@ -67,7 +65,7 @@ public interface ProofComponent {
      * The task runs in the background and may complete before the user explicitly selects this proof method.
      * If the task succeeds, the proof is automatically added to the authentication flow.
      */
-    public val earlyProof: (suspend (ViewWriter) -> Proof?)? get() = null
+    public val earlyProof: (suspend () -> Proof?)? get() = null
 
     /**
      * Renders the proof collection UI with automatic option extraction.
@@ -75,21 +73,8 @@ public interface ProofComponent {
      * This is a convenience method that extracts the appropriate ProofOption from the server's
      * ProofsCheckResult and delegates to the full render method.
      *
-     * @param to The ViewWriter to render into
-     * @param primaryIdentifier The user's primary identifier (email/phone/username), or null if not yet set
-     * @param checks The server's response containing available proof options and requirements
-     * @param onResult Callback invoked when proof collection completes (null if user cancels)
-     * @return The rendered view
-     */
-    public fun render(to: ElementWriter.CanAddTheme, primaryIdentifier: UserIdentification?, checks: ProofsCheckResult<*>?, onResult: (Proof?) -> Unit): Unit
-}
-
-public interface EasierProofComponent: ProofComponent {
-    /**
-     * Renders the proof collection UI with automatic option extraction.
-     *
-     * This is a convenience method that extracts the appropriate ProofOption from the server's
-     * ProofsCheckResult and delegates to the full render method.
+     * This function will not work for proof options that don't require UserIdentification like WebAuthN, and those
+     * components MUST override this function to deal with this correctly.
      *
      * @param to The ViewWriter to render into
      * @param primaryIdentifier The user's primary identifier (email/phone/username), or null if not yet set
@@ -97,9 +82,15 @@ public interface EasierProofComponent: ProofComponent {
      * @param onResult Callback invoked when proof collection completes (null if user cancels)
      * @return The rendered view
      */
-    override fun render(to: ElementWriter.CanAddTheme, primaryIdentifier: UserIdentification?, checks: ProofsCheckResult<*>?, onResult: (Proof?) -> Unit): Unit {
-        // TODO: This error message should be impossible to reach; consider removing or replacing with exception
+    public fun render(
+        to: ElementWriter.CanAddTheme,
+        primaryIdentifier: UserIdentification?,
+        checks: ProofsCheckResult<*>?,
+        onResult: (Proof?) -> Unit,
+    ) {
         val primaryIdentifier = primaryIdentifier ?: run {
+            // This can be reached if the proofOption does not require a UserIdentification, like WebAuthN. This function
+            // MUST be overridden if that is the case.
             to.frame {
                 text("How... how did you get here?")
             }
@@ -110,7 +101,8 @@ public interface EasierProofComponent: ProofComponent {
             ProofMethodInfo(
                 via,
                 primaryIdentifier.property
-            ), primaryIdentifier.value)
+            ), primaryIdentifier.value
+        )
         return render(to, primaryIdentifier, option, onResult)
     }
 
@@ -129,7 +121,12 @@ public interface EasierProofComponent: ProofComponent {
      * @param onResult Callback invoked when proof collection completes
      * @return The rendered view
      */
-    public fun render(to: ElementWriter.CanAddTheme, primaryIdentifier: UserIdentification?, option: ProofOption, onResult: (Proof?) -> Unit)
+    public fun render(
+        to: ElementWriter.CanAddTheme,
+        primaryIdentifier: UserIdentification?,
+        option: ProofOption,
+        onResult: (Proof?) -> Unit,
+    )
 }
 
 /*

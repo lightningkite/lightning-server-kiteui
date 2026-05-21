@@ -2,22 +2,11 @@ package com.lightningkite.kiteui.auth
 
 import com.lightningkite.kiteui.models.Icon
 import com.lightningkite.kiteui.models.KeyboardHints
-import com.lightningkite.kiteui.models.SubtextSemantic
 import com.lightningkite.kiteui.reactive.Action
-import com.lightningkite.kiteui.views.ElementWriter
-
-import com.lightningkite.kiteui.views.ViewWriter
-import com.lightningkite.kiteui.views.centered
-import com.lightningkite.kiteui.views.direct.button
-import com.lightningkite.kiteui.views.direct.col
-import com.lightningkite.kiteui.views.direct.text
-import com.lightningkite.kiteui.views.direct.textInput
-import com.lightningkite.kiteui.views.important
+import com.lightningkite.kiteui.views.*
+import com.lightningkite.kiteui.views.direct.*
 import com.lightningkite.kiteui.views.l2.errorText
-import com.lightningkite.lightningserver.sessions.proofs.IdentificationAndPassword
-import com.lightningkite.lightningserver.sessions.proofs.Proof
-import com.lightningkite.lightningserver.sessions.proofs.ProofClientEndpoints
-import com.lightningkite.lightningserver.sessions.proofs.ProofOption
+import com.lightningkite.lightningserver.sessions.proofs.*
 import com.lightningkite.reactive.context.await
 import com.lightningkite.reactive.core.Signal
 
@@ -39,11 +28,11 @@ import com.lightningkite.reactive.core.Signal
  * Note: This component assumes the user identity (property/value) is already known
  * from the primaryIdentifier or option parameters. It only collects the password.
  */
-public data class PasswordProofComponent(val p: ProofClientEndpoints.Password, val type: String) : EasierProofComponent {
-    override val name: String = "Enter Password"
-    override val icon: Icon = Icon.Companion.password
+public data class PasswordProofComponent(val p: ProofClientEndpoints.Password, val type: String) : ProofComponent {
+    override val icon: Icon = Icon.password
     override val via: String = p.via
     override val property: String? = p.property
+    override fun name(isPrimary: Boolean): String = "Enter Password"
 
     /**
      * Renders the password entry UI.
@@ -62,14 +51,14 @@ public data class PasswordProofComponent(val p: ProofClientEndpoints.Password, v
         to: ElementWriter.CanAddTheme,
         primaryIdentifier: UserIdentification?,
         option: ProofOption,
-        onResult: (Proof?) -> Unit
-    ): Unit {
+        onResult: (Proof?) -> Unit,
+    ) {
         to.col {
             // Holds the user-entered password
             val password = Signal("")
 
             // Action to submit the password to the server for verification
-            val provePasswordOwnership = Action("Submit", Icon.Companion.done) {
+            val provePasswordOwnership = Action("Submit", Icon.done) {
                 // TODO: Potential bug - if both option.method.property/value and primaryIdentifier
                 // are null, empty strings are sent. Should validate or fail earlier.
                 onResult(
@@ -94,7 +83,7 @@ public data class PasswordProofComponent(val p: ProofClientEndpoints.Password, v
                     requestFocus()
                     content bind password
                     action = provePasswordOwnership
-                    keyboardHints = KeyboardHints.Companion.password
+                    keyboardHints = KeyboardHints.password
                 }
             }
             // Error messages appear here when password is incorrect

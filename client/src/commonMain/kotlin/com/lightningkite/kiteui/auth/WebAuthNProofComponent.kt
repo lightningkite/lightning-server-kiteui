@@ -1,20 +1,13 @@
 package com.lightningkite.kiteui.auth
 
-import com.lightningkite.kiteui.ClientAuthenticator
-import com.lightningkite.kiteui.WebAuthNMediationType
+import com.lightningkite.kiteui.*
 import com.lightningkite.kiteui.models.Icon
-import com.lightningkite.kiteui.printStackTrace2
 import com.lightningkite.kiteui.views.ElementWriter
-
-import com.lightningkite.kiteui.views.ViewWriter
 import com.lightningkite.kiteui.views.centered
 import com.lightningkite.kiteui.views.direct.activityIndicator
 import com.lightningkite.kiteui.views.direct.frame
 import com.lightningkite.lightningserver.sessions.ProofsCheckResult
-import com.lightningkite.lightningserver.sessions.proofs.Identification
-import com.lightningkite.lightningserver.sessions.proofs.Proof
-import com.lightningkite.lightningserver.sessions.proofs.ProofClientEndpoints
-import com.lightningkite.lightningserver.sessions.proofs.WebAuthN
+import com.lightningkite.lightningserver.sessions.proofs.*
 import kotlinx.coroutines.launch
 
 public data class WebAuthNProofComponent(
@@ -22,14 +15,14 @@ public data class WebAuthNProofComponent(
     val type: String,
     val usePasskeyUI: Boolean,
 ) : ProofComponent {
-    override val name: String = "Use Passkey"
-    override val icon: Icon = Icon.Companion.passkey
+    override val icon: Icon = Icon.passkey
     override val via: String = p.via
     override val property: String? = p.property
     override val primaryIdentifierRequired: Boolean get() = true
     override suspend fun supported(): Boolean = ClientAuthenticator.getClientAuthenticator().webAuthNAvailable()
+    override fun name(isPrimary: Boolean): String = if (usePasskeyUI && isPrimary) "Use Passkey" else "Use Security Key"
 
-    override val earlyProof: (suspend (ViewWriter) -> Proof?)? = if (usePasskeyUI) {
+    override val earlyProof: (suspend () -> Proof?)? = if (usePasskeyUI) {
         label@{
             if (!ClientAuthenticator.getClientAuthenticator().autofillAvailable()) return@label null
 
@@ -59,7 +52,7 @@ public data class WebAuthNProofComponent(
                         )
                     )
                     val signedChallenge =
-                        ClientAuthenticator.Companion.getClientAuthenticator().getWebAuthNCredentials(
+                        ClientAuthenticator.getClientAuthenticator().getWebAuthNCredentials(
                             getOptions,
                             WebAuthNMediationType.Optional
                         )
@@ -77,4 +70,12 @@ public data class WebAuthNProofComponent(
             }
         }
     }
+
+    override fun render(
+        to: ElementWriter.CanAddTheme,
+        primaryIdentifier: UserIdentification?,
+        option: ProofOption,
+        onResult: (Proof?) -> Unit,
+    ): Unit = render(to, primaryIdentifier, null, onResult)
+
 }

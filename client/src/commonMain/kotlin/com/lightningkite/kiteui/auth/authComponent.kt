@@ -7,7 +7,6 @@ import com.lightningkite.kiteui.reactive.PersistentProperty
 import com.lightningkite.kiteui.views.*
 import com.lightningkite.kiteui.views.direct.*
 import com.lightningkite.kiteui.views.l2.field
-import com.lightningkite.kiteui.views.direct.icon
 import com.lightningkite.lightningserver.auth.AuthEndpoints
 import com.lightningkite.lightningserver.auth.LightningServerAuthentication
 import com.lightningkite.lightningserver.sessions.LogInRequest
@@ -15,7 +14,6 @@ import com.lightningkite.lightningserver.sessions.ProofsCheckResult
 import com.lightningkite.lightningserver.sessions.proofs.*
 import com.lightningkite.reactive.context.*
 import com.lightningkite.reactive.core.*
-import com.lightningkite.reactive.extensions.debounce
 import com.lightningkite.services.data.toEmailAddress
 import com.lightningkite.services.data.toPhoneNumber
 import kotlinx.coroutines.*
@@ -45,7 +43,7 @@ private val phoneRegex = Regex("""\+?(?:[0-9][-. ]?){6,}[0-9]$""")
  * DSL function to render an authentication component in a ViewWriter.
  *
  * This is the primary entry point for adding proof-based authentication to your app.
- * It creates an [AuthComponent2] instance and renders it into the view hierarchy.
+ * It creates an [AuthComponent] instance and renders it into the view hierarchy.
  *
  * @param endpoints The authentication endpoints configuration from the server
  * @param subjectType The type of subject being authenticated (e.g., "user", "admin"). Defaults to single subject type.
@@ -304,7 +302,7 @@ public open class AuthComponent(
                                 it.trim().toEmailAddress() // Validate email format
                                 UserIdentification("email", it.trim())
                             } else null
-                        } catch (e: Exception) {
+                        } catch (_: Exception) {
                             null
                         } ?: try {
                             // Try phone number
@@ -359,8 +357,8 @@ public open class AuthComponent(
                     card.buttonTheme.button {
                         debugName = "usePasskeyButton"
                         centered.row {
-                            icon(Icon.passkey, "")
-                            text("Use Passkey")
+                            centered.icon(Icon.passkey, "")
+                            centered.text("Use Passkey")
                         }
                         onClick {
                             currentProof.value =
@@ -469,7 +467,7 @@ public open class AuthComponent(
                         it.earlyProof?.let { task ->
                             launch {
                                 // If early proof succeeds, add it to proofs list automatically
-                                task(this@col)?.let { proofs.value += it }
+                                task()?.let { proofs.value += it }
                             }
                         }
                     }
@@ -477,10 +475,10 @@ public open class AuthComponent(
             // Render button for each available proof method
             forEachAnimated(proofOptions) {
                 card.buttonTheme.button {
-                    debugName = it.name
+                    debugName = it.name(true)
                     centered.sizeConstraints(width = 16.rem).row {
-                        icon(it.icon, "")
-                        text(it.name)
+                        centered.icon(it.icon, "")
+                        centered.text { ::content{ it.name(proofs().isEmpty()) } }
                     }
                     onClick {
                         // User made explicit selection; cancel background tasks

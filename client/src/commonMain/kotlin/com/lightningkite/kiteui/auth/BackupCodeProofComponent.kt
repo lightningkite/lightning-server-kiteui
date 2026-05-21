@@ -2,23 +2,11 @@ package com.lightningkite.kiteui.auth
 
 import com.lightningkite.kiteui.models.Icon
 import com.lightningkite.kiteui.models.KeyboardHints
-import com.lightningkite.kiteui.models.SubtextSemantic
 import com.lightningkite.kiteui.reactive.Action
-import com.lightningkite.kiteui.views.ElementWriter
-
-import com.lightningkite.kiteui.views.ViewWriter
-import com.lightningkite.kiteui.views.centered
-import com.lightningkite.kiteui.views.direct.button
-import com.lightningkite.kiteui.views.direct.col
-import com.lightningkite.kiteui.views.direct.text
-import com.lightningkite.kiteui.views.direct.textInput
-import com.lightningkite.kiteui.views.important
+import com.lightningkite.kiteui.views.*
+import com.lightningkite.kiteui.views.direct.*
 import com.lightningkite.kiteui.views.l2.errorText
-import com.lightningkite.kiteui.views.themed
-import com.lightningkite.lightningserver.sessions.proofs.IdentificationAndPassword
-import com.lightningkite.lightningserver.sessions.proofs.Proof
-import com.lightningkite.lightningserver.sessions.proofs.ProofClientEndpoints
-import com.lightningkite.lightningserver.sessions.proofs.ProofOption
+import com.lightningkite.lightningserver.sessions.proofs.*
 import com.lightningkite.reactive.context.await
 import com.lightningkite.reactive.core.Signal
 
@@ -41,11 +29,11 @@ import com.lightningkite.reactive.core.Signal
  * Important: Backup codes should be stored securely by users as they are the last
  * resort for account recovery when other authentication methods fail.
  */
-public data class BackupCodeProofComponent(val p: ProofClientEndpoints.BackupCode, val type: String) : EasierProofComponent {
-    override val name: String = "Enter Backup Code"
+public data class BackupCodeProofComponent(val p: ProofClientEndpoints.BackupCode, val type: String) : ProofComponent {
     override val icon: Icon = Icon.security
     override val via: String = p.via
     override val property: String? = p.property
+    override fun name(isPrimary: Boolean): String = "Enter Backup Code"
 
     /**
      * Renders the backup code entry UI.
@@ -64,14 +52,14 @@ public data class BackupCodeProofComponent(val p: ProofClientEndpoints.BackupCod
         to: ElementWriter.CanAddTheme,
         primaryIdentifier: UserIdentification?,
         option: ProofOption,
-        onResult: (Proof?) -> Unit
+        onResult: (Proof?) -> Unit,
     ) {
         to.col {
             // Holds the user-entered backup code
             val code = Signal("")
 
             // Action to submit the backup code to the server for verification
-            val proveBackupCode = Action("Submit", Icon.Companion.done) {
+            val proveBackupCode = Action("Submit", Icon.done) {
                 // TODO: Potential bug - if both option.method.property/value and primaryIdentifier
                 // are null, empty strings are sent. Should validate or fail earlier.
                 onResult(
@@ -99,7 +87,7 @@ public data class BackupCodeProofComponent(val p: ProofClientEndpoints.BackupCod
                     content bind code
                     action = proveBackupCode
                     // One-time code keyboard for alphanumeric codes
-                    keyboardHints = KeyboardHints.Companion.oneTimeCodeLetters
+                    keyboardHints = KeyboardHints.oneTimeCodeLetters
                 }
             }
             // Error messages appear here when backup code is invalid or already used

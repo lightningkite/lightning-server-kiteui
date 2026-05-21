@@ -1,25 +1,13 @@
 package com.lightningkite.kiteui.auth
 
-import com.lightningkite.kiteui.models.Icon
-import com.lightningkite.kiteui.models.KeyboardHints
-import com.lightningkite.kiteui.models.SubtextSemantic
-import com.lightningkite.kiteui.models.rem
+import com.lightningkite.kiteui.models.*
 import com.lightningkite.kiteui.reactive.Action
 import com.lightningkite.kiteui.views.*
 import com.lightningkite.kiteui.views.direct.*
 import com.lightningkite.kiteui.views.l2.errorText
-import com.lightningkite.kiteui.views.direct.icon
-import com.lightningkite.lightningserver.sessions.proofs.FinishProof
-import com.lightningkite.lightningserver.sessions.proofs.Proof
-import com.lightningkite.lightningserver.sessions.proofs.ProofClientEndpoints
-import com.lightningkite.lightningserver.sessions.proofs.ProofOption
-import com.lightningkite.reactive.context.await
-import com.lightningkite.reactive.context.invoke
-import com.lightningkite.reactive.context.reactive
-import com.lightningkite.reactive.context.rerunOn
-import com.lightningkite.reactive.core.BasicListenable
-import com.lightningkite.reactive.core.Signal
-import com.lightningkite.reactive.core.rememberSuspending
+import com.lightningkite.lightningserver.sessions.proofs.*
+import com.lightningkite.reactive.context.*
+import com.lightningkite.reactive.core.*
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
@@ -41,11 +29,11 @@ import kotlin.time.Duration.Companion.seconds
  * Note: The code input uses one-time code keyboard hints for better mobile UX.
  * Implementation is nearly identical to EmailProofComponent but uses SMS-specific endpoints.
  */
-public data class SmsProofComponent(val p: ProofClientEndpoints.Sms) : EasierProofComponent {
-    override val name: String = "Text Code"
+public data class SmsProofComponent(val p: ProofClientEndpoints.Sms) : ProofComponent {
     override val icon: Icon = Icon.chat
     override val via: String = p.via
     override val property: String? = p.property
+    override fun name(isPrimary: Boolean): String = "Text Code"
 
     /** Holds the user-entered verification code */
     val code: Signal<String> = Signal("")
@@ -72,7 +60,7 @@ public data class SmsProofComponent(val p: ProofClientEndpoints.Sms) : EasierPro
         to: ElementWriter.CanAddTheme,
         primaryIdentifier: UserIdentification?,
         option: ProofOption,
-        onResult: (Proof?) -> Unit
+        onResult: (Proof?) -> Unit,
     ) {
         to.col {
             // Listenable to trigger SMS resends - invoking this causes the challenge to be re-fetched
@@ -129,7 +117,7 @@ public data class SmsProofComponent(val p: ProofClientEndpoints.Sms) : EasierPro
 
                     // State 1: Just sent confirmation
                     centered.shownWhen { nowBySecond() < challenge().timestamp + 3.seconds }.row {
-                        centered.icon(Icon.done.copy(1.rem, 1.rem), "")
+                        centered.icon(Icon.done.copy(width = 1.rem, height = 1.rem), "")
                         centered.text("Sent!")
                     }
 

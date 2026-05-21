@@ -2,22 +2,11 @@ package com.lightningkite.kiteui.auth
 
 import com.lightningkite.kiteui.models.Icon
 import com.lightningkite.kiteui.models.KeyboardHints
-import com.lightningkite.kiteui.models.SubtextSemantic
 import com.lightningkite.kiteui.reactive.Action
-import com.lightningkite.kiteui.views.ElementWriter
-
-import com.lightningkite.kiteui.views.ViewWriter
-import com.lightningkite.kiteui.views.centered
-import com.lightningkite.kiteui.views.direct.button
-import com.lightningkite.kiteui.views.direct.col
-import com.lightningkite.kiteui.views.direct.text
-import com.lightningkite.kiteui.views.direct.textInput
-import com.lightningkite.kiteui.views.important
+import com.lightningkite.kiteui.views.*
+import com.lightningkite.kiteui.views.direct.*
 import com.lightningkite.kiteui.views.l2.errorText
-import com.lightningkite.lightningserver.sessions.proofs.IdentificationAndPassword
-import com.lightningkite.lightningserver.sessions.proofs.Proof
-import com.lightningkite.lightningserver.sessions.proofs.ProofClientEndpoints
-import com.lightningkite.lightningserver.sessions.proofs.ProofOption
+import com.lightningkite.lightningserver.sessions.proofs.*
 import com.lightningkite.reactive.context.await
 import com.lightningkite.reactive.core.Signal
 
@@ -39,11 +28,11 @@ import com.lightningkite.reactive.core.Signal
  * Note: This is typically used as a second factor after password authentication,
  * but can be configured as a standalone proof method depending on security requirements.
  */
-public data class TotpProofComponent(val p: ProofClientEndpoints.TimeBasedOTP, val type: String) : EasierProofComponent {
-    override val name: String = "Use Authenticator App"
-    override val icon: Icon = Icon.Companion.pinCode
+public data class TotpProofComponent(val p: ProofClientEndpoints.TimeBasedOTP, val type: String) : ProofComponent {
+    override val icon: Icon = Icon.pinCode
     override val via: String = p.via
     override val property: String? = p.property
+    override fun name(isPrimary: Boolean): String = "Use Authenticator App"
 
     /**
      * Renders the TOTP code entry UI.
@@ -62,14 +51,14 @@ public data class TotpProofComponent(val p: ProofClientEndpoints.TimeBasedOTP, v
         to: ElementWriter.CanAddTheme,
         primaryIdentifier: UserIdentification?,
         option: ProofOption,
-        onResult: (Proof?) -> Unit
+        onResult: (Proof?) -> Unit,
     ) {
         to.col {
             // Holds the user-entered TOTP code (typically 6 digits)
             val code = Signal("")
 
             // Action to submit the TOTP code to the server for verification
-            val proveTotpOwnership = Action("Submit", Icon.Companion.done) {
+            val proveTotpOwnership = Action("Submit", Icon.done) {
                 // TODO: Potential bug - if both option.method.property/value and primaryIdentifier
                 // are null, empty strings are sent. Should validate or fail earlier.
                 onResult(
@@ -96,7 +85,7 @@ public data class TotpProofComponent(val p: ProofClientEndpoints.TimeBasedOTP, v
                     content bind code
                     action = proveTotpOwnership
                     // Numeric keyboard for easier code entry
-                    keyboardHints = KeyboardHints.Companion.oneTimeCode
+                    keyboardHints = KeyboardHints.oneTimeCode
                 }
             }
             // Error messages appear here when TOTP code is invalid or expired

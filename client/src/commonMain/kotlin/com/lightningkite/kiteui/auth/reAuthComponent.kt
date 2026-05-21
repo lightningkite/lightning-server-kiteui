@@ -1,17 +1,14 @@
 package com.lightningkite.kiteui.auth
 
-import com.lightningkite.kiteui.models.ErrorSemantic
-import com.lightningkite.kiteui.models.rem
+import com.lightningkite.kiteui.models.*
 import com.lightningkite.kiteui.views.*
 import com.lightningkite.kiteui.views.direct.*
-import com.lightningkite.kiteui.views.direct.icon
 import com.lightningkite.lightningserver.auth.AuthEndpoints
 import com.lightningkite.lightningserver.sessions.LogInRequest
 import com.lightningkite.lightningserver.sessions.ProofsCheckResult
 import com.lightningkite.lightningserver.sessions.proofs.*
 import com.lightningkite.reactive.context.invoke
 import com.lightningkite.reactive.core.*
-import com.lightningkite.reactive.extensions.debounce
 import kotlinx.coroutines.launch
 import kotlin.time.Clock.System.now
 import kotlin.time.Duration
@@ -25,12 +22,13 @@ import kotlin.time.Duration.Companion.minutes
  * This is the primary entry point for adding proof-based authentication to your app.
  * It creates an [ReAuthComponent] instance and renders it into the view hierarchy.
  *
- * @property endpoints The authentication endpoints configuration from the server
- * @property subjectType The type of subject being authenticated (e.g., "user", "admin")
- * @property subject The specific authentication client endpoints for this subject type
- * @property knownDeviceLocalStorageName Key for storing known device credentials. Null disables feature.
- * @property filterMethods Function to filter/reorder available auth methods dynamically
- * @property onAuthentication Callback invoked with refresh token on successful authentication
+ * @param endpoints The authentication endpoints configuration from the server
+ * @param subjectId The id of the subject that needs to reauthenticate
+ * @param subjectType The type of subject being authenticated (e.g., "user", "admin")
+ * @param subject The specific authentication client endpoints for this subject type
+ * @param knownDeviceLocalStorageName Key for storing known device credentials. Null disables feature.
+ * @param newSessionDuration How long the new session should last. This will normally be a short-lived session.
+ * @param onAuthentication Callback invoked with refresh token on successful authentication
  * @return The rendered view
  */
 public fun ViewWriter.reAuthComponent(
@@ -61,9 +59,11 @@ public fun ViewWriter.reAuthComponent(
  * then prompts for additional proofs as needed to meet authentication requirements.
  *
  * @property endpoints The authentication endpoints configuration from the server
+ * @property subjectId The id of the subject that needs to reauthenticate
  * @property subjectType The type of subject being authenticated (e.g., "user", "admin")
  * @property subject The specific authentication client endpoints for this subject type
  * @property knownDeviceLocalStorageName Key for storing known device credentials. Null disables feature.
+ * @property newSessionDuration How long the new session should last. This will normally be a short-lived session.
  * @property onAuthentication Callback invoked with refresh token on successful authentication
  */
 public open class ReAuthComponent(
@@ -80,7 +80,8 @@ public open class ReAuthComponent(
     public val proofs: Signal<List<Proof>> = Signal(listOf<Proof>())
 
     /** The currently active proof component being rendered, or null if showing proof selection screen */
-    public val currentProof: Signal<Pair<ProofComponent, ProofOption>?> = Signal<Pair<ProofComponent, ProofOption>?>(null)
+    public val currentProof: Signal<Pair<ProofComponent, ProofOption>?> =
+        Signal<Pair<ProofComponent, ProofOption>?>(null)
 
     /** Whether authentication is in progress (checking proofs with server) */
     public val authenticating: Signal<Boolean> = Signal(false)
@@ -107,10 +108,13 @@ public open class ReAuthComponent(
      * This list updates reactively as authentication progresses.
      */
     public val proofOptions: Reactive<List<Pair<ProofComponent, ProofOption>>> = rememberSuspending {
+
         // Track which proof methods have already been used
-        val solved = proofs.value.mapTo(HashSet()) { it.via }
+        val solved = proofs().mapTo(HashSet()) { it.via }
+
         // Get server-provided available methods (if known)
-        val available = requirements().options
+        val available = subject.authRequirements().options
+
         endpoints.components(subjectType)
             .filter { it.via !in solved } // Don't show already-used methods
             .filter { it.supported() } // Check platform support
@@ -138,6 +142,15 @@ public open class ReAuthComponent(
                 remember {
                     authResult()?.let { proofs().sumOf { it.strength } / it.strengthRequired.toFloat() } ?: 0.00f
                 }
+
+            // Go back to option selection and cancel current
+            atStart.shownWhen { currentProof() != null }.button {
+                icon(Icon.arrowBack, "Go Back")
+                onClick {
+                    currentProof.set(null)
+                }
+            }
+
             // Show progress bar when partially authenticated
             shownWhen {
                 progress() in 0.01f..0.99f
@@ -147,20 +160,23 @@ public open class ReAuthComponent(
 
             // Loading indicator while checking proofs with server
             centered.shownWhen { !authResult.state().ready }.activityIndicator()
+
             // Error display if proof validation fails
             shownWhen { authResult.state().exception != null }.themed(ErrorSemantic).col {
                 val msg = remember { authResult.state().exception?.let { context.exceptionMessage(it) } }
                 text { ::content { msg()?.title ?: "Error" } }
                 subtext { ::content { msg()?.body ?: "" } }
             }
+
             // Show proof selection when not ready to login and no proof currently active
             shownWhen { authResult()?.readyToLogIn != true && currentProof() == null }.pickProof()
+
             // Render the active proof component
             shownWhen { currentProof() != null }.col {
                 // Debounce to prevent rapid re-renders during proof transitions
 
                 forEachAnimated(remember { listOfNotNull(currentProof()) }.debounce(10.milliseconds)) { (component, option) ->
-                    (component as? EasierProofComponent)?.render(
+                    component.render(
                         this@forEachAnimated,
                         primaryIdentifier = UserIdentification("$subjectType/_id", subjectId),
                         option
@@ -174,6 +190,7 @@ public open class ReAuthComponent(
                     }
                 }
             }
+
             // Show finalization screen when authentication requirements are met
             shownWhen { authResult()?.readyToLogIn == true }.renderFinalize()
         }
@@ -224,22 +241,22 @@ public open class ReAuthComponent(
             // Launch background tasks for early proofs (e.g., WebAuthN autofill)
             val cancelIfSelected = launch {
                 proofOptions()
-                    .mapNotNull { (component, option) ->
+                    .mapNotNull { (component, _) ->
                         component.earlyProof?.let { task ->
                             launch {
                                 // If early proof succeeds, add it to proofs list automatically
-                                task(this@col)?.let { proofs.value += it }
+                                task()?.let { proofs.value += it }
                             }
                         }
                     }
             }
             // Render button for each available proof method
-            forEachAnimated(proofOptions) { it ->
+            forEachAnimated(proofOptions) {
                 card.buttonTheme.button {
-                    debugName = it.first.name
+                    debugName = it.first.name(true)
                     centered.sizeConstraints(width = 16.rem).row {
                         icon(it.first.icon, "")
-                        text(it.first.name)
+                        text(it.first.name(true))
                     }
                     onClick {
                         // User made explicit selection; cancel background tasks

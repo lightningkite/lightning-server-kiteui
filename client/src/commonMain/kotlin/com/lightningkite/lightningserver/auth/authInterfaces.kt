@@ -15,6 +15,7 @@ import kotlinx.coroutines.delay
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlin.time.Clock.System.now
 import kotlin.time.Duration.Companion.days
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Instant
 import kotlin.uuid.Uuid
@@ -103,7 +104,7 @@ public data class AuthEndpoints(
                 }
 
                 override suspend fun logIn(input: List<Proof>): IdAndAuthMethods<String> {
-                    delay(1000)
+                    delay(1000.milliseconds)
                     return IdAndAuthMethods(
                         id = "id",
                         options = get(input).filter { it.method.via !in input.map { it.via } },
@@ -113,7 +114,7 @@ public data class AuthEndpoints(
                 }
 
                 override suspend fun logInV2(input: LogInRequest): IdAndAuthMethods<String> {
-                    delay(1000)
+                    delay(1000.milliseconds)
                     return IdAndAuthMethods(
                         id = "id",
                         options = get(input.proofs).filter { it.method.via !in input.proofs.map { it.via } },
@@ -123,7 +124,7 @@ public data class AuthEndpoints(
                 }
 
                 override suspend fun checkProofs(input: List<Proof>): ProofsCheckResult<String> {
-                    delay(1000)
+                    delay(1000.milliseconds)
                     return ProofsCheckResult(
                         id = "id",
                         options = get(input).filter { it.method.via !in input.map { it.via } },
@@ -143,12 +144,12 @@ public data class AuthEndpoints(
             }),
             smsProof = object : ProofClientEndpoints.Sms {
                 override suspend fun beginSmsOwnershipProof(input: String): String {
-                    delay(1000)
+                    delay(1000.milliseconds)
                     return input
                 }
 
                 override suspend fun provePhoneOwnership(input: FinishProof): Proof {
-                    delay(1000)
+                    delay(1000.milliseconds)
                     if (input.password == "wrong") throw LsErrorException(
                         LSError(400, "", "Code incorrect. 4 attempts remain", "")
                     )
@@ -164,12 +165,12 @@ public data class AuthEndpoints(
             },
             emailProof = object : ProofClientEndpoints.Email {
                 override suspend fun beginEmailOwnershipProof(input: String): String {
-                    delay(1000)
+                    delay(1000.milliseconds)
                     return input
                 }
 
                 override suspend fun proveEmailOwnership(input: FinishProof): Proof {
-                    delay(1000)
+                    delay(1000.milliseconds)
                     if (input.password == "wrong") throw LsErrorException(
                         LSError(400, "", "Code incorrect. 4 attempts remain", "")
                     )
@@ -185,7 +186,7 @@ public data class AuthEndpoints(
             },
             passwordProof = object : ProofClientEndpoints.Password {
                 override suspend fun provePasswordOwnership(input: IdentificationAndPassword): Proof {
-                    delay(1000)
+                    delay(1000.milliseconds)
                     if (input.password == "wrong") throw LsErrorException(
 
                         LSError(400, "", "Password and user do not match", "")
@@ -201,12 +202,12 @@ public data class AuthEndpoints(
                 }
 
                 override suspend fun establishPassword(input: EstablishPassword) {
-                    delay(1000)
+                    delay(1000.milliseconds)
                 }
             },
             oneTimePasswordProof = object : ProofClientEndpoints.TimeBasedOTP {
                 override suspend fun proveOTP(input: IdentificationAndPassword): Proof {
-                    delay(1000)
+                    delay(1000.milliseconds)
                     if (input.password == "wrong") throw LsErrorException(
 
                         LSError(400, "", "OTP and user do not match", "")
@@ -222,17 +223,17 @@ public data class AuthEndpoints(
                 }
 
                 override suspend fun establishOneTimePassword(input: EstablishTotp): String {
-                    delay(1000)
+                    delay(1000.milliseconds)
                     return "URL for OTP"
                 }
 
                 override suspend fun confirmOneTimePassword(input: String) {
-                    delay(1000)
+                    delay(1000.milliseconds)
                 }
             },
             knownDeviceProof = object : ProofClientEndpoints.KnownDevice {
                 override suspend fun proveKnownDevice(input: String): Proof {
-                    delay(1000)
+                    delay(1000.milliseconds)
                     if (input == "wrong") throw LsErrorException(LSError(400, "", "", ""))
                     return Proof(
                         "known-device",
@@ -246,23 +247,23 @@ public data class AuthEndpoints(
                 }
 
                 override suspend fun knownDeviceOptions(): KnownDeviceOptions {
-                    delay(1000)
+                    delay(1000.milliseconds)
                     return KnownDeviceOptions(30.days, 1)
                 }
 
                 override suspend fun establishKnownDevice(): String {
-                    delay(1000)
+                    delay(1000.milliseconds)
                     return "ok"
                 }
 
                 override suspend fun establishKnownDeviceV2(): KnownDeviceSecretAndExpiration {
-                    delay(1000)
+                    delay(1000.milliseconds)
                     return KnownDeviceSecretAndExpiration("ok", now() + 30.days)
                 }
             },
             webAuthNProof = object : ProofClientEndpoints.WebAuthN {
                 override suspend fun start(input: Identification): WebAuthN.Authentication.StartResponse {
-                    delay(1000)
+                    delay(1000.milliseconds)
                     return WebAuthN.Authentication.StartResponse(
                         "sfhfhfsghdgjdghjfsgsgbbcnkfhkjrtshgdzfgv",
                         options = WebAuthN.Authentication.PublicKeyCredentialRequestOptions(
@@ -273,7 +274,7 @@ public data class AuthEndpoints(
                 }
 
                 override suspend fun prove(input: WebAuthN.Authentication.ProveRequest): Proof {
-                    delay(1000)
+                    delay(1000.milliseconds)
                     return Proof(
                         via = "WebAuthN",
                         property = "WebAuthN",
@@ -291,7 +292,7 @@ public data class AuthEndpoints(
             },
             backupCodeProof = object : ProofClientEndpoints.BackupCode {
                 override suspend fun proveBackupCode(input: IdentificationAndPassword): Proof {
-                    delay(1000)
+                    delay(1000.milliseconds)
                     if (input.password == "wrong") throw LsErrorException(
                         LSError(400, "", "OTP and user do not match", "")
                     )
@@ -306,7 +307,7 @@ public data class AuthEndpoints(
                 }
 
                 override suspend fun clearCodes() {
-                    delay(1000)
+                    delay(1000.milliseconds)
                 }
 
                 override suspend fun established(): Boolean = false
