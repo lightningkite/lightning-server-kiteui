@@ -37,7 +37,7 @@ Add the SSR library to your version catalog if not already present:
 ```toml
 # gradle/libs.versions.toml
 [libraries]
-kituiJvmSsr = { module = "com.lightningkite.kiteui:library-jvmssr", version.ref = "kiteui" }
+kitui-jvm-ssr = { module = "com.lightningkite.kiteui:library-jvmssr", version.ref = "kiteui" }
 ```
 
 ## Basic usage
