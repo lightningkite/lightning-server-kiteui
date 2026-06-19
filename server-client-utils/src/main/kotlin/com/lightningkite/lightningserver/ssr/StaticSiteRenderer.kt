@@ -1,4 +1,3 @@
-// by Claude
 package com.lightningkite.lightningserver.ssr
 
 import com.lightningkite.kiteui.ssr.SsrRouter
