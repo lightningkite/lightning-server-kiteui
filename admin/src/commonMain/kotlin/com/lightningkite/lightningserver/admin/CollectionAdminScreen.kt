@@ -482,8 +482,6 @@ class CollectionAdminPage(val collectionName: String) : Page {
             }
         }
 
-        private fun createCsvFormat() = CsvFormat(
-            StringDeferringConfig(DefaultJson.serializersModule, ignoreUnknownKeys = true)
-        )
+        private fun createCsvFormat() = CsvFormat(StringDeferringConfig(DefaultJson.serializersModule, ignoreUnknownKeys = true))
     }
 }

@@ -837,11 +837,16 @@ public class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
      * we don't know which specific items were affected by the bulk operation.
      * This is intentionally aggressive to avoid serving stale data.
      *
+     * Polling loops are also interrupted so observers refetch immediately rather
+     * than waiting up to [pullFrequency] seconds. Otherwise observers would
+     * remain stuck in a loading state until their next scheduled poll.
+     *
      * @return Number of items modified
      */
     override suspend fun bulkModify(bulkUpdate: MassModification<T>): Int {
         return skipCache.bulkModify(bulkUpdate).also {
             newData.value = CacheUpdate.SocketOverload()
+            interrupt.interrupt()
         }
     }
 

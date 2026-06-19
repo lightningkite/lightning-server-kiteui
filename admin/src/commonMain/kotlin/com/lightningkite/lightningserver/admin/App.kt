@@ -66,6 +66,7 @@ import com.lightningkite.services.database.Condition
 import com.lightningkite.services.database.SerializableProperty
 import com.lightningkite.services.database.SerializationRegistry
 import com.lightningkite.services.database.serializableProperties
+import com.lightningkite.services.files.DirectServerFileSerializer
 import com.lightningkite.services.files.ServerFile
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -110,6 +111,7 @@ fun ViewWriter.app(navigator: PageNavigator, dialog: PageNavigator) {
     // These must be registered globally to enable proper deserialization across the app
     SerializationRegistry.master.register(LSError.serializer())
     SerializationRegistry.master.register(ServerFile.serializer())
+    SerializationRegistry.master.register(DirectServerFileSerializer)  //backwards compat
 
     // Install custom error message handlers for Lightning Server errors
     // Provides user-friendly error messages for common Lightning Server API errors

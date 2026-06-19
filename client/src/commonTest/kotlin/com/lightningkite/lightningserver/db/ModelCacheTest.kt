@@ -1185,6 +1185,171 @@ class ModelCacheTest {
         assertTrue(mock.data.containsKey(item2._id))
         assertTrue(mock.data.containsKey(item3._id))
     }
+
+    // =========================================================================
+    // bulkModify() Bug Investigation Tests
+    // =========================================================================
+    // Reproduces the bug reported on the "Assign Reviewers" page in Microcredentials:
+    // After bulkModify is invoked, list queries take a long time (up to pullFrequency
+    // seconds) to refetch and display fresh data. Individual item observers can also
+    // get stuck repeatedly issuing `_id Inside [UUID]` (multiget) queries every 5
+    // seconds because their polling loops are woken by the cache invalidation but
+    // nothing actually changes the underlying data for them.
+    //
+    // Root cause: ModelCache.bulkModify() emits CacheUpdate.SocketOverload() which
+    // clears every cache, but it does NOT call interrupt.interrupt(), so currently
+    // sleeping polling loops aren't woken to refetch. They sit idle until their
+    // own delay expires (minimum 5 seconds), and meanwhile the UI shows a stale
+    // loading state because cache.cached() now returns null.
+    // =========================================================================
+
+    /**
+     * Tests that list queries are refetched promptly after bulkModify().
+     *
+     * Reproduces the "Active Reviews table takes forever to load" symptom. After
+     * a bulkModify, the list query's cache is cleared (SocketOverload) so state
+     * goes notReady; the polling loop should be interrupted so it refetches
+     * immediately rather than waiting up to pullFrequency seconds.
+     */
+    @Test
+    fun bulkModifyRefetchesListPromptly() = runTest2 {
+        val mock = ClientModelRestEndpointsMock<LargeTestModel, Uuid>(this)
+        val dataToInsert = listOf(
+            LargeTestModel(int = 1),
+            LargeTestModel(int = 2),
+            LargeTestModel(int = 3),
+        )
+        mock.data.putAll(dataToInsert.associateBy { it._id })
+        val cache = ModelCache<LargeTestModel, Uuid>(
+            mock,
+            LargeTestModel.serializer(),
+            scope = backgroundScope,
+            log = testLog,
+        )
+
+        var lastRead: List<LargeTestModel> = listOf()
+        val ref = cache.list(
+            Query(Condition.Always, sort { it.int.ascending() }),
+            maximumAge = 10.minutes,
+            pullFrequency = 60.seconds,
+        )
+        reactive { lastRead = ref() }
+        delay(1.seconds)
+        assertEquals(dataToInsert.sortedBy { it.int }, lastRead)
+
+        // Perform a bulk modification
+        cache.bulkModify(MassModification(
+            condition = condition { it.int gt 1 },
+            modification = modification { it.short assign 99 },
+        ))
+
+        // The list should refetch within a reasonable window after bulkModify.
+        // 1 second is plenty for the network mock (0.1s delay) plus batching wait.
+        delay(1.seconds)
+
+        val expected = dataToInsert.map {
+            if (it.int > 1) it.copy(short = 99) else it
+        }.sortedBy { it.int }
+        assertEquals(
+            expected,
+            lastRead,
+            "List should be refreshed promptly after bulkModify, but cache appears stale.",
+        )
+    }
+
+    /**
+     * Precise test: count how many multiget (query) calls happen on the item polling
+     * loop in the 30 seconds following a bulkModify.
+     *
+     * Expected: exactly 1 refetch shortly after bulkModify (item polling loop wakes
+     * up because basis is unset by SocketOverload, refetches via multiget, then
+     * sleeps for pullFrequency). With pullFrequency = 60s, no further calls should
+     * happen within 30s.
+     *
+     * Bug symptom: more than 1 query call, or even ~6 calls (every 5s) if the
+     * polling loop is somehow not seeing the refetched value as fresh.
+     */
+    @Test
+    fun bulkModifyItemPollingStabilizes() = runTest2 {
+        var bulkModifyDone = false
+        var queryCallsAfterBulkModify = 0
+        val initial = LargeTestModel(int = 1)
+        val mock = object : ClientModelRestEndpointsMock<LargeTestModel, Uuid>(this) {
+            override suspend fun query(input: Query<LargeTestModel>): List<LargeTestModel> {
+                if (bulkModifyDone) queryCallsAfterBulkModify++
+                return super.query(input)
+            }
+        }
+        mock.data[initial._id] = initial
+        val cache = ModelCache<LargeTestModel, Uuid>(
+            mock,
+            LargeTestModel.serializer(),
+            scope = backgroundScope,
+            log = testLog,
+        )
+
+        var lastRead: LargeTestModel? = null
+        val ref = cache.item(initial._id, maximumAge = 10.minutes, pullFrequency = 60.seconds)
+        reactive { lastRead = ref() }
+        delay(2.seconds)
+        assertEquals(initial, lastRead)
+
+        bulkModifyDone = true
+        cache.bulkModify(MassModification(
+            condition = condition { it.int gt 0 },
+            modification = modification { it.short assign 42 },
+        ))
+
+        // Within 30s, polling loop should refetch exactly once and then settle.
+        delay(30.seconds)
+
+        assertEquals(initial.copy(short = 42), lastRead)
+        assertTrue(
+            queryCallsAfterBulkModify <= 2,
+            "Expected at most 2 query calls after bulkModify (one refetch + jitter), " +
+                "but got $queryCallsAfterBulkModify. This indicates a polling loop is " +
+                "stuck repeatedly fetching every 5 seconds.",
+        )
+    }
+
+    /**
+     * Tests that an item observer's reactive state recovers quickly after bulkModify().
+     *
+     * Specifically: state should become ready again within ~1 second of the
+     * bulkModify, not after pullFrequency seconds.
+     */
+    @Test
+    fun bulkModifyItemRecoversPromptly() = runTest2 {
+        val mock = ClientModelRestEndpointsMock<LargeTestModel, Uuid>(this)
+        val initial = LargeTestModel(int = 1)
+        mock.data[initial._id] = initial
+        val cache = ModelCache<LargeTestModel, Uuid>(
+            mock,
+            LargeTestModel.serializer(),
+            scope = backgroundScope,
+            log = testLog,
+        )
+
+        var lastRead: LargeTestModel? = null
+        val ref = cache.item(initial._id, maximumAge = 10.minutes, pullFrequency = 60.seconds)
+        reactive { lastRead = ref() }
+        delay(1.seconds)
+        assertEquals(initial, lastRead)
+
+        cache.bulkModify(MassModification(
+            condition = condition { it.int gt 0 },
+            modification = modification { it.short assign 42 },
+        ))
+
+        // Should refetch promptly, not after pullFrequency
+        delay(1.seconds)
+
+        assertEquals(
+            initial.copy(short = 42),
+            lastRead,
+            "Item should be refreshed within 1s of bulkModify, but appears stale.",
+        )
+    }
 }
 
 /*
