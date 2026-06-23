@@ -31,12 +31,12 @@ kotlin {
 //            this.jvmTarget.set(JvmTarget.JVM_1_8)
 //        }
 //    }
-//    iosX64()
+//    
 //    iosArm64()
 //    iosSimulatorArm64()
 //    ios()
 //    listOf(
-//        iosX64(),
+//        ,
 //        iosArm64(),
 //        iosSimulatorArm64()
 //    ).forEach {

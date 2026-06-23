@@ -23,7 +23,7 @@ kotlin {
     applyDefaultHierarchyTemplate()
     androidTarget()
     jvm() // Needed for SSR via StaticSiteRenderer
-    iosX64()
+    
     iosArm64()
     iosSimulatorArm64()
     js {

@@ -127,133 +127,16 @@ public class BulkFetcher(
         },
         pingTime = pingTime.inWholeMilliseconds,
         log = log
-    ).typedWithDebug(json, MultiplexMessage.serializer(), MultiplexMessage.serializer()).also { mux ->
-        if (debugMode && log != null) {
-            mux.onOpen {
-                mux.send(MultiplexMessage(channel = "debug", start = true))
-            }
-        }
-        mux.onMessage {
-            if (log != null && it.channel == "debug") log.log("Multiplex debug: $it")
-        }
-    }
+    ).typedWithDebug(json, MultiplexMessage.serializer(), MultiplexMessage.serializer())
+
+    private val multiplexed = MultiplexedSocket(wsMuxer, log)
 
     override fun <I, O> websocket(
         url: String,
         inSerializer: KSerializer<I>,
         outSerializer: KSerializer<O>,
     ): ClientWebSocket<I, O> =
-        WebsocketChannel(url).typed(json, inSerializer, outSerializer)
-
-    private inner class WebsocketChannel(url: String) : ClientWebSocket<String, String> {
-        val path = url.substringBefore('?')
-
-        val params = url.substringAfter('?', "")
-            .split('&')
-            .map { it.substringBefore('=') to it.substringAfter('=') }
-            .groupBy({ it.first }, { it.second })
-
-
-        override val connected = MutableStateFlow(false)
-
-        val channel = Uuid.random().toString()
-
-        init {
-            wsMuxer.onMessage { message ->
-                if (message.channel == channel) {
-                    if (message.start) {
-                        connected.value = true
-                        onOpenList.invokeAllSafe()
-                    }
-                    message.data?.let { data ->
-                        onMessageList.toList().forEach { it(data) }
-                    }
-                    if (message.end) {
-                        connected.value = false
-                        onCloseList.toList().forEach { it(-1) }
-                    }
-                }
-            }
-            wsMuxer.onClose {
-                connected.value = false
-                onCloseList.forEach { it(-1) }
-            }
-        }
-
-        private val shouldBeOn = Signal(false)
-        private var closeChannel: (() -> Unit)? = null
-
-        override fun connect() {
-            shouldBeOn.value = true
-            if (closeChannel == null) closeChannel = wsMuxer.beginUse()
-        }
-
-        val lifecycle = CoroutineScope(Job()).apply {
-            reactiveScope {
-                val shouldBeOn = shouldBeOn()
-                val isOn = connected()
-                val parentConnected = wsMuxer.connected()
-                if (shouldBeOn && parentConnected && !isOn) {
-                    wsMuxer.send(
-                        MultiplexMessage(
-                            channel = channel,
-                            path = path,
-                            queryParams = params,
-                            start = true
-                        )
-                    )
-                } else if (!shouldBeOn && parentConnected && isOn) {
-                    wsMuxer.send(
-                        MultiplexMessage(
-                            channel = channel,
-                            path = path,
-                            queryParams = params,
-                            end = true
-                        )
-                    )
-                }
-            }
-        }
-
-        override fun close(code: Short, reason: String) {
-            shouldBeOn.value = false
-            wsMuxer.send(
-                MultiplexMessage(
-                    channel = channel,
-                    path = path,
-                    queryParams = params,
-                    end = true
-                )
-            )
-            closeChannel?.invoke()
-            lifecycle.cancel()
-        }
-
-        override fun send(data: String) {
-            wsMuxer.send(
-                MultiplexMessage(
-                    channel = channel,
-                    data = data,
-                )
-            )
-        }
-
-        val onOpenList = ArrayList<() -> Unit>()
-        val onMessageList = ArrayList<(String) -> Unit>()
-        val onCloseList = ArrayList<(Short) -> Unit>()
-
-        override fun onOpen(action: () -> Unit) {
-            onOpenList.add(action)
-        }
-
-        override fun onMessage(action: (String) -> Unit) {
-            onMessageList.add(action)
-        }
-
-        override fun onClose(action: (Short) -> Unit) {
-            onCloseList.add(action)
-        }
-    }
+        multiplexed.channel(url).typed(json, inSerializer, outSerializer)
 
     private fun <SEND, RECEIVE> RetryWebsocket.typedWithDebug(
         json: Json,
@@ -290,6 +173,164 @@ public class BulkFetcher(
 
         override fun send(data: SEND) {
             this@typedWithDebug.send(json.encodeToString(send, data))
+        }
+    }
+}
+
+/**
+ * Manages multiplex channels over a single shared [muxer] socket.
+ *
+ * A channel is opened by sending a "start" frame tagged with a channel id, closed with an "end"
+ * frame, and carries data frames in between; many channels share one physical socket.
+ *
+ * Message dispatch goes through a single listener on [muxer] keyed by channel id (see [channels]),
+ * rather than one listener per channel.  This means a channel releases its routing structurally by
+ * removing itself from [channels] on close - there is no per-channel listener that could leak.
+ * Channels are reusable: [WebsocketChannel.close] is idempotent, sends exactly one "end" frame, and
+ * leaves the channel able to [WebsocketChannel.connect] again later.
+ */
+internal class MultiplexedSocket(
+    private val muxer: TypedWebSocket<MultiplexMessage, MultiplexMessage>,
+    private val log: Log? = null,
+) {
+    /** Active channels keyed by their channel id; the dispatch listener routes messages by this. */
+    private val channels = HashMap<String, WebsocketChannel>()
+
+    init {
+        if (debugMode && log != null) {
+            muxer.onOpen {
+                muxer.send(MultiplexMessage(channel = "debug", start = true))
+            }
+        }
+        muxer.onMessage { message ->
+            if (log != null && message.channel == "debug") log.log("Multiplex debug: $message")
+            channels[message.channel]?.handleMessage(message)
+        }
+        // When the transport drops, notify every active channel so they reset and re-subscribe
+        // once it reconnects.  Channels stay registered (only an explicit close removes them).
+        muxer.onClose {
+            channels.values.toList().forEach { it.handleParentClose() }
+        }
+    }
+
+    /** Creates a new (not-yet-connected) multiplex channel for [url]. */
+    fun channel(url: String): ClientWebSocket<String, String> = WebsocketChannel(url)
+
+    private inner class WebsocketChannel(url: String) : ClientWebSocket<String, String> {
+        val path = url.substringBefore('?')
+
+        val params = url.substringAfter('?', "")
+            .split('&')
+            .map { it.substringBefore('=') to it.substringAfter('=') }
+            .groupBy({ it.first }, { it.second })
+
+
+        override val connected = MutableStateFlow(false)
+
+        val channel = Uuid.random().toString()
+
+        /** Dispatched from the single muxer listener for messages on this [channel]. */
+        fun handleMessage(message: MultiplexMessage) {
+            if (message.start) {
+                connected.value = true
+                onOpenList.invokeAllSafe()
+            }
+            message.data?.let { data ->
+                onMessageList.toList().forEach { it(data) }
+            }
+            if (message.end) {
+                connected.value = false
+                onCloseList.toList().forEach { it(-1) }
+            }
+        }
+
+        /**
+         * Called when the underlying multiplex transport drops.  The channel stays registered so
+         * [lifecycle] re-sends its "start" frame once the transport reconnects.
+         */
+        fun handleParentClose() {
+            connected.value = false
+            onCloseList.toList().forEach { it(-1) }
+        }
+
+        private val shouldBeOn = Signal(false)
+        private var closeChannel: (() -> Unit)? = null
+
+        override fun connect() {
+            shouldBeOn.value = true
+            channels[channel] = this
+            if (closeChannel == null) closeChannel = muxer.beginUse()
+        }
+
+        /**
+         * Sends the "start" frame whenever the channel should be on and the transport is connected
+         * but the channel isn't open yet - covering both the initial subscribe and re-subscribing
+         * after a transport reconnect.  Closing sends its single "end" frame explicitly in [close],
+         * not here, to guarantee exactly one close frame.  This scope lives for the lifetime of the
+         * channel (never cancelled) so the channel can be closed and reconnected repeatedly.
+         */
+        val lifecycle = CoroutineScope(Job()).apply {
+            reactiveScope {
+                val shouldBeOn = shouldBeOn()
+                val isOn = connected()
+                val parentConnected = muxer.connected()
+                if (shouldBeOn && parentConnected && !isOn) {
+                    muxer.send(
+                        MultiplexMessage(
+                            channel = channel,
+                            path = path,
+                            queryParams = params,
+                            start = true
+                        )
+                    )
+                }
+            }
+        }
+
+        override fun close(code: Short, reason: String) {
+            // Idempotent: a channel that's already off has nothing to close.
+            if (!shouldBeOn.value) return
+            shouldBeOn.value = false
+            // Exactly one "end" frame.  A no-op send if the transport is already down.
+            muxer.send(
+                MultiplexMessage(
+                    channel = channel,
+                    path = path,
+                    queryParams = params,
+                    end = true
+                )
+            )
+            connected.value = false
+            onCloseList.toList().forEach { it(-1) }
+            channels.remove(channel)
+            closeChannel?.invoke()
+            closeChannel = null
+            // [lifecycle] is intentionally NOT cancelled so the channel can be reconnected.
+        }
+
+        override fun send(data: String) {
+            muxer.send(
+                MultiplexMessage(
+                    channel = channel,
+                    data = data,
+                )
+            )
+        }
+
+        val onOpenList = ArrayList<() -> Unit>()
+        val onMessageList = ArrayList<(String) -> Unit>()
+        val onCloseList = ArrayList<(Short) -> Unit>()
+
+        override fun onOpen(action: () -> Unit) {
+            onOpenList.add(action)
+        }
+
+        override fun onMessage(action: (String) -> Unit) {
+            onMessageList.add(action)
+        }
+
+        override fun onClose(action: (Short) -> Unit) {
+            onCloseList.add(action)
         }
     }
 }
