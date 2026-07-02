@@ -419,12 +419,20 @@ public class InterruptibleDelay(public val parent: InterruptibleDelay? = null) {
             .plus(generateSequence(this) { it.parent }.map { inter ->
                 suspend {
                     var closer: () -> Unit = {}
-                    suspendCancellableCoroutine { cont ->
-                        closer = inter.listenable.addListener {
-                            cont.resume(Unit)
+                    try {
+                        suspendCancellableCoroutine { cont ->
+                            closer = inter.listenable.addListener {
+                                cont.resume(Unit)
+                            }
                         }
+                    } finally {
+                        // Remove the listener on BOTH normal resume and cancellation. Previously
+                        // closer() ran only after a normal resume, so when this race branch lost the
+                        // race (or the subscriber was torn down) the listener leaked on the
+                        // session-lived interrupt listenable, retaining the parked delay's
+                        // continuation and everything it captured. Mirrors waitFor()'s try/finally.
+                        closer()
                     }
-                    closer()
                 }
             })
         race(*toRace.toTypedArray())
