@@ -24,14 +24,24 @@ import com.lightningkite.services.database.DataClassPathNotNull
  * - For descending sorts: NULL is treated as "less than" any value, so NULL values come last
  * - This matches standard SQL NULL ordering behavior
  *
+ * ## Case-insensitive sorts are not supported
+ * [SortPart.ignoreCase] sorts by the lowercased value, but the comparison conditions below are
+ * case-sensitive, so the boundary would fall in the wrong place and pages would skip and duplicate
+ * rows.  There is no case-insensitive ordering comparison to generate instead, so this throws
+ * rather than quietly producing a wrong cursor.
+ *
  * @param after The cursor item to compare against. Items matching the returned condition will come "after" this item.
  * @return A [Condition] that matches all items that should appear after the cursor in the sort order.
+ * @throws IllegalArgumentException if any sort part is case-insensitive.
  * @throws Error if a non-nullable field path has a null value in the cursor item (should not occur in practice)
  *
  * @see SortPart
  * @see Condition
  */
 public fun <T> List<SortPart<T>>.after(after: T): Condition<T> {
+    require(none { it.ignoreCase }) {
+        "Cannot generate a pagination cursor for a case-insensitive sort: ${filter { it.ignoreCase }}"
+    }
     // Generate one OR branch for each prefix of the sort list
     // For [A, B, C], this creates conditions for [A], [A, B], and [A, B, C]
     return Condition.Or<T>((1..this.size).map { count ->

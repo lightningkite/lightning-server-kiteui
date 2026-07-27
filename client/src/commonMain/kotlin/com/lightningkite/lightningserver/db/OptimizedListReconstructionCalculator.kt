@@ -115,7 +115,7 @@ public class OptimizedListReconstructionCalculator<T : HasId<ID>, ID : Comparabl
                 // Update query cache with IDs
                 queryCache[update.query] = QueryCache(
                     itemIds = update.result.map { it._id }.toSet(),
-                    timestamp = clock.now(),
+                    timestamp = update.at ?: clock.now(),
                     requestedLimit = update.query.limit,
                     isComplete = true
                 )

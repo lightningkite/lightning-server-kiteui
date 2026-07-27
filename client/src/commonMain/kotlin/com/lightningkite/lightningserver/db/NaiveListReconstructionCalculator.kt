@@ -110,7 +110,7 @@ public class NaiveListReconstructionCalculator<T : HasId<ID>, ID : Comparable<ID
                 }
             }
 
-            is CacheUpdate.QueryResult -> byQuery[update.query] = WithTimestampAndLimit(update.result, requestedLimit = update.query.limit, at = clock.now())
+            is CacheUpdate.QueryResult -> byQuery[update.query] = WithTimestampAndLimit(update.result, requestedLimit = update.query.limit, at = update.at ?: clock.now())
             is CacheUpdate.SocketChanges -> {
                 val iter = byQuery.iterator()
                 while (iter.hasNext()) {

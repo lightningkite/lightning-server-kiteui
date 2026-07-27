@@ -7,10 +7,12 @@ import com.lightningkite.kiteui.current
 import com.lightningkite.services.database.*
 import com.lightningkite.reactive.context.reactive
 import com.lightningkite.reactive.core.ReactiveState
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.advanceTimeBy
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
@@ -1414,6 +1416,149 @@ class ModelCacheTest {
 
         mock.connectivityFailure = true
         assertFails { ref.limit(10) }
+
+        release()
+    }
+
+    /**
+     * Concurrent item lookups are coalesced into one `_id inside [...]` query, which must carry a
+     * limit big enough for the whole batch.  With the default limit the server would answer only
+     * the first page, and every ID past it would be reported as confirmed-missing rather than
+     * simply not fetched yet - items would silently render as absent.
+     */
+    @Test fun multigetBatchLargerThanTheDefaultQueryLimit() = runTest2 {
+        val mock = ClientModelRestEndpointsMock<LargeTestModel, Uuid>(this)
+        // Comfortably more than Query's default limit of 100, and within BatchAndQueue's batch size.
+        val dataToInsert = (1..150).map { LargeTestModel(int = it) }
+        mock.data.putAll(dataToInsert.associateBy { it._id })
+        val cache = ModelCache(mock, LargeTestModel.serializer(), scope = backgroundScope, log = testLog)
+
+        // Observe every item at once, so they all land in a single batch.
+        val refs = dataToInsert.map { cache.item(it._id) }
+        val releases = refs.map { it.addListener { } }
+        delay(5.seconds)
+
+        val resolved = refs.mapNotNull { it.state.getOrNull() }
+        assertEquals(dataToInsert.size, resolved.size, "Every requested item should have been retrieved")
+        assertEquals(dataToInsert.toSet(), resolved.toSet())
+
+        releases.forEach { it() }
+    }
+
+    /** Records every query reaching the server, so pagination can be checked for what it asks for. */
+    private class QueryRecordingMock(scope: CoroutineScope) : ClientModelRestEndpointsMock<LargeTestModel, Uuid>(scope) {
+        val queries: MutableList<Query<LargeTestModel>> = mutableListOf()
+        override suspend fun query(input: Query<LargeTestModel>): List<LargeTestModel> {
+            queries.add(input)
+            return super.query(input)
+        }
+    }
+
+    /** Sets up a recording mock holding [count] items sorted by `int`, plus a cache over it. */
+    private fun CoroutineScope.pagingFixture(count: Int): Triple<QueryRecordingMock, List<LargeTestModel>, ModelCache<LargeTestModel, Uuid>> {
+        val mock = QueryRecordingMock(this)
+        val data = (1..count).map { LargeTestModel(int = it) }
+        mock.data.putAll(data.associateBy { it._id })
+        return Triple(mock, data, ModelCache(mock, LargeTestModel.serializer(), scope = this, log = testLog))
+    }
+
+    /**
+     * Growing the limit on top of a full page pages forward with a cursor instead of re-reading
+     * rows we already hold, so scrolling costs one page per page rather than growing with the
+     * length of the list.
+     */
+    @Test fun limitGrowsByPagingForward() = runTest2 {
+        val (mock, data, cache) = backgroundScope.pagingFixture(10)
+        val ref = cache.list(Query(Condition.Always, sort { it.int.ascending() }, limit = 3))
+        val release = ref.addListener { }
+        delay(5.seconds)
+        assertEquals(data.take(3), ref.state.getOrNull())
+
+        mock.queries.clear()
+        ref.limit(6)
+
+        assertEquals(data.take(6), ref.state.getOrNull())
+        assertEquals(1, mock.queries.size, "extending should take exactly one request")
+        assertEquals(3, mock.queries.single().limit, "should ask only for the rows it is missing")
+
+        release()
+    }
+
+    /**
+     * The limit only moves once the data behind it is cached, so a list being extended keeps
+     * showing what it already has instead of blanking while the next page loads.
+     */
+    @Test fun limitKeepsShowingTheShorterListWhilePagingForward() = runTest2 {
+        val (_, data, cache) = backgroundScope.pagingFixture(10)
+        val ref = cache.list(Query(Condition.Always, sort { it.int.ascending() }, limit = 3))
+        val release = ref.addListener { }
+        delay(5.seconds)
+
+        val extending = backgroundScope.launch { ref.limit(6) }
+        delay(50.milliseconds) // the mock takes 100ms, so the page is still in flight
+        assertEquals(data.take(3), ref.state.getOrNull(), "must not blank while the next page loads")
+
+        extending.join()
+        assertEquals(data.take(6), ref.state.getOrNull())
+
+        release()
+    }
+
+    /**
+     * Paging forward doesn't re-read the head of the list, so it must not mark it freshly
+     * retrieved either - otherwise scrolling forever would keep stale rows perpetually "fresh".
+     */
+    @Test fun pagingForwardDoesNotRefreshTheHeadOfTheList() = runTest2 {
+        val (_, _, cache) = backgroundScope.pagingFixture(10)
+        val ref = cache.list(
+            Query(Condition.Always, sort { it.int.ascending() }, limit = 3),
+            maximumAge = 10.minutes,
+            pullFrequency = 10.minutes,
+        )
+        val release = ref.addListener { }
+        delay(5.seconds)
+        val retrievedAt = ref.lastUpdatedAt.state.getOrNull()
+        assertNotNull(retrievedAt)
+
+        delay(1.minutes)
+        ref.limit(6)
+
+        assertEquals(retrievedAt, ref.lastUpdatedAt.state.getOrNull(), "the extended list is only as fresh as its oldest part")
+
+        release()
+    }
+
+    /**
+     * A cached list shorter than its limit has already reached the end of the results, so there is
+     * nothing after its last row to page to - it has to be re-read in full instead.
+     */
+    @Test fun limitFallsBackToAFullReadWithoutACompletePage() = runTest2 {
+        val (mock, data, cache) = backgroundScope.pagingFixture(4)
+        val ref = cache.list(Query(Condition.Always, sort { it.int.ascending() }, limit = 10))
+        val release = ref.addListener { }
+        delay(5.seconds)
+        assertEquals(data, ref.state.getOrNull())
+
+        mock.queries.clear()
+        ref.limit(20)
+
+        assertEquals(data, ref.state.getOrNull())
+        assertEquals(Condition.Always, mock.queries.single().condition, "should re-read, not page past the end")
+        assertEquals(20, mock.queries.single().limit)
+
+        release()
+    }
+
+    /** Shrinking re-reads rather than paging, since there is nothing new to retrieve. */
+    @Test fun limitShrinks() = runTest2 {
+        val (_, data, cache) = backgroundScope.pagingFixture(10)
+        val ref = cache.list(Query(Condition.Always, sort { it.int.ascending() }, limit = 6))
+        val release = ref.addListener { }
+        delay(5.seconds)
+        assertEquals(data.take(6), ref.state.getOrNull())
+
+        ref.limit(2)
+        assertEquals(data.take(2), ref.state.getOrNull())
 
         release()
     }

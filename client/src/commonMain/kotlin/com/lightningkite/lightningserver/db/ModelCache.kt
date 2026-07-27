@@ -129,7 +129,11 @@ public class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
     private val multiget: BatchAndQueue<ID, T?> = BatchAndQueue<ID, T?>(scope, log = log?.tag("multiget")) {
         val r = skipCache.query(
             Query(
-                condition = Condition.OnField(idProp, Condition.Inside(it))
+                condition = Condition.OnField(idProp, Condition.Inside(it)),
+                // Must cover the whole batch.  Anything the query doesn't return is treated as
+                // confirmed-missing below, so a limit shorter than the batch would report existing
+                // items as deleted.  Query's default limit is far smaller than a full batch.
+                limit = it.size,
             )
         )
         newData.value = CacheUpdate.MultiGetResult(it.toSet() - r.mapTo(HashSet()) {it._id}, r)
@@ -267,10 +271,12 @@ public class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
          * Retrieves and records the outcome, so [state] can report a failure instead of sitting in
          * a loading state forever.  Rethrows, so callers that can react to it themselves still see it.
          */
-        protected suspend fun fetch() {
+        protected suspend fun fetch(): Unit = recordingOutcome { retrieve() }
+
+        /** [fetch] for retrievals other than [retrieve], such as a pagination extension. */
+        protected suspend fun <R> recordingOutcome(action: suspend () -> R): R {
             try {
-                retrieve()
-                fetchError.value = null
+                return action().also { fetchError.value = null }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -446,7 +452,15 @@ public class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
         query: Query<T>,
         maximumAge: Duration,
         pullFrequency: Duration,
-    ): ModelCacheLimitReadable<T> = ModelCacheLimitReadableImpl(query, maximumAge, pullFrequency)
+    ): ModelCacheLimitReadable<T> = ModelCacheLimitReadableImpl(
+        // Make the sort total before it ever reaches the server.  The cache already materializes
+        // lists with `ensureTotal` applied, so without this the server and the client can disagree
+        // about which tied rows fall inside the limit; it is also what makes a pagination cursor
+        // (`orderBy.after`) well defined.  Note this changes the ORDER BY sent to the server.
+        query.copy(orderBy = query.orderBy.ensureTotal(serializer)),
+        maximumAge,
+        pullFrequency,
+    )
 
     /** Tracks the results of a query.  See [SelfRefreshing] for the lifecycle. */
     public inner class ModelCacheLimitReadableImpl(
@@ -460,7 +474,7 @@ public class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
         private var currentQuery: Query<T> = query
 
         override val socketCondition: Condition<T> get() = currentQuery.condition
-        override val changes: Listenable get() = cache.updates
+        override val changes: Listenable get() = cache.updates(currentQuery)
         override fun cached(): WithTimestamp<List<T>>? =
             cache.cached(currentQuery)?.let { WithTimestamp(it.item, it.at) }
 
@@ -482,10 +496,44 @@ public class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
                 interruptPolling()
             }
 
+        /**
+         * Grows or shrinks the list, retrieving only what is actually missing.
+         *
+         * When growing on top of a full page we already hold, this pages forward with a cursor -
+         * `condition AND orderBy.after(lastItemWeHave)` - and appends, instead of re-reading the
+         * rows we already have.  Scrolling therefore costs one page per page rather than growing
+         * with the length of the list.
+         *
+         * [currentQuery] is only moved to the new limit once the data behind it is cached, so
+         * readers keep seeing the shorter list while the page loads rather than blanking.
+         */
         override suspend fun limit(count: Int) {
-            if (count == currentQuery.limit) return
-            currentQuery = currentQuery.copy(limit = count)
-            fetch()
+            val previous = currentQuery
+            if (count == previous.limit) return
+            val target = previous.copy(limit = count)
+
+            // Extending is only sound on top of a complete page: a short cached list has already
+            // reached the end of the results, so there is nothing after its last item to ask for.
+            val known = cache.cached(previous)?.takeIf { count > previous.limit && it.item.size >= previous.limit }
+            if (known == null || known.item.isEmpty()) {
+                currentQuery = target
+                fetch()
+                return
+            }
+
+            recordingOutcome {
+                val page = skipCache.query(
+                    Query(
+                        condition = Condition.And(listOf(previous.condition, previous.orderBy.after(known.item.last()))),
+                        orderBy = previous.orderBy,
+                        limit = count - known.item.size,
+                    )
+                )
+                // The head of the list was not re-read, so the combined answer is only as fresh as
+                // its oldest part - otherwise paging forever would keep it perpetually "fresh".
+                newData.value = CacheUpdate.QueryResult(target, known.item + page, at = known.at)
+                currentQuery = target
+            }
         }
 
         override fun equals(other: Any?): Boolean = other is ModelCache<T, ID>.ModelCacheLimitReadableImpl

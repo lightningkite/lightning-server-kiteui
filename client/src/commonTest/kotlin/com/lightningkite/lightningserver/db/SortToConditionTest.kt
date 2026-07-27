@@ -1,11 +1,14 @@
 package com.lightningkite.lightningserver.db
 
+import com.lightningkite.services.database.SortPart
 import com.lightningkite.services.database.comparator
+import com.lightningkite.services.database.path
 import com.lightningkite.services.database.sort
 import com.lightningkite.services.database.notNull
 import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 
 /**
  * Test suite for Sort.after() functionality.
@@ -89,6 +92,17 @@ class SortToConditionTest {
 //                println("Success on ${sort} index $index.\n${toString(lastElement)}\n${condition}\nFull List: ${sorted.joinToString(transform = ::toString)}")
             }
         }
+    }
+
+    /**
+     * A case-insensitive sort orders by the lowercased value, but [after] can only generate
+     * case-sensitive comparisons, so the cursor would land in the wrong place.  It must refuse
+     * rather than silently hand back a condition that skips and duplicates rows across pages.
+     */
+    @Test
+    fun caseInsensitiveSortIsRefused() {
+        val sort = listOf(SortPart(path<LargeTestModel>().string, ascending = true, ignoreCase = true))
+        assertFailsWith<IllegalArgumentException> { sort.after(LargeTestModel(string = "a")) }
     }
 }
 

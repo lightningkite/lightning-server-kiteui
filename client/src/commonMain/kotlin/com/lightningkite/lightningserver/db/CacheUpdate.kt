@@ -116,10 +116,15 @@ public sealed class CacheUpdate<T : HasId<ID>, ID : Comparable<ID>> {
      *
      * @param query The query that was executed (condition, sort, limit)
      * @param result The list of items that matched the query
+     * @param at When this answer was obtained, defaulting to now.  Pass it explicitly when the
+     *   result was assembled from pieces retrieved at different times - a list extended by
+     *   pagination is only as fresh as its oldest segment, and claiming otherwise would let a
+     *   caller page forever without the head of the list ever being refreshed.
      */
     public class QueryResult<T : HasId<ID>, ID : Comparable<ID>>(
         public val query: Query<T>,
-        public val result: List<T>
+        public val result: List<T>,
+        public val at: Instant? = null,
     ): CacheUpdate<T, ID>(){
         override val items: Collection<T> get() = result
         override fun toString(): String = "QueryResult(query=$query, ${result.size} items)"
