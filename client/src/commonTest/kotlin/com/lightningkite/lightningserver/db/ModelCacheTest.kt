@@ -1529,10 +1529,10 @@ class ModelCacheTest {
     }
 
     /**
-     * A cached list shorter than its limit has already reached the end of the results, so there is
-     * nothing after its last row to page to - it has to be re-read in full instead.
+     * A list that came back shorter than its limit ran off the end of the results, which is complete
+     * knowledge of its condition - so raising the limit has nothing left to ask for.
      */
-    @Test fun limitFallsBackToAFullReadWithoutACompletePage() = runTest2 {
+    @Test fun limitDoesNotRefetchWhenTheEndIsAlreadyKnown() = runTest2 {
         val (mock, data, cache) = backgroundScope.pagingFixture(4)
         val ref = cache.list(Query(Condition.Always, sort { it.int.ascending() }, limit = 10))
         val release = ref.addListener { }
@@ -1543,8 +1543,11 @@ class ModelCacheTest {
         ref.limit(20)
 
         assertEquals(data, ref.state.getOrNull())
-        assertEquals(Condition.Always, mock.queries.single().condition, "should re-read, not page past the end")
-        assertEquals(20, mock.queries.single().limit)
+        assertEquals(
+            0,
+            mock.queries.size,
+            "a page shorter than its limit already proved there is nothing more to find",
+        )
 
         release()
     }

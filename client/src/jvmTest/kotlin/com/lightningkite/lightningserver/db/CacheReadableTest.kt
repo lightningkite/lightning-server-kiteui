@@ -38,7 +38,7 @@
  *    - weirdUpdateCase: Edge case handling
  *    - insertOK/replaceOK/deleteOk: Various operations
  *    - fromScratch: Building from nothing
- *    This functionality is now handled by ListReconstructionCalculator.
+ *    This functionality is now handled by CoverageStore.
  *
  * 4. WatchingWrapperTests - Tests for resource watching and lifecycle management
  *    - test: Basic watching behavior

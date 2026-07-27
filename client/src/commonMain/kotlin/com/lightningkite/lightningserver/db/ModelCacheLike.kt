@@ -58,10 +58,14 @@ public interface ModelCacheLike<T : HasId<ID>, ID : Comparable<ID>> {
      * - If [pullFrequency] > 0, the query will be polled at that interval
      * - WebSocket updates (if available) will update matching items in real-time
      *
-     * **IMPORTANT**: The cache intelligently merges query results. If you query for different
-     * subsets of data, the cache reconstructs the full result set from partial queries.
+     * **IMPORTANT**: results are shared. Items retrieved by any query - or by an [item] lookup - are
+     * held once, so a query can be answered from what other reads already established, and a change
+     * seen anywhere is seen everywhere.
      *
-     * @param query The query to execute (condition, sorting, limit, skip)
+     * @param query The query to execute. [Query.skip] must be zero and [Query.limit] positive:
+     *   a skipped query says nothing about the rows before it, which is the only thing the cache
+     *   knows how to record, and a limit of zero asks the server for nothing. Page with
+     *   [LimitReactiveList.limit] instead of skipping.
      * @param maximumAge How old cached data can be before triggering a refresh (default: never expires)
      * @param pullFrequency How often to poll for updates (default: no polling)
      * @return A reactive reference to the query results that updates automatically

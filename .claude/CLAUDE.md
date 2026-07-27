@@ -85,8 +85,13 @@ Forms are **cached** to handle recursive/nested data structures efficiently.
 - **Reactive Tracking**:
   - `ModelCacheItemReadable<T>` - Single item tracking by ID
   - `ModelCacheLimitReadable<T>` - Collection tracking with queries
-- **Update Pipeline**: Single `newData` signal processes all updates (queries, mutations, socket events, deletions)
-- **List Reconstruction**: `ListReconstructionCalculator` intelligently merges partial query results
+- **One store**: `CoverageStore` holds every item once, plus timestamped *claims* about which queries
+  it knows completely. A read is answered locally only when a claim backs it; otherwise it fetches.
+  Looking an item up by ID is not a special case - it is a query for one row, so a list that already
+  covered the item answers it without a request.
+- **Where claims come from**: mostly one inference - a query returning fewer rows than its limit has
+  run off the end of its results, so it knows that condition completely. A query that fills its limit
+  knows only as far as its last row, and pagination extends that boundary with a cursor.
 
 ### Authentication System
 
@@ -143,6 +148,7 @@ Related files: `admin/src/commonMain/kotlin/com/lightningkite/lightningserver/ad
 
 - `client/src/commonMain/kotlin/com/lightningkite/kiteui/forms/FormModule.kt` - Form registry
 - `client/src/commonMain/kotlin/com/lightningkite/lightningserver/db/ModelCache.kt` - Caching system
+- `client/src/commonMain/kotlin/com/lightningkite/lightningserver/db/CoverageStore.kt` - What the cache knows
 - `client/src/commonMain/kotlin/com/lightningkite/kiteui/auth/` - Auth components
 - `admin/src/commonMain/kotlin/com/lightningkite/lightningserver/admin/CollectionAdminScreen.kt` - Main admin CRUD screen
 

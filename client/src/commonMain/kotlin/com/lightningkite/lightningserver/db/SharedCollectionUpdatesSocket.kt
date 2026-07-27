@@ -54,7 +54,7 @@ import kotlin.time.Duration.Companion.seconds
  *
  * ## Timestamp Tracking
  * Each requirement tracks [Req.activatedAt] timestamp, which is critical for [ModelCache]
- * to determine if cached data is "live". See [CacheUpdate.SocketChanges] for details.
+ * to determine if cached data is "live".
  *
  * ## Error Handling
  * - If acknowledgement isn't received within 4 seconds, the condition is resent
@@ -125,8 +125,10 @@ public class SharedCollectionUpdatesSocket<T : HasId<ID>, ID : Comparable<ID>>(
      * @property activatedAt Timestamp when this requirement was activated (null if inactive)
      * @property satisfied Reactive boolean indicating if socket is currently listening to this condition
      */
-    public inner class Req(override val condition: Condition<T>) : BaseResourceUse(), CacheUpdate.SocketChanges.ConditionAndTimestamp<T> {
-        override var activatedAt: Instant? = null
+    public inner class Req(public val condition: Condition<T>) : BaseResourceUse() {
+        /** When this requirement was activated, or null while inactive. */
+        public var activatedAt: Instant? = null
+            private set
 
         override fun activate() {
             desiredRequirements.value += this
