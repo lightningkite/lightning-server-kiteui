@@ -185,31 +185,3 @@ public sealed class CacheUpdate<T : HasId<ID>, ID : Comparable<ID>> {
     }
 }
 
-/*
- * TODO: API Improvement Recommendations
- *
- * 1. Timestamp Information
- *    Current: Only SocketChanges has timestamp information via ConditionAndTimestamp
- *    Problem: Other update types don't indicate when the update occurred
- *    Suggestion: Add optional timestamp field to all update types for better cache age tracking
- *
- * 2. Batching/Combining Updates
- *    Current: Multiple updates require multiple CacheUpdate events
- *    Problem: Inefficient when applying many changes at once
- *    Suggestion: Add CombinedUpdate type that batches multiple updates
- *
- * 3. Partial Update Metadata
- *    Current: No way to indicate if an update is partial vs. complete
- *    Problem: Handlers can't distinguish between "here's everything" and "here's what changed"
- *    Suggestion: Add isComplete/isPartial flag to relevant types
- *
- * 4. Source Tracking
- *    Current: No indication of where the update came from
- *    Problem: Can't distinguish user mutations from socket updates from polling
- *    Suggestion: Add source: UpdateSource enum (API, WebSocket, Local, etc.)
- *
- * 5. Query Result Pagination Info
- *    Current: QueryResult doesn't indicate if more results exist
- *    Problem: Can't tell if limit was hit vs. no more items exist
- *    Suggestion: Add hasMore/totalCount fields to QueryResult
- */

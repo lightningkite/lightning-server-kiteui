@@ -10,6 +10,7 @@ import com.lightningkite.services.database.simplify
 import com.lightningkite.reactive.context.reactive
 import com.lightningkite.reactive.core.ReactiveValue
 import com.lightningkite.reactive.core.Signal
+import com.lightningkite.reactive.extensions.debounce
 import com.lightningkite.reactive.extensions.use
 import com.lightningkite.reactive.lensing.lens
 import com.lightningkite.services.database.walk
@@ -303,7 +304,7 @@ public class SharedCollectionUpdatesSocket<T : HasId<ID>, ID : Comparable<ID>>(
 
         // Main reactive loop: manage socket lifecycle based on requirements
         // Debounce to avoid rapid connect/disconnect during startup when many requirements are added
-        val debouncedRequirements = desiredRequirements.debounce(scope, 100.milliseconds)
+        val debouncedRequirements = desiredRequirements.debounce(100.milliseconds, scope)
         scope.reactive {
             val requirements = debouncedRequirements()
             // Only keep socket open if we have active requirements
@@ -317,46 +318,4 @@ public class SharedCollectionUpdatesSocket<T : HasId<ID>, ID : Comparable<ID>>(
         }
     }
 }
-
-/*
- * TODO: API Improvement Recommendations
- *
- * 1. Acknowledgement Timeout Configuration
- *    Current: Hardcoded 4-second timeout
- *    Suggestion: Make timeout configurable per-socket or globally
- *
- * 2. Retry Strategy
- *    Current: Single retry on timeout, infinite retries if always timing out
- *    Problem: Could spam server if network is bad
- *    Suggestion: Exponential backoff, max retries, or circuit breaker pattern
- *
- * 3. Condition Mismatch Handling
- *    Current: Just logs when conditions don't match
- *    Problem: Unclear what should happen - resend? ignore? close socket?
- *    Suggestion: Define explicit behavior, possibly emit error event
- *
- * 4. Multiple Socket Support
- *    Current: Single socket per collection type
- *    Suggestion: Support multiple sockets for different servers/endpoints
- *
- * 5. Connection State Exposure
- *    Current: Connection state is only in logs
- *    Suggestion: Expose readable connection state (connecting, connected, closed, error)
- *
- * 6. Debounce Configuration
- *    Current: Hardcoded 100ms debounce
- *    Suggestion: Make configurable
- *
- * 7. Message Ordering Guarantees
- *    Current: No explicit ordering guarantees documented
- *    Suggestion: Document whether messages are guaranteed to be processed in order
- *
- * 8. Error Recovery
- *    Current: Assumes socket will reconnect automatically
- *    Suggestion: Add hooks for custom error recovery strategies
- *
- * 9. Metrics
- *    Current: No metrics on socket performance
- *    Suggestion: Track: messages received, conditions sent, acknowledgement latency, reconnection count
- */
 

@@ -102,7 +102,7 @@ private val SETTINGS_FIELD_WIDTH = 20.rem
  *
  * Note: This function performs reactive setup and will rebuild navigation when server schema changes.
  */
-fun ViewWriter.app(navigator: PageNavigator, dialog: PageNavigator) {
+fun ViewWriter.app(navigator: PageNavigator) {
     // Force initialization of the timezone module to ensure timezone support is available
     // This reference is intentional - the module must be loaded even if not directly used
     val x = JsJodaTimeZoneModule
@@ -128,7 +128,7 @@ fun ViewWriter.app(navigator: PageNavigator, dialog: PageNavigator) {
     }
 
 
-    appNav(navigator, dialog) {
+    appNav(navigator) {
         appName = "Lightning Server Admin"
 
         // Dynamically build navigation items based on server schema and permissions

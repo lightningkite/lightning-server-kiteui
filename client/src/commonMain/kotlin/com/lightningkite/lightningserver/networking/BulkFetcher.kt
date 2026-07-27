@@ -225,21 +225,22 @@ internal class MultiplexedSocket(
             .groupBy({ it.first }, { it.second })
 
 
-        override val connected = MutableStateFlow(false)
+        private val connectedSignal = Signal(false)
+        override val connected = connectedSignal.toSharedFlow()
 
         val channel = Uuid.random().toString()
 
         /** Dispatched from the single muxer listener for messages on this [channel]. */
         fun handleMessage(message: MultiplexMessage) {
             if (message.start) {
-                connected.value = true
+                connectedSignal.value = true
                 onOpenList.invokeAllSafe()
             }
             message.data?.let { data ->
                 onMessageList.toList().forEach { it(data) }
             }
             if (message.end) {
-                connected.value = false
+                connectedSignal.value = false
                 onCloseList.toList().forEach { it(-1) }
             }
         }
@@ -249,7 +250,7 @@ internal class MultiplexedSocket(
          * [lifecycle] re-sends its "start" frame once the transport reconnects.
          */
         fun handleParentClose() {
-            connected.value = false
+            connectedSignal.value = false
             onCloseList.toList().forEach { it(-1) }
         }
 
@@ -272,7 +273,7 @@ internal class MultiplexedSocket(
         val lifecycle = CoroutineScope(Job()).apply {
             reactiveScope {
                 val shouldBeOn = shouldBeOn()
-                val isOn = connected()
+                val isOn = connectedSignal()
                 val parentConnected = muxer.connected()
                 if (shouldBeOn && parentConnected && !isOn) {
                     muxer.send(
@@ -300,7 +301,7 @@ internal class MultiplexedSocket(
                     end = true
                 )
             )
-            connected.value = false
+            connectedSignal.value = false
             onCloseList.toList().forEach { it(-1) }
             channels.remove(channel)
             closeChannel?.invoke()

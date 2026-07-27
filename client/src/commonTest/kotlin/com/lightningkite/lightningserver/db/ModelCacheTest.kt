@@ -6,6 +6,7 @@ import com.lightningkite.kiteui.Platform
 import com.lightningkite.kiteui.current
 import com.lightningkite.services.database.*
 import com.lightningkite.reactive.context.reactive
+import com.lightningkite.reactive.core.ReactiveState
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -13,6 +14,8 @@ import kotlinx.coroutines.test.advanceTimeBy
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
+import kotlin.test.assertFails
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
@@ -113,6 +116,9 @@ class ModelCacheTest {
 
         delay(5.seconds)
         assertEquals(dataToInsert.take(2), lastRead)
+        // Deliberately the deprecated fire-and-forget setter - the polling loop still has to pick
+        // the new limit up.  See limitSuspendsUntilItemsArrive for the awaitable form.
+        @Suppress("DEPRECATION")
         ref.limit = 10
         delay(1.seconds)
         assertEquals(dataToInsert.take(10), lastRead)
@@ -853,33 +859,12 @@ class ModelCacheTest {
         assertTrue(mock.data.containsKey(item3._id))
     }
 
-    // =========================================================================
-    // totallyInvalidate() Bug Investigation Tests
-    // =========================================================================
-    // These tests attempt to expose issues with the totallyInvalidate() function
-    // which appears to not properly clear cached data.
-    //
-    // Current implementation of totallyInvalidate():
-    //   1. Emits to totalInvalidation flow (NOT consumed anywhere!)
-    //   2. Calls interrupt.interrupt() (only wakes up polling loops)
-    //
-    // What it should do but doesn't:
-    //   - Clear cache.clear() on ListReconstructionCalculator
-    //   - Emit CacheUpdate.SocketOverload() to newData
-    //   - Unset lastIndividualValues
-    // =========================================================================
-
     /**
      * Tests that totallyInvalidate() works immediately, not relying on cache expiration timing.
-     * by Claude
      *
      * This test verifies that after totallyInvalidate():
      * 1. Fresh data is fetched from the server
      * 2. The updated data is received
-     *
-     * BUG EXPOSURE: The current implementation only interrupts the polling delay,
-     * but if the cached data is still within maximumAge, the polling loop will
-     * see fresh data and NOT refetch.
      */
     @Test
     fun totalInvalidationImmediate() = runTest2 {
@@ -1051,45 +1036,10 @@ class ModelCacheTest {
     }
 
     /**
-     * Tests that totallyInvalidate() triggers the totalInvalidation flow.
-     *
-     * This tests that consumers listening to the totalInvalidation flow
-     * are properly notified. (Note: Currently nothing in ModelCache itself
-     * consumes this flow, which may be part of the bug.)
-     */
-    @Test
-    fun totalInvalidationFlowEmits() = runTest2 {
-        val mock = ClientModelRestEndpointsMock<LargeTestModel, Uuid>(this)
-        val cache = ModelCache<LargeTestModel, Uuid>(
-            mock,
-            LargeTestModel.serializer(),
-            scope = backgroundScope,
-            log = testLog
-        )
-
-        var flowEmitted = false
-        val collectJob = backgroundScope.launch {
-            cache.totalInvalidation.collect {
-                flowEmitted = true
-            }
-        }
-
-        delay(1.seconds)
-        cache.totallyInvalidate()
-        delay(1.seconds)
-
-        assertTrue(flowEmitted, "totalInvalidation flow should emit when totallyInvalidate() is called")
-        collectJob.cancel()
-    }
-
-    /**
      * Tests that reactive state becomes notReady after totallyInvalidate().
      *
      * After invalidation, the cache should indicate that data is stale/unavailable
      * until fresh data is fetched.
-     *
-     * BUG EXPOSURE: Current implementation doesn't unset the cached values,
-     * so state remains "ready" with stale data instead of becoming "notReady".
      */
     @Test
     fun totalInvalidationStateBecomesNotReady() = runTest2 {
@@ -1350,69 +1300,122 @@ class ModelCacheTest {
             "Item should be refreshed within 1s of bulkModify, but appears stale.",
         )
     }
+
+    /**
+     * A failed fetch must surface as an error state rather than leaving observers loading forever,
+     * and must clear itself once the fetch succeeds again.
+     */
+    @Test fun itemFetchFailureBecomesError() = runTest2 {
+        val mock = ClientModelRestEndpointsMock<LargeTestModel, Uuid>(this)
+        val item = LargeTestModel(int = 1)
+        mock.data[item._id] = item
+        mock.connectivityFailure = true
+        val cache = ModelCache(mock, LargeTestModel.serializer(), scope = backgroundScope, log = testLog)
+
+        val ref = cache.item(item._id, maximumAge = 1.minutes, pullFrequency = 10.seconds)
+        var observed: ReactiveState<LargeTestModel?> = ReactiveState.notReady
+        val release = ref.addListener { observed = ref.state }
+
+        delay(1.seconds)
+        assertNotNull(observed.exception, "The failed fetch should be reported, but got $observed")
+
+        mock.connectivityFailure = false
+        delay(20.seconds)
+        assertEquals(item, observed.getOrNull(), "The error should clear once the fetch succeeds")
+
+        release()
+    }
+
+    /** The same for query results. */
+    @Test fun listFetchFailureBecomesError() = runTest2 {
+        val mock = ClientModelRestEndpointsMock<LargeTestModel, Uuid>(this)
+        val dataToInsert = (1..3).map { LargeTestModel(int = it) }
+        mock.data.putAll(dataToInsert.associateBy { it._id })
+        mock.connectivityFailure = true
+        val cache = ModelCache(mock, LargeTestModel.serializer(), scope = backgroundScope, log = testLog)
+
+        val ref = cache.list(
+            Query(Condition.Always, sort { it.int.ascending() }),
+            maximumAge = 1.minutes,
+            pullFrequency = 10.seconds,
+        )
+        var observed: ReactiveState<List<LargeTestModel>> = ReactiveState.notReady
+        val release = ref.addListener { observed = ref.state }
+
+        delay(1.seconds)
+        assertNotNull(observed.exception, "The failed query should be reported, but got $observed")
+
+        mock.connectivityFailure = false
+        delay(20.seconds)
+        assertEquals(dataToInsert, observed.getOrNull(), "The error should clear once the query succeeds")
+
+        release()
+    }
+
+    /**
+     * [showPreviousOnLoadOrError] lets a caller opt out of the honest error reporting above and
+     * keep displaying the last value it saw.
+     */
+    @Test fun showPreviousOnLoadOrErrorKeepsLastValue() = runTest2 {
+        val mock = ClientModelRestEndpointsMock<LargeTestModel, Uuid>(this)
+        val item = LargeTestModel(int = 1)
+        mock.data[item._id] = item
+        val cache = ModelCache(mock, LargeTestModel.serializer(), scope = backgroundScope, log = testLog)
+
+        val ref = cache.item(item._id, maximumAge = 10.seconds, pullFrequency = 10.seconds)
+        val sticky = ref.showPreviousOnLoadOrError()
+        val release = sticky.addListener { sticky.state }
+
+        delay(1.seconds)
+        assertEquals(item, sticky.state.getOrNull())
+
+        // Let the cached value go stale while every refresh fails.
+        mock.connectivityFailure = true
+        delay(1.minutes)
+
+        assertNotNull(ref.state.exception, "The unwrapped reference should report the failure")
+        assertEquals(item, sticky.state.getOrNull(), "The wrapped reference should keep the last value")
+
+        release()
+    }
+
+    /**
+     * `limit(n)` must not return until the extra items are actually available, so that callers
+     * like infinite-scroll views can tell when their page has loaded.
+     */
+    @Test fun limitSuspendsUntilItemsArrive() = runTest2 {
+        val mock = ClientModelRestEndpointsMock<LargeTestModel, Uuid>(this)
+        val dataToInsert = (1..5).map { LargeTestModel(int = it) }
+        mock.data.putAll(dataToInsert.associateBy { it._id })
+        val cache = ModelCache(mock, LargeTestModel.serializer(), scope = backgroundScope, log = testLog)
+
+        val ref = cache.list(Query(Condition.Always, sort { it.int.ascending() }, limit = 2))
+        val release = ref.addListener { }
+        delay(5.seconds)
+        assertEquals(dataToInsert.take(2), ref.state.getOrNull())
+
+        ref.limit(10)
+        // Deliberately no delay - limit(n) is only allowed to return once the items are here.
+        assertEquals(dataToInsert, ref.state.getOrNull())
+
+        release()
+    }
+
+    /** A failed extension is reported to the caller rather than silently doing nothing. */
+    @Test fun limitThrowsWhenTheFetchFails() = runTest2 {
+        val mock = ClientModelRestEndpointsMock<LargeTestModel, Uuid>(this)
+        val dataToInsert = (1..5).map { LargeTestModel(int = it) }
+        mock.data.putAll(dataToInsert.associateBy { it._id })
+        val cache = ModelCache(mock, LargeTestModel.serializer(), scope = backgroundScope, log = testLog)
+
+        val ref = cache.list(Query(Condition.Always, sort { it.int.ascending() }, limit = 2))
+        val release = ref.addListener { }
+        delay(5.seconds)
+
+        mock.connectivityFailure = true
+        assertFails { ref.limit(10) }
+
+        release()
+    }
 }
 
-/*
- * ============================================================================
- * TEST COVERAGE RECOMMENDATIONS
- * ============================================================================
- *
- * Missing Test Scenarios:
- *
- * 1. Error Handling:
- *    - Test cache behavior when server returns errors (404, 500, etc.)
- *    - Test retry logic for failed requests
- *    - Test timeout scenarios
- *    - Test handling of malformed responses
- *
- * 2. Concurrent Operations:
- *    - Test simultaneous modifications to the same item from different sources
- *    - Test race conditions between WebSocket updates and polling
- *    - Test concurrent list queries with overlapping conditions
- *    - Test cache behavior under high concurrent load
- *
- * 3. Complex Query Scenarios:
- *    - Test queries with multiple sort fields
- *    - Test queries with complex nested conditions
- *    - Test pagination with cursor-based approaches
- *    - Test queries that return empty results after previously having data
- *
- * 4. Cache Eviction and Memory:
- *    - Test cache size limits and eviction policies
- *    - Test memory usage with large datasets
- *    - Test cleanup when reactive contexts are disposed
- *
- * 5. Deletion Scenarios:
- *    - Test deleting items that are referenced in multiple queries
- *    - Test bulk deletion operations
- *    - Test deletion of items while they're being modified
- *    - Test WebSocket deletion notifications
- *
- * 6. Edge Cases:
- *    - Test with null/optional fields in models
- *    - Test with models containing collections or nested objects
- *    - Test very large limit values
- *    - Test queries with limit = 0 or negative limits
- *    - Test behavior when changing query conditions dynamically
- *
- * 7. WebSocket Stability:
- *    - Test WebSocket reconnection with different backoff strategies
- *    - Test handling of duplicate WebSocket messages
- *    - Test WebSocket connection during initial cache load
- *    - Test graceful degradation when WebSocket fails but REST works
- *
- * 8. Performance Tests:
- *    - Test cache performance with thousands of items
- *    - Test query response time under various conditions
- *    - Test memory footprint over extended operation
- *
- * 9. Integration Scenarios:
- *    - Test multiple ModelCache instances for different model types
- *    - Test cross-cache dependencies (foreign key relationships)
- *    - Test cache behavior with authentication/authorization failures
- *
- * 10. List Reconstruction Edge Cases:
- *     - Test list reconstruction when items move in and out of query conditions
- *     - Test handling of items that match query but fall outside limit
- *     - Test reconstruction with conflicting WebSocket and polling data
- */

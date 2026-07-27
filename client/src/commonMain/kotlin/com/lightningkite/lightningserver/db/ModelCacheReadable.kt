@@ -39,12 +39,13 @@ public fun <T> Reactive<ModelCacheLimitReadable<T>>.flatten(): ModelCacheLimitRe
     return object : ModelCacheLimitReadable<T>, Reactive<List<T>> by (remember { root()() }) {
         override var limit: Int
             get() = root.state.onSuccess { it.limit } ?: 0
+            @Deprecated("Use limit(n) instead, which reports when the new items have arrived.")
             set(value) {
-                // TODO: grumble grumble, this is bad
                 AppScope.launch {
-                    root.invoke().limit = value
+                    root.awaitOnce().limit(value)
                 }
             }
+        override suspend fun limit(count: Int) = root.awaitOnce().limit(count)
 //        override val disconnectedAt: Reactive<Instant?> by lazy { remember { root().disconnectedAt() } }
         override val lastUpdatedAt: Reactive<Instant?> by lazy { remember { root().lastUpdatedAt() } }
 //        override suspend fun invalidate() = root.awaitOnce().invalidate()

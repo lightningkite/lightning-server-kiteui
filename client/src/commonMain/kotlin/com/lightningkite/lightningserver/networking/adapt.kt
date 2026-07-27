@@ -70,9 +70,17 @@ private class SerializerSocket<SEND, RECEIVE>(
     override fun send(data: SEND) = wraps.send(json.encodeToString(send, data))
 }
 
+/**
+ * Bridges a [Reactive] into a [SharedFlow], preserving StateFlow-like semantics: with the default
+ * [replay] of 1 a new subscriber immediately receives the current value and then every change,
+ * rather than only seeing changes that happen after it subscribes.
+ *
+ * Listening to the source is scoped to subscribers - it begins when the first collector arrives and
+ * stops when the last leaves, restarting cleanly if collectors come back later.
+ */
 public fun <T> Reactive<T>.toSharedFlow(
     context: CoroutineContext = Dispatchers.Unconfined,
-    replay: Int = 0,
+    replay: Int = 1,
     extraBufferCapacity: Int = 0,
     onBufferOverflow: BufferOverflow = BufferOverflow.SUSPEND
 ): SharedFlow<T> {
@@ -91,12 +99,18 @@ public fun <T> Reactive<T>.toSharedFlow(
             .map { it > 0 }
             .distinctUntilChanged()
             .onEach { isActive ->
-                if (isActive) listener = this@toSharedFlow.addListener {
+                if (isActive) {
+                    // Subscribe to changes first so nothing that fires while we seed is lost, then
+                    // push the current value so new subscribers see the latest state right away.
+                    listener = this@toSharedFlow.addListener {
+                        this@toSharedFlow.state.onSuccess { flow.tryEmit(it) }
+                    }
                     this@toSharedFlow.state.onSuccess { flow.tryEmit(it) }
-                }
-                else {
-                    // No longer active, stop listening
+                } else {
+                    // No longer active, stop listening.  Clearing the reference lets a later
+                    // subscriber restart listening via [startListening] below.
                     listener?.invoke()
+                    listener = null
                     cancel()
                 }
             }

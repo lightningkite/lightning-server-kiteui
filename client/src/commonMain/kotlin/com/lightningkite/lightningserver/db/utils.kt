@@ -79,78 +79,6 @@ public class ClockContextElement(public val clock: Clock) : AbstractCoroutineCon
 }
 
 /**
- * Creates a delay function that synchronizes to even intervals of the given duration.
- *
- * Instead of delaying for exactly the specified duration, this function calculates
- * the time remaining until the next "boundary" of that duration. For example, with
- * a 60-second duration, it will delay until the next minute boundary (e.g., if called
- * at 10:30:25, it will delay 35 seconds until 10:31:00).
- *
- * This is useful for polling/refresh operations that should happen at predictable
- * intervals aligned with the clock, rather than drifting based on when they start.
- *
- * @param clock The clock to use for time calculations. Defaults to [Clock.System].
- * @return A suspend function that delays until the next boundary of the given duration.
- */
-public fun synchronizingDelay(clock: Clock = Clock.System): suspend (duration: Duration) -> Unit {
-    return {
-        val inMillis = it.inWholeMilliseconds
-        val n = clock.now()
-        // Calculate next boundary: (currentTime % interval) gives offset, add full interval to get next
-        val time = (n.toEpochMilliseconds() % inMillis).plus(inMillis).let(Instant::fromEpochMilliseconds)
-        delay(time - n)
-    }
-}
-
-/**
- * A Flow wrapper that can be closed/disposed to release resources.
- *
- * Extends [AutoCloseable] to allow proper cleanup of flow resources
- * when the flow is no longer needed.
- */
-public interface CloseableFlow<T> : AutoCloseable {
-    public val flow: Flow<T>
-}
-
-/**
- * Converts a [TypedWebSocket] into a Flow of Flows representing the WebSocket lifecycle.
- *
- * The outer Flow emits:
- * - A non-null inner Flow when the WebSocket connection opens
- * - `null` when the WebSocket connection closes
- *
- * The inner Flow emits individual messages received on the WebSocket while connected.
- * Each time the WebSocket reconnects, a new inner Flow is created and emitted.
- *
- * This allows consumers to handle reconnection logic by subscribing to new inner flows
- * as they are emitted.
- *
- * @param scope The [CoroutineScope] that manages the WebSocket lifecycle listeners.
- * @param log Optional logger for debugging connection events and message flow.
- * @return A Flow that emits inner Flows for each WebSocket connection session, or null when disconnected.
- */
-public fun <SEND, RECEIVE> TypedWebSocket<SEND, RECEIVE>.toFlow(scope: CoroutineScope, log: Log? = null): Flow<Flow<RECEIVE>?> {
-    val out = MutableSharedFlow<Flow<RECEIVE>?>(replay = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST, extraBufferCapacity = 1)
-    var current: MutableSharedFlow<RECEIVE> = MutableSharedFlow(replay = 0, onBufferOverflow = BufferOverflow.DROP_OLDEST, extraBufferCapacity = 1)
-
-    onOpen {
-        // Create a fresh flow for this connection session
-        current = MutableSharedFlow(replay = 0, onBufferOverflow = BufferOverflow.DROP_OLDEST, extraBufferCapacity = 1)
-        log?.log("onOpen current ${current.identityHashCode()}, NO MERGE")
-        out.tryEmit(current)
-    }
-    onClose { code ->
-        log?.log("onClose current ${current.identityHashCode()}, NO MERGE")
-        out.tryEmit(null)
-    }
-    onMessage {
-        log?.log("received message: $it, forwarding to flow ${current.identityHashCode()}")
-        current.tryEmit(it).also { log?.log("Success on send to flow? $it") }
-    }
-    return out
-}
-
-/**
  * Ensures that a sort order is "total" by appending a sort on the `_id` field if not already present.
  *
  * A "total" sort order guarantees a unique ordering for all items, which is essential for
@@ -260,69 +188,33 @@ public suspend fun <T> Reactive<T>.waitFor(matching: (T)->Boolean) {
 
 
 /**
- * A [Reactive] wrapper that debounces change notifications.
+ * Keeps showing the last successfully retrieved value while the source is loading or has failed.
  *
- * The state value is always immediately available from the source, but listeners
- * are only notified after a period of inactivity (no changes for [duration]).
+ * Sources like [ModelCache] report loading and failure honestly, which means a refresh that goes
+ * stale or errors out will blank the view.  Wrap them in this when the already-displayed data is
+ * still worth showing - typically for read-only displays that refresh in the background.
  *
- * This is useful for expensive operations that should only happen after the user
- * has stopped making changes (e.g., auto-save, search-as-you-type).
+ * ```kotlin
+ * val users = cache.list(query, maximumAge = 30.seconds).showPreviousOnLoadOrError()
+ * ```
+ *
+ * Nothing is remembered until a success has actually been observed, so the first load still
+ * reports loading and then any failure.
  */
-public data class DebounceReactive<T>(val source: Reactive<T>, val scope: CoroutineScope, val duration: Duration) : Reactive<T>, Listenable by DebounceListenable(source, scope, duration) {
-    override val state: ReactiveState<T> get() = source.state
-}
-
-/**
- * A [Listenable] wrapper that debounces change notifications.
- *
- * Listeners are only invoked after [duration] has passed since the last change.
- * If multiple changes occur within the debounce window, only the final one triggers a notification.
- *
- * **Thread Safety**: The changeCount increment is not atomic, so this should be used with
- * care in multi-threaded scenarios.
- */
-public data class DebounceListenable(val source: Listenable, val scope:CoroutineScope, val duration: Duration) : Listenable {
-    private var changeCount = 0
-
-    override fun addListener(listener: () -> Unit): () -> Unit {
-        return source.addListener {
-            val num = ++changeCount
-            scope.launch {
-                delay(duration)
-                // Only invoke if no newer changes have occurred
-                if (num == changeCount) listener()
-            }
+public fun <T> Reactive<T>.showPreviousOnLoadOrError(): Reactive<T> {
+    return object: Reactive<T> {
+        private var lastSuccessfulState: ReactiveState<T>? = null
+        override val state: ReactiveState<T> get() {
+            val otherState = this@showPreviousOnLoadOrError.state
+            return otherState.handle(
+                success = { lastSuccessfulState = otherState; otherState },
+                exception = { lastSuccessfulState ?: otherState },
+                notReady = { lastSuccessfulState ?: otherState },
+            )
         }
+        override fun addListener(listener: () -> Unit): Release = this@showPreviousOnLoadOrError.addListener(listener)
     }
 }
-
-/**
- * Creates a debounced version of this [Reactive] that delays listener notifications.
- *
- * @param scope The [CoroutineScope] used to launch delay coroutines.
- * @param timeMs The debounce delay in milliseconds.
- * @see DebounceReactive
- */
-public fun <T> Reactive<T>.debounce(scope: CoroutineScope, timeMs: Long): Reactive<T> = DebounceReactive(this, scope, timeMs.milliseconds)
-
-/**
- * Creates a debounced version of this [Reactive] that delays listener notifications.
- *
- * @param scope The [CoroutineScope] used to launch delay coroutines.
- * @param duration The debounce delay duration.
- * @see DebounceReactive
- */
-public fun <T> Reactive<T>.debounce(scope: CoroutineScope, duration: Duration): Reactive<T> = DebounceReactive(this, scope, duration)
-
-/**
- * Creates a [Reactive] that only notifies listeners when the value actually changes.
- *
- * This is implemented using a lens identity transformation, which internally tracks
- * previous values and only fires when they differ.
- *
- * Useful for preventing unnecessary UI updates when the same value is set repeatedly.
- */
-public fun <T> Reactive<T>.requireDifferenceForListener(): Reactive<T> = lens { it }
 
 /**
  * Wraps a [Reactive] so that it automatically manages a [ResourceUse] based on listener count.
@@ -461,58 +353,3 @@ public suspend fun <R> race(vararg races: suspend () -> R): R {
  */
 internal fun CoroutineScope.now(): Instant = coroutineContext[ClockContextElement]?.clock?.now() ?: Clock.System.now()
 
-/*
- * API IMPROVEMENT RECOMMENDATIONS:
- *
- * 1. Thread safety for BaseResourceUse and debounce implementations
- *    - BaseResourceUse.uses counter is not thread-safe
- *    - DebounceListenable.changeCount is not thread-safe
- *    - Consider using AtomicInteger or adding documentation about single-threaded usage
- *
- * 2. Add throttle() complement to debounce()
- *    - Debounce waits for inactivity, throttle limits frequency
- *    - Throttle would be useful for rate-limiting expensive operations
- *
- * 3. Improve synchronizingDelay edge case handling
- *    - What happens if duration is 0 or negative?
- *    - What happens if duration > epoch time?
- *    - Add validation or document expected behavior
- *
- * 4. Add cancel safety to race() function
- *    - Currently racing operations may continue after first completes
- *    - Consider explicitly cancelling losers or documenting this behavior more clearly
- *    - Could add a raceCancelling() variant that cancels losers
- *
- * 5. Consider adding timeout variants
- *    - waitFor() could have a timeout parameter
- *    - InterruptibleDelay.delay() could take max duration
- *
- * 6. Add more WebSocket flow utilities
- *    - toFlow() could have retry/reconnection parameters
- *    - Could add error handling configuration
- *    - Consider adding backpressure strategy options
- *
- * 7. ensureTotal() should handle missing _id more gracefully
- *    - Currently throws NPE/ClassCastException
- *    - Could return Result<List<SortPart<T>>> or add validation
- *    - Could add a ensureTotalOrNull() variant
- *
- * 8. requireDifferenceForListener() needs better naming
- *    - The name doesn't clearly convey it filters duplicate notifications
- *    - Consider distinctUntilChanged() (matches RxJava/Flow naming)
- *    - Add example usage in documentation
- *
- * 9. ResourceUse factory function shadows interface name
- *    - Having both ResourceUse interface and ResourceUse() factory is confusing
- *    - Consider renaming factory to resourceUseFromCoroutine() or similar
- *
- * 10. Add structured concurrency support
- *     - Some utilities don't properly propagate cancellation
- *     - Consider adding CoroutineScope extensions where appropriate
- *     - Document cancellation behavior clearly
- *
- * 11. Memory leak potential in listeners
- *     - Several implementations create closures that could retain references
- *     - Consider adding cleanup guidance in documentation
- *     - Could add leak detection in debug builds
- */

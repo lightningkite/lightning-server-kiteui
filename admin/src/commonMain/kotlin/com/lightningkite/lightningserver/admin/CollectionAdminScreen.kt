@@ -304,10 +304,10 @@ class CollectionAdminPage(val collectionName: String) : Page {
                 permissionRow("Update") { permissions().update.simplify().friendly() }
                 permissionRow(
                     "Restricted fields",
-                    visibleIf = { permissions().updateRestrictions.fields.isNotEmpty() }
+                    visibleIf = { permissions().updateRestrictions.perField.keys.isNotEmpty() }
                 ) {
-                    permissions().updateRestrictions.fields
-                        .joinToString(", ") { it.property.properties.joinToString("'s ") { it.displayName } }
+                    permissions().updateRestrictions.perField.keys
+                        .joinToString(", ") { it.properties.joinToString("'s ") { it.displayName } }
                 }
                 permissionRow("Delete") { permissions().delete.simplify().friendly() }
             }

@@ -110,28 +110,3 @@ public interface ListReconstructionCalculator<T : HasId<ID>, ID : Comparable<ID>
     public fun clear()
 }
 
-/*
- * TODO: API Improvement Recommendations
- *
- * 1. Async Update Support
- *    Current: update() is synchronous
- *    Suggestion: Consider suspend fun update() for implementations that need async processing
- *
- * 2. Bulk Update API
- *    Current: Multiple updates require multiple update() calls
- *    Suggestion: Add updateAll(updates: List<CacheUpdate>) for batch processing
- *
- * 3. Cache Statistics
- *    Suggestion: Add fun stats(): CacheStats to expose hit rates, query counts, etc.
- *
- * 4. Eviction Hooks
- *    Suggestion: Add callbacks for when queries are evicted from cache (for LRU implementations)
- *
- * 5. Completeness API
- *    Current: No way to query if a cached result is complete or partial
- *    Suggestion: Add fun isComplete(query: Query<T>): Boolean or include in WithTimestampAndLimit
- *
- * 6. Query-Specific Clearing
- *    Current: Only clear() for all queries
- *    Suggestion: Add clearQuery(query: Query<T>) to selectively invalidate
- */

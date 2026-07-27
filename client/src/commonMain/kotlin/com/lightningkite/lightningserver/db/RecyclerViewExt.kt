@@ -24,6 +24,7 @@ public fun <T, ID> Recycler2.children(
         if (inner is LimitReactiveList<T>) {
             if (inner.limit < lastIndex() + 50) {
                 inner.limit = lastIndex() + 100
+                // TODO: Use new version, but don't animate load this way
             }
         }
     }

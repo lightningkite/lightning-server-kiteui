@@ -51,7 +51,7 @@ fun main() {
         serverUrl.value = info.url
     }
     root(appTheme) {
-        app(PageNavigator { AutoRoutes }, PageNavigator { AutoRoutes })
+        app(PageNavigator { AutoRoutes })
     }
 }
 

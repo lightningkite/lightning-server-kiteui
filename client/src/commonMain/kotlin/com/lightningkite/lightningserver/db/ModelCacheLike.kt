@@ -127,6 +127,7 @@ public interface ModelCacheLike<T : HasId<ID>, ID : Comparable<ID>> {
      *
      * Equivalent to `item(id, pullFrequency = 1.minutes)`
      */
+    @Deprecated("It's better to use item() and specify your pull frequency.", ReplaceWith("this.item(id, pullFrequency = 1.minutes)", "kotlin.time.Duration.Companion.minutes"))
     public operator fun get(id: ID): ModelCacheItemReadable<T> = this.item(id, pullFrequency = 1.minutes)
 
     /**
@@ -134,6 +135,7 @@ public interface ModelCacheLike<T : HasId<ID>, ID : Comparable<ID>> {
      *
      * Equivalent to `list(query, pullFrequency = 1.minutes)`
      */
+    @Deprecated("It's better to use list() and specify your pull frequency.", ReplaceWith("this.list(query, pullFrequency = 1.minutes)", "kotlin.time.Duration.Companion.minutes"))
     public fun query(query: Query<T>): ModelCacheLimitReadable<T> = this.list(query, pullFrequency = 1.minutes)
 
     /**
@@ -142,6 +144,7 @@ public interface ModelCacheLike<T : HasId<ID>, ID : Comparable<ID>> {
      * Relies on WebSocket updates and [maximumAge] only.
      * Equivalent to `item(id)`
      */
+    @Deprecated("It's better to use item() and specify your pull frequency.", ReplaceWith("this.item(id)"))
     public fun watch(id: ID): ModelCacheItemReadable<T> = this.item(id)
 
     /**
@@ -150,6 +153,7 @@ public interface ModelCacheLike<T : HasId<ID>, ID : Comparable<ID>> {
      * Relies on WebSocket updates and [maximumAge] only.
      * Equivalent to `list(query)`
      */
+    @Deprecated("It's better to use list() and specify your pull frequency.", ReplaceWith("this.list(query)"))
     public fun watch(query: Query<T>): ModelCacheLimitReadable<T> = this.list(query)
 
     /**
@@ -165,71 +169,3 @@ public interface ModelCacheLike<T : HasId<ID>, ID : Comparable<ID>> {
     public suspend fun insert(items: List<T>): List<T> = addAll(items)
 }
 
-/*
- * API IMPROVEMENT RECOMMENDATIONS:
- *
- * 1. Add delete/remove operations
- *    - Currently missing delete(id: ID) and deleteAll(ids: List<ID>)
- *    - Should return success/failure indication
- *    - Should update cache and notify queries
- *
- * 2. Add modify/update operations
- *    - Currently missing update(id: ID, modification: Modification<T>)
- *    - Having to use bulkModify for single-item updates is verbose
- *    - Should return the updated item
- *
- * 3. Clarify relationship between add/upsert
- *    - add() says "typically with an unset or temporary ID" but what if ID is set?
- *    - Does add() fail if ID already exists? Or does it behave like upsert?
- *    - Should document the exact semantics or provide separate insert/replace methods
- *
- * 4. Add exists() check operation
- *    - exists(id: ID): Boolean would be useful for validation
- *    - Could be optimized to not fetch full item
- *
- * 5. Add count() operation for queries
- *    - count(query: Query<T>): Int would be useful for pagination UI
- *    - Could be more efficient than fetching all items
- *
- * 6. Consider adding clear/invalidate operations
- *    - clear() to wipe all cached data
- *    - invalidate(id: ID) to force refresh of specific item
- *    - invalidateQuery(query: Query<T>) to force refresh of query
- *
- * 7. Add batch/transaction support
- *    - batch { ... } block to group multiple operations
- *    - Could optimize network calls and cache updates
- *
- * 8. Improve pullFrequency = 0 semantics
- *    - Currently 0.seconds means "no polling"
- *    - Could use null instead for clarity (Duration? parameter)
- *    - Or provide named constants like Duration.NEVER_POLL
- *
- * 9. Add error handling configuration
- *    - No way to configure retry behavior
- *    - No way to handle network failures gracefully
- *    - Could add errorPolicy parameter or builder pattern
- *
- * 10. Deprecation strategy for backwards compat methods
- *     - get(), query(), watch() duplicate functionality
- *     - Consider marking them deprecated with clear migration path
- *     - Or keep them if they represent common patterns
- *
- * 11. Add refresh() operation
- *     - Force immediate refresh of item/query regardless of age
- *     - refresh(id: ID) and refresh(query: Query<T>)
- *
- * 12. Consider pagination support
- *     - list() returns all results matching query
- *     - Add paginated() variant that handles cursor/offset pagination automatically
- *     - Could integrate with Sort.toCondition.kt for cursor pagination
- *
- * 13. Add observe/Flow-based alternatives
- *     - itemFlow(id: ID): Flow<T> for idiomatic coroutine usage
- *     - listFlow(query: Query<T>): Flow<List<T>>
- *     - Would complement existing Reactive-based API
- *
- * 14. Document thread safety guarantees
- *     - Can multiple threads call operations concurrently?
- *     - Are listeners notified on specific threads/dispatchers?
- */

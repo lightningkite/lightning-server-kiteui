@@ -285,6 +285,7 @@ public fun <T> ElementWriter.CanAddScrolling.renderTable(
                     if (innerItems is LimitReactiveList<T>) {
                         if (innerItems.limit < lastIndex() + 50) {
                             innerItems.limit = lastIndex() + 100
+                            // TODO: Modify to load using the suspend mode
                         }
                     }
                 }

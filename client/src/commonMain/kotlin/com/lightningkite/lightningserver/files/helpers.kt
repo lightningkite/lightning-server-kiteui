@@ -9,6 +9,7 @@ import com.lightningkite.kiteui.models.AudioSource
 import com.lightningkite.kiteui.models.ImageLocal
 import com.lightningkite.kiteui.models.ImageRemote
 import com.lightningkite.kiteui.models.ImageSource
+import com.lightningkite.kiteui.models.UrlCacheStrategy
 import com.lightningkite.kiteui.models.VideoLocal
 import com.lightningkite.kiteui.models.VideoRemote
 import com.lightningkite.kiteui.models.VideoSource
@@ -16,11 +17,14 @@ import com.lightningkite.kiteui.requestCaptureEnvironment
 import com.lightningkite.kiteui.requestCaptureSelf
 import com.lightningkite.kiteui.views.RContext
 import com.lightningkite.services.files.ServerFile
+import kotlin.jvm.JvmOverloads
 
 public object LocalFileRegistry {
     public val fileReference: MutableMap<ServerFile, FileReference> = mutableMapOf<ServerFile, FileReference>()
 }
-public fun ServerFile.asImage(): ImageSource = LocalFileRegistry.fileReference[this]?.let(::ImageLocal) ?: ImageRemote(this.location)
+@JvmOverloads
+public fun ServerFile.asImage(cacheStrategy: UrlCacheStrategy = UrlCacheStrategy.PathOnly): ImageSource =
+    LocalFileRegistry.fileReference[this]?.let(::ImageLocal) ?: ImageRemote(this.location, cacheStrategy)
 public fun ServerFile.asVideo(): VideoSource = LocalFileRegistry.fileReference[this]?.let(::VideoLocal) ?: VideoRemote(this.location)
 public fun ServerFile.asAudio(): AudioSource = LocalFileRegistry.fileReference[this]?.let(::AudioLocal) ?: AudioRemote(this.location)
 public suspend fun FileReference.toServerFile(api: ClientUploadEarlyEndpoints): ServerFile? {
