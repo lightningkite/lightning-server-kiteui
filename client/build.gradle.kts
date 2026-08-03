@@ -3,6 +3,8 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 group = "com.lightningkite.lightningserver"
 
+val onMac = System.getProperty("os.name").contains("Mac", ignoreCase = true)
+
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.androidLibrary)
@@ -35,9 +37,12 @@ kotlin {
     js(IR) {
         browser()
     }
-    
-//    iosArm64()
-//    iosSimulatorArm64()
+
+    if (onMac) {
+        iosArm64()
+        iosSimulatorArm64()
+        iosX64()
+    }
 
     sourceSets {
         val commonMain by getting {
