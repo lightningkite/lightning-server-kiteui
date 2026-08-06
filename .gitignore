@@ -28,3 +28,5 @@ testing/.scripts-source.log
 testing/.scripts-version.log
 
 tmp
+
+.claude/
