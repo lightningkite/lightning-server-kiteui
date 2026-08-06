@@ -231,6 +231,24 @@ public class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
          */
         private val fetchError: Signal<Exception?> = Signal(null)
 
+        /**
+         * When this reader last started being observed - in practice, when its screen appeared.
+         *
+         * [maximumAge] is judged against this rather than against the passing moment, which is what
+         * makes it a condition for arriving somewhere rather than a shelf life that keeps running out
+         * while you sit there.  Before the first observation it reads as the distant past, so a
+         * caller peeking at [state] without listening is simply shown whatever is held.
+         */
+        private var enteredAt: Instant = Instant.DISTANT_PAST
+
+        /**
+         * Whether this was fresh enough to open a screen on.
+         *
+         * Data retrieved since arriving always is, since [enteredAt] precedes it.
+         */
+        private fun WithTimestamp<V>.acceptableOnArrival(): Boolean =
+            isLive(this) || enteredAt - at < maximumAge
+
         private fun WithTimestamp<V>.freshWithin(window: Duration): Boolean =
             isLive(this) || scope.now() - at < window
 
@@ -263,7 +281,7 @@ public class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
             }
         }
 
-        private val processWhileRunning: ResourceUse = ResourceUse(scope) {
+        private val refreshing: ResourceUse = ResourceUse(scope) {
             onRemove { log?.log("No longer needed") }
 
             // Sockets are preferred whenever we would otherwise poll often, since frequent polling
@@ -295,36 +313,96 @@ public class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
                 fetchInBackground()
             }
 
-            // Never poll faster than this, no matter what was asked for.
-            val pull = maxOf(5.seconds, pullFrequency)
+            // Never go back to the server more often than this, no matter what was asked for.
+            val floor = 5.seconds
+
+            // How often this screen refreshes itself, or null when the caller asked for no polling.
+            //
+            // [maximumAge] deliberately plays no part here.  It is an entry condition, answered once
+            // by [acceptable] above: arriving somewhere new is when it matters whether what we
+            // inherited is fresh enough to show, because a screen that opens on stale data betrays
+            // what people expect a page transition to do.  Staying on that screen is a different
+            // question, and letting a tolerance for slightly stale data double as a polling rate is
+            // how "I'll accept data ten seconds old" turns into hitting the server every ten seconds.
+            val cadence: Duration? = pullFrequency.takeIf { it > Duration.ZERO }?.coerceAtLeast(floor)
+
             while (true) {
-                val untilStale = cached()
-                    ?.takeIf { !needsMore() }
-                    ?.let { if (isLive(it)) pull else pull - (scope.now() - it.at) }
-                    ?: Duration.ZERO
-                if (untilStale > Duration.ZERO) {
-                    log?.log("No need to pull for $untilStale")
-                    interrupt.delay(untilStale)
-                } else {
-                    log?.log("Needs pull, starting")
-                    fetchInBackground()
-                    // Wait a full interval before retrying, so failures don't spin.
-                    interrupt.delay(pull)
+                val held = cached()
+                val wait = when {
+                    // Nothing held, or knowledge that runs out before the limit does.
+                    held == null || needsMore() -> Duration.ZERO
+                    // A socket is promising to tell us about changes, so there is nothing to poll for.
+                    isLive(held) -> null
+                    // Measured from when the row was last known rather than from when this reader
+                    // arrived, so opening a screen beside data fetched a moment ago waits out the
+                    // remainder of the interval instead of starting a fresh one.
+                    else -> cadence?.minus(scope.now() - held.at)
                 }
+                when {
+                    wait == null -> {
+                        // Nothing to refresh for.  Wake anyway on the same cadence: a socket going
+                        // down does not interrupt us, and noticing it late is how a reader ends up
+                        // trusting a promise nobody is keeping any more.  Waking is not fetching.
+                        log?.log("Nothing to refresh for")
+                        interrupt.delay(floor)
+                    }
+
+                    wait > Duration.ZERO -> {
+                        log?.log("No need to pull for $wait")
+                        interrupt.delay(wait)
+                    }
+
+                    else -> {
+                        log?.log("Needs pull, starting")
+                        fetchInBackground()
+                        // Wait a full interval before retrying, so failures don't spin.
+                        interrupt.delay(cadence ?: floor)
+                    }
+                }
+            }
+        }
+
+        /**
+         * [refreshing], with the arrival stamped before it starts.
+         *
+         * The stamp has to be taken synchronously, as the listener attaches: [state] is read the
+         * instant that happens, and [refreshing]'s coroutine does not get a turn until afterwards.
+         * Leaving it to the coroutine would show data inherited from elsewhere for the whole length
+         * of the retrieve meant to replace it - precisely the flash of stale content that judging
+         * [maximumAge] on arrival exists to prevent.
+         */
+        private val processWhileRunning: ResourceUse = object : ResourceUse {
+            override fun beginUse(): () -> Unit {
+                enteredAt = scope.now()
+                return refreshing.beginUse()
             }
         }
 
         /**
          * The current value.
          *
-         * Fresh cached data wins over a failed refresh - it is still within the [maximumAge] the
-         * caller asked for.  Use [showPreviousOnLoadOrError] to keep displaying data past that point.
+         * What we hold keeps being served until something replaces it; age alone never takes it
+         * away.  [maximumAge] decides one thing only - whether data inherited from elsewhere was
+         * fresh enough to show on arrival, or whether this waits for a retrieve first.
+         *
+         * The exception is a refresh that is failing, which surfaces once what we hold is older than
+         * [maximumAge].  Use [showPreviousOnLoadOrError] to keep displaying data past that point.
          *
          * Reading this does not start the background work; adding a listener does.
          */
         override val state: ReactiveState<V>
             get() {
-                cached()?.let { if (it.freshWithin(maximumAge)) return ReactiveState(it.item) }
+                val held = cached()
+                if (held != null && held.acceptableOnArrival()) {
+                    // A refresh that is failing only becomes the answer once what we hold has aged
+                    // past what the caller was willing to open on.  Before that the data is the
+                    // better answer; after it, saying nothing about a server we cannot reach would
+                    // leave someone reading minutes-old rows with no sign anything is wrong.
+                    fetchError.value
+                        ?.takeIf { !held.freshWithin(maximumAge) }
+                        ?.let { return ReactiveState.exception(it) }
+                    return ReactiveState(held.item)
+                }
                 return fetchError.value?.let { ReactiveState.exception(it) } ?: ReactiveState.notReady
             }
 

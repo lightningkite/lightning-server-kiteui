@@ -422,9 +422,13 @@ class ModelCacheTimingTest {
         release()
     }
 
-    /** The other half: a subscription that does not match the row promises nothing about it. */
+    /**
+     * The other half: a subscription that does not match the row promises nothing about it, so a
+     * change to that row goes unseen - which is the difference being covered actually makes, rather
+     * than anything to do with how old the value is allowed to get.
+     */
     @Test fun anItemIsNotKeptFreshBySubscriptionsThatDoNotCoverIt() = runTest2 {
-        val (_, data, cache) = backgroundScope.socketFixture(3)
+        val (mock, data, cache) = backgroundScope.socketFixture(3)
         // Subscribed, and matching nothing in the collection.
         val elsewhere = cache.list(
             Query(condition { it.int gt 100 }, order),
@@ -432,14 +436,16 @@ class ModelCacheTimingTest {
             pullFrequency = 5.seconds,
         )
         val elsewhereRelease = elsewhere.addListener { }
-        // Too slow to subscribe on its own, so its only hope of staying fresh is the other one.
+        // Too slow to subscribe on its own, so its only hope of hearing anything is the other one.
         val item = cache.item(data[0]._id, maximumAge = 20.seconds, pullFrequency = 10.minutes)
         val itemRelease = item.addListener { }
         delay(7.seconds)
         assertEquals(data[0], item.state.getOrNull())
 
+        // Changed on the server, with nothing subscribed that would carry the news.
+        mock.modify(data[0]._id, modification { it.short assign 7 })
         delay(30.seconds)
-        assertFalse(item.state.ready, "nothing was promising to tell us about this row")
+        assertEquals(data[0], item.state.getOrNull(), "nothing was promising to tell us about this row")
 
         itemRelease()
         elsewhereRelease()
@@ -490,5 +496,140 @@ class ModelCacheTimingTest {
         delay(2.seconds) // far short of the sixty seconds it would otherwise sleep for
         assertEquals(data + addedWhileOverloaded, ref.state.getOrNull())
         release()
+    }
+
+    // =========================================================================
+    // Arriving on a screen, and staying on it
+    // =========================================================================
+    //
+    // These two are different questions and the parameters answer one each.  `maximumAge` is asked
+    // once, on arrival: is what we inherited fresh enough to show, or do we make them wait?  Opening
+    // a screen onto stale data betrays what people expect a page transition to do.  `pullFrequency`
+    // is the whole of the second question: how often this screen refreshes itself while it is up.
+
+    /**
+     * The defaults ask for nothing: `maximumAge` of [kotlin.time.Duration.INFINITE] says the value
+     * never expires, and a `pullFrequency` of zero says do not poll.  Between them there is no reason
+     * to ever go back to the server, and a reader that goes back anyway costs a request every few
+     * seconds for as long as the screen is open.
+     */
+    @Test fun anItemThatNeitherExpiresNorPollsIsFetchedOnce() = runTest2 {
+        val (mock, data, cache) = backgroundScope.fixture(3)
+        val ref = cache.item(data[0]._id)
+        val keep = ref.addListener { }
+
+        delay(1.seconds)
+        assertEquals(1, mock.queries.size, "the first read has to fetch")
+        assertEquals(data[0], ref.state.getOrNull())
+
+        delay(5.minutes)
+        assertEquals(1, mock.queries.size, "nothing expired and nothing was asked for, so nothing should have been sent")
+        keep()
+    }
+
+    /** The same for a list, which is where the cost multiplies with everything else on screen. */
+    @Test fun aListThatNeitherExpiresNorPollsIsFetchedOnce() = runTest2 {
+        val (mock, data, cache) = backgroundScope.fixture(3)
+        val ref = cache.list(everything())
+        val keep = ref.addListener { }
+
+        delay(1.seconds)
+        assertEquals(1, mock.queries.size, "the first read has to fetch")
+        assertEquals(data, ref.state.getOrNull())
+
+        delay(5.minutes)
+        assertEquals(1, mock.queries.size, "nothing expired and nothing was asked for, so nothing should have been sent")
+        keep()
+    }
+
+    /**
+     * A maximum age is a tolerance, not a schedule.  Reading it as a schedule is how "I will accept
+     * data ten seconds old" becomes a request every ten seconds for as long as the screen is up.
+     */
+    @Test fun aMaximumAgeAloneDoesNotPoll() = runTest2 {
+        val (mock, _, cache) = backgroundScope.fixture(3)
+        val ref = cache.list(everything(), maximumAge = 10.seconds)
+        val keep = ref.addListener { }
+
+        delay(1.seconds)
+        assertEquals(1, mock.queries.size, "the first read has to fetch")
+
+        delay(2.minutes)
+        assertEquals(1, mock.queries.size, "no polling was asked for, so twelve maximum ages later there is still nothing to send")
+        keep()
+    }
+
+    /** Arriving next to data older than the caller will accept means waiting for a fresh one. */
+    @Test fun arrivingOnDataOlderThanTheMaximumAgeRefreshesAtOnce() = runTest2 {
+        val (mock, data, cache) = backgroundScope.fixture(3)
+
+        // Someone else already loaded this, then left.
+        val first = cache.list(everything()).addListener { }
+        delay(1.seconds)
+        assertEquals(1, mock.queries.size)
+        first()
+
+        delay(3.minutes) // long enough that what they left behind is well past the tolerance below
+
+        val arriving = cache.list(everything(), maximumAge = 10.seconds, pullFrequency = 60.seconds)
+        val keep = arriving.addListener { }
+        // Too old to show, so the screen waits rather than opening on it - the whole point of saying
+        // how old is acceptable when you arrive somewhere.
+        assertFalse(arriving.state.ready, "the inherited rows should not be shown while they are being replaced")
+
+        delay(1.seconds)
+        assertEquals(2, mock.queries.size, "the inherited rows were too old to open a screen on")
+        assertEquals(data, arriving.state.getOrNull())
+        keep()
+    }
+
+    /**
+     * Once shown, data is not taken away again by getting older.  It is replaced when something
+     * replaces it, and until then it is still the best answer there is.
+     */
+    @Test fun dataAlreadyShownIsNotWithdrawnWhenItPassesTheMaximumAge() = runTest2 {
+        val (_, data, cache) = backgroundScope.fixture(3)
+        val ref = cache.list(everything(), maximumAge = 10.seconds)
+        val keep = ref.addListener { }
+
+        delay(1.seconds)
+        assertEquals(data, ref.state.getOrNull())
+
+        delay(5.minutes)
+        assertEquals(data, ref.state.getOrNull(), "thirty maximum ages later, and nothing has replaced it")
+        keep()
+    }
+
+    /**
+     * The same arrival next to data still within the tolerance shows it immediately and waits out
+     * what is left of the interval - not a whole fresh one, which would let a screen opened often
+     * enough put off refreshing forever.
+     */
+    @Test fun arrivingOnDataInsideTheMaximumAgeShowsItAndFinishesTheInterval() = runTest2 {
+        val (mock, data, cache) = backgroundScope.fixture(3)
+
+        val first = cache.list(everything()).addListener { }
+        delay(1.seconds)
+        assertEquals(1, mock.queries.size)
+        first()
+
+        // Half a minute on: still inside the tolerance below, but half way through the interval.
+        delay(30.seconds)
+
+        val arriving = cache.list(everything(), maximumAge = 60.seconds, pullFrequency = 60.seconds)
+        val keep = arriving.addListener { }
+        delay(1.seconds)
+        assertEquals(1, mock.queries.size, "what was already here was fresh enough to show at once")
+        assertEquals(data, arriving.state.getOrNull())
+
+        delay(20.seconds)
+        assertEquals(1, mock.queries.size, "the interval has not run out yet")
+
+        // Thirty seconds after arrival, sixty after the rows were fetched.  Counting from arrival
+        // instead would put this at ninety, and would let a screen opened often enough put off
+        // refreshing forever.
+        delay(20.seconds)
+        assertEquals(2, mock.queries.size, "the interval runs from when the rows were fetched, not from arrival")
+        keep()
     }
 }

@@ -15,9 +15,17 @@ import kotlin.time.Duration.Companion.seconds
  * with configurable freshness policies and automatic background refresh capabilities.
  *
  * ## Caching Strategy:
- * - **maximumAge**: Data older than this is considered stale and will trigger a refresh
- * - **pullFrequency**: How often to poll for updates in the background (0 = no polling)
- * - **Duration.INFINITE**: Data never expires and is never refreshed
+ *
+ * The two knobs answer two different questions, and confusing them is how a screen ends up either
+ * opening on stale data or hammering the server while it sits there:
+ *
+ * - **maximumAge** is a condition for *arriving*: how old data already in the cache may be for this
+ *   to show it straight away rather than waiting for a retrieve first.  It is asked once, when the
+ *   reader starts being observed, because that is when someone is watching a screen appear.  It is
+ *   not a shelf life: once shown, data keeps being shown until something replaces it.
+ * - **pullFrequency** is the whole of how often a reader refreshes itself while it is up.  Zero
+ *   means it never does, and a live update socket makes it unnecessary.
+ * - **Duration.INFINITE** as a maximumAge accepts whatever is already cached, however old.
  *
  * ## Implementations:
  * - [ModelCache]: Full-featured implementation with WebSocket support
@@ -34,13 +42,14 @@ public interface ModelCacheLike<T : HasId<ID>, ID : Comparable<ID>> {
      *
      * The returned [ModelCacheItemReadable] will automatically fetch and update the item
      * based on the caching policy:
-     * - If [maximumAge] is exceeded, the item will be refetched
-     * - If [pullFrequency] > 0, the item will be polled at that interval
-     * - WebSocket updates (if available) will update the item in real-time
+     * - If what is already cached is older than [maximumAge], this retrieves before showing anything
+     * - If [pullFrequency] > 0, the item will be polled at that interval while it is observed
+     * - WebSocket updates (if available) will update the item in real-time, and replace polling
      *
      * @param id The ID of the item to retrieve
-     * @param maximumAge How old cached data can be before triggering a refresh (default: never expires)
-     * @param pullFrequency How often to poll for updates (default: no polling)
+     * @param maximumAge How old already-cached data may be for this to show it on arrival rather than
+     *   retrieving first (default: any age is acceptable)
+     * @param pullFrequency How often to refresh while observed (default: no polling)
      * @return A reactive reference to the item that updates automatically
      */
     public fun item(
@@ -54,20 +63,21 @@ public interface ModelCacheLike<T : HasId<ID>, ID : Comparable<ID>> {
      *
      * The returned [ModelCacheLimitReadable] will automatically fetch and update the collection
      * based on the caching policy:
-     * - If [maximumAge] is exceeded, the query will be re-executed
-     * - If [pullFrequency] > 0, the query will be polled at that interval
-     * - WebSocket updates (if available) will update matching items in real-time
+     * - If what is already cached is older than [maximumAge], this retrieves before showing anything
+     * - If [pullFrequency] > 0, the query will be polled at that interval while it is observed
+     * - WebSocket updates (if available) will update matching items in real-time, and replace polling
      *
      * **IMPORTANT**: results are shared. Items retrieved by any query - or by an [item] lookup - are
      * held once, so a query can be answered from what other reads already established, and a change
      * seen anywhere is seen everywhere.
      *
+     * @param maximumAge How old already-cached data may be for this to show it on arrival rather than
+     *   retrieving first (default: any age is acceptable)
+     * @param pullFrequency How often to refresh while observed (default: no polling)
      * @param query The query to execute. [Query.skip] must be zero and [Query.limit] positive:
      *   a skipped query says nothing about the rows before it, which is the only thing the cache
      *   knows how to record, and a limit of zero asks the server for nothing. Page with
      *   [LimitReactiveList.limit] instead of skipping.
-     * @param maximumAge How old cached data can be before triggering a refresh (default: never expires)
-     * @param pullFrequency How often to poll for updates (default: no polling)
      * @return A reactive reference to the query results that updates automatically
      */
     public fun list(

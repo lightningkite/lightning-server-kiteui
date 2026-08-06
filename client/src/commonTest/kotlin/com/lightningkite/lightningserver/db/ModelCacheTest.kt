@@ -199,7 +199,12 @@ class ModelCacheTest {
         var currentValue = dataToInsert.first { it.int > 2 }
         var lastRead: List<LargeTestModel>? = null
         reactive {
-            val ref = cache.list(Query(condition { it.int gt 2 }, sort { it.int.ascending() }))
+            // Polling has to be asked for: the defaults say this never expires and is never pulled,
+            // which is exactly the case where nothing should go back to the server at all.
+            val ref = cache.list(
+                Query(condition { it.int gt 2 }, sort { it.int.ascending() }),
+                pullFrequency = 10.seconds,
+            )
             lastRead = ref()
         }
         delay(30.seconds)
@@ -276,7 +281,8 @@ class ModelCacheTest {
         )
 
         reactive {
-            val ref = cache.item(currentValue._id)
+            // As above: without a pull frequency there is nothing to detect the change with.
+            val ref = cache.item(currentValue._id, pullFrequency = 10.seconds)
             val read = ref()
             lastRead = read
         }

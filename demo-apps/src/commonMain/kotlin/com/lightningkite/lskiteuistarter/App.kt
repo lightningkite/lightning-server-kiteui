@@ -87,6 +87,7 @@ fun ViewWriter.app(navigator: PageNavigator) {
             listOf(
                 NavLink(title = { "Home" }, icon = { Icon.home }) { { HomePage() } },
                 NavLink(title = { "Users" }, icon = { Icon.person }) { { UserListPage() } },  // by Claude
+                NavLink(title = { "Race" }, icon = { Icon.list }) { { RaceConsolePage() } },
             )
         }
 
