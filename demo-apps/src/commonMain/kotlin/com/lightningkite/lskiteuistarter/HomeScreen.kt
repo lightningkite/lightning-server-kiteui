@@ -11,19 +11,29 @@ import com.lightningkite.reactive.context.invoke
 import com.lightningkite.reactive.context.reactive
 import com.lightningkite.reactive.core.Constant
 import com.lightningkite.reactive.core.Reactive
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @Routable("/dashboard")
 class HomePage : Page {
     override val title: Reactive<String> get() = Constant("Home")
     override fun ElementWriter.CanAddTheme.render() {
 
-        // Redirecting away unmounts this page, but the write still happens inside the same
-        // render pass as the read that triggered it. The re-check after the write finds the
-        // navigator already on LandingPage (a no-op write), so it settles after one extra pass -
-        // a deliberate bounded reentrancy, not runaway recursion.
-        reactive(reentrancyLimit = 1) {
+        // `reentrancyLimit` does NOT fix this (verified empirically: raising it to 20 changes
+        // nothing, and no ReactiveReentrancyException is ever thrown here - the exception theory
+        // was a misdiagnosis). The real problem: resetting the nav stack on this page's own first
+        // render races the swapView behind navigatorView, which hasn't finished subscribing to
+        // navigator.currentPage() yet at that exact moment. A same-tick reset() lands in
+        // PageNavigator.stack (the write itself succeeds) but never reaches the view - the app
+        // silently hangs on this screen instead of swapping to LandingPage. LandingPage's own
+        // redirect avoids this only by accident, because its currentSession.await() is a real
+        // suspension that happens to outlast the race window. Deferring past a real suspension
+        // point does the same thing deliberately; delay(1) was measured insufficient, delay(50)
+        // reliable across repeated runs under load. See ls-kiteui-starter's
+        // integration-tests SmokeTest.loggedOutUserRedirectedFromHome for the reproduction.
+        reactive {
             if (currentSession() == null)
-                context.pageNavigator.reset(LandingPage())
+                launch { delay(50); context.pageNavigator.reset(LandingPage()) }
         }
 
         col {
