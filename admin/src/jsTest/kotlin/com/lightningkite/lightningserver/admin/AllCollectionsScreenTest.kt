@@ -316,8 +316,11 @@ class AllCollectionsScreenTest {
      */
     @Test
     fun testPageTypeIsolation() {
-        val allCollections = AllCollectionsPage()
-        val collection = CollectionAdminPage("testCollection")
+        // Typed as Any so the `is` checks below are genuine runtime checks - with the concrete
+        // (final) types, the compiler can prove disjointness statically and rejects the redundant
+        // check as an error.
+        val allCollections: Any = AllCollectionsPage()
+        val collection: Any = CollectionAdminPage("testCollection")
 
         // They should be different types - verify via simple name
         assertNotEquals(allCollections::class.simpleName, collection::class.simpleName,

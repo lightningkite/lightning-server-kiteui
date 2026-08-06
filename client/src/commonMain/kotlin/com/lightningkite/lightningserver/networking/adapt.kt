@@ -6,7 +6,7 @@ import com.lightningkite.kiteui.report
 import com.lightningkite.lightningserver.db.BaseResourceUse
 import com.lightningkite.lightningserver.typed.ClientWebSocket
 import com.lightningkite.reactive.core.Reactive
-import com.lightningkite.reactive.core.remember
+import com.lightningkite.reactive.core.Signal
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.*
@@ -125,7 +125,19 @@ public fun <T> Reactive<T>.toSharedFlow(
 private class ReactiveClientWebSocket<SEND, RECEIVE>(
     val wraps: ClientWebSocket<SEND, RECEIVE>
 ): TypedWebSocket<SEND, RECEIVE>, BaseResourceUse() {
-    override val connected: Reactive<Boolean> = remember { wraps.connected() }
+    // Backed by an eager Signal rather than `remember { wraps.connected() }`: nothing ever
+    // subscribes to `connected` itself (only to the socket as a whole, via `use(socket)`), and a
+    // `remember{}` only computes while it has listeners. A raw, unsubscribed `.state` read - which
+    // is exactly how SharedCollectionUpdatesSocket.updateCondition() checks this - would otherwise
+    // permanently see `notActive`, since reactive 7 removed Remember's old dead-read fallback that
+    // used to mask this. A Signal is always current regardless of listener count.
+    private val _connected = Signal(false)
+    override val connected: Reactive<Boolean> = _connected
+
+    init {
+        wraps.onOpen { _connected.value = true }
+        wraps.onClose { _connected.value = false }
+    }
 
     override fun activate() {
         wraps.connect()

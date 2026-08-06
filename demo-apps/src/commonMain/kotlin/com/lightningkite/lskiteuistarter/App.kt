@@ -4,7 +4,6 @@ import com.lightningkite.kiteui.*
 import com.lightningkite.kiteui.exceptions.installLsError
 import com.lightningkite.kiteui.models.*
 import com.lightningkite.kiteui.navigation.PageNavigator
-import com.lightningkite.kiteui.navigation.dialogPageNavigator
 import com.lightningkite.kiteui.reactive.*
 import com.lightningkite.kiteui.views.ViewWriter
 import com.lightningkite.kiteui.views.confirmDanger
@@ -30,7 +29,7 @@ val setFcmToken =
 
 var appUpdateChecked = false
 
-fun ViewWriter.app(navigator: PageNavigator, dialog: PageNavigator) {
+fun ViewWriter.app(navigator: PageNavigator) {
     context.exceptionHandlers.installLsError()
     context.exceptionHandlers.installLoggedOutErrors()
 
@@ -73,19 +72,16 @@ fun ViewWriter.app(navigator: PageNavigator, dialog: PageNavigator) {
             val currentRelease = releases.find { it.version == currentBuild } ?: return@launch
             val latestRelease = releases.maxByOrNull { it.releaseDate } ?: return@launch
             if (latestRelease._id != currentRelease._id) {
-                @Suppress("DEPRECATION")
-                context.dialogPageNavigator.navigate(
-                    UpdateDialog(
-                        newVersion = latestRelease.version,
-                        forceUpdate = releases.any { it.requiredUpdate && it.releaseDate > currentRelease.releaseDate }
-                    )
+                context.updateDialog(
+                    newVersion = latestRelease.version,
+                    forceUpdate = releases.any { it.requiredUpdate && it.releaseDate > currentRelease.releaseDate }
                 )
             }
         }
     }
 
     navigator.navigate(LandingPage())
-    return appNav(navigator, dialog) {
+    return appNav(navigator) {
         appName = "KiteUI Sample App"
         ::navItems {
             listOf(

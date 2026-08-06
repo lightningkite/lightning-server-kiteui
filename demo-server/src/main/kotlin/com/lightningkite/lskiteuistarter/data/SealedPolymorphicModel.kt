@@ -31,6 +31,7 @@ object SealedPolymorphicModel : ServerBuilder() {
 
     val info = Server.database.modelInfo(
         auth = UserAuth.require(),
+        tableName = "SealedPolymorhphicModel",
         permissions = { permissions(this) },
     )
     val rest = path include ModelRestEndpoints(info)

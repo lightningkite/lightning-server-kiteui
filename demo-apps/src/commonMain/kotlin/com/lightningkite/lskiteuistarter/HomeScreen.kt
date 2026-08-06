@@ -17,7 +17,11 @@ class HomePage : Page {
     override val title: Reactive<String> get() = Constant("Home")
     override fun ElementWriter.CanAddTheme.render() {
 
-        reactive {
+        // Redirecting away unmounts this page, but the write still happens inside the same
+        // render pass as the read that triggered it. The re-check after the write finds the
+        // navigator already on LandingPage (a no-op write), so it settles after one extra pass -
+        // a deliberate bounded reentrancy, not runaway recursion.
+        reactive(reentrancyLimit = 1) {
             if (currentSession() == null)
                 context.pageNavigator.reset(LandingPage())
         }

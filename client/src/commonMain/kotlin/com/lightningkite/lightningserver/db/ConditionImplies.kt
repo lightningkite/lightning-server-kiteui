@@ -152,6 +152,17 @@ private fun <V> Condition<V>.asBound(): Bound? = when (this) {
  *
  * The same-type check is what makes the unchecked cast safe: conditions on one field always carry
  * values of that field's type, but nothing in the type system says so once they are erased.
+ *
+ * KNOWN GAP on Kotlin/JS: `Byte`/`Short` have no distinct boxed runtime representation there (both
+ * are plain JS numbers), so `::class` equality can spuriously agree for a `Short` bound compared
+ * against a same-valued `Int` bound, where JVM's distinct box classes correctly disagree. Verified
+ * this cannot be fixed by dispatching on `is Byte`/`is Short` instead: Kotlin/JS implements those as
+ * numeric-range checks, so an in-range `Int` value also satisfies `is Short`, which regressed 10
+ * previously-passing JS property tests when tried (their genuine same-type `Short`/`Byte` bound
+ * comparisons collapsed to false since `is Short` was misidentifying real `Int` bounds too).
+ * A correct fix needs the field's static type threaded through from the call site rather than
+ * inferred from the erased runtime value - out of scope here since every other numeric type and the
+ * other 259+ tests in this module depend on the current, JVM-correct behavior of this function.
  */
 @Suppress("UNCHECKED_CAST")
 private fun compareBoundValues(a: Any?, b: Any?): Int? {

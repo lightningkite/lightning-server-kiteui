@@ -30,6 +30,7 @@ object UserEndpoints : ServerBuilder() {
 
     val info = Server.database.modelInfo(
         auth = UserAuth.require(),
+        tableName = "User",
         permissions = {
             val allowedRoles = UserRole.entries.filter { it <= auth.userRole() }
             val admin: Condition<User> =
@@ -77,6 +78,7 @@ object UserEndpoints : ServerBuilder() {
     object NestedTypeModelEndpoints : ServerBuilder() {
         val info = Server.database.modelInfo(
             auth = UserAuth.require(),
+            tableName = "NestedTypeModel",
             permissions = { ModelPermissions<User.NestedTypeModel>() }
         )
 

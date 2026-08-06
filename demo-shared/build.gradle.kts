@@ -13,7 +13,7 @@ kotlin {
     applyDefaultHierarchyTemplate()
     androidTarget()
     jvm()
-    js(IR) {
+    js {
         browser()
     }
     

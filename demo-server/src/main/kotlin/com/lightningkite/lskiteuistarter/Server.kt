@@ -25,7 +25,7 @@ import com.lightningkite.services.database.mongodb.MongoDatabase
 import com.lightningkite.services.email.EmailService
 import com.lightningkite.services.email.javasmtp.JavaSmtpEmailService
 import com.lightningkite.services.files.PublicFileSystem
-import com.lightningkite.services.files.s3.S3PublicFileSystem
+import com.lightningkite.services.files.s3.S3ExternalFileSystem
 import com.lightningkite.services.notifications.NotificationService
 import com.lightningkite.services.notifications.fcm.FcmNotificationClient
 
@@ -48,7 +48,7 @@ object Server : ServerBuilder() {
         JsonFileDatabase
         FcmNotificationClient
         JavaSmtpEmailService
-        S3PublicFileSystem
+        S3ExternalFileSystem
 
         AuthRequirement.IsSuperUser set UserAuth.require { it.userRole() >= UserRole.Root }
     }

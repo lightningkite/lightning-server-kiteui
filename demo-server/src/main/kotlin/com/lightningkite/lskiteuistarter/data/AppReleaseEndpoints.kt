@@ -13,6 +13,7 @@ object AppReleaseEndpoints : ServerBuilder() {
 
     val info = Server.database.modelInfo(
         auth = UserAuth.require(),
+        tableName = "AppRelease",
         permissions = { permissions(this) },
     )
     val rest = path include ModelRestEndpoints(info)

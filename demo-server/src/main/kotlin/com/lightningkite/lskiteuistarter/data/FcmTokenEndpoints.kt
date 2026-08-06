@@ -27,6 +27,7 @@ import com.lightningkite.services.notifications.NotificationData
 object FcmTokenEndpoints : ServerBuilder() {
     val info = Server.database.modelInfo(
         auth = UserAuth.require(),
+        tableName = "FcmToken",
         permissions = {
             val admin = condition<FcmToken>(auth.userRole() >= UserRole.Admin)
             val mine = condition<FcmToken> { it.user eq auth.id }

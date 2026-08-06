@@ -131,10 +131,6 @@ public object ModificationRenderer : Renderer<Modification<Any?>> {
         serialName = Modification.Combine.serializer(NothingSerializer()).descriptor.serialName,
         niceName = "merge",
     )
-    public val modifyByKey: ExtendedSubtypeData = ExtendedSubtypeData(
-        serialName = Modification.ModifyByKey.serializer(NothingSerializer()).descriptor.serialName,
-        niceName = "modify keys",
-    )
     public val removeKeys: ExtendedSubtypeData = ExtendedSubtypeData(
         serialName = Modification.RemoveKeys.serializer(NothingSerializer()).descriptor.serialName,
         niceName = "remove keys",
@@ -164,7 +160,6 @@ public object ModificationRenderer : Renderer<Modification<Any?>> {
         setDropLast,
         setPerElement,
         combine,
-        modifyByKey,
         removeKeys,
     ).associateBy { it.serialName }
 
