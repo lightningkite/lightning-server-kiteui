@@ -24,6 +24,7 @@ import com.lightningkite.services.database.jsonfile.JsonFileDatabase
 import com.lightningkite.services.database.mongodb.MongoDatabase
 import com.lightningkite.services.email.EmailService
 import com.lightningkite.services.email.javasmtp.JavaSmtpEmailService
+import com.lightningkite.services.files.ExternalFileSystem
 import com.lightningkite.services.files.PublicFileSystem
 import com.lightningkite.services.files.s3.S3ExternalFileSystem
 import com.lightningkite.services.notifications.NotificationService
@@ -38,7 +39,7 @@ object Server : ServerBuilder() {
     val notifications = setting("notifications", default = NotificationService.Settings("console"))
     val webUrl = setting("webUrl", "http://localhost:8080")
     val cors = setting("cors", CorsSettings())
-    val files = setting("files", PublicFileSystem.Settings())
+    val files = setting("files", ExternalFileSystem.Settings())
 
     init {
         install(CorsInterceptor(cors))

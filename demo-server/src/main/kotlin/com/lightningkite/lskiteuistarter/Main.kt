@@ -92,7 +92,7 @@ fun staticSite() = runBlocking {
     val router = SsrRouter(
         routes = AutoRoutes,
         theme = defaultTheme,
-        appWrapper = { navigator, dialog -> app(navigator, dialog) },
+        appWrapper = { navigator -> app(navigator) },
     )
     val renderer = StaticSiteRenderer(
         router = router,
