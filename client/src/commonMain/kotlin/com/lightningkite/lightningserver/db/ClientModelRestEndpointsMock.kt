@@ -19,6 +19,25 @@ public open class ClientModelRestEndpointsMock<T : HasId<ID>, ID : Comparable<ID
 ) : ClientModelRestEndpoints<T, ID> {
     public open var connectivityFailure: Boolean = false
 
+    /**
+     * What this mock enforces on reads, exactly as a `ModelPermissionsTable` would.
+     *
+     * Defaults to allowing everything, which leaves [query] behaving as if permissions did not
+     * exist.  Set it to something with a `readMask` to exercise the part clients cannot see: that a
+     * sort over a masked field silently narrows the rows a query can return.
+     */
+    public open var modelPermissions: ModelPermissions<T> = ModelPermissions.allowAll()
+
+    /**
+     * The condition the server really applies, which is the caller's plus everything permissions
+     * impose.  Mirrors `ModelPermissionsTable.find`; kept in one place so the two cannot drift.
+     */
+    protected fun effectiveCondition(condition: Condition<T>, orderBy: List<SortPart<T>>): Condition<T> =
+        condition and
+                modelPermissions.read and
+                modelPermissions.readMask.permitSort(orderBy) and
+                modelPermissions.readMask(condition)
+
     public val data: HashMap<ID, T> = HashMap<ID, T>()
     public open fun change(collectionUpdates: CollectionUpdates<T, ID>) {
         log?.log("changes: $collectionUpdates")
@@ -35,14 +54,16 @@ public open class ClientModelRestEndpointsMock<T : HasId<ID>, ID : Comparable<ID
         if (connectivityFailure) throw ConnectionException("Dead")
         log?.log("query")
         delay(delayAmount)
+        val effective = effectiveCondition(input.condition, input.orderBy)
         return data.values
-            .filter { input.condition(it) }
+            .filter { effective(it) }
             .let {
                 input.orderBy.comparator?.let { c ->
                     it.sortedWith(c)
                 } ?: it.sortedBy { it._id }
             }
             .take(input.limit)
+            .map { modelPermissions.readMask(it) }
     }
 
     override suspend fun queryPartial(input: QueryPartial<T>): List<Partial<T>> = TODO()
@@ -50,7 +71,9 @@ public open class ClientModelRestEndpointsMock<T : HasId<ID>, ID : Comparable<ID
         if (connectivityFailure) throw ConnectionException("Dead")
         log?.log("detail")
         delay(delayAmount)
-        return data[id] ?: throw LsErrorException(LSError(404, "not-found", "", ""))
+        val found = data[id]?.takeIf { modelPermissions.read(it) }
+            ?: throw LsErrorException(LSError(404, "not-found", "", ""))
+        return modelPermissions.readMask(found)
     }
 
     override suspend fun insertBulk(input: List<T>): List<T> {
@@ -150,6 +173,6 @@ public open class ClientModelRestEndpointsMock<T : HasId<ID>, ID : Comparable<ID
     override suspend fun aggregate(input: AggregateQuery<T>): Double? = TODO()
     override suspend fun groupAggregate(input: GroupAggregateQuery<T>): Map<String, Double?> = TODO()
     override suspend fun groupAggregate2(input: GroupAggregateQuery<T>): Map<String, Double?> = TODO()
-    override suspend fun permissions(): ModelPermissions<T> = ModelPermissions.Companion.allowAll()
+    override suspend fun permissions(): ModelPermissions<T> = modelPermissions
 
 }

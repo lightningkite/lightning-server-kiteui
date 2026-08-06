@@ -147,11 +147,27 @@ private class LightningServerWebSocket<SEND, RECEIVE>(
 ): ClientWebSocket<SEND, RECEIVE> {
     override val connected: SharedFlow<Boolean> by lazy { wraps.connected.toSharedFlow() }
 
+    /** Non-null exactly while this socket holds a use of [wraps]. */
+    private var endUse: (() -> Unit)? = null
+
+    /** Idempotent, so repeated connects can't stack up uses that [close] could never balance. */
     override fun connect() {
-        wraps.beginUse()
+        if (endUse == null) endUse = wraps.beginUse()
     }
 
-    override fun close(code: Short, reason: String) = wraps.close(code, reason)
+    /**
+     * Releasing the use is what actually stops the socket - [TypedWebSocket.close] only drops the
+     * current connection, and a use still held tells the retry loop to redial immediately, so a
+     * released [close] would otherwise reconnect forever.  Releasing first also means the retry
+     * loop already knows to stay down by the time the close is delivered.
+     *
+     * Idempotent, and leaves this socket able to [connect] again later.
+     */
+    override fun close(code: Short, reason: String) {
+        endUse?.invoke()
+        endUse = null
+        wraps.close(code, reason)
+    }
     override fun onClose(action: (Short) -> Unit) = wraps.onClose(action)
     override fun onOpen(action: () -> Unit) = wraps.onOpen(action)
     override fun onMessage(action: (RECEIVE) -> Unit) = wraps.onMessage(action)

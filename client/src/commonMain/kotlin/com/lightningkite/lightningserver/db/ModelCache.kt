@@ -65,12 +65,36 @@ public class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
     public val skipCache: ClientModelRestEndpoints<T, ID>,
     override val serializer: KSerializer<T>,
     public val scope: CoroutineScope = AppScope,
-    public val log: Log? = null
+    public val log: Log? = null,
+    /**
+     * Reads a row's version, for models that carry one, so that conflicting accounts of the same row
+     * are settled by which is genuinely later rather than by clocks.  See [CoverageStore].
+     */
+    versionOf: ((T) -> Long?)? = null,
 ) : ModelCacheLike<T, ID> {
     private val idProp = serializer._id()
 
     /** Everything known about the collection.  See [CoverageStore]. */
-    public val store: CoverageStore<T, ID> = CoverageStore(serializer)
+    public val store: CoverageStore<T, ID> = CoverageStore(serializer, versionOf)
+
+    /**
+     * Fetches the read mask, so the store can tell what the server actually filtered by.
+     *
+     * Until this lands the store assumes nothing about masks, which costs some reuse but is never
+     * wrong; see [CoverageStore.useMasking].  A failure here is therefore not worth retrying or
+     * surfacing - it leaves the cache exactly as correct as it was, only less clever.
+     */
+    init {
+        scope.launch {
+            try {
+                store.useMasking(skipCache.permissions().readMask)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                log?.log("Could not read permissions, so masked sorts stay conservative: $e")
+            }
+        }
+    }
 
     /** Interrupts pending polling delays.  Each tracked item/query takes a child of this. */
     private val interrupt: InterruptibleDelay = InterruptibleDelay()

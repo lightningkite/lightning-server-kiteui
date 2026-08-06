@@ -38,7 +38,7 @@ public class ConnectivityFetcher(
         outSerializer: KSerializer<O>,
     ): O {
         return connectivityFetch(
-            url = "$http$url",
+            url = "$http${url.asPath()}",
             method = method.kiteUi,
             headers = {
                 httpHeaders(listOf("Accept" to "application/json") + calculator())
@@ -78,15 +78,25 @@ public class ConnectivityFetcher(
         return retryWebsocket(
             underlyingSocket = {
                 val headers = calculator()
-                var url = "$ws?path=$url"
-                url = if (headers.isNotEmpty()) {
-                    url + "&${headers.joinToString("&") { "${it.first}=${it.second}" }}"
-                } else url
-                com.lightningkite.kiteui.websocket(url)
+                val base = "$ws${url.asPath()}"
+                com.lightningkite.kiteui.websocket(
+                    if (headers.isEmpty()) base
+                    else {
+                        val separator = if (base.contains('?')) '&' else '?'
+                        base + separator + headers.joinToString("&") { "${it.first}=${it.second}" }
+                    }
+                )
             },
             pingTime = pingTime.inWholeMilliseconds
         ).typed(json, inSerializer, outSerializer).toClientWebSocket()
     }
+
+    /**
+     * Endpoint URLs arrive relative to the server root ("users/query"), but generated SDKs and the
+     * admin schema disagree on whether they carry a leading slash, so normalize before joining to
+     * [http]/[ws] - both of which end without one.
+     */
+    private fun String.asPath(): String = if (startsWith("/")) this else "/$this"
 
     private val stringArrayFormat = StringArrayFormat(json.serializersModule)
 

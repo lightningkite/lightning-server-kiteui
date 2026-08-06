@@ -286,6 +286,161 @@ class ModelCacheCoverageTest {
     }
 
     /**
+     * A list that knows every row of its condition knows every row of a stricter one, so filtering an
+     * already-loaded screen costs no request.  The sort has to match; see [CoverageStore].
+     */
+    @Test fun aNarrowerListIsAnsweredByABroaderOne() = runTest2 {
+        val (mock, _, cache) = backgroundScope.fixture(6)
+        val broadRelease = cache.quietList().addListener { }
+        delay(1.seconds)
+        mock.queries.clear()
+
+        val narrow = cache.quietList(condition { it.int gt 3 })
+        val narrowRelease = narrow.addListener { }
+        delay(1.seconds)
+
+        assertEquals(listOf(4, 5, 6), narrow.state.getOrNull()?.map { it.int })
+        assertEquals(0, mock.queries.size, "the broad list already knew every row this one wants")
+
+        narrowRelease()
+        broadRelease()
+    }
+
+    /**
+     * But only as far as the broader list actually reached.  A limited list is not evidence about
+     * rows past its end, whatever condition you filter it by.
+     */
+    @Test fun aNarrowerListIsNotAnsweredBeyondTheBroaderOnesReach() = runTest2 {
+        val (mock, _, cache) = backgroundScope.fixture(10)
+        val broadRelease = cache.quietList(limit = 3).addListener { }
+        delay(1.seconds)
+        mock.queries.clear()
+
+        val narrow = cache.quietList(condition { it.int gt 5 })
+        val narrowRelease = narrow.addListener { }
+        delay(1.seconds)
+
+        assertEquals(listOf(6, 7, 8, 9, 10), narrow.state.getOrNull()?.map { it.int })
+        assertEquals(1, mock.queries.size, "nothing was known past row 3, so this had to be fetched")
+
+        narrowRelease()
+        broadRelease()
+    }
+
+    // =========================================================================
+    // Against a server that actually enforces a read mask
+    // =========================================================================
+
+    /**
+     * Masks `int` unless the row says otherwise, so sorting by `int` narrows what a query can return
+     * and sorting by anything else does not.  That asymmetry is invisible from the client except
+     * through the permissions it fetches, which is the whole reason it fetches them.
+     */
+    private val maskOnInt = Mask<LargeTestModel>(
+        listOf(condition<LargeTestModel> { it.boolean eq true } to modification<LargeTestModel> { it.int assign 0 })
+    )
+
+    /** Three rows, one of which the mask hides from any `int`-sorted query. */
+    private fun CoroutineScope.maskedFixture(): Triple<QueryRecordingMock, List<LargeTestModel>, ModelCache<LargeTestModel, Uuid>> {
+        val mock = QueryRecordingMock(this)
+        mock.modelPermissions = ModelPermissions.allowAll<LargeTestModel>().copy(readMask = maskOnInt)
+        val data = listOf(
+            LargeTestModel(int = 1, boolean = true),
+            LargeTestModel(int = 2, boolean = false),
+            LargeTestModel(int = 3, boolean = true),
+        )
+        mock.data.putAll(data.associateBy { it._id })
+        return Triple(mock, data, ModelCache(mock, LargeTestModel.serializer(), scope = this, log = testLog))
+    }
+
+    private fun ModelCache<LargeTestModel, Uuid>.quietListSortedBy(sort: List<SortPart<LargeTestModel>>) =
+        list(Query(Condition.Always, sort, limit = 100), maximumAge = 10.minutes, pullFrequency = 10.minutes)
+
+    /** Sorting by a masked field excludes the rows the mask covers - the server says so, not us. */
+    @Test fun aMaskedSortSeesOnlyTheRowsTheMaskAdmits() = runTest2 {
+        val (_, _, cache) = backgroundScope.maskedFixture()
+        val ref = cache.quietListSortedBy(sort { it.int.ascending() })
+        val release = ref.addListener { }
+        delay(1.seconds)
+
+        assertEquals(listOf(1, 3), ref.state.getOrNull()?.map { it.int })
+
+        release()
+    }
+
+    /**
+     * The failure the effective condition exists to prevent.  A masked sort cannot see every row, so
+     * its answer is not evidence that the rows it omits are gone - and a list that *can* see them
+     * must not lose them when that answer lands.
+     */
+    @Test fun aMaskedSortDoesNotDeleteRowsItSimplyCannotSee() = runTest2 {
+        val (mock, _, cache) = backgroundScope.maskedFixture()
+        // Exactly fills its limit, so its claim is bounded rather than complete.  That matters: a
+        // complete claim would answer the masked list outright and no second query would be sent,
+        // which is the reuse another test covers - here the masked query has to actually happen.
+        val unmasked = cache.list(
+            Query(Condition.Always, sort { it.short.ascending() }, limit = 3),
+            maximumAge = 10.minutes,
+            pullFrequency = 10.minutes,
+        )
+        val unmaskedRelease = unmasked.addListener { }
+        delay(1.seconds)
+        assertEquals(3, unmasked.state.getOrNull()?.size, "sorting by an unmasked field sees everything")
+        mock.queries.clear()
+
+        // This one comes back without the hidden row.  It must not be read as a deletion.
+        val masked = cache.quietListSortedBy(sort { it.int.ascending() })
+        val maskedRelease = masked.addListener { }
+        delay(1.seconds)
+        assertTrue(mock.queries.isNotEmpty(), "the masked query has to actually be sent for this to test anything")
+
+        assertEquals(listOf(1, 3), masked.state.getOrNull()?.map { it.int })
+        assertEquals(3, unmasked.state.getOrNull()?.size, "the hidden row is hidden, not deleted")
+
+        maskedRelease()
+        unmaskedRelease()
+    }
+
+    /**
+     * And the reuse that knowing the mask buys: a list sorted by an unmasked field knows every row a
+     * masked sort could return, so the masked one costs no request.
+     */
+    @Test fun anUnmaskedListAnswersAMaskedOneWithoutARequest() = runTest2 {
+        val (mock, _, cache) = backgroundScope.maskedFixture()
+        val unmaskedRelease = cache.quietListSortedBy(sort { it.short.ascending() }).addListener { }
+        delay(1.seconds)
+        mock.queries.clear()
+
+        val masked = cache.quietListSortedBy(sort { it.int.ascending() })
+        val maskedRelease = masked.addListener { }
+        delay(1.seconds)
+
+        assertEquals(listOf(1, 3), masked.state.getOrNull()?.map { it.int })
+        assertEquals(0, mock.queries.size, "the unmasked list already held every row this one admits")
+
+        maskedRelease()
+        unmaskedRelease()
+    }
+
+    /** The reverse does not hold: a masked list never saw the rows an unmasked one needs. */
+    @Test fun aMaskedListDoesNotAnswerAnUnmaskedOne() = runTest2 {
+        val (mock, _, cache) = backgroundScope.maskedFixture()
+        val maskedRelease = cache.quietListSortedBy(sort { it.int.ascending() }).addListener { }
+        delay(1.seconds)
+        mock.queries.clear()
+
+        val unmasked = cache.quietListSortedBy(sort { it.short.ascending() })
+        val unmaskedRelease = unmasked.addListener { }
+        delay(1.seconds)
+
+        assertEquals(3, unmasked.state.getOrNull()?.size)
+        assertEquals(1, mock.queries.size, "the masked list could not have known about the hidden row")
+
+        unmaskedRelease()
+        maskedRelease()
+    }
+
+    /**
      * The other half of that: a limited list says nothing about rows past its end, so a lookup of one
      * has to be fetched rather than answered "does not exist".
      */
