@@ -9,6 +9,9 @@ This library bridges [Lightning Server](https://github.com/lightningkite/lightni
 | `client` | `com.lightningkite.lightningserver:client` | Multiplatform (JVM, JS, Android, iOS) |
 | `server-client-utils` | `com.lightningkite.lightningserver:server-client-utils` | JVM (server-side only) |
 | `admin` | Internal — consumed via `client` | Multiplatform |
+| `demo-shared` / `demo-server` / `demo-apps` | Not published — a working app exercising this library's own features | KMP models / JVM server / Android, JVM, JS, iOS |
+
+See [`demo-apps/README.md`](demo-apps/README.md) for what the demo covers and how to run it.
 
 ## Gradle dependency
 

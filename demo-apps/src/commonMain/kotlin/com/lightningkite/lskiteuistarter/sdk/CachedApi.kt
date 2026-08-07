@@ -13,5 +13,6 @@ open class CachedApi(val uncached: Api) {
 	open val fcmTokens = ModelCache(uncached.fcmToken, com.lightningkite.lskiteuistarter.FcmToken.serializer())
 	open val clubs = ModelCache(uncached.race.club, com.lightningkite.lskiteuistarter.Club.serializer())
 	open val racers = ModelCache(uncached.race.racer, com.lightningkite.lskiteuistarter.Racer.serializer())
+	open val documents = ModelCache(uncached.document, com.lightningkite.lskiteuistarter.Document.serializer())
 	open val sealedPolymorhphicModels = ModelCache(uncached.sealedPolymorphicModel, com.lightningkite.lskiteuistarter.SealedPolymorhphicModel.serializer())
 }

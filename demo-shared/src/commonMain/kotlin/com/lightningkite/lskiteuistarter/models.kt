@@ -2,6 +2,7 @@ package com.lightningkite.lskiteuistarter
 
 import com.lightningkite.services.data.*
 import com.lightningkite.services.database.HasId
+import com.lightningkite.services.files.ServerFile
 import kotlinx.datetime.*
 import kotlinx.serialization.Serializable
 import kotlin.time.Clock
@@ -140,3 +141,24 @@ sealed class SealedClassItem {
         )
     ) : SealedClassItem()
 }
+
+/**
+ * Backs the forms-engine demo (see demo-apps' `forms` package): a model built to exercise
+ * Set, Map, List<ServerFile>, ServerFile?, and a @References foreign key together, so there's
+ * one real, persisted fixture that drives uploads, foreign keys, and collection fields through
+ * the forms engine end-to-end rather than editing throwaway Signals.
+ */
+@Serializable
+@GenerateDataClassPaths
+data class Document(
+    override val _id: Uuid = Uuid.random(),
+    val title: String = "Untitled Document",
+    @Description("Free-form labels for filtering and organization.")
+    val tags: Set<String> = emptySet(),
+    @Description("Arbitrary key-value metadata.")
+    val metadata: Map<String, String> = emptyMap(),
+    @References(User::class) val owner: Uuid? = null,
+    val attachment: ServerFile? = null,
+    val attachments: List<ServerFile> = emptyList(),
+    val createdAt: Instant = Clock.System.now(),
+) : HasId<Uuid>

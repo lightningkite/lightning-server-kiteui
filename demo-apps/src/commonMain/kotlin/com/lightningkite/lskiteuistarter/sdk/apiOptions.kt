@@ -12,7 +12,10 @@ enum class ApiOption(val apiName: String, val http: String, val ws: String) {
 //    Staging("Staging", "https://", "wss://"),
 //    Dev("Dev", "https://", "wss://"),
     SameServer("Same Server", "/api", "/api"),
-    Local("Local", "http://localhost:8080", "ws://localhost:8080"),
+    // Matches the project-wide dev convention: backend on 8090 (root settings.json,
+    // testing/settings.json), web frontend on 8091 proxying /api to it (vite.config.mjs). This
+    // used to say 8080, which matched none of them.
+    Local("Local", "http://localhost:8090", "ws://localhost:8090"),
     ;
 
     val baseFetcher

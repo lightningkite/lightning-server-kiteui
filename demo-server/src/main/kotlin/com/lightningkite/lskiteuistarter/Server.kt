@@ -82,6 +82,7 @@ object Server : ServerBuilder() {
     val authEndpoints = path.path("auth") module UserAuth
     val fcmTokens = path.path("fcmTokens") module FcmTokenEndpoints
     val race = path.path("race") module RaceEndpoints
+    val documents = path.path("documents") module DocumentEndpoints
 
     val multiplex = path.path("multiplex") bind MultiplexWebSocketHandler()
     val base = path bind QueryParamWebSocketHandler()

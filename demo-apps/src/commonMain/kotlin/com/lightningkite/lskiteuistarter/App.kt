@@ -10,6 +10,7 @@ import com.lightningkite.kiteui.views.confirmDanger
 import com.lightningkite.kiteui.views.direct.confirmDanger
 import com.lightningkite.kiteui.views.l2.appNav
 import com.lightningkite.lskiteuistarter.extensions.toAppPlatform
+import com.lightningkite.lskiteuistarter.forms.FormsIndexPage
 import com.lightningkite.lskiteuistarter.sdk.*
 import com.lightningkite.lskiteuistarter.utils.*
 import com.lightningkite.reactive.context.*
@@ -88,6 +89,8 @@ fun ViewWriter.app(navigator: PageNavigator) {
                 NavLink(title = { "Home" }, icon = { Icon.home }) { { HomePage() } },
                 NavLink(title = { "Users" }, icon = { Icon.person }) { { UserListPage() } },  // by Claude
                 NavLink(title = { "Race" }, icon = { Icon.list }) { { RaceConsolePage() } },
+                NavLink(title = { "Forms" }, icon = { Icon.certification }) { { FormsIndexPage() } },
+                NavLink(title = { "Health" }, icon = { Icon.info }) { { HealthPage() } },
             )
         }
 
