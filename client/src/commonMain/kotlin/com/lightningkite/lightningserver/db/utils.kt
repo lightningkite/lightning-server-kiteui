@@ -1,30 +1,25 @@
 package com.lightningkite.lightningserver.db
 
-import com.lightningkite.kiteui.Log
-import com.lightningkite.kiteui.TypedWebSocket
-import com.lightningkite.kiteui.identityHashCode
 import com.lightningkite.services.database.SortPart
 import com.lightningkite.reactive.core.*
-import com.lightningkite.reactive.lensing.lens
 import com.lightningkite.services.database.DataClassPathAccess
 import com.lightningkite.services.database.DataClassPathSelf
 import com.lightningkite.services.database.SerializableProperty
 import com.lightningkite.services.database.serializableProperties
 import kotlinx.coroutines.*
-import kotlinx.coroutines.channels.BufferOverflow
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.first
 import kotlin.time.Instant
 import kotlinx.serialization.KSerializer
+import kotlin.concurrent.atomics.AtomicInt
+import kotlin.concurrent.atomics.ExperimentalAtomicApi
+import kotlin.concurrent.atomics.incrementAndFetch
 import kotlin.coroutines.AbstractCoroutineContextElement
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.coroutineContext
 import kotlin.coroutines.resume
 import kotlin.time.Clock
 import kotlin.time.Duration
-import kotlin.time.Duration.Companion.milliseconds
 
 
 /**
@@ -166,18 +161,18 @@ public abstract class BaseResourceUse : ResourceUse {
  *
  * @param matching Predicate that tests whether the current value satisfies the wait condition.
  */
-public suspend fun <T> Reactive<T>.waitFor(matching: (T)->Boolean) {
+public suspend fun <T> Reactive<T>.waitFor(matching: (T) -> Boolean) {
     // Quick check: if already matches, return immediately
     state.onSuccess {
-        if(matching(it)) return
+        if (matching(it)) return
     }
 
-    var close: (()->Unit)? = null
+    var close: (() -> Unit)? = null
     try {
         suspendCancellableCoroutine<Unit> { cont ->
             close = addListener {
                 state.onSuccess {
-                    if(matching(it)) cont.resume(Unit)
+                    if (matching(it)) cont.resume(Unit)
                 }
             }
         }
@@ -202,16 +197,18 @@ public suspend fun <T> Reactive<T>.waitFor(matching: (T)->Boolean) {
  * reports loading and then any failure.
  */
 public fun <T> Reactive<T>.showPreviousOnLoadOrError(): Reactive<T> {
-    return object: Reactive<T> {
+    return object : Reactive<T> {
         private var lastSuccessfulState: ReactiveState<T>? = null
-        override val state: ReactiveState<T> get() {
-            val otherState = this@showPreviousOnLoadOrError.state
-            return otherState.handle(
-                success = { lastSuccessfulState = otherState; otherState },
-                exception = { lastSuccessfulState ?: otherState },
-                notReady = { lastSuccessfulState ?: otherState },
-            )
-        }
+        override val state: ReactiveState<T>
+            get() {
+                val otherState = this@showPreviousOnLoadOrError.state
+                return otherState.handle(
+                    success = { lastSuccessfulState = otherState; otherState },
+                    exception = { lastSuccessfulState ?: otherState },
+                    notReady = { lastSuccessfulState ?: otherState },
+                )
+            }
+
         override fun addListener(listener: () -> Unit): Release = this@showPreviousOnLoadOrError.addListener(listener)
     }
 }
@@ -284,14 +281,20 @@ public fun ResourceUse(parentScope: CoroutineScope = AppScope, action: suspend C
  *
  * @param parent Optional parent delay that can also interrupt this one.
  */
+@OptIn(ExperimentalAtomicApi::class)
 public class InterruptibleDelay(public val parent: InterruptibleDelay? = null) {
     private val listenable = BasicListenable()
+    private val num = AtomicInt(0)
+    internal val pendingListenerCountForTesting: Int get() = listenable.listenerCount
 
     /**
      * Interrupts any active delays on this instance, causing them to complete immediately.
      * Does not affect delays on parent or child instances.
      */
-    public fun interrupt() { listenable.invokeAll() }
+    public fun interrupt() {
+        num.incrementAndFetch()
+        listenable.invokeAll()
+    }
 
     /**
      * Creates a child [InterruptibleDelay] that will be interrupted if this one is interrupted.
@@ -309,11 +312,25 @@ public class InterruptibleDelay(public val parent: InterruptibleDelay? = null) {
         // Race between the time delay and interrupt signals from this and all parents
         val toRace = listOf(suspend { kotlinx.coroutines.delay(duration) })
             .plus(generateSequence(this) { it.parent }.map { inter ->
+                val current = inter.num.load()
                 suspend {
                     var closer: () -> Unit = {}
                     suspendCancellableCoroutine { cont ->
+                        var resumed: Boolean = false
+                        cont.invokeOnCancellation {
+                            closer()
+                        }
                         closer = inter.listenable.addListener {
-                            cont.resume(Unit)
+                            if (!resumed) {
+                                resumed = true
+                                cont.resume(Unit)
+                            }
+                        }
+                        if (inter.num.load() > current) {
+                            if (!resumed) {
+                                resumed = true
+                                cont.resume(Unit)
+                            }
                         }
                     }
                     closer()

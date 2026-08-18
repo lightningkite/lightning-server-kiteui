@@ -134,6 +134,8 @@ public interface ModelCacheLike<T : HasId<ID>, ID : Comparable<ID>> {
      */
     public suspend fun bulkModify(bulkUpdate: MassModification<T>): Int
 
+    public suspend fun totallyInvalidate()
+
     // ========== Backwards Compatibility / Convenience Methods ==========
 
     /**

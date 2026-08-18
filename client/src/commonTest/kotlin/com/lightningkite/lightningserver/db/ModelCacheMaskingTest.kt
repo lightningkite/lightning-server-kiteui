@@ -298,6 +298,11 @@ class ModelCacheMaskingTest {
      * A mask arriving after a list is already cached invalidates it, because every claim so far was
      * filed under a condition that assumed no mask.  Keeping them would mean answering masked queries
      * from unmasked evidence, which is the one direction that loses rows.
+     *
+     * Discarding it is not the same as going quiet, though: the reader still has a listener and now
+     * has nothing to answer with, so it re-asks as the mask lands rather than waiting out the poll
+     * interval it was part-way through.  A reader holding nothing while its own poll insists there
+     * is nothing to fetch is the state this must never leave anyone in.
      */
     @Test fun aReadMaskArrivingLateDiscardsWhatWasCachedWithoutIt() = runTest2 {
         val mock = SlowPermissionsMock(this, 3.seconds)
@@ -313,13 +318,20 @@ class ModelCacheMaskingTest {
         val release = ref.addListener { }
         delay(1.seconds)
         assertEquals(4, ref.state.getOrNull()?.size, "sorting by an unmasked field sees everything")
+        val queriesBeforeMask = mock.queries.size
 
+        // The mask lands at 3s.  Well inside the 10s poll interval, so anything that happens here is
+        // the mask being noticed, not the timer coming round.
         delay(3.seconds)
-        assertFalse(ref.state.ready, "the mask landed, so what was known without it is no longer trusted")
 
-        // The reader's own poll is what brings it back; nothing here is lost permanently.
-        delay(10.seconds)
-        assertEquals(4, ref.state.getOrNull()?.size)
+        assertTrue(
+            mock.queries.size > queriesBeforeMask,
+            "the mask landed, so what was known without it is no longer trusted - answering again cost a request"
+        )
+        assertEquals(
+            4, ref.state.getOrNull()?.size,
+            "and the reader asked as the mask landed rather than sitting empty until its poll"
+        )
 
         release()
     }

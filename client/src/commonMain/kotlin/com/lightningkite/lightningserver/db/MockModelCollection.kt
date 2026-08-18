@@ -113,4 +113,8 @@ public class MockModelCollection<T : HasId<ID>, ID : Comparable<ID>>(override va
         actionPerformed()
         return count
     }
+
+    override suspend fun totallyInvalidate() {
+
+    }
 }

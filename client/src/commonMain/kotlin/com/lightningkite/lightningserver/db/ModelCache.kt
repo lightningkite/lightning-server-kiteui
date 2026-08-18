@@ -88,6 +88,10 @@ public class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
         scope.launch {
             try {
                 store.useMasking(skipCache.permissions().readMask)
+                // A non-empty mask invalidates the store, which can empty out what readers already
+                // hold - and they may be part-way through a poll interval worked out from it.
+                // Every other invalidation in this class wakes them; this one has to as well.
+                interrupt.interrupt()
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -655,7 +659,7 @@ public class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
      * Completely invalidates the cache and interrupts all polling loops.
      * Useful for forcing a full refresh or handling auth changes.
      */
-    public suspend fun totallyInvalidate() {
+    override suspend fun totallyInvalidate() {
         store.invalidate()
         interrupt.interrupt()
     }
