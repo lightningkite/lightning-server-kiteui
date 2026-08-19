@@ -29,4 +29,6 @@ testing/.scripts-version.log
 
 tmp
 
+local.version.txt
+
 .claude/
