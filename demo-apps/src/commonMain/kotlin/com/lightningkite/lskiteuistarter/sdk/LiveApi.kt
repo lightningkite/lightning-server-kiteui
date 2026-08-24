@@ -73,7 +73,7 @@ class LiveApi(val fetcher: Fetcher) : Api {
 
 		override val club = com.lightningkite.lightningserver.typed.LiveClientModelRestEndpoints(fetcher, "race/club", com.lightningkite.lskiteuistarter.Club.serializer(), kotlin.uuid.Uuid.serializer())
 
-		override val racer = com.lightningkite.lightningserver.typed.LiveClientModelRestEndpointsAndUpdatesWebsocket(fetcher, "race/racer", com.lightningkite.lskiteuistarter.Racer.serializer(), kotlin.uuid.Uuid.serializer())
+		override val racer = com.lightningkite.lightningserver.typed.LiveClientModelRestEndpointsAndUpdatesWebSocket(fetcher, "race/racer", com.lightningkite.lskiteuistarter.Racer.serializer(), kotlin.uuid.Uuid.serializer())
 	}
 	override val race = LiveRaceApi()
 

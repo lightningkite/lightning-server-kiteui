@@ -49,7 +49,7 @@ object UserEndpoints : ServerBuilder() {
     )
 
     val rest = path include ModelRestEndpoints(info)
-//    val socketUpdates = ModelRestUpdatesWebsocket(path, Server.database, info)
+//    val socketUpdates = ModelRestUpdatesWebSocket(path, Server.database, info)
 
     val initAdminUser = path.path("initAdminUser") bind startupOnce(Server.database) {
         println("Adding user")

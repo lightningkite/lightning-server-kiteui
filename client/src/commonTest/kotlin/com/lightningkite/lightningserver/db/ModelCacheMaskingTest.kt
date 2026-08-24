@@ -45,7 +45,7 @@ class ModelCacheMaskingTest {
     }
 
     private open class SocketMock(scope: CoroutineScope) :
-        ClientModelRestEndpointsPlusUpdatesWebsocketMock<LargeTestModel, Uuid>(scope)
+        ClientModelRestEndpointsPlusUpdatesWebSocketMock<LargeTestModel, Uuid>(scope)
 
     // =========================================================================
     // The masks under test

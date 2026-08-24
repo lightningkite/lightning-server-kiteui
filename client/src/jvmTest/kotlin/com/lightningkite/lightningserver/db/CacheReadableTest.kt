@@ -18,7 +18,7 @@
  *    - onceQuery: One-time query behavior
  *    - basicsLocalNoWs: Operations without WebSocket support
  *    - basicsRemote: Remote operations via skipCache
- *    - websocket: WebSocket update handling
+ *    - webSocket: WebSocket update handling
  *    - regularPull: Time-based polling
  *    - invalidationWorks: Cache invalidation
  *    - fetchSocketOrdering: Coordination between fetch and socket
@@ -377,7 +377,7 @@
 //            println("Complete")
 //        }
 //    }
-//    @Test fun websocket() {
+//    @Test fun webSocket() {
 //        val r = MockClientModelRestEndpoints<Item, Int>(::println)
 //        val cache = ModelCache(r, Item.serializer())
 //        cache.allowLoop = false

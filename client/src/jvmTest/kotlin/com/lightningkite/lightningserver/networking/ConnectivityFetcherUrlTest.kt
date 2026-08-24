@@ -38,7 +38,7 @@ import kotlin.time.Duration.Companion.seconds
  */
 class ConnectivityFetcherUrlTest {
 
-    // The JVM websocket implementation hops to Dispatchers.Main, which a plain JVM test process
+    // The JVM webSocket implementation hops to Dispatchers.Main, which a plain JVM test process
     // does not provide.  Pure test-harness plumbing; see MultiplexedSocketColdStartTest.
     private val mainThread = Executors.newSingleThreadExecutor().asCoroutineDispatcher()
 
@@ -107,7 +107,7 @@ class ConnectivityFetcherUrlTest {
     }
 
     /**
-     * Websockets go to the endpoint's own path.  The `?path=` query form some deployments use is
+     * WebSockets go to the endpoint's own path.  The `?path=` query form some deployments use is
      * applied by infrastructure (the AWS CloudFront function) or spelled out by the caller in its
      * base URL - the fetcher must not bake it in, or a path-routed server never sees the route.
      *
@@ -115,7 +115,7 @@ class ConnectivityFetcherUrlTest {
      * because only the requested path is under test.
      */
     @Test
-    fun websocketConnectsToEndpointPath() {
+    fun webSocketConnectsToEndpointPath() {
         val requestLines = ArrayBlockingQueue<String>(1)
         val server = ServerSocket(0, 0, InetAddress.getByName("127.0.0.1"))
         val accepter = Thread {
@@ -135,7 +135,7 @@ class ConnectivityFetcherUrlTest {
             http = "http://127.0.0.1:${server.localPort}",
             ws = "ws://127.0.0.1:${server.localPort}",
         )
-        val socket = fetcher.websocket("users", String.serializer(), String.serializer())
+        val socket = fetcher.webSocket("users", String.serializer(), String.serializer())
         try {
             socket.connect()
             val line = requestLines.poll(10, TimeUnit.SECONDS)

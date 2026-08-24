@@ -129,7 +129,7 @@ interface Api {
 
 		val club: com.lightningkite.lightningserver.typed.ClientModelRestEndpoints<com.lightningkite.lskiteuistarter.Club, kotlin.uuid.Uuid>
 
-		val racer: com.lightningkite.lightningserver.typed.ClientModelRestEndpointsAndUpdatesWebsocket<com.lightningkite.lskiteuistarter.Racer, kotlin.uuid.Uuid>
+		val racer: com.lightningkite.lightningserver.typed.ClientModelRestEndpointsAndUpdatesWebSocket<com.lightningkite.lskiteuistarter.Racer, kotlin.uuid.Uuid>
 	}
 	val race: RaceApi
 

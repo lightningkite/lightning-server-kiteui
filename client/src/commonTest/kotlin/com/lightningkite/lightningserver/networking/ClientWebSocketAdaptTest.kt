@@ -10,7 +10,7 @@ import kotlin.test.assertTrue
 /**
  * [toClientWebSocket] adapts a use-counted [TypedWebSocket] to [ClientWebSocket]'s explicit
  * connect/close, so it has to hold the use between the two.  Dropping the disposer returned by
- * `beginUse()` did not merely leak: a [com.lightningkite.kiteui.retryWebsocket] only stays down
+ * `beginUse()` did not merely leak: a [com.lightningkite.kiteui.retryWebSocket] only stays down
  * while its use count is zero, so `close()` on a still-held use dropped the connection and the
  * retry loop immediately redialled - an unclosable socket reconnecting for the life of the app.
  */

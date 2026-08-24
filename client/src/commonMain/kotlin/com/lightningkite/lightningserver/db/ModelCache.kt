@@ -2,9 +2,9 @@ package com.lightningkite.lightningserver.db
 
 import com.lightningkite.kiteui.Log
 import com.lightningkite.lightningdb.modification
-import com.lightningkite.lightningserver.networking.toTypedWebsocket
+import com.lightningkite.lightningserver.networking.toTypedWebSocket
 import com.lightningkite.lightningserver.typed.ClientModelRestEndpoints
-import com.lightningkite.lightningserver.typed.ClientModelRestUpdatesWebsocket
+import com.lightningkite.lightningserver.typed.ClientModelRestUpdatesWebSocket
 import com.lightningkite.services.database.*
 import com.lightningkite.reactive.context.awaitOnce
 import com.lightningkite.reactive.context.onRemove
@@ -106,10 +106,10 @@ public class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
     /** Real-time updates, if [skipCache] supports them. */
     @Suppress("UNCHECKED_CAST")
     public val sockets: SharedCollectionUpdatesSocket<T, ID>? =
-        (skipCache as? ClientModelRestUpdatesWebsocket<T, ID>)?.let {
+        (skipCache as? ClientModelRestUpdatesWebSocket<T, ID>)?.let {
             SharedCollectionUpdatesSocket(
                 scope = scope,
-                socket = it.updates().toTypedWebsocket(),
+                socket = it.updates().toTypedWebSocket(),
                 log = log?.tag("Sockets"),
                 onChange = { update ->
                     if (update.overload) {

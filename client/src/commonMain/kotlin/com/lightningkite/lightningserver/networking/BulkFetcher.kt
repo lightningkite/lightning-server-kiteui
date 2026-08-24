@@ -14,12 +14,10 @@ import com.lightningkite.reactive.core.Signal
 import com.lightningkite.reactive.extensions.invokeAllSafe
 import com.lightningkite.services.data.StringArrayFormat
 import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.builtins.MapSerializer
 import kotlinx.serialization.builtins.serializer
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
@@ -115,7 +113,7 @@ public class BulkFetcher(
         }
     }
 
-    public val wsMuxer: TypedWebSocket<MultiplexMessage, MultiplexMessage> = retryWebsocket(
+    public val wsMuxer: TypedWebSocket<MultiplexMessage, MultiplexMessage> = retryWebSocket(
         underlyingSocket = {
             val headers = calculator()
 
@@ -123,7 +121,7 @@ public class BulkFetcher(
                 val terminator = if(wsMultiplex.contains('?')) '&' else '?'
                 wsMultiplex + "$terminator${headers.joinToString("&"){ "${it.first}=${it.second}" }}"
             } else wsMultiplex
-            websocket(url)
+            webSocket(url)
         },
         pingTime = pingTime.inWholeMilliseconds,
         log = log
@@ -131,14 +129,14 @@ public class BulkFetcher(
 
     private val multiplexed = MultiplexedSocket(wsMuxer, log)
 
-    override fun <I, O> websocket(
+    override fun <I, O> webSocket(
         url: String,
         inSerializer: KSerializer<I>,
         outSerializer: KSerializer<O>,
     ): ClientWebSocket<I, O> =
         multiplexed.channel(url).typed(json, inSerializer, outSerializer)
 
-    private fun <SEND, RECEIVE> RetryWebsocket.typedWithDebug(
+    private fun <SEND, RECEIVE> RetryWebSocket.typedWithDebug(
         json: Json,
         send: KSerializer<SEND>,
         receive: KSerializer<RECEIVE>,
@@ -186,15 +184,15 @@ public class BulkFetcher(
  * Message dispatch goes through a single listener on [muxer] keyed by channel id (see [channels]),
  * rather than one listener per channel.  This means a channel releases its routing structurally by
  * removing itself from [channels] on close - there is no per-channel listener that could leak.
- * Channels are reusable: [WebsocketChannel.close] is idempotent, sends exactly one "end" frame, and
- * leaves the channel able to [WebsocketChannel.connect] again later.
+ * Channels are reusable: [WebSocketChannel.close] is idempotent, sends exactly one "end" frame, and
+ * leaves the channel able to [WebSocketChannel.connect] again later.
  */
 internal class MultiplexedSocket(
     private val muxer: TypedWebSocket<MultiplexMessage, MultiplexMessage>,
     private val log: Log? = null,
 ) {
     /** Active channels keyed by their channel id; the dispatch listener routes messages by this. */
-    private val channels = HashMap<String, WebsocketChannel>()
+    private val channels = HashMap<String, WebSocketChannel>()
 
     init {
         if (debugMode && log != null) {
@@ -214,9 +212,9 @@ internal class MultiplexedSocket(
     }
 
     /** Creates a new (not-yet-connected) multiplex channel for [url]. */
-    fun channel(url: String): ClientWebSocket<String, String> = WebsocketChannel(url)
+    fun channel(url: String): ClientWebSocket<String, String> = WebSocketChannel(url)
 
-    private inner class WebsocketChannel(url: String) : ClientWebSocket<String, String> {
+    private inner class WebSocketChannel(url: String) : ClientWebSocket<String, String> {
         val path = url.substringBefore('?')
 
         val params = url.substringAfter('?', "")

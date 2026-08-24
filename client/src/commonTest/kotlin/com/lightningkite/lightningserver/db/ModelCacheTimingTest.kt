@@ -45,7 +45,7 @@ class ModelCacheTimingTest {
 
     /** The same, over a socket.  Failing queries here leave the socket connected. */
     private class SocketRecordingMock(scope: CoroutineScope) :
-        ClientModelRestEndpointsPlusUpdatesWebsocketMock<LargeTestModel, Uuid>(scope) {
+        ClientModelRestEndpointsPlusUpdatesWebSocketMock<LargeTestModel, Uuid>(scope) {
         val queries: MutableList<Query<LargeTestModel>> = mutableListOf()
         var queryFails: Boolean = false
         override suspend fun query(input: Query<LargeTestModel>): List<LargeTestModel> {

@@ -1,7 +1,7 @@
 package com.lightningkite.lskiteuistarter.pressure
 
 import com.lightningkite.lightningserver.typed.ClientModelRestEndpoints
-import com.lightningkite.lightningserver.typed.ClientModelRestEndpointsAndUpdatesWebsocket
+import com.lightningkite.lightningserver.typed.ClientModelRestEndpointsAndUpdatesWebSocket
 import com.lightningkite.lightningserver.typed.ClientWebSocket
 import com.lightningkite.services.database.CollectionUpdates
 import com.lightningkite.services.database.Condition
@@ -72,14 +72,14 @@ class InstrumentedRest<T : HasId<ID>, ID : Comparable<ID>>(
  *
  * The REST half is delegated to an [InstrumentedRest] and the socket half straight through, because
  * the cache decides whether to open a socket at all by testing whether its endpoints implement
- * [ClientModelRestUpdatesWebsocket] - a wrapper that dropped the interface would silently turn the
+ * [ClientModelRestUpdatesWebSocket] - a wrapper that dropped the interface would silently turn the
  * real-time path off and look like a cache that just polls well.
  */
 class InstrumentedRestWithUpdates<T : HasId<ID>, ID : Comparable<ID>>(
-    private val wraps: ClientModelRestEndpointsAndUpdatesWebsocket<T, ID>,
+    private val wraps: ClientModelRestEndpointsAndUpdatesWebSocket<T, ID>,
     private val instruments: Instruments,
     label: String,
-) : ClientModelRestEndpointsAndUpdatesWebsocket<T, ID>,
+) : ClientModelRestEndpointsAndUpdatesWebSocket<T, ID>,
     ClientModelRestEndpoints<T, ID> by InstrumentedRest(wraps, instruments, label) {
 
     override fun updates(): ClientWebSocket<Condition<T>, CollectionUpdates<T, ID>> =

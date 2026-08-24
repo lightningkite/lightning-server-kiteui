@@ -184,7 +184,7 @@ class ModelCacheCoverageTest {
      * subscribed - it is still a change we watched happen.
      */
     @Test fun aSocketUpdateReachesListsThatAreNotSubscribed() = runTest2 {
-        val mock = ClientModelRestEndpointsPlusUpdatesWebsocketMock<LargeTestModel, Uuid>(this)
+        val mock = ClientModelRestEndpointsPlusUpdatesWebSocketMock<LargeTestModel, Uuid>(this)
         val data = (1..5).map { LargeTestModel(int = it) }
         mock.data.putAll(data.associateBy { it._id })
         val cache = ModelCache(mock, LargeTestModel.serializer(), scope = backgroundScope, log = testLog)
@@ -207,7 +207,7 @@ class ModelCacheCoverageTest {
 
     /** For a list the socket is actively serving, a removal is the whole truth about that row. */
     @Test fun aSocketRemovalDropsTheRowFromALiveList() = runTest2 {
-        val mock = ClientModelRestEndpointsPlusUpdatesWebsocketMock<LargeTestModel, Uuid>(this)
+        val mock = ClientModelRestEndpointsPlusUpdatesWebSocketMock<LargeTestModel, Uuid>(this)
         val data = (1..5).map { LargeTestModel(int = it) }
         mock.data.putAll(data.associateBy { it._id })
         val cache = ModelCache(mock, LargeTestModel.serializer(), scope = backgroundScope, log = testLog)
@@ -238,7 +238,7 @@ class ModelCacheCoverageTest {
      * condition, the row may well still exist.
      */
     @Test fun aSocketRemovalIsNotADeletion() = runTest2 {
-        val mock = ClientModelRestEndpointsPlusUpdatesWebsocketMock<LargeTestModel, Uuid>(this)
+        val mock = ClientModelRestEndpointsPlusUpdatesWebSocketMock<LargeTestModel, Uuid>(this)
         val leaving = LargeTestModel(int = 10)
         val staying = LargeTestModel(int = 20)
         mock.data[leaving._id] = leaving

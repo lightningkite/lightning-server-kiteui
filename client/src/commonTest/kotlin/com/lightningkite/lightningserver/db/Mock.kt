@@ -1,7 +1,7 @@
 package com.lightningkite.lightningserver.db
 
 import com.lightningkite.kiteui.*
-import com.lightningkite.lightningserver.typed.ClientModelRestEndpointsAndUpdatesWebsocket
+import com.lightningkite.lightningserver.typed.ClientModelRestEndpointsAndUpdatesWebSocket
 import com.lightningkite.lightningserver.typed.ClientWebSocket
 import com.lightningkite.services.database.*
 import com.lightningkite.reactive.core.AppScope
@@ -20,7 +20,7 @@ import kotlin.time.Duration.Companion.seconds
 
 
 class MockClientModelRestEndpoints<T : HasId<ID>, ID : Comparable<ID>>(val log: (String) -> Unit) :
-    ClientModelRestEndpointsAndUpdatesWebsocket<T, ID> {
+    ClientModelRestEndpointsAndUpdatesWebSocket<T, ID> {
 
     val hold = WaitGate(true)
 

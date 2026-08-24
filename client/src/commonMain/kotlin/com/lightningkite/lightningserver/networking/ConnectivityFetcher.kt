@@ -4,7 +4,7 @@ import com.lightningkite.kiteui.RequestBodyText
 import com.lightningkite.kiteui.connectivityFetch
 import com.lightningkite.kiteui.httpHeaders
 import com.lightningkite.kiteui.navigation.DefaultJson
-import com.lightningkite.kiteui.retryWebsocket
+import com.lightningkite.kiteui.retryWebSocket
 import com.lightningkite.kiteui.typed
 import com.lightningkite.lightningserver.HttpMethod
 import com.lightningkite.lightningserver.LSError
@@ -70,16 +70,16 @@ public class ConnectivityFetcher(
         }
     }
 
-    override fun <I, O> websocket(
+    override fun <I, O> webSocket(
         url: String,
         inSerializer: KSerializer<I>,
         outSerializer: KSerializer<O>,
     ): ClientWebSocket<I, O> {
-        return retryWebsocket(
+        return retryWebSocket(
             underlyingSocket = {
                 val headers = calculator()
                 val base = "$ws${url.asPath()}"
-                com.lightningkite.kiteui.websocket(
+                com.lightningkite.kiteui.webSocket(
                     if (headers.isEmpty()) base
                     else {
                         val separator = if (base.contains('?')) '&' else '?'

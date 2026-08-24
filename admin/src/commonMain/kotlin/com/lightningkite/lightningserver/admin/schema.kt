@@ -46,14 +46,14 @@ import com.lightningkite.lightningserver.networking.lightningServer
 import com.lightningkite.lightningserver.sessions.proofs.LiveAuthClientEndpoints
 import com.lightningkite.lightningserver.sessions.proofs.LiveProofClientEndpoints
 import com.lightningkite.lightningserver.typed.ClientModelRestEndpoints
-import com.lightningkite.lightningserver.typed.ClientModelRestEndpointsAndUpdatesWebsocket
-import com.lightningkite.lightningserver.typed.ClientModelRestUpdatesWebsocket
+import com.lightningkite.lightningserver.typed.ClientModelRestEndpointsAndUpdatesWebSocket
+import com.lightningkite.lightningserver.typed.ClientModelRestUpdatesWebSocket
 import com.lightningkite.lightningserver.typed.Fetcher
 import com.lightningkite.lightningserver.typed.LightningServerKSchema
 import com.lightningkite.lightningserver.typed.LightningServerKSchemaEndpoint
 import com.lightningkite.lightningserver.typed.LightningServerKSchemaInterface
 import com.lightningkite.lightningserver.typed.LiveClientModelRestEndpoints
-import com.lightningkite.lightningserver.typed.LiveClientModelRestEndpointsAndUpdatesWebsocket
+import com.lightningkite.lightningserver.typed.LiveClientModelRestEndpointsAndUpdatesWebSocket
 import com.lightningkite.reactive.context.invoke
 import com.lightningkite.services.database.SerializationRegistry
 import com.lightningkite.services.database.serializableProperties
@@ -206,7 +206,7 @@ class ExternalLightningServer(
                     idSerializer = idserializer,
                 )
 
-                hasUpdatesWs -> LiveClientModelRestEndpointsAndUpdatesWebsocket(
+                hasUpdatesWs -> LiveClientModelRestEndpointsAndUpdatesWebSocket(
                     fetcher = fetcher(auth),
                     subpath = httpPath,
                     serializer = serializer,

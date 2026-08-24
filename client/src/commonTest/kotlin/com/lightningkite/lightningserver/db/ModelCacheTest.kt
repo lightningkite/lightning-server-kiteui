@@ -50,7 +50,7 @@ class ModelCacheTest {
      * 3. Cache resumes updates after connectivity is restored
      */
     @Test fun connectivityIssue() = runTest2 {
-        val mock = ClientModelRestEndpointsPlusUpdatesWebsocketMock<LargeTestModel, Uuid>(this)
+        val mock = ClientModelRestEndpointsPlusUpdatesWebSocketMock<LargeTestModel, Uuid>(this)
         var currentValue = LargeTestModel(int = 0)
         mock.data[currentValue._id] = currentValue
         val cache = ModelCache<LargeTestModel, Uuid>(
@@ -137,7 +137,7 @@ class ModelCacheTest {
     @Test
     fun listChangesWs() = runTest2 {
         // Uses WebSocket mock to test real-time list updates
-        val mock = ClientModelRestEndpointsPlusUpdatesWebsocketMock<LargeTestModel, Uuid>(this)
+        val mock = ClientModelRestEndpointsPlusUpdatesWebSocketMock<LargeTestModel, Uuid>(this)
         val dataToInsert = listOf(
             LargeTestModel(int = 1),
             LargeTestModel(int = 2),
@@ -236,7 +236,7 @@ class ModelCacheTest {
     @Test
     fun individualChangesWs() = runTest2 {
         // Uses WebSocket mock to test real-time individual item updates
-        val mock = ClientModelRestEndpointsPlusUpdatesWebsocketMock<LargeTestModel, Uuid>(this)
+        val mock = ClientModelRestEndpointsPlusUpdatesWebSocketMock<LargeTestModel, Uuid>(this)
         var currentValue = LargeTestModel(int = 0)
         mock.data[currentValue._id] = currentValue
         val cache = ModelCache<LargeTestModel, Uuid>(
@@ -383,7 +383,7 @@ class ModelCacheTest {
     @Test
     fun wsGet() = runTest2 {
         // Uses WebSocket mock to verify fetching works with real-time connections
-        val mock = ClientModelRestEndpointsPlusUpdatesWebsocketMock<LargeTestModel, Uuid>(this)
+        val mock = ClientModelRestEndpointsPlusUpdatesWebSocketMock<LargeTestModel, Uuid>(this)
         val dataToInsert = listOf(
             LargeTestModel(int = 1),
             LargeTestModel(int = 2),
@@ -494,7 +494,7 @@ class ModelCacheTest {
     @Test
     fun wsList() = runTest2 {
         // Uses WebSocket mock to verify list fetching works with real-time connections
-        val mock = ClientModelRestEndpointsPlusUpdatesWebsocketMock<LargeTestModel, Uuid>(this)
+        val mock = ClientModelRestEndpointsPlusUpdatesWebSocketMock<LargeTestModel, Uuid>(this)
         val dataToInsert = listOf(
             LargeTestModel(int = 1),
             LargeTestModel(int = 2),
@@ -572,7 +572,7 @@ class ModelCacheTest {
      */
     @Test
     fun listenStopAddReconnect() = runTest2 {
-        val mock = ClientModelRestEndpointsPlusUpdatesWebsocketMock<LargeTestModel, Uuid>(this)
+        val mock = ClientModelRestEndpointsPlusUpdatesWebSocketMock<LargeTestModel, Uuid>(this)
         val dataToInsert = listOf(
             LargeTestModel(int = 1),
             LargeTestModel(int = 2),
@@ -920,7 +920,7 @@ class ModelCacheTest {
      */
     @Test
     fun totalInvalidationWithWebSocket() = runTest2 {
-        val mock = ClientModelRestEndpointsPlusUpdatesWebsocketMock<LargeTestModel, Uuid>(this)
+        val mock = ClientModelRestEndpointsPlusUpdatesWebSocketMock<LargeTestModel, Uuid>(this)
         val initialItem = LargeTestModel(int = 1)
         mock.data[initialItem._id] = initialItem
         val cache = ModelCache<LargeTestModel, Uuid>(
@@ -1093,8 +1093,8 @@ class ModelCacheTest {
      */
     @Test
     fun emptyDataAddElementsSocket() = runTest2 {
-        // Start with an empty mock data source using websocket
-        val mock = ClientModelRestEndpointsPlusUpdatesWebsocketMock<LargeTestModel, Uuid>(this)
+        // Start with an empty mock data source using webSocket
+        val mock = ClientModelRestEndpointsPlusUpdatesWebSocketMock<LargeTestModel, Uuid>(this)
         val cache = ModelCache<LargeTestModel, Uuid>(
             mock,
             LargeTestModel.serializer(),

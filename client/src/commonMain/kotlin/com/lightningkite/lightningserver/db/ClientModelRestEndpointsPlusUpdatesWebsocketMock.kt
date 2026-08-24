@@ -2,7 +2,7 @@ package com.lightningkite.lightningserver.db
 
 import com.lightningkite.kiteui.TypedWebSocket
 import com.lightningkite.lightningserver.networking.toClientWebSocket
-import com.lightningkite.lightningserver.typed.ClientModelRestEndpointsAndUpdatesWebsocket
+import com.lightningkite.lightningserver.typed.ClientModelRestEndpointsAndUpdatesWebSocket
 import com.lightningkite.lightningserver.typed.ClientWebSocket
 import com.lightningkite.services.database.CollectionUpdates
 import com.lightningkite.services.database.Condition
@@ -21,11 +21,11 @@ import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
-public open class ClientModelRestEndpointsPlusUpdatesWebsocketMock<T : HasId<ID>, ID : Comparable<ID>>(
+public open class ClientModelRestEndpointsPlusUpdatesWebSocketMock<T : HasId<ID>, ID : Comparable<ID>>(
     scope: CoroutineScope,
     delayAmount: Duration = 0.1.seconds,
 ) :
-    ClientModelRestEndpointsMock<T, ID>(scope, delayAmount), ClientModelRestEndpointsAndUpdatesWebsocket<T, ID> {
+    ClientModelRestEndpointsMock<T, ID>(scope, delayAmount), ClientModelRestEndpointsAndUpdatesWebSocket<T, ID> {
 
     override var connectivityFailure: Boolean
         get() = super.connectivityFailure
@@ -114,6 +114,6 @@ public open class ClientModelRestEndpointsPlusUpdatesWebsocketMock<T : HasId<ID>
         }
     }
 
-    public val updatesWs: ClientModelRestEndpointsPlusUpdatesWebsocketMock<T, ID>.UpdatesWs = UpdatesWs()
+    public val updatesWs: ClientModelRestEndpointsPlusUpdatesWebSocketMock<T, ID>.UpdatesWs = UpdatesWs()
     override fun updates(): UpdatesWs = updatesWs
 }

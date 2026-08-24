@@ -9,8 +9,8 @@ import com.lightningkite.lightningserver.http.get
 import com.lightningkite.lightningserver.http.post
 import com.lightningkite.lightningserver.typed.ApiHttpHandler
 import com.lightningkite.lightningserver.typed.ModelRestEndpoints
-import com.lightningkite.lightningserver.typed.ModelRestEndpointsAndUpdatesWebsocket.Companion.plus
-import com.lightningkite.lightningserver.typed.ModelRestUpdatesWebsocket
+import com.lightningkite.lightningserver.typed.ModelRestEndpointsAndUpdatesWebSocket.Companion.plus
+import com.lightningkite.lightningserver.typed.ModelRestUpdatesWebSocket
 import com.lightningkite.lightningserver.typed.auth
 import com.lightningkite.lightningserver.typed.modelInfo
 import com.lightningkite.lightningserver.typed.sdk.module
@@ -99,7 +99,7 @@ object RaceEndpoints : ServerBuilder() {
                 )
             },
         )
-        val rest = path include ModelRestEndpoints(info) + ModelRestUpdatesWebsocket(info)
+        val rest = path include ModelRestEndpoints(info) + ModelRestUpdatesWebSocket(info)
     }
 
     val seed = path.path("seed").post bind ApiHttpHandler(

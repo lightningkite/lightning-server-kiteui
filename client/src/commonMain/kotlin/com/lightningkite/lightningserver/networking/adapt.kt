@@ -37,7 +37,7 @@ public val HttpMethod.lightningServer: LsHttpMethod get() = when (this) {
 }
 
 
-// Websockets
+// WebSockets
 
 private class SerializerSocket<SEND, RECEIVE>(
     val wraps: ClientWebSocket<String, String>,
@@ -188,7 +188,7 @@ private class LightningServerWebSocket<SEND, RECEIVE>(
 
 public fun <S, R> ClientWebSocket<String, String>.typed(json: Json, send: KSerializer<S>, receive: KSerializer<R>): ClientWebSocket<S, R> = SerializerSocket(this, json, send, receive)
 
-public fun <S, R> ClientWebSocket<S, R>.toTypedWebsocket(): TypedWebSocket<S, R> =
+public fun <S, R> ClientWebSocket<S, R>.toTypedWebSocket(): TypedWebSocket<S, R> =
     if (this is LightningServerWebSocket<S, R>) wraps
     else ReactiveClientWebSocket(this)
 

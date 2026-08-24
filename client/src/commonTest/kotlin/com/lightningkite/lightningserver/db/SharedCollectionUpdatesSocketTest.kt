@@ -4,7 +4,7 @@ import kotlin.uuid.Uuid
 import com.lightningkite.kiteui.Log
 import com.lightningkite.kiteui.Platform
 import com.lightningkite.kiteui.current
-import com.lightningkite.lightningserver.networking.toTypedWebsocket
+import com.lightningkite.lightningserver.networking.toTypedWebSocket
 import com.lightningkite.services.database.condition
 import com.lightningkite.services.database.gt
 import com.lightningkite.services.database.lt
@@ -18,10 +18,10 @@ class SharedCollectionUpdatesSocketTest {
 
     @Test
     fun test() = runTest2 {
-        val mock = ClientModelRestEndpointsPlusUpdatesWebsocketMock<LargeTestModel, Uuid>(this)
+        val mock = ClientModelRestEndpointsPlusUpdatesWebSocketMock<LargeTestModel, Uuid>(this)
         val remember = SharedCollectionUpdatesSocket(
             scope = this,
-            socket = mock.updates().toTypedWebsocket(),
+            socket = mock.updates().toTypedWebSocket(),
             onChange = { println("Got changes $it") },
             log = testLog,
         )

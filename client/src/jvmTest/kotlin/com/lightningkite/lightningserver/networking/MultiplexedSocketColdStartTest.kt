@@ -2,7 +2,7 @@ package com.lightningkite.lightningserver.networking
 
 import com.lightningkite.kiteui.Blob
 import com.lightningkite.kiteui.WebSocket
-import com.lightningkite.kiteui.retryWebsocket
+import com.lightningkite.kiteui.retryWebSocket
 import com.lightningkite.kiteui.typed
 import com.lightningkite.lightningserver.MultiplexMessage
 import kotlinx.coroutines.Dispatchers
@@ -19,15 +19,15 @@ import kotlin.test.assertTrue
 /**
  * Regression test for the "muxer never connects at all" report: [MultiplexedSocketTest] exercises
  * [MultiplexedSocket]'s channel logic against a [TypedWebSocket] stub whose `connected` starts out
- * `true`, so it never exercises the real [retryWebsocket] transition from disconnected to connected.
- * This test wires the real [retryWebsocket] (as production does in `BulkFetcher.wsMuxer`) to a fake
+ * `true`, so it never exercises the real [retryWebSocket] transition from disconnected to connected.
+ * This test wires the real [retryWebSocket] (as production does in `BulkFetcher.wsMuxer`) to a fake
  * low-level [WebSocket], starting everything cold - exactly the real app's initial-activation path -
  * to confirm the "start" frame is actually sent once the transport opens.
  */
 class MultiplexedSocketColdStartTest {
 
     // AppScope (com.lightningkite.reactive.core.AppScope) eagerly resolves Dispatchers.Main.immediate
-    // at first use (retryWebsocket's ping loop, wsretry.kt), which browsers and Android always provide
+    // at first use (retryWebSocket's ping loop, wsretry.kt), which browsers and Android always provide
     // but a plain JVM test process does not. Real production (JS) always has a Main dispatcher, so
     // this is purely test-harness plumbing, not something the fix depends on.
     private val mainThread = Executors.newSingleThreadExecutor().asCoroutineDispatcher()
@@ -67,32 +67,32 @@ class MultiplexedSocketColdStartTest {
     }
 
     @Test
-    fun coldChannelConnectsThroughRealRetryWebsocket() {
+    fun coldChannelConnectsThroughRealRetryWebSocket() {
         val fakeTransport = FakeWebSocket()
-        // Mirrors BulkFetcher.wsMuxer: a real RetryWebsocket over a real MultiplexedSocket, but
+        // Mirrors BulkFetcher.wsMuxer: a real RetryWebSocket over a real MultiplexedSocket, but
         // with the low-level WebSocket faked out so the test controls when the transport opens.
-        val retryWs = retryWebsocket(underlyingSocket = { fakeTransport }, pingTime = 10_000)
+        val retryWs = retryWebSocket(underlyingSocket = { fakeTransport }, pingTime = 10_000)
         val muxer = retryWs.typed(Json, MultiplexMessage.serializer(), MultiplexMessage.serializer())
         val channel = MultiplexedSocket(muxer).channel("earned-credits/rest?x=1")
 
         // Cold start: neither the channel nor the underlying transport is connected yet - this is
-        // the real app's initial activation path (ModelCache.list -> ... -> WebsocketChannel.connect()).
+        // the real app's initial activation path (ModelCache.list -> ... -> WebSocketChannel.connect()).
         channel.connect()
 
-        // retryWebsocket reacts to shouldBeOn becoming true by launching reset() asynchronously
-        // (Dispatchers.Default, since retryWebsocket's own scope has no confined dispatcher) - wait
+        // retryWebSocket reacts to shouldBeOn becoming true by launching reset() asynchronously
+        // (Dispatchers.Default, since retryWebSocket's own scope has no confined dispatcher) - wait
         // for that launch to actually register handlers on the transport before simulating open(),
         // just as a real network handshake would only complete after the browser's WebSocket
         // object and its onopen handler already exist.
         awaitTrue { fakeTransport.hasOpenHandler }
-        assertTrue(fakeTransport.hasOpenHandler, "retryWebsocket should have started connecting the transport")
+        assertTrue(fakeTransport.hasOpenHandler, "retryWebSocket should have started connecting the transport")
         fakeTransport.open()
 
         awaitTrue { fakeTransport.sent.any { it.contains("\"start\":true") } }
         assertTrue(
             fakeTransport.sent.any { it.contains("\"start\":true") },
             "channel.connect() should eventually send a multiplex 'start' frame once the real " +
-                    "retryWebsocket transport opens, starting from a fully cold (disconnected) state"
+                    "retryWebSocket transport opens, starting from a fully cold (disconnected) state"
         )
     }
 }
