@@ -40,6 +40,7 @@ public object ForeignKeyRenderer : Renderer<Any?> {
 
     private const val REFERENCES_FQN = "com.lightningkite.services.data.References"
     private const val MULTIPLE_REFERENCES_FQN = "com.lightningkite.services.data.MultipleReferences"
+    public const val IS_PRIMARY_KEY_FQN: String = "com.lightningkite.kiteui.forms.IsPrimaryKey"
 
     private fun RenderContext<*>.getReferencesAnno(): SerializableAnnotation? =
         fieldAnnotations
@@ -53,6 +54,7 @@ public object ForeignKeyRenderer : Renderer<Any?> {
     override fun priority(context: RenderContext<Any?>, module: FormModule): Float {
         // Only match if we have a @References annotation (on field or type) and typeInfo is available
         val anno = context.getReferencesAnno() ?: return -1f
+        if (context.hasAnnotation(IS_PRIMARY_KEY_FQN)) return -1f
 
         val typeName = anno.values["references"]
             ?.let { it as? SerializableAnnotationValue.ClassValue }

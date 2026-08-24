@@ -17,6 +17,8 @@ import com.lightningkite.services.database.SerializableAnnotationValue
 import com.lightningkite.services.database.SerializableProperty
 import com.lightningkite.services.database.serializableProperties
 import com.lightningkite.services.data.titleCase
+import com.lightningkite.services.database.SerializableAnnotation
+import com.lightningkite.services.database.serializableAnnotations
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.descriptors.StructureKind
@@ -55,7 +57,7 @@ public object DataClassRenderer : Renderer<Any> {
             .sortedBy { it.importance }
 
         // Group properties by @Group annotation - by Claude
-        val grouped = groupProperties(visibleProps, module)
+        val grouped = groupProperties(context.serializer.descriptor.serialName, visibleProps, module)
 
         return {
             col {
@@ -66,7 +68,7 @@ public object DataClassRenderer : Renderer<Any> {
                         val prop = group.first()
                         @Suppress("UNCHECKED_CAST")
                         val typedProp = prop as SerializableProperty<Any, Any?>
-                        val fieldContext = RenderContext(typedProp.serializer as KSerializer<Any?>, typedProp.serializableAnnotations)
+                        val fieldContext = RenderContext(typedProp.serializer as KSerializer<Any?>, typedProp.serializableAnnotationsWithPkAnnotationIfId(context.serializer.descriptor.serialName))
 
                         if (prop.fieldVisibility(module) == FieldVisibility.EDIT) {
                             renderFieldForm(typedProp, fieldContext, value, module)
@@ -79,7 +81,7 @@ public object DataClassRenderer : Renderer<Any> {
                             for (prop in group) {
                                 @Suppress("UNCHECKED_CAST")
                                 val typedProp = prop as SerializableProperty<Any, Any?>
-                                val fieldContext = RenderContext(typedProp.serializer, typedProp.serializableAnnotations)
+                                val fieldContext = RenderContext(typedProp.serializer, typedProp.serializableAnnotationsWithPkAnnotationIfId(context.serializer.descriptor.serialName))
 
                                 expanding.col {
                                     if (prop.fieldVisibility(module) == FieldVisibility.EDIT) {
@@ -107,7 +109,7 @@ public object DataClassRenderer : Renderer<Any> {
             .sortedBy { it.importance }
 
         // Group properties by @Group annotation - by Claude
-        val grouped = groupProperties(visibleProps, module)
+        val grouped = groupProperties(context.serializer.descriptor.serialName, visibleProps, module)
 
         return {
             col {
@@ -117,7 +119,7 @@ public object DataClassRenderer : Renderer<Any> {
                         val prop = group.first()
                         @Suppress("UNCHECKED_CAST")
                         val typedProp = prop as SerializableProperty<Any, Any?>
-                        val fieldContext = RenderContext(typedProp.serializer as KSerializer<Any?>, typedProp.serializableAnnotations)
+                        val fieldContext = RenderContext(typedProp.serializer as KSerializer<Any?>, typedProp.serializableAnnotationsWithPkAnnotationIfId(context.serializer.descriptor.serialName))
                         renderFieldView(typedProp, fieldContext, value, module)
                     } else {
                         // Multiple fields in group - render side-by-side - by Claude
@@ -125,7 +127,7 @@ public object DataClassRenderer : Renderer<Any> {
                             for (prop in group) {
                                 @Suppress("UNCHECKED_CAST")
                                 val typedProp = prop as SerializableProperty<Any, Any?>
-                                val fieldContext = RenderContext(typedProp.serializer as KSerializer<Any?>, typedProp.serializableAnnotations)
+                                val fieldContext = RenderContext(typedProp.serializer as KSerializer<Any?>, typedProp.serializableAnnotationsWithPkAnnotationIfId(context.serializer.descriptor.serialName))
 
                                 expanding.col {
                                     renderFieldView(typedProp, fieldContext, value, module)
@@ -152,7 +154,7 @@ public object DataClassRenderer : Renderer<Any> {
         return if (titleProp != null) {
             @Suppress("UNCHECKED_CAST")
             val typedProp = titleProp as SerializableProperty<Any, Any?>
-            val fieldContext = RenderContext(typedProp.serializer as KSerializer<Any?>, typedProp.serializableAnnotations)
+            val fieldContext = RenderContext(typedProp.serializer as KSerializer<Any?>, typedProp.serializableAnnotationsWithPkAnnotationIfId(context.serializer.descriptor.serialName))
             val fieldRenderer = module.select(fieldContext);
             {
                 val fieldValue = value.lens { typedProp.get(it) }
@@ -330,6 +332,7 @@ public val SerializableProperty<*, *>.group: String?
  * by Claude
  */
 private fun groupProperties(
+    fqn: String,
     properties: List<SerializableProperty<*, *>>,
     module: FormModule
 ): List<List<SerializableProperty<*, *>>> {
@@ -351,7 +354,7 @@ private fun groupProperties(
             // Calculate combined width
             val totalWidth = groupMembers.sumOf { p ->
                 @Suppress("UNCHECKED_CAST")
-                val ctx = RenderContext(p.serializer as KSerializer<Any?>, p.serializableAnnotations)
+                val ctx = RenderContext(p.serializer as KSerializer<Any?>, p.serializableAnnotationsWithPkAnnotationIfId(fqn))
                 val renderer = module.select(ctx)
                 renderer.columnWidth(ctx, module) ?: 10.0
             }
@@ -376,3 +379,7 @@ private fun groupProperties(
 public fun FormModule.registerObject() {
     register(Selector(kind = StructureKind.CLASS), DataClassRenderer)
 }
+
+internal fun SerializableProperty<*, *>.serializableAnnotationsWithPkAnnotationIfId(fqn: String) = if(this.name == "_id" && this.serializableAnnotations.any {
+    it.fqn == "com.lightningkite.services.data.References" && (it.values["references"] as? SerializableAnnotationValue.ClassValue)?.fqn == fqn
+}) serializableAnnotations + SerializableAnnotation(ForeignKeyRenderer.IS_PRIMARY_KEY_FQN, mapOf()) else serializableAnnotations
