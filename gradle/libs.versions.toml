@@ -5,13 +5,13 @@ dokka = "2.2.0"
 firebaseMessagingKtx = "24.1.2"
 graalVmNative = "1.1.0"
 kfc = "19.13.0"
-kiteui = "8.3.0-prerelease-188-31b833bb"
+kiteui = "8.3.0-prerelease-190-30016348c"
 kotlin = "2.4.10"
 kotlinerCli = "1.0.5"
 kotlinxCoroutinesTest = "1.11.0"
 kotlinxSerializationCsvDurable = "0.2.21-1"
 ksp = "2.3.10"
-lightningServer = "5.3.0-prerelease-145-971ced55"
+lightningServer = "5.3.0-prerelease-146-c68656ba"
 lkGradleHelpers = "4.1.1"
 proguard = "7.9.1"
 serviceAbstractions = "1.3.0-prerelease-112-b929e589"
@@ -49,7 +49,6 @@ lightningServer-sessions-sms = { module = "com.lightningkite.lightningserver:ses
 services-database = { module = "com.lightningkite.services:database", version = { ref = "serviceAbstractions" } }
 services-database-jsonfile = { module = "com.lightningkite.services:database-jsonfile", version = { ref = "serviceAbstractions" } }
 services-database-mongodb = { module = "com.lightningkite.services:database-mongodb", version = { ref = "serviceAbstractions" } }
-services-currency = { module = "com.lightningkite.services:currency", version = { ref = "serviceAbstractions" } }
 services-email-javasmtp = { module = "com.lightningkite.services:email-javasmtp", version = { ref = "serviceAbstractions" } }
 services-files-s3 = { module = "com.lightningkite.services:files-s3", version = { ref = "serviceAbstractions" } }
 services-notifications-firebase = { module = "com.lightningkite.services:notifications-fcm", version = { ref = "serviceAbstractions" } }
