@@ -23,145 +23,81 @@ import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.descriptors.StructureKind
 
-// Maximum combined width (in rem) for grouped fields to be rendered side-by-side - by Claude
-private const val MAX_GROUP_WIDTH = 50.0
+/** Maximum combined width (in rem) of fields rendered side-by-side. */
+private const val MAX_ROW_WIDTH = 50.0
+
+/** Maximum number of fields rendered side-by-side. */
+private const val MAX_ROW_FIELDS = 4
+
+/** Width (in rem) assumed for a field whose renderer gives no width hint. */
+private const val UNKNOWN_FIELD_WIDTH = 10.0
+
+/** Extra rem of screen the page needs beyond the fields themselves before a row can stay horizontal. */
+private const val ROW_SCREEN_MARGIN = 10.0
 
 /**
  * Renderer for data classes (objects with serializable properties).
  *
- * Renders each field vertically with labels, respecting visibility annotations.
- * Fields with the same @Group annotation are rendered side-by-side if they fit.
+ * Fields are laid out vertically, except that a set of fields may share a row when they fit:
+ * - Fields sharing a `@Group` annotation.
+ * - Every field of a short data class, when none of them declare a `@Group`.
+ *
+ * A shared row collapses back to a column on screens too narrow to hold it.
  *
  * by Claude
  */
 public object DataClassRenderer : Renderer<Any> {
-    override val name: String = "Fields"  // by Claude
+    override val name: String = "Fields"
 
     override fun priority(context: RenderContext<Any>, module: FormModule): Float {
         val descriptor = context.serializer.descriptor
-        // Only match CLASS kind that has serializable properties
         if (descriptor.kind != StructureKind.CLASS) return -1f
         if (context.serializer.serializableProperties.isNullOrEmpty()) return -1f
         // Lower priority to let more specific renderers win
         return 0.6f
     }
 
-    @Suppress("UNCHECKED_CAST")
-    override fun form(context: RenderContext<Any>, value: MutableReactive<Any>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit {
-        val properties = context.serializer.serializableProperties
-            ?: return { /* No properties */ }
-
-        // Filter and sort properties - by Claude
-        val visibleProps = properties
-            .filter { it.fieldVisibility(module) != FieldVisibility.HIDDEN }
-            .sortedBy { it.importance }
-
-        // Group properties by @Group annotation - by Claude
-        val grouped = groupProperties(context.serializer.descriptor.serialName, visibleProps, module)
-
+    override fun form(
+        context: RenderContext<Any>,
+        value: MutableReactive<Any>,
+        module: FormModule
+    ): ElementWriter.CanAddTheme.() -> Unit {
+        val rows = fieldRows(context, module)
         return {
-            col {
-//                gap = 2.rem
-                for (group in grouped) {
-                    if (group.size == 1) {
-                        // Single field - render normally
-                        val prop = group.first()
-                        @Suppress("UNCHECKED_CAST")
-                        val typedProp = prop as SerializableProperty<Any, Any?>
-                        val fieldContext = RenderContext(typedProp.serializer as KSerializer<Any?>, typedProp.serializableAnnotationsWithPkAnnotationIfId(context.serializer.descriptor.serialName))
-
-                        if (prop.fieldVisibility(module) == FieldVisibility.EDIT) {
-                            renderFieldForm(typedProp, fieldContext, value, module)
-                        } else {
-                            renderFieldView(typedProp, fieldContext, value, module)
-                        }
-                    } else {
-                        // Multiple fields in group - render side-by-side - by Claude
-                        row {
-                            for (prop in group) {
-                                @Suppress("UNCHECKED_CAST")
-                                val typedProp = prop as SerializableProperty<Any, Any?>
-                                val fieldContext = RenderContext(typedProp.serializer, typedProp.serializableAnnotationsWithPkAnnotationIfId(context.serializer.descriptor.serialName))
-
-                                expanding.col {
-                                    if (prop.fieldVisibility(module) == FieldVisibility.EDIT) {
-                                        renderFieldForm(typedProp, fieldContext, value, module)
-                                    } else {
-                                        renderFieldView(typedProp, fieldContext, value, module)
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+            renderRows(rows) { field ->
+                if (field.property.fieldVisibility(module) == FieldVisibility.EDIT) renderFieldForm(field, value, module)
+                else renderFieldView(field, value, module)
             }
         }
     }
 
-    @Suppress("UNCHECKED_CAST")
-    override fun view(context: RenderContext<Any>, value: Reactive<Any>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit {
-        val properties = context.serializer.serializableProperties
-            ?: return { /* No properties */ }
-
-        // Filter and sort properties - by Claude
-        val visibleProps = properties
-            .filter { it.fieldVisibility(module) != FieldVisibility.HIDDEN }
-            .sortedBy { it.importance }
-
-        // Group properties by @Group annotation - by Claude
-        val grouped = groupProperties(context.serializer.descriptor.serialName, visibleProps, module)
-
-        return {
-            col {
-                for (group in grouped) {
-                    if (group.size == 1) {
-                        // Single field - render normally
-                        val prop = group.first()
-                        @Suppress("UNCHECKED_CAST")
-                        val typedProp = prop as SerializableProperty<Any, Any?>
-                        val fieldContext = RenderContext(typedProp.serializer as KSerializer<Any?>, typedProp.serializableAnnotationsWithPkAnnotationIfId(context.serializer.descriptor.serialName))
-                        renderFieldView(typedProp, fieldContext, value, module)
-                    } else {
-                        // Multiple fields in group - render side-by-side - by Claude
-                        row {
-                            for (prop in group) {
-                                @Suppress("UNCHECKED_CAST")
-                                val typedProp = prop as SerializableProperty<Any, Any?>
-                                val fieldContext = RenderContext(typedProp.serializer as KSerializer<Any?>, typedProp.serializableAnnotationsWithPkAnnotationIfId(context.serializer.descriptor.serialName))
-
-                                expanding.col {
-                                    renderFieldView(typedProp, fieldContext, value, module)
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
+    override fun view(
+        context: RenderContext<Any>,
+        value: Reactive<Any>,
+        module: FormModule
+    ): ElementWriter.CanAddTheme.() -> Unit {
+        val rows = fieldRows(context, module)
+        return { renderRows(rows) { field -> renderFieldView(field, value, module) } }
     }
 
-    @Suppress("UNCHECKED_CAST")
-    override fun cellView(context: RenderContext<Any>, value: Reactive<Any>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit {
-        // In cell view, show the "title" fields (name, title, subject, etc.)
+    override fun cellView(
+        context: RenderContext<Any>,
+        value: Reactive<Any>,
+        module: FormModule
+    ): ElementWriter.CanAddTheme.() -> Unit {
+        // In cell view, show only the "title" field (name, title, subject, etc.)
         val properties = context.serializer.serializableProperties
-            ?: return { text { ::content { value().toString() } } }
-        val titleProp = properties.find { it.name == "name" }
-            ?: properties.find { it.name == "title" }
-            ?: properties.find { it.name == "subject" }
-            ?: properties.find { it.name == "label" }
-            ?: properties.firstOrNull()
+        val titleProp = properties?.let {
+            it.find { it.name == "name" }
+                ?: it.find { it.name == "title" }
+                ?: it.find { it.name == "subject" }
+                ?: it.find { it.name == "label" }
+                ?: it.firstOrNull()
+        } ?: return { text { ::content { value().toString() } } }
 
-        return if (titleProp != null) {
-            @Suppress("UNCHECKED_CAST")
-            val typedProp = titleProp as SerializableProperty<Any, Any?>
-            val fieldContext = RenderContext(typedProp.serializer as KSerializer<Any?>, typedProp.serializableAnnotationsWithPkAnnotationIfId(context.serializer.descriptor.serialName))
-            val fieldRenderer = module.select(fieldContext);
-            {
-                val fieldValue = value.lens { typedProp.get(it) }
-                fieldRenderer.cellView(fieldContext, fieldValue, module)()
-            }
-        } else {
-            { text { ::content { value().toString() } } }
+        val field = titleProp.asField(context.serializer.descriptor.serialName, module)
+        return {
+            module.cellView(field.context, value.lens { field.property.get(it) })()
         }
     }
 
@@ -169,7 +105,7 @@ public object DataClassRenderer : Renderer<Any> {
 
     override fun columnWidth(context: RenderContext<Any>, module: FormModule): Double = 20.0
 
-    // by Claude - Data classes use section header instead of field() wrapper to avoid nesting
+    // Data classes use a section header instead of the field() wrapper to avoid nesting labels
     override fun labeledForm(
         context: RenderContext<Any>,
         value: MutableReactive<Any>,
@@ -178,12 +114,7 @@ public object DataClassRenderer : Renderer<Any> {
         description: String?
     ): ElementWriter.CanAddTheme.() -> Unit = {
         col {
-            row {
-                h4(label)
-                description?.let { desc ->
-                    centered.textPopover(desc).icon(Icon.info.copy(width = 1.rem, height = 1.rem), "Info")
-                }
-            }
+            sectionHeader(label, description)
             form(context, value, module)()
         }
     }
@@ -196,85 +127,119 @@ public object DataClassRenderer : Renderer<Any> {
         description: String?
     ): ElementWriter.CanAddTheme.() -> Unit = {
         col {
-            row {
-                h4(label)
-                description?.let { desc ->
-                    centered.textPopover(desc).icon(Icon.info.copy(width = 1.rem, height = 1.rem), "Info")
-                }
-            }
+            sectionHeader(label, description)
             view(context, value, module)()
         }
     }
+}
 
-    // ===== Helper Functions =====
-    // by Claude
+// ===== Layout =====
 
-    @Suppress("UNCHECKED_CAST")
-    private fun ViewWriter.renderFieldForm(
-        prop: SerializableProperty<Any, Any?>,
-        fieldContext: RenderContext<Any?>,
-        parentValue: MutableReactive<Any>,
-        module: FormModule
-    ) {
-        // Use modify since we're updating one field of an object
-        val fieldValue = parentValue.lens(
-            get = { prop.get(it) },
-            modify = { parent, newFieldValue -> prop.setCopy(parent, newFieldValue) }
-        )
+/** A property together with everything needed to render and size it. */
+private class Field(
+    val property: SerializableProperty<Any, Any?>,
+    val context: RenderContext<Any?>,
+    val width: Double,
+)
 
-        when {
-            prop.doesNotNeedLabel -> {
-                // No label - render just the control
-                module.form(fieldContext, fieldValue)()
-            }
-            prop.sentence != null -> {
-                // Sentence format: "Before _ after" - custom inline layout
-                val sentence = prop.sentence!!
-                val before = sentence.substringBefore('_')
-                val after = sentence.substringAfter('_').removePrefix("_")
-                row {
-                    if (before.isNotBlank()) text(before)
-                    module.form(fieldContext, fieldValue)()
-                    if (after.isNotBlank()) text(after)
+@Suppress("UNCHECKED_CAST")
+private fun SerializableProperty<*, *>.asField(ownerSerialName: String, module: FormModule): Field {
+    val property = this as SerializableProperty<Any, Any?>
+    val context = RenderContext(property.serializer, property.serializableAnnotationsWithPkAnnotationIfId(ownerSerialName))
+    return Field(property, context, module.columnWidth(context) ?: UNKNOWN_FIELD_WIDTH)
+}
+
+private fun List<Field>.fitsInOneRow(): Boolean =
+    size <= MAX_ROW_FIELDS && sumOf { it.width } <= MAX_ROW_WIDTH
+
+/**
+ * Splits the visible fields into the rows they should be rendered in, most important first.
+ *
+ * A short data class becomes a single row; otherwise `@Group` members share a row when they fit.
+ */
+private fun fieldRows(context: RenderContext<Any>, module: FormModule): List<List<Field>> {
+    val ownerSerialName = context.serializer.descriptor.serialName
+    val fields = context.serializer.serializableProperties.orEmpty()
+        .filter { it.fieldVisibility(module) != FieldVisibility.HIDDEN }
+        .sortedBy { it.importance }
+        .map { it.asField(ownerSerialName, module) }
+    if (fields.isEmpty()) return emptyList()
+
+    // A short class with no explicit grouping goes on one row; an explicit @Group is honored instead
+    if (fields.none { it.property.group != null } && fields.fitsInOneRow()) return listOf(fields)
+
+    val rows = mutableListOf<List<Field>>()
+    val emittedGroups = mutableSetOf<String>()
+    for (field in fields) {
+        val groupName = field.property.group
+        if (groupName == null) {
+            rows.add(listOf(field))
+            continue
+        }
+        if (!emittedGroups.add(groupName)) continue  // already emitted alongside the rest of its group
+        val members = fields.filter { it.property.group == groupName }
+        if (members.fitsInOneRow()) rows.add(members)
+        else members.forEach { rows.add(listOf(it)) }
+    }
+    return rows
+}
+
+private fun ElementWriter.CanAddTheme.renderRows(rows: List<List<Field>>, renderField: ViewWriter.(Field) -> Unit) {
+    col {
+        for (fieldRow in rows) {
+            if (fieldRow.size == 1) {
+                renderField(fieldRow.single())
+            } else {
+                // Stack vertically once the screen can no longer hold the fields at their desired widths
+                rowCollapsingToColumn((fieldRow.sumOf { it.width } + ROW_SCREEN_MARGIN).rem) {
+                    for (field in fieldRow) expanding.col { renderField(field) }
                 }
-            }
-            else -> {
-                // Use module's labeled form with switcher support - by Claude
-                module.labeledFormWithSwitcher(fieldContext, fieldValue, prop.displayName, prop.description)()
             }
         }
     }
+}
 
-    @Suppress("UNCHECKED_CAST")
-    private fun ViewWriter.renderFieldView(
-        prop: SerializableProperty<Any, Any?>,
-        fieldContext: RenderContext<Any?>,
-        parentValue: Reactive<Any>,
-        module: FormModule
-    ) {
-        val fieldValue = parentValue.lens { prop.get(it) }
+// ===== Field Rendering =====
 
-        when {
-            prop.doesNotNeedLabel -> {
-                // No label - render just the view
-                module.view(fieldContext, fieldValue)()
-            }
-            prop.sentence != null -> {
-                // Sentence format: "Before _ after" - custom inline layout
-                val sentence = prop.sentence!!
-                val before = sentence.substringBefore('_')
-                val after = sentence.substringAfter('_').removePrefix("_")
-                row {
-                    if (before.isNotBlank()) text(before)
-                    module.view(fieldContext, fieldValue)()
-                    if (after.isNotBlank()) text(after)
-                }
-            }
-            else -> {
-                // Use module's labeled view with switcher support - by Claude
-                module.labeledViewWithSwitcher(fieldContext, fieldValue, prop.displayName, prop.description)()
-            }
-        }
+private fun ViewWriter.renderFieldForm(field: Field, parentValue: MutableReactive<Any>, module: FormModule) {
+    val property = field.property
+    // Use modify since we're updating one field of an object
+    val fieldValue = parentValue.lens(
+        get = { property.get(it) },
+        modify = { parent, newFieldValue -> property.setCopy(parent, newFieldValue) }
+    )
+    val sentenceText = property.sentence
+    when {
+        property.doesNotNeedLabel -> module.form(field.context, fieldValue)()
+        sentenceText != null -> withSentence(sentenceText) { module.form(field.context, fieldValue)() }
+        else -> module.labeledFormWithSwitcher(field.context, fieldValue, property.displayName, property.description)()
+    }
+}
+
+private fun ViewWriter.renderFieldView(field: Field, parentValue: Reactive<Any>, module: FormModule) {
+    val property = field.property
+    val fieldValue = parentValue.lens { property.get(it) }
+    val sentenceText = property.sentence
+    when {
+        property.doesNotNeedLabel -> module.view(field.context, fieldValue)()
+        sentenceText != null -> withSentence(sentenceText) { module.view(field.context, fieldValue)() }
+        else -> module.labeledViewWithSwitcher(field.context, fieldValue, property.displayName, property.description)()
+    }
+}
+
+/** Lays out a `@Sentence` field as "Before _ after" with the control inline. */
+private fun ViewWriter.withSentence(sentence: String, control: ViewWriter.() -> Unit) {
+    row {
+        sentence.substringBefore('_').takeIf { it.isNotBlank() }?.let { text(it) }
+        control()
+        sentence.substringAfter('_').removePrefix("_").takeIf { it.isNotBlank() }?.let { text(it) }
+    }
+}
+
+private fun ViewWriter.sectionHeader(label: String, description: String?) {
+    row {
+        h4(label)
+        description?.let { centered.textPopover(it).icon(Icon.info.copy(width = 1.rem, height = 1.rem), "Info") }
     }
 }
 
@@ -316,65 +281,11 @@ public val SerializableProperty<*, *>.importance: Int
             else -> 7
         }
 
-/** Get the @Group annotation value, if present - by Claude */
+/** Get the `@Group` annotation value, if present. */
 public val SerializableProperty<*, *>.group: String?
     get() = serializableAnnotations.find { it.fqn == Annotations.Group }
         ?.values?.values?.firstOrNull()
         ?.let { it as? SerializableAnnotationValue.StringValue }?.value
-
-/**
- * Groups properties by their @Group annotation, keeping them side-by-side if they fit.
- *
- * Fields with the same @Group value are placed together.
- * If their combined width exceeds MAX_GROUP_WIDTH, they're split into separate rows.
- * Ungrouped fields (no @Group) are rendered individually.
- *
- * by Claude
- */
-private fun groupProperties(
-    fqn: String,
-    properties: List<SerializableProperty<*, *>>,
-    module: FormModule
-): List<List<SerializableProperty<*, *>>> {
-    val result = mutableListOf<List<SerializableProperty<*, *>>>()
-    val processed = mutableSetOf<SerializableProperty<*, *>>()
-
-    for (prop in properties) {
-        if (prop in processed) continue
-
-        val groupName = prop.group
-        if (groupName == null) {
-            // No group - render individually
-            result.add(listOf(prop))
-            processed.add(prop)
-        } else {
-            // Find all properties with the same group name
-            val groupMembers = properties.filter { it.group == groupName && it !in processed }
-
-            // Calculate combined width
-            val totalWidth = groupMembers.sumOf { p ->
-                @Suppress("UNCHECKED_CAST")
-                val ctx = RenderContext(p.serializer as KSerializer<Any?>, p.serializableAnnotationsWithPkAnnotationIfId(fqn))
-                val renderer = module.select(ctx)
-                renderer.columnWidth(ctx, module) ?: 10.0
-            }
-
-            if (totalWidth <= MAX_GROUP_WIDTH && groupMembers.size <= 4) {
-                // Fits - render as a single row
-                result.add(groupMembers)
-                processed.addAll(groupMembers)
-            } else {
-                // Too wide - render each individually
-                for (member in groupMembers) {
-                    result.add(listOf(member))
-                    processed.add(member)
-                }
-            }
-        }
-    }
-
-    return result
-}
 
 public fun FormModule.registerObject() {
     register(Selector(kind = StructureKind.CLASS), DataClassRenderer)

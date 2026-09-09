@@ -1,12 +1,16 @@
 package com.lightningkite.kiteui.forms
 
 import com.lightningkite.kiteui.locale.renderToString
+import com.lightningkite.kiteui.reactive.Action
 import com.lightningkite.kiteui.views.ElementWriter
+import com.lightningkite.kiteui.views.centered
 import com.lightningkite.kiteui.views.direct.*
+import com.lightningkite.kiteui.views.expanding
 import com.lightningkite.kiteui.views.fieldTheme
 import com.lightningkite.reactive.core.MutableReactive
 import com.lightningkite.reactive.core.Reactive
 import com.lightningkite.reactive.core.Constant
+import com.lightningkite.services.data.nowLocal
 import kotlinx.datetime.*
 import kotlin.time.Instant
 
@@ -15,39 +19,77 @@ import kotlin.time.Instant
 
 public object InstantRenderer : Renderer<Instant> {
     override val name: String = "Date & Time"  // by Claude
-    override fun form(context: RenderContext<Instant>, value: MutableReactive<Instant>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
-        fieldTheme.localDateTimeField {
-            content bind value.lens(
-                get = { it.toLocalDateTime(TimeZone.currentSystemDefault()) },
-                modify = { old, new -> new?.toInstant(TimeZone.currentSystemDefault()) ?: old }
-            )
+    override fun form(
+        context: RenderContext<Instant>,
+        value: MutableReactive<Instant>,
+        module: FormModule
+    ): ElementWriter.CanAddTheme.() -> Unit = {
+        fieldTheme.unpadded.row {
+            expanding.padded.localDateTimeField {
+                content bind value.lens(
+                    get = { it.toLocalDateTime(TimeZone.currentSystemDefault()) },
+                    modify = { old, new -> new?.toInstant(TimeZone.currentSystemDefault()) ?: old }
+                )
+            }
+            padded.button {
+                centered.text("Now")
+                action = Action("Now") { value set kotlin.time.Clock.System.now() }
+            }
         }
     }
 
-    override fun view(context: RenderContext<Instant>, value: Reactive<Instant>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
+    override fun view(
+        context: RenderContext<Instant>,
+        value: Reactive<Instant>,
+        module: FormModule
+    ): ElementWriter.CanAddTheme.() -> Unit = {
         text { ::content { value().renderToString() } }
     }
 
-    override fun cellForm(context: RenderContext<Instant>, value: MutableReactive<Instant>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = form(context, value, module)
+    override fun cellForm(
+        context: RenderContext<Instant>,
+        value: MutableReactive<Instant>,
+        module: FormModule
+    ): ElementWriter.CanAddTheme.() -> Unit = form(context, value, module)
+
     override fun columnWidth(context: RenderContext<Instant>, module: FormModule): Double = 17.0
 }
 
 public object NullableInstantRenderer : Renderer<Instant?> {
     override val name: String = "Date & Time"  // by Claude
-    override fun form(context: RenderContext<Instant?>, value: MutableReactive<Instant?>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
-        fieldTheme.localDateTimeField {
-            content bind value.lens(
-                get = { it?.toLocalDateTime(TimeZone.currentSystemDefault()) },
-                set = { it?.toInstant(TimeZone.currentSystemDefault()) }
-            )
+    override fun form(
+        context: RenderContext<Instant?>,
+        value: MutableReactive<Instant?>,
+        module: FormModule
+    ): ElementWriter.CanAddTheme.() -> Unit = {
+        fieldTheme.unpadded.row {
+            expanding.padded.localDateTimeField {
+                content bind value.lens(
+                    get = { it?.toLocalDateTime(TimeZone.currentSystemDefault()) },
+                    set = { it?.toInstant(TimeZone.currentSystemDefault()) }
+                )
+            }
+            padded.button {
+                centered.text("Now")
+                action = Action("Now") { value set kotlin.time.Clock.System.now() }
+            }
         }
     }
 
-    override fun view(context: RenderContext<Instant?>, value: Reactive<Instant?>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
+    override fun view(
+        context: RenderContext<Instant?>,
+        value: Reactive<Instant?>,
+        module: FormModule
+    ): ElementWriter.CanAddTheme.() -> Unit = {
         text { ::content { value()?.renderToString() ?: "—" } }
     }
 
-    override fun cellForm(context: RenderContext<Instant?>, value: MutableReactive<Instant?>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = form(context, value, module)
+    override fun cellForm(
+        context: RenderContext<Instant?>,
+        value: MutableReactive<Instant?>,
+        module: FormModule
+    ): ElementWriter.CanAddTheme.() -> Unit = form(context, value, module)
+
     override fun columnWidth(context: RenderContext<Instant?>, module: FormModule): Double = 17.0
 }
 
@@ -55,34 +97,72 @@ public object NullableInstantRenderer : Renderer<Instant?> {
 
 public object LocalDateTimeRenderer : Renderer<LocalDateTime> {
     override val name: String = "Date & Time"  // by Claude
-    override fun form(context: RenderContext<LocalDateTime>, value: MutableReactive<LocalDateTime>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
-        fieldTheme.localDateTimeField {
-            content bind value.lens(
-                get = { it },
-                modify = { old, new -> new ?: old }
-            )
+    override fun form(
+        context: RenderContext<LocalDateTime>,
+        value: MutableReactive<LocalDateTime>,
+        module: FormModule
+    ): ElementWriter.CanAddTheme.() -> Unit = {
+        fieldTheme.unpadded.row {
+            expanding.padded.localDateTimeField {
+                content bind value.lens(
+                    get = { it },
+                    modify = { old, new -> new ?: old }
+                )
+            }
+            padded.button {
+                centered.text("Now")
+                action = Action("Now") { value set kotlin.time.Clock.System.nowLocal().dateTime }
+            }
         }
     }
 
-    override fun view(context: RenderContext<LocalDateTime>, value: Reactive<LocalDateTime>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
+    override fun view(
+        context: RenderContext<LocalDateTime>,
+        value: Reactive<LocalDateTime>,
+        module: FormModule
+    ): ElementWriter.CanAddTheme.() -> Unit = {
         text { ::content { value().renderToString() } }
     }
 
-    override fun cellForm(context: RenderContext<LocalDateTime>, value: MutableReactive<LocalDateTime>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = form(context, value, module)
+    override fun cellForm(
+        context: RenderContext<LocalDateTime>,
+        value: MutableReactive<LocalDateTime>,
+        module: FormModule
+    ): ElementWriter.CanAddTheme.() -> Unit = form(context, value, module)
+
     override fun columnWidth(context: RenderContext<LocalDateTime>, module: FormModule): Double = 17.0
 }
 
 public object NullableLocalDateTimeRenderer : Renderer<LocalDateTime?> {
     override val name: String = "Date & Time"  // by Claude
-    override fun form(context: RenderContext<LocalDateTime?>, value: MutableReactive<LocalDateTime?>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
-        fieldTheme.localDateTimeField { content bind value }
+    override fun form(
+        context: RenderContext<LocalDateTime?>,
+        value: MutableReactive<LocalDateTime?>,
+        module: FormModule
+    ): ElementWriter.CanAddTheme.() -> Unit = {
+        fieldTheme.unpadded.row {
+            expanding.padded.localDateTimeField { content bind value }
+            padded.button {
+                centered.text("Now")
+                action = Action("Now") { value set kotlin.time.Clock.System.nowLocal().dateTime }
+            }
+        }
     }
 
-    override fun view(context: RenderContext<LocalDateTime?>, value: Reactive<LocalDateTime?>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
+    override fun view(
+        context: RenderContext<LocalDateTime?>,
+        value: Reactive<LocalDateTime?>,
+        module: FormModule
+    ): ElementWriter.CanAddTheme.() -> Unit = {
         text { ::content { value()?.renderToString() ?: "—" } }
     }
 
-    override fun cellForm(context: RenderContext<LocalDateTime?>, value: MutableReactive<LocalDateTime?>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = form(context, value, module)
+    override fun cellForm(
+        context: RenderContext<LocalDateTime?>,
+        value: MutableReactive<LocalDateTime?>,
+        module: FormModule
+    ): ElementWriter.CanAddTheme.() -> Unit = form(context, value, module)
+
     override fun columnWidth(context: RenderContext<LocalDateTime?>, module: FormModule): Double = 17.0
 }
 
@@ -90,34 +170,72 @@ public object NullableLocalDateTimeRenderer : Renderer<LocalDateTime?> {
 
 public object LocalDateRenderer : Renderer<LocalDate> {
     override val name: String = "Date"  // by Claude
-    override fun form(context: RenderContext<LocalDate>, value: MutableReactive<LocalDate>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
-        fieldTheme.localDateField {
-            content bind value.lens(
-                get = { it },
-                modify = { old, new -> new ?: old }
-            )
+    override fun form(
+        context: RenderContext<LocalDate>,
+        value: MutableReactive<LocalDate>,
+        module: FormModule
+    ): ElementWriter.CanAddTheme.() -> Unit = {
+        fieldTheme.unpadded.row {
+            expanding.padded.localDateField {
+                content bind value.lens(
+                    get = { it },
+                    modify = { old, new -> new ?: old }
+                )
+            }
+            padded.button {
+                centered.text("Today")
+                action = Action("Today") { value set kotlin.time.Clock.System.nowLocal().date }
+            }
         }
     }
 
-    override fun view(context: RenderContext<LocalDate>, value: Reactive<LocalDate>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
+    override fun view(
+        context: RenderContext<LocalDate>,
+        value: Reactive<LocalDate>,
+        module: FormModule
+    ): ElementWriter.CanAddTheme.() -> Unit = {
         text { ::content { value().renderToString() } }
     }
 
-    override fun cellForm(context: RenderContext<LocalDate>, value: MutableReactive<LocalDate>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = form(context, value, module)
+    override fun cellForm(
+        context: RenderContext<LocalDate>,
+        value: MutableReactive<LocalDate>,
+        module: FormModule
+    ): ElementWriter.CanAddTheme.() -> Unit = form(context, value, module)
+
     override fun columnWidth(context: RenderContext<LocalDate>, module: FormModule): Double = 11.0
 }
 
 public object NullableLocalDateRenderer : Renderer<LocalDate?> {
     override val name: String = "Date"  // by Claude
-    override fun form(context: RenderContext<LocalDate?>, value: MutableReactive<LocalDate?>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
-        fieldTheme.localDateField { content bind value }
+    override fun form(
+        context: RenderContext<LocalDate?>,
+        value: MutableReactive<LocalDate?>,
+        module: FormModule
+    ): ElementWriter.CanAddTheme.() -> Unit = {
+        fieldTheme.unpadded.row {
+            expanding.padded.localDateField { content bind value }
+            padded.button {
+                centered.text("Today")
+                action = Action("Today") { value set kotlin.time.Clock.System.nowLocal().date }
+            }
+        }
     }
 
-    override fun view(context: RenderContext<LocalDate?>, value: Reactive<LocalDate?>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
+    override fun view(
+        context: RenderContext<LocalDate?>,
+        value: Reactive<LocalDate?>,
+        module: FormModule
+    ): ElementWriter.CanAddTheme.() -> Unit = {
         text { ::content { value()?.renderToString() ?: "—" } }
     }
 
-    override fun cellForm(context: RenderContext<LocalDate?>, value: MutableReactive<LocalDate?>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = form(context, value, module)
+    override fun cellForm(
+        context: RenderContext<LocalDate?>,
+        value: MutableReactive<LocalDate?>,
+        module: FormModule
+    ): ElementWriter.CanAddTheme.() -> Unit = form(context, value, module)
+
     override fun columnWidth(context: RenderContext<LocalDate?>, module: FormModule): Double = 11.0
 }
 
@@ -125,34 +243,72 @@ public object NullableLocalDateRenderer : Renderer<LocalDate?> {
 
 public object LocalTimeRenderer : Renderer<LocalTime> {
     override val name: String = "Time"  // by Claude
-    override fun form(context: RenderContext<LocalTime>, value: MutableReactive<LocalTime>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
-        fieldTheme.localTimeField {
-            content bind value.lens(
-                get = { it },
-                modify = { old, new -> new ?: old }
-            )
+    override fun form(
+        context: RenderContext<LocalTime>,
+        value: MutableReactive<LocalTime>,
+        module: FormModule
+    ): ElementWriter.CanAddTheme.() -> Unit = {
+        fieldTheme.unpadded.row {
+            expanding.padded.localTimeField {
+                content bind value.lens(
+                    get = { it },
+                    modify = { old, new -> new ?: old }
+                )
+            }
+            padded.button {
+                centered.text("Now")
+                action = Action("Now") { value set kotlin.time.Clock.System.nowLocal().time }
+            }
         }
     }
 
-    override fun view(context: RenderContext<LocalTime>, value: Reactive<LocalTime>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
+    override fun view(
+        context: RenderContext<LocalTime>,
+        value: Reactive<LocalTime>,
+        module: FormModule
+    ): ElementWriter.CanAddTheme.() -> Unit = {
         text { ::content { value().renderToString() } }
     }
 
-    override fun cellForm(context: RenderContext<LocalTime>, value: MutableReactive<LocalTime>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = form(context, value, module)
+    override fun cellForm(
+        context: RenderContext<LocalTime>,
+        value: MutableReactive<LocalTime>,
+        module: FormModule
+    ): ElementWriter.CanAddTheme.() -> Unit = form(context, value, module)
+
     override fun columnWidth(context: RenderContext<LocalTime>, module: FormModule): Double = 6.0
 }
 
 public object NullableLocalTimeRenderer : Renderer<LocalTime?> {
     override val name: String = "Time"  // by Claude
-    override fun form(context: RenderContext<LocalTime?>, value: MutableReactive<LocalTime?>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
-        fieldTheme.localTimeField { content bind value }
+    override fun form(
+        context: RenderContext<LocalTime?>,
+        value: MutableReactive<LocalTime?>,
+        module: FormModule
+    ): ElementWriter.CanAddTheme.() -> Unit = {
+        fieldTheme.unpadded.row {
+            expanding.padded.localTimeField { content bind value }
+            padded.button {
+                centered.text("Now")
+                action = Action("Now") { value set kotlin.time.Clock.System.nowLocal().time }
+            }
+        }
     }
 
-    override fun view(context: RenderContext<LocalTime?>, value: Reactive<LocalTime?>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
+    override fun view(
+        context: RenderContext<LocalTime?>,
+        value: Reactive<LocalTime?>,
+        module: FormModule
+    ): ElementWriter.CanAddTheme.() -> Unit = {
         text { ::content { value()?.renderToString() ?: "—" } }
     }
 
-    override fun cellForm(context: RenderContext<LocalTime?>, value: MutableReactive<LocalTime?>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = form(context, value, module)
+    override fun cellForm(
+        context: RenderContext<LocalTime?>,
+        value: MutableReactive<LocalTime?>,
+        module: FormModule
+    ): ElementWriter.CanAddTheme.() -> Unit = form(context, value, module)
+
     override fun columnWidth(context: RenderContext<LocalTime?>, module: FormModule): Double = 6.0
 }
 
@@ -162,17 +318,30 @@ public object TimeZoneRenderer : Renderer<TimeZone> {
     override val name: String = "Time Zone"  // by Claude
     private val allTimeZones by lazy { Constant(TimeZone.availableZoneIds.map { TimeZone.of(it) }) }
 
-    override fun form(context: RenderContext<TimeZone>, value: MutableReactive<TimeZone>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
+    override fun form(
+        context: RenderContext<TimeZone>,
+        value: MutableReactive<TimeZone>,
+        module: FormModule
+    ): ElementWriter.CanAddTheme.() -> Unit = {
         fieldTheme.select {
             bind(value, allTimeZones) { it.id }
         }
     }
 
-    override fun view(context: RenderContext<TimeZone>, value: Reactive<TimeZone>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
+    override fun view(
+        context: RenderContext<TimeZone>,
+        value: Reactive<TimeZone>,
+        module: FormModule
+    ): ElementWriter.CanAddTheme.() -> Unit = {
         text { ::content { value().id } }
     }
 
-    override fun cellForm(context: RenderContext<TimeZone>, value: MutableReactive<TimeZone>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = form(context, value, module)
+    override fun cellForm(
+        context: RenderContext<TimeZone>,
+        value: MutableReactive<TimeZone>,
+        module: FormModule
+    ): ElementWriter.CanAddTheme.() -> Unit = form(context, value, module)
+
     override fun columnWidth(context: RenderContext<TimeZone>, module: FormModule): Double = 20.0
 }
 
@@ -180,17 +349,30 @@ public object NullableTimeZoneRenderer : Renderer<TimeZone?> {
     override val name: String = "Time Zone"  // by Claude
     private val allTimeZones by lazy { Constant(listOf(null) + TimeZone.availableZoneIds.map { TimeZone.of(it) }) }
 
-    override fun form(context: RenderContext<TimeZone?>, value: MutableReactive<TimeZone?>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
+    override fun form(
+        context: RenderContext<TimeZone?>,
+        value: MutableReactive<TimeZone?>,
+        module: FormModule
+    ): ElementWriter.CanAddTheme.() -> Unit = {
         fieldTheme.select {
             bind(value, allTimeZones) { it?.id ?: "N/A" }
         }
     }
 
-    override fun view(context: RenderContext<TimeZone?>, value: Reactive<TimeZone?>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
+    override fun view(
+        context: RenderContext<TimeZone?>,
+        value: Reactive<TimeZone?>,
+        module: FormModule
+    ): ElementWriter.CanAddTheme.() -> Unit = {
         text { ::content { value()?.id ?: "—" } }
     }
 
-    override fun cellForm(context: RenderContext<TimeZone?>, value: MutableReactive<TimeZone?>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = form(context, value, module)
+    override fun cellForm(
+        context: RenderContext<TimeZone?>,
+        value: MutableReactive<TimeZone?>,
+        module: FormModule
+    ): ElementWriter.CanAddTheme.() -> Unit = form(context, value, module)
+
     override fun columnWidth(context: RenderContext<TimeZone?>, module: FormModule): Double = 20.0
 }
 

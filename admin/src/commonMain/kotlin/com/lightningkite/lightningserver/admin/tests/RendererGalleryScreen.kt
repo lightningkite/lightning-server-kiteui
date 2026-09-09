@@ -35,6 +35,7 @@ import com.lightningkite.reactive.core.MutableReactive
 import com.lightningkite.reactive.core.Signal
 import com.lightningkite.reactive.core.remember
 import com.lightningkite.services.data.Description
+import com.lightningkite.services.data.Group
 import com.lightningkite.services.data.Multiline
 import com.lightningkite.services.database.SerializableAnnotation
 import com.lightningkite.services.database.SerializationRegistry
@@ -59,8 +60,8 @@ private data class GalleryDemo(
     val active: Boolean = true,
     val title: String = "Hello",
     @Multiline val notes: String = "Line one\nLine two",
-    val quantity: Int = 42,
-    val price: Double = 3.14,
+    @Group("quantityPrice") val quantity: Int = 42,
+    @Group("quantityPrice") val price: Double = 3.14,
     val tags: List<String> = listOf("alpha", "beta"),
     val nested: GalleryNested = GalleryNested(),
 )

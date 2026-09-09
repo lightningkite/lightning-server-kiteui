@@ -104,6 +104,34 @@ public class FormModule {
         "com.lightningkite.services.data.AdminViewOnly" to FieldVisibility.READ
     )
 
+    // ===== Renderer Switching =====
+    // by Claude
+
+    /**
+     * Enable renderer switching UI.
+     *
+     * When true, labeled forms/views show a small dropdown to switch between
+     * compatible renderers. Useful for debugging or when multiple renderers
+     * are valid for a type.
+     */
+    public var enableRendererSwitching: Boolean = false
+
+    /**
+     * Stores user-selected renderers, keyed by [selectionKey].
+     * Only used when [enableRendererSwitching] is true.
+     */
+    internal val rendererSelections: MutableMap<String, Renderer<*>> = mutableMapOf()
+
+    public fun copy(): FormModule = FormModule().also {
+        it.renderers.addAll(renderers)
+        it.fileUpload = fileUpload
+        it.typeInfo = typeInfo
+        it.serializersModule = serializersModule
+        it.visibilitySettings.putAll(visibilitySettings)
+        it.enableRendererSwitching = enableRendererSwitching
+        it.rendererSelections.putAll(rendererSelections)
+    }
+
     /**
      * Determine the effective visibility for a context based on annotations and overrides.
      *
@@ -124,24 +152,6 @@ public class FormModule {
             ?: if (isUuidId) visibilitySettings["com.lightningkite.services.data.AdminHidden"] ?: FieldVisibility.HIDDEN
             else FieldVisibility.EDIT
     }
-
-    // ===== Renderer Switching =====
-    // by Claude
-
-    /**
-     * Enable renderer switching UI.
-     *
-     * When true, labeled forms/views show a small dropdown to switch between
-     * compatible renderers. Useful for debugging or when multiple renderers
-     * are valid for a type.
-     */
-    public var enableRendererSwitching: Boolean = false
-
-    /**
-     * Stores user-selected renderers, keyed by [selectionKey].
-     * Only used when [enableRendererSwitching] is true.
-     */
-    internal val rendererSelections: MutableMap<String, Renderer<*>> = mutableMapOf()
 
     /**
      * Generate a unique key for storing renderer selection.
@@ -280,8 +290,8 @@ public class FormModule {
     ): ElementWriter.CanAddTheme.() -> Unit = {
         row {
             expanding.frame { renderer.cellView(context, value, this@FormModule)() }
-            button {
-                icon(Icon.settings, "Edit")
+            unpadded.button {
+                icon(editIcon, "Edit")
                 onClick {
                     this.context.dialog { _ ->
                         renderer.form(context, value, this@FormModule)()

@@ -78,9 +78,9 @@ public object ForeignKeyRenderer : Renderer<Any?> {
             as TypeInfo<HasId<Comparable<Comparable<*>>>, Comparable<Comparable<*>>>
 
         return {
-            fieldTheme.row {
+            fieldTheme.unpadded.row {
                 gap = 0.px
-                expanding.menuButton {
+                expanding.padded.menuButton {
                     requireClick = true
                     align(Align.Start, Align.Center).text {
                         reactiveSuspending {
@@ -192,7 +192,7 @@ public object ForeignKeyRenderer : Renderer<Any?> {
                 }
 
                 // Link to open the referenced item
-                link {
+                padded.link {
                     icon(Icon.externalLink.copy(width = 1.rem, height = 1.rem), "Open")
                     ::to label@{
                         val id = value() as? Comparable<Comparable<*>> ?: return@label null

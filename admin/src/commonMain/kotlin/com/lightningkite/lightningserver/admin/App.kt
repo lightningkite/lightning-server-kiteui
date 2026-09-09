@@ -62,6 +62,7 @@ import com.lightningkite.reactive.core.remember
 import com.lightningkite.reactive.core.rememberSuspending
 import com.lightningkite.reactive.extensions.debounceWrite
 import com.lightningkite.reactive.extensions.modify
+import com.lightningkite.services.data.Cents
 import com.lightningkite.services.database.Condition
 import com.lightningkite.services.database.SerializableProperty
 import com.lightningkite.services.database.SerializationRegistry
@@ -109,6 +110,7 @@ fun ViewWriter.app(navigator: PageNavigator) {
 
     // Register core serializers for Lightning Server error handling and file uploads
     // These must be registered globally to enable proper deserialization across the app
+    SerializationRegistry.master.register(Cents.serializer())
     SerializationRegistry.master.register(LSError.serializer())
     SerializationRegistry.master.register(ServerFile.serializer())
     SerializationRegistry.master.register(DirectServerFileSerializer)  //backwards compat

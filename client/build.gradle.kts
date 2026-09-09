@@ -54,6 +54,7 @@ kotlin {
                 api(libs.lightningServer.typed.shared)
                 api(libs.lightningServer.sessions.shared)
                 api(libs.services.database.shared)
+                api(libs.services.currency)
                 api(libs.kitui)
             }
             kotlin {

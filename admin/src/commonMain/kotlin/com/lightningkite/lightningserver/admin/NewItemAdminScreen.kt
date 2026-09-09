@@ -151,7 +151,7 @@ class NewItemAdminPage(val collectionName: String) : Page {
         scrolling.col {
             reactive {
                 clearChildren()
-                val forms = adminFormModule()
+                val forms = adminFormModuleCreate()
                 form(forms, mc().serializer, item)
                 atEnd.important.button {
                     text("Save")

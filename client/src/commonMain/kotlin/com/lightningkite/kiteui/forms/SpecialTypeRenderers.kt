@@ -32,8 +32,12 @@ import com.lightningkite.reactive.core.MutableReactiveValue
 import com.lightningkite.reactive.core.Reactive
 import com.lightningkite.reactive.core.Signal
 import com.lightningkite.reactive.extensions.commaString
+import com.lightningkite.services.data.Cents
+import com.lightningkite.services.data.Cents.Companion.cents
+import com.lightningkite.services.data.Cents.Companion.dollars
 import com.lightningkite.services.data.toEmailAddress
 import com.lightningkite.services.data.toPhoneNumber
+import kotlin.collections.listOf
 import kotlin.math.abs
 import kotlin.math.floor
 import kotlin.math.log10
@@ -540,6 +544,39 @@ public object RelativeTemperatureRenderer : NumericValueClassRenderer<RelativeTe
     ),
 )
 
+public object CentsRenderer : Renderer<Cents> {
+    override val name: String = "Dollars and Cents"
+    override fun form(context: RenderContext<Cents>, value: MutableReactive<Cents>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
+        unpadded.row {
+            centered.text("$")
+            numberInput {
+                content bind value.lens(
+                    get = { it.toDouble() },
+                    set = { it?.dollars ?: 0.cents }
+                )
+            }
+        }
+    }
+
+    override fun view(context: RenderContext<Cents>, value: Reactive<Cents>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
+        text {
+            align = Align.End
+            ::content { value().toString() }
+        }
+    }
+
+    override fun cellView(context: RenderContext<Cents>, value: Reactive<Cents>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
+        text {
+            align = Align.End
+            ::content { value().toString() }
+            wraps = false
+            ellipsis = true
+        }
+    }
+
+    override fun columnWidth(context: RenderContext<Cents>, module: FormModule): Double = 8.0
+}
+
 // ===== Registration =====
 
 public fun FormModule.registerSpecialTypes() {
@@ -566,5 +603,6 @@ public fun FormModule.registerSpecialTypes() {
         register(Selector(type = "$pkg.Power"), PowerRenderer)
         register(Selector(type = "$pkg.Temperature"), TemperatureRenderer)
         register(Selector(type = "$pkg.RelativeTemperature"), RelativeTemperatureRenderer)
+        register(Selector(type = "$pkg.Cents"), CentsRenderer)
     }
 }

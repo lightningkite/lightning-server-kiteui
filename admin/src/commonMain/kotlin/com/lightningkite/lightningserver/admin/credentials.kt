@@ -162,7 +162,6 @@ val adminServer = remember {
         throw e
     }
 }
-// by Claude - migrated to forms2
 val adminFormModule = remember {
     adminServer().formModule(adminAuthentication()).also {
         val settings = adminSettings()
@@ -179,5 +178,10 @@ val adminFormModule = remember {
         if (settings.showAlternativeEditOptions) {
             it.enableRendererSwitching = true
         }
+    }
+}
+val adminFormModuleCreate = remember {
+    adminFormModule().copy().also {
+        it.visibilitySettings["com.lightningkite.services.data.Denormalized"] = FieldVisibility.HIDDEN
     }
 }
