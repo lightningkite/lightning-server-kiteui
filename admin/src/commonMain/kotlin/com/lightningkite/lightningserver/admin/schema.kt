@@ -68,7 +68,6 @@ fun SerializationRegistry.register(schema: LightningServerKSchema) {
     schema.enums.values.forEach { register(it) }
     schema.aliases.values.forEach { register(it) }
     schema.sealedStructures.values.forEach { register(it) }
-    if(schema.aliases.any { it.key.startsWith("com.lightningkite.services.files.ServerFile") }) throw IllegalStateException()
 }
 
 private fun LightningServerKSchema.uploadEarlyEndpoint() = endpoints.find {

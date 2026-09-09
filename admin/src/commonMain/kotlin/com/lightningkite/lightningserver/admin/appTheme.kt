@@ -189,7 +189,7 @@ fun lk(): Theme {
             },
             CardSemantic to {
                 it.withBack(
-                    background = if(it.background == background) card else it.background.lighten(0.05f),
+                    background = Color.interpolate(it.background.closestColor(), card, 0.25f),
                     foreground = foreground
                 )
             },

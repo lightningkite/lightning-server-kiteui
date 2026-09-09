@@ -50,6 +50,7 @@ kotlin {
         val commonMain by getting {
             dependencies {
                 api(libs.lightningServer.core.shared)
+                api(libs.lightningServer.media.shared)
                 api(libs.lightningServer.files.shared)
                 api(libs.lightningServer.typed.shared)
                 api(libs.lightningServer.sessions.shared)
