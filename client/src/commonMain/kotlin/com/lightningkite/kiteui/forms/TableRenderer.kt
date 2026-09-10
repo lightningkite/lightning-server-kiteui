@@ -14,8 +14,11 @@ import com.lightningkite.reactive.context.reactive
 import com.lightningkite.reactive.core.*
 import com.lightningkite.serialization.lensPath
 import com.lightningkite.kiteui.navigation.DefaultJson
+import com.lightningkite.kiteui.views.l2.dialog
+import com.lightningkite.lightningserver.admin.walkDataClassPathsLimitedRecursion
 import com.lightningkite.lightningserver.db.LimitReactiveList
 import com.lightningkite.reactive.context.ReactiveContext
+import com.lightningkite.reactive.extensions.contains
 import com.lightningkite.reactive.extensions.withWrite
 import com.lightningkite.services.database.*
 import kotlinx.coroutines.launch
@@ -23,6 +26,7 @@ import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
+import kotlinx.serialization.builtins.nullable
 import kotlinx.serialization.descriptors.StructureKind
 
 /**
@@ -124,17 +128,34 @@ public object TableRenderer : Renderer<List<Any?>> {
     }
 }
 
+/**
+ * The serializer for what reading this path actually yields.
+ *
+ * [DataClassPath.get] returns null as soon as any step along the way is null, so a path that
+ * reaches through a nullable property yields a nullable value even when its own last property
+ * is not nullable - `voided.at` on a `voided: RecordedAction?` being the typical case. Renderers
+ * are picked from this serializer, so it has to say so or a non-null renderer gets handed a null.
+ */
+public val DataClassPathPartial<*>.readSerializer: KSerializer<Any?>
+    get() {
+        @Suppress("UNCHECKED_CAST")
+        val leaf = serializerAny as KSerializer<Any?>
+        if (leaf.descriptor.isNullable) return leaf
+        if (properties.dropLast(1).none { it.serializer.descriptor.isNullable }) return leaf
+        @Suppress("UNCHECKED_CAST")
+        return (leaf as KSerializer<Any>).nullable as KSerializer<Any?>
+    }
+
 @Serializable
 public data class ColumnInfo<T>(
     val path: DataClassPathPartial<T>,
     val rendererSelected: String? = null
 ) {
     public constructor(path: DataClassPathPartial<T>, renderer: Renderer<*>): this(path, renderer.name)
-    public constructor(path: DataClassPathPartial<T>, formModule: FormModule): this(path, formModule.select(RenderContext(path.serializerAny, path.properties.lastOrNull()?.serializableAnnotations ?: listOf())))
+    public constructor(path: DataClassPathPartial<T>, formModule: FormModule): this(path, formModule.select(RenderContext(path.readSerializer, path.properties.lastOrNull()?.serializableAnnotations ?: listOf())))
     @Transient private var cached: Renderer<Any?>? = null
-    @Suppress("UNCHECKED_CAST")
     @Transient val ctx: RenderContext<Any?> = RenderContext(
-        path.serializerAny as KSerializer<Any?>,
+        path.readSerializer,
         path.properties.lastOrNull()?.serializableAnnotations ?: listOf()
     )
     public fun renderer(formModule: FormModule): Renderer<Any?> {
@@ -192,55 +213,52 @@ public fun <T> ElementWriter.CanAddScrolling.renderTable(
         }.col {
             // Header row - by Claude
             row {
-                themed(ListSemantic).row {
-                    forEach(columns) { col ->
-
-                        sizeConstraints(width = col.columnWidth(module).rem).important.row {
-                            val mimeType = "x-lskui/column"
-                            val colSer = ColumnInfo.serializer(innerSerializer)
-                            dragData = DragData(label = col.toString(), mimeType = mimeType, data = DefaultJson.encodeToString(colSer, col))
-                            dropTargetDelegate = object: DropTargetDelegate {
-                                override fun drop(event: DragEvent): Boolean {
-                                    return event.data[mimeType]?.let { colStr ->
-                                        val otherCol = DefaultJson.decodeFromString(colSer, colStr)
-                                        launch {
-                                            columns set columns()
-                                                .let {
-                                                    val t = it.toMutableList()
-                                                    val myOldIndex = t.indexOf(col)
-                                                    val otherOldIndex = t.indexOf(otherCol)
-                                                    t.removeAt(otherOldIndex)
-                                                    if (myOldIndex < otherOldIndex) t.add(t.indexOf(col), otherCol)
-                                                    else t.add(t.indexOf(col) + 1, otherCol)
-                                                    t
-                                                }
-                                        }
-                                        true
-                                    } ?: false
-                                }
-                            }
-                            centered.expanding.text(col.path.properties.joinToString(" ") { it.displayName })
-
-                            centered.row {
-                                gap = 0.px
-                                // Renderer switcher (if enabled and multiple options) - by Claude
-                                if (module.enableRendererSwitching) {
-                                    subrendererSelector(
-                                        selectedRenderer = Constant(col.renderer(module)).withWrite { v ->
-                                            columns set columns().map {
-                                                if(it == col) col.copy(rendererSelected = v.name)
-                                                else it
+                themed(ListSemantic).rowOfExpensive(columns) { col ->
+                    sizeConstraints(width = col.columnWidth(module).rem).important.row {
+                        val mimeType = "x-lskui/column"
+                        val colSer = ColumnInfo.serializer(innerSerializer)
+                        dragData = DragData(label = col.toString(), mimeType = mimeType, data = DefaultJson.encodeToString(colSer, col))
+                        dropTargetDelegate = object: DropTargetDelegate {
+                            override fun drop(event: DragEvent): Boolean {
+                                return event.data[mimeType]?.let { colStr ->
+                                    val otherCol = DefaultJson.decodeFromString(colSer, colStr)
+                                    launch {
+                                        columns set columns()
+                                            .let {
+                                                val t = it.toMutableList()
+                                                val myOldIndex = t.indexOf(col)
+                                                val otherOldIndex = t.indexOf(otherCol)
+                                                t.removeAt(otherOldIndex)
+                                                if (myOldIndex < otherOldIndex) t.add(t.indexOf(col), otherCol)
+                                                else t.add(t.indexOf(col) + 1, otherCol)
+                                                t
                                             }
-                                        },
-                                        elementRenderers = module.selectAll(col.ctx)
-                                    )
-                                }
-
-                                button {
-                                    centered.icon(Icon.close.copy(width = 1.rem, height = 1.rem), "Remove Column")
-                                    onClick {
-                                        columns set (columns() - col)
                                     }
+                                    true
+                                } ?: false
+                            }
+                        }
+                        centered.expanding.text(col.path.properties.joinToString(" ") { it.displayName })
+
+                        centered.row {
+                            gap = 0.px
+                            // Renderer switcher (if enabled and multiple options) - by Claude
+                            if (module.enableRendererSwitching) {
+                                subrendererSelector(
+                                    selectedRenderer = Constant(col.renderer(module)).withWrite { v ->
+                                        columns set columns().map {
+                                            if(it == col) col.copy(rendererSelected = v.name)
+                                            else it
+                                        }
+                                    },
+                                    elementRenderers = module.selectAll(col.ctx)
+                                )
+                            }
+
+                            button {
+                                centered.icon(Icon.close.copy(width = 1.rem, height = 1.rem), "Remove Column")
+                                onClick {
+                                    columns set (columns() - col)
                                 }
                             }
                         }
@@ -248,28 +266,25 @@ public fun <T> ElementWriter.CanAddScrolling.renderTable(
                 }
 
                 // Add column button
-                menuButton {
+                button {
                     centered.icon(Icon.add.copy(width = 1.rem, height = 1.rem), "Add Column")
-                    preferredDirection = PopoverPreferredDirection.belowLeft
-                    requireClick = true
-                    opensMenu {
-                        col {
-                            // Show available properties to add
-                            for (prop in properties) {
-                                val path = DataClassPathAccess(
-                                    DataClassPathSelf(innerSerializer),
-                                    prop
-                                ) as DataClassPath<T, Any?>
-
-                                button {
-                                    text(prop.displayName)
-                                    onClick {
-                                        val current = columns()
-                                        if (path !in current.map { it.path }) {
-                                            columns set (current + ColumnInfo(path, module))
+                    onClick {
+                        context.dialog { closer ->
+                            col {
+                                sizeConstraints(height = 30.rem).scrolling.col {
+                                    // Show available properties to add
+                                    (properties as Array<SerializableProperty<T, *>>)
+                                        .walkDataClassPathsLimitedRecursion(innerSerializer)
+                                        .forEach { path ->
+                                            toggleButton {
+                                                text(path.properties.joinToString(" - ") { it.displayName })
+                                                checked bind columns.contains(ColumnInfo(path, module))
+                                            }
                                         }
-                                        closePopovers()
-                                    }
+                                }
+                                button {
+                                    centered.text("Close")
+                                    onClick { closer() }
                                 }
                             }
                         }
@@ -293,26 +308,24 @@ public fun <T> ElementWriter.CanAddScrolling.renderTable(
                 // by Claude - items is double-wrapped: Reactive<Reactive<List<T>>>
                 // Use remember { items()() } to unwrap both layers into a single tracked reactive
                 children(remember { items()() }, id = { (it as? HasId<*>)?._id ?: it }) { itemReactive ->
-                    fun ElementWriter.CanAddTheme.rowContent() = themed(ListSemantic).row {
-                        forEach(columns) { col ->
-                            col.renderer(module).cellView(col.ctx, itemReactive.lensPath(col.path as DataClassPath<Any?, Any?>), module)(
-                                sizeConstraints(width = col.columnWidth(module).rem)
-                            )
-                        }
+                    fun ElementWriter.CanAddTheme.rowContent() = themed(ListSemantic).rowOfExpensive(columns) { col ->
+                        col.renderer(module).cellView(col.ctx, itemReactive.lensPath(col.path as DataClassPath<Any?, Any?>), module).invoke(
+                            sizeConstraints(width = col.columnWidth(module).rem).padded
+                        )
                     }
 
                     if (linkTo != null) {
-                        card.link {
+                        card.unpadded.link {
                             rowContent()
                             ::to { linkTo(itemReactive()) }
                         }
                     } else if (action != null) {
-                        card.button {
+                        card.unpadded.button {
                             rowContent()
                             onClick { action(itemReactive()) }
                         }
                     } else {
-                        card.rowContent()
+                        card.unpadded.rowContent()
                     }
                 }
             }

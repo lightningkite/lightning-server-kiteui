@@ -548,8 +548,9 @@ public object CentsRenderer : Renderer<Cents> {
     override val name: String = "Dollars and Cents"
     override fun form(context: RenderContext<Cents>, value: MutableReactive<Cents>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
         unpadded.row {
-            centered.text("$")
-            numberInput {
+            centered.padded.text("$")
+            expanding.padded.numberInput {
+                align = Align.End
                 content bind value.lens(
                     get = { it.toDouble() },
                     set = { it?.dollars ?: 0.cents }
