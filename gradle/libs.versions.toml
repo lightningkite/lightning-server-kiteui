@@ -49,6 +49,7 @@ lightningServer-sessions-sms = { module = "com.lightningkite.lightningserver:ses
 services-database = { module = "com.lightningkite.services:database", version = { ref = "serviceAbstractions" } }
 services-database-jsonfile = { module = "com.lightningkite.services:database-jsonfile", version = { ref = "serviceAbstractions" } }
 services-database-mongodb = { module = "com.lightningkite.services:database-mongodb", version = { ref = "serviceAbstractions" } }
+services-currency = { module = "com.lightningkite.services:currency", version = { ref = "serviceAbstractions" } }
 services-email-javasmtp = { module = "com.lightningkite.services:email-javasmtp", version = { ref = "serviceAbstractions" } }
 services-files-s3 = { module = "com.lightningkite.services:files-s3", version = { ref = "serviceAbstractions" } }
 services-notifications-firebase = { module = "com.lightningkite.services:notifications-fcm", version = { ref = "serviceAbstractions" } }
