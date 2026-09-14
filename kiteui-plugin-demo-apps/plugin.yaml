@@ -1,0 +1,67 @@
+# GENERATED (then hand-edited: the kiteuiResourcesIos paths were repointed from
+# ${module.rootDir}/ios to ${module.rootDir}/ios/app, which is what the Gradle build's
+# KiteUiPluginExtension.iosProjectRoot points at -- the shim hardcodes <module>/ios) by com.lightningkite.kiteui:codegen:8.1.0-codegenextraction-191-2921c5985-1-local -- do not edit by hand.
+# Regenerate (or upgrade) with: ./kiteui-setup.sh <version>
+#
+# ${module.rootDir} is the directory of whichever module enables this plugin, so ONE shim serves
+# any number of consuming modules. Do not use ${module.kotlinJavaSources} here: it resolves to a
+# jvm-scoped fragment view (src + src@jvm) and silently omits src@js.
+tasks:
+  kiteuiResourcesCommon:
+    action: !com.lightningkite.kiteui.shim.kiteuiResourcesCommon
+      resources: ${module.rootDir}/resources
+      packageName: com.lightningkite.lskiteuistarter
+      out: ${taskOutputDir}
+  kiteuiResourcesJs:
+    action: !com.lightningkite.kiteui.shim.kiteuiResourcesJs
+      resources: ${module.rootDir}/resources
+      packageName: com.lightningkite.lskiteuistarter
+      copyTo: ${module.rootDir}/resources@js/common
+      publicCopyTo: ${module.rootDir}/resources@js/public/common
+      out: ${taskOutputDir}
+  kiteuiResourcesJvm:
+    action: !com.lightningkite.kiteui.shim.kiteuiResourcesJvm
+      resources: ${module.rootDir}/resources
+      packageName: com.lightningkite.lskiteuistarter
+      gitIgnoreDir: ${module.rootDir}/resources@jvm/common
+      out: ${taskOutputDir}
+  kiteuiResourcesAndroid:
+    action: !com.lightningkite.kiteui.shim.kiteuiResourcesAndroid
+      resources: ${module.rootDir}/resources
+      packageName: com.lightningkite.lskiteuistarter
+      androidResFolder: ${module.rootDir}/res@android
+      out: ${taskOutputDir}
+  kiteuiResourcesIos:
+    action: !com.lightningkite.kiteui.shim.kiteuiResourcesIos
+      resources: ${module.rootDir}/resources
+      packageName: com.lightningkite.lskiteuistarter
+      outPlist: ${module.rootDir}/ios/app/Info.plist
+      outNonAssets: ${module.rootDir}/ios/app/resourcesFromCommon
+      outAssets: ${module.rootDir}/ios/app/Assets.xcassets
+      out: ${taskOutputDir}
+  kiteuiAutoRoutes:
+    action: !com.lightningkite.kiteui.shim.kiteuiAutoRoutes
+      sources: ${module.rootDir}/src
+      out: ${taskOutputDir}
+generated:
+  sources:
+    - language: kotlin
+      directory: ${tasks.kiteuiResourcesCommon.action.out}
+    - language: kotlin
+      fragment:
+        modifier: "@jvm"
+      directory: ${tasks.kiteuiResourcesJvm.action.out}
+    - language: kotlin
+      fragment:
+        modifier: "@js"
+      directory: ${tasks.kiteuiResourcesJs.action.out}
+    - language: kotlin
+      fragment:
+        modifier: "@android"
+      directory: ${tasks.kiteuiResourcesAndroid.action.out}
+    - language: kotlin
+      fragment:
+        modifier: "@ios"
+      directory: ${tasks.kiteuiResourcesIos.action.out}
+    - language: kotlin
+      directory: ${tasks.kiteuiAutoRoutes.action.out}

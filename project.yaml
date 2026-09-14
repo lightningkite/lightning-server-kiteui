@@ -1,0 +1,15 @@
+modules:
+  - admin
+  - client
+  - demo-apps
+  - demo-server
+  - demo-shared
+  - kiteui-plugin-admin
+  - kiteui-plugin-demo-apps
+  - ksp-common-plugin
+  - server-client-utils
+
+plugins:
+  - ./kiteui-plugin-admin
+  - ./kiteui-plugin-demo-apps
+  - ./ksp-common-plugin

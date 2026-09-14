@@ -1,0 +1,21 @@
+# Shared configuration for every JVM-only module in this repo.
+# `maven-like` keeps the existing src/main/kotlin + src/test/kotlin layout, so no files move.
+layout: maven-like
+
+apply:
+  - ./common.module-template.yaml
+
+settings:
+  kotlin:
+    serialization: json
+    optIns:
+      - kotlin.time.ExperimentalTime
+      - kotlin.uuid.ExperimentalUuidApi
+    freeCompilerArgs: [ -Xcontext-parameters ]
+  jvm:
+    # Matches the bytecode Gradle produced: no module sets jvmTarget, so the Kotlin plugin
+    # followed the Gradle JVM (JDK 17). Without this the Toolchain emits Java 25 bytecode.
+    release: 17
+  # Defaults to false, unlike Gradle, which publishes a sources jar for every target.
+  publishing:
+    publishSources: true

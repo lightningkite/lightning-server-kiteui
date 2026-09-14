@@ -1,0 +1,21 @@
+# Shared configuration for every multiplatform module in this repo.
+# `product.platforms` cannot live here (templates may not set `product`), so each module
+# repeats its platform list. android namespace/minSdk also vary per module.
+apply:
+  - ./common.module-template.yaml
+
+settings:
+  kotlin:
+    serialization: json
+    optIns:
+      - kotlin.time.ExperimentalTime
+      - kotlin.uuid.ExperimentalUuidApi
+  jvm:
+    # No module sets jvmTarget on the `jvm()` target, so Gradle followed the Gradle JVM (JDK 17).
+    release: 17
+  # Defaults to false, unlike Gradle, which publishes a sources jar for every target.
+  publishing:
+    publishSources: true
+  # Gradle's KMP jvm target defaults to kotlin-test-junit (JUnit 4); the Toolchain defaults to
+  # JUnit 5. Matched to Gradle so the test runner behaves the same.
+  junit: junit-4

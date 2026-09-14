@@ -1,0 +1,24 @@
+# ${module.rootDir} is the directory of whichever module enables the plugin, so one shim serves
+# every module that needs common-fragment KSP output.
+tasks:
+  kspCommonMain:
+    action: !kspcommon.runKspOverCommon
+      commonSrcDir: ${module.rootDir}/src
+      classpath: ${module.compileClasspath}
+      outputDir: ${taskOutputDir}
+  kspCommonTest:
+    action: !kspcommon.runKspOverCommon
+      commonSrcDir: ${module.rootDir}/test
+      classpath: ${module.compileClasspath}
+      outputDir: ${taskOutputDir}
+
+generated:
+  sources:
+    # No `fragment` modifier, so these land in the COMMON fragment -- where @JvmName is legal and
+    # common source can reference the generated declarations.
+    - language: kotlin
+      directory: ${tasks.kspCommonMain.action.outputDir}
+    - language: kotlin
+      fragment:
+        isTest: true
+      directory: ${tasks.kspCommonTest.action.outputDir}

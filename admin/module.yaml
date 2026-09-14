@@ -1,0 +1,52 @@
+apply:
+  - //kmp.module-template.yaml
+
+# NOT BUILDING. `admin` consumes KSP-generated code from its common source set, and no mechanism
+# in Toolchain 0.12.1 can deliver that to a module without a JVM platform -- see the note on the
+# `ksp` block below. Left configured so the rest is ready once that gap is closed.
+#
+# Gradle builds this as a JS browser executable via kfc (`binaries.executable()` + the
+# io.github.turansky.kfc.application plugin). The Toolchain's single-platform `js/app` product
+# would collapse `resources` and `resources@js` into one directory, which the kiteui resource
+# generator cannot work with -- it reads the former and writes into the latter. So the module is
+# declared as a single-platform KMP library here, and the browser bundle (kfc jsBundleProduction
+# and the terraform deployWeb* tasks that depend on it) has no equivalent yet.
+product:
+  type: kmp/lib
+  platforms: [ js ]
+
+dependencies:
+  - ../client: exported
+  - com.lightningkite:kotlinx-serialization-csv-durable:0.2.21-1: exported
+
+test-dependencies:
+  - $kotlin.test
+
+settings:
+  kotlin:
+    # BROKEN, and there is no fix available in Toolchain 0.12.1 -- see the note at the top of this
+    # file. The built-in KSP below puts its output in the js fragment, where database-processor's
+    # `@JvmName` annotations are rejected ("declaration annotated with '@OptionalExpectation' can
+    # only be used in common module sources"). The ksp-common-plugin shim would put them in the
+    # common fragment, but its task needs ${module.compileClasspath}, which the Toolchain can only
+    # resolve for a module that has a JVM platform -- and this module cannot have one, because its
+    # common source declares `external object` / `@JsModule`, which do not compile on JVM.
+    ksp:
+      processors:
+        - com.lightningkite.services:database-processor:1.3.0-prerelease-113-79195cb8
+      processorOptions:
+        generateFields: "true"
+
+settings@js:
+  kotlin:
+    freeCompilerArgs: [ -Xir-module-name=com.lightningkite:admin ]
+
+test-settings@js:
+  kotlin:
+    freeCompilerArgs: [ -Xir-module-name=admin_test ]
+
+dependencies@js:
+  - org.jetbrains.kotlin:kotlin-dom-api-compat:2.4.10
+
+plugins:
+  kiteui-plugin-admin: enabled

@@ -1,0 +1,11 @@
+# Restores Gradle's kotlin { explicitApi() } for the two published library modules that set it
+# (client, server-client-utils). Toolchain 0.12.1 has no settings.kotlin.explicitApi, so the raw
+# flag is used. It would otherwise apply to test sources too, which explicitApi() never did --
+# hence the test-settings counter-flag, which appends to settings and therefore wins.
+settings:
+  kotlin:
+    freeCompilerArgs: [ -Xexplicit-api=strict ]
+
+test-settings:
+  kotlin:
+    freeCompilerArgs: [ -Xexplicit-api=disable ]

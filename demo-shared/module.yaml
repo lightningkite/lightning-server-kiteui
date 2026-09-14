@@ -1,0 +1,51 @@
+apply:
+  - //kmp.module-template.yaml
+
+product:
+  type: kmp/lib
+  platforms: [ jvm, android, js, iosArm64, iosSimulatorArm64 ]
+
+dependencies:
+  - com.lightningkite.lightningserver:core-shared:5.3.0-prerelease-147-6268bcb2: exported
+  - com.lightningkite.lightningserver:typed-shared:5.3.0-prerelease-147-6268bcb2: exported
+  - com.lightningkite.lightningserver:sessions-shared:5.3.0-prerelease-147-6268bcb2: exported
+  - com.lightningkite.lightningserver:files-shared:5.3.0-prerelease-147-6268bcb2: exported
+  - com.lightningkite.lightningserver:media-shared:5.3.0-prerelease-147-6268bcb2: exported
+
+settings:
+  android:
+    namespace: com.lightningkite.lskiteuistarter.shared
+    compileSdk: 36
+    minSdk: 26
+  kotlin:
+    freeCompilerArgs: [ -Xcontext-parameters ]
+
+settings@jvm:
+  kotlin:
+    freeCompilerArgs: [ -module-name, "com.lightningkite.lskiteuistarter:demo-shared" ]
+
+settings@js:
+  kotlin:
+    freeCompilerArgs: [ -Xir-module-name=com.lightningkite.lskiteuistarter:demo-shared ]
+
+settings@ios:
+  kotlin:
+    freeCompilerArgs: [ -module-name, "com.lightningkite.lskiteuistarter:demo-shared", -Xexport-kdoc ]
+
+test-settings@jvm:
+  kotlin:
+    freeCompilerArgs: [ -module-name, demo-shared_test ]
+
+test-settings@js:
+  kotlin:
+    freeCompilerArgs: [ -Xir-module-name=demo-shared_test ]
+
+test-settings@ios:
+  kotlin:
+    freeCompilerArgs: [ -module-name, demo-shared_test ]
+
+dependencies@js:
+  - org.jetbrains.kotlin:kotlin-dom-api-compat:2.4.10
+
+plugins:
+  ksp-common-plugin: enabled

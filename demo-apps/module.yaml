@@ -1,0 +1,66 @@
+apply:
+  - //kmp.module-template.yaml
+
+product:
+  type: kmp/lib
+  platforms: [ jvm, android, js, iosArm64, iosSimulatorArm64 ]
+
+dependencies:
+  - com.lightningkite.kiteui:library:8.3.0-prerelease-191-2921c5985: exported
+  - com.lightningkite:kotlinx-serialization-csv-durable:0.2.21-1: exported
+  - com.lightningkite.lightningserver:core-shared:5.3.0-prerelease-147-6268bcb2: exported
+  - com.lightningkite.lightningserver:typed-shared:5.3.0-prerelease-147-6268bcb2: exported
+  - com.lightningkite.lightningserver:sessions-shared:5.3.0-prerelease-147-6268bcb2: exported
+  - ../client: exported
+  - ../demo-shared: exported
+
+dependencies@android:
+  - com.google.firebase:firebase-messaging-ktx:24.1.2: exported
+
+test-dependencies:
+  - $kotlin.test
+
+settings:
+  # applicationId/targetSdk/versionCode/versionName from the Gradle android{} block are rejected
+  # on a kmp/lib product -- they only apply to an android/app, which this module is not under the
+  # Toolchain. The Android application packaging has no equivalent here.
+  android:
+    namespace: com.lightningkite.lskiteuistarter
+    compileSdk: 36
+    minSdk: 26
+  jvm:
+    # `settings.jvm.release` rejects a @platform qualifier, so the android target's Java 17
+    # sourceCompatibility and the jvm target's project default (also 17) agree here.
+    release: 17
+  kotlin:
+    freeCompilerArgs: [ -Xcontext-parameters ]
+
+settings@jvm:
+  kotlin:
+    freeCompilerArgs: [ -module-name, "com.lightningkite.lskiteuistarter:demo-apps" ]
+
+settings@js:
+  kotlin:
+    freeCompilerArgs: [ -Xir-module-name=com.lightningkite.lskiteuistarter:demo-apps ]
+
+settings@ios:
+  kotlin:
+    freeCompilerArgs: [ -module-name, "com.lightningkite.lskiteuistarter:demo-apps", -Xexport-kdoc ]
+
+test-settings@jvm:
+  kotlin:
+    freeCompilerArgs: [ -module-name, demo-apps_test ]
+
+test-settings@js:
+  kotlin:
+    freeCompilerArgs: [ -Xir-module-name=demo-apps_test ]
+
+test-settings@ios:
+  kotlin:
+    freeCompilerArgs: [ -module-name, demo-apps_test ]
+
+dependencies@js:
+  - org.jetbrains.kotlin:kotlin-dom-api-compat:2.4.10
+
+plugins:
+  kiteui-plugin-demo-apps: enabled

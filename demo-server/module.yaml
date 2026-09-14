@@ -1,0 +1,48 @@
+apply:
+  - //jvm.module-template.yaml
+
+product: jvm/app
+
+dependencies:
+  - ../demo-shared
+  - ../demo-apps
+  - ../server-client-utils
+  - com.lightningkite.kiteui:library-jvmssr:8.3.0-prerelease-191-2921c5985
+  - com.lightningkite:kotliner-cli:1.0.5
+  - com.lightningkite:kotlinx-serialization-csv-durable:0.2.21-1
+  - com.lightningkite.lightningserver:core:5.3.0-prerelease-147-6268bcb2
+  - com.lightningkite.lightningserver:typed:5.3.0-prerelease-147-6268bcb2
+  - com.lightningkite.lightningserver:files:5.3.0-prerelease-147-6268bcb2
+  - com.lightningkite.lightningserver:media:5.3.0-prerelease-147-6268bcb2
+  - com.lightningkite.lightningserver:sessions:5.3.0-prerelease-147-6268bcb2
+  - com.lightningkite.lightningserver:sessions-email:5.3.0-prerelease-147-6268bcb2
+  - com.lightningkite.lightningserver:sessions-sms:5.3.0-prerelease-147-6268bcb2
+  - com.lightningkite.lightningserver:engine-netty:5.3.0-prerelease-147-6268bcb2
+  - com.lightningkite.lightningserver:engine-ktor:5.3.0-prerelease-147-6268bcb2
+  - com.lightningkite.services:database:1.3.0-prerelease-113-79195cb8
+  - com.lightningkite.services:database-jsonfile:1.3.0-prerelease-113-79195cb8
+  - com.lightningkite.services:database-mongodb:1.3.0-prerelease-113-79195cb8
+  - com.lightningkite.services:notifications-fcm:1.3.0-prerelease-113-79195cb8
+  - com.lightningkite.services:email-javasmtp:1.3.0-prerelease-113-79195cb8
+  - com.lightningkite.services:files-s3:1.3.0-prerelease-113-79195cb8
+  # Provides Dispatchers.Main for SSR
+  - org.jetbrains.kotlinx:kotlinx-coroutines-swing:1.11.0
+
+test-dependencies:
+  - $kotlin.test
+
+settings:
+  jvm:
+    mainClass: com.lightningkite.lskiteuistarter.MainKt
+  kotlin:
+    ksp:
+      processors:
+        - com.lightningkite.services:database-processor:1.3.0-prerelease-113-79195cb8
+
+settings@jvm:
+  kotlin:
+    freeCompilerArgs: [ -module-name, "com.lightningkite.lskiteuistarter:demo-server" ]
+
+test-settings@jvm:
+  kotlin:
+    freeCompilerArgs: [ -module-name, demo-server_test ]

@@ -1,0 +1,7 @@
+# Repository list shared by every module. Mirrors the `allprojects { repositories { ... } }`
+# block in the Gradle build; mavenCentral and google are on by default in the Toolchain.
+repositories:
+  - url: https://lightningkite-maven.s3.us-west-2.amazonaws.com
+  - url: https://jitpack.io
+  - url: mavenLocal
+    publish: true

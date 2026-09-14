@@ -1,0 +1,80 @@
+apply:
+  - //kmp.module-template.yaml
+  - //explicit-api.module-template.yaml
+  - //publishing.module-template.yaml
+
+product:
+  type: kmp/lib
+  # Gradle gates the three iOS targets on `System.getProperty("os.name").contains("Mac")` to work
+  # around KMP resolving iOS dependencies on non-Mac hosts. The Toolchain has no equivalent gate,
+  # so they are declared unconditionally; building this module needs a Mac.
+  platforms: [ jvm, android, js, iosX64, iosArm64, iosSimulatorArm64 ]
+
+dependencies:
+  - com.lightningkite.lightningserver:core-shared:5.3.0-prerelease-147-6268bcb2: exported
+  - com.lightningkite.lightningserver:media-shared:5.3.0-prerelease-147-6268bcb2: exported
+  - com.lightningkite.lightningserver:files-shared:5.3.0-prerelease-147-6268bcb2: exported
+  - com.lightningkite.lightningserver:typed-shared:5.3.0-prerelease-147-6268bcb2: exported
+  - com.lightningkite.lightningserver:sessions-shared:5.3.0-prerelease-147-6268bcb2: exported
+  - com.lightningkite.services:database-shared:1.3.0-prerelease-113-79195cb8: exported
+  - com.lightningkite.services:currency:1.3.0-prerelease-113-79195cb8: exported
+  - com.lightningkite.kiteui:library:8.3.0-prerelease-191-2921c5985: exported
+
+test-dependencies:
+  - $kotlin.test
+  - org.jetbrains.kotlinx:kotlinx-coroutines-test:1.11.0
+
+settings:
+  android:
+    namespace: com.lightningkite.lightningserver.client
+    compileSdk: 36
+    minSdk: 21
+  kotlin:
+    freeCompilerArgs: [ -Xexpect-actual-classes ]
+  jvm:
+    # Gradle pins the android target to JVM_1_8 and leaves the `jvm()` target at the project
+    # default (JDK 17). `settings.jvm.release` rejects a @platform qualifier, so one value has to
+    # serve both, and it has to be 17: kiteui's jvm variant is compiled at 17, and inlining its
+    # bytecode into a 1.8 compilation is an error. Consequence: the android variant's bytecode goes
+    # from class file 52 to 61. AGP 8.13 / D8 accepts that, but it is a real difference from Gradle.
+    release: 17
+
+# Gradle names the Kotlin module "<group>:<artifact>", which determines the META-INF/*.kotlin_module
+# entry on JVM and the module name baked into JS and klib output. The Toolchain defaults to the
+# module directory name, so it is restated per platform. Per-module, so not shareable via template.
+settings@jvm:
+  kotlin:
+    freeCompilerArgs: [ -module-name, "com.lightningkite.lightningserver:client" ]
+
+settings@js:
+  kotlin:
+    freeCompilerArgs: [ -Xir-module-name=com.lightningkite.lightningserver:client ]
+
+settings@ios:
+  kotlin:
+    freeCompilerArgs: [ -module-name, "com.lightningkite.lightningserver:client", -Xexport-kdoc ]
+
+# settings@<platform> applies to test compilations too, so the module name above would otherwise be
+# given to the test output as well. On Apple targets that is fatal: main and test klibs end up with
+# the same `unique_name` and the KLIB resolver refuses to load both. These restore the Toolchain's
+# default test module name; test output is never published.
+test-settings@jvm:
+  kotlin:
+    freeCompilerArgs: [ -module-name, client_test ]
+
+test-settings@js:
+  kotlin:
+    freeCompilerArgs: [ -Xir-module-name=client_test ]
+
+test-settings@ios:
+  kotlin:
+    freeCompilerArgs: [ -module-name, client_test ]
+
+# The Toolchain does not add kotlin-dom-api-compat the way the Kotlin Gradle plugin does, so
+# without this every org.w3c.dom type is unresolvable on JS. Declared per module rather than in the
+# shared template: a `dependencies@js` block in a template also reaches the native resolutions.
+dependencies@js:
+  - org.jetbrains.kotlin:kotlin-dom-api-compat:2.4.10
+
+plugins:
+  ksp-common-plugin: enabled
