@@ -26,7 +26,7 @@ public data class WebAuthNProofComponent(
         label@{
             if (!ClientAuthenticator.getClientAuthenticator().autofillAvailable()) return@label null
 
-            val response = p.start(Identification(type, null, null))
+            val response = p.start(WebAuthN.Authentication.StartRequest(type))
             val signedChallenge = ClientAuthenticator.getClientAuthenticator()
                 .getWebAuthNCredentials(response.options, WebAuthNMediationType.Conditional)
 
@@ -39,16 +39,32 @@ public data class WebAuthNProofComponent(
         primaryIdentifier: UserIdentification?,
         checks: ProofsCheckResult<*>?,
         onResult: (Proof?) -> Unit,
+    ): Unit = render(to, primaryIdentifier, checks, emptyList(), onResult)
+
+    /**
+     * Runs the WebAuthn ceremony.
+     *
+     * If another method's proof has already been collected, the most recent one is sent to the server.
+     * The server then returns the user's credential ids, which a security key without a discoverable
+     * credential needs in order to find its key. With no such proof, the server returns no ids, and the
+     * platform offers whichever passkeys it holds for the site. That works for passkeys but not for
+     * security keys that need the ids, so users of those keys must complete another method first.
+     */
+    override fun render(
+        to: ElementWriter.CanAddTheme,
+        primaryIdentifier: UserIdentification?,
+        checks: ProofsCheckResult<*>?,
+        proofs: List<Proof>,
+        onResult: (Proof?) -> Unit,
     ) {
         to.frame {
             centered.activityIndicator()
             launch {
                 try {
                     val (key, getOptions) = p.start(
-                        Identification(
+                        WebAuthN.Authentication.StartRequest(
                             type = type,
-                            property = primaryIdentifier?.property,
-                            value = primaryIdentifier?.value,
+                            proof = proofs.lastOrNull { it.via != via },
                         )
                     )
                     val signedChallenge =
@@ -76,6 +92,14 @@ public data class WebAuthNProofComponent(
         primaryIdentifier: UserIdentification?,
         option: ProofOption,
         onResult: (Proof?) -> Unit,
-    ): Unit = render(to, primaryIdentifier, null, onResult)
+    ): Unit = render(to, primaryIdentifier, null, emptyList(), onResult)
+
+    override fun render(
+        to: ElementWriter.CanAddTheme,
+        primaryIdentifier: UserIdentification?,
+        option: ProofOption,
+        proofs: List<Proof>,
+        onResult: (Proof?) -> Unit,
+    ): Unit = render(to, primaryIdentifier, null, proofs, onResult)
 
 }

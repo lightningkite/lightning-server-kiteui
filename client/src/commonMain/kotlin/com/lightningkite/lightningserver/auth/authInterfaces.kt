@@ -262,7 +262,7 @@ public data class AuthEndpoints(
                 }
             },
             webAuthNProof = object : ProofClientEndpoints.WebAuthN {
-                override suspend fun start(input: Identification): WebAuthN.Authentication.StartResponse {
+                override suspend fun start(input: WebAuthN.Authentication.StartRequest): WebAuthN.Authentication.StartResponse {
                     delay(1000.milliseconds)
                     return WebAuthN.Authentication.StartResponse(
                         "sfhfhfsghdgjdghjfsgsgbbcnkfhkjrtshgdzfgv",

@@ -218,7 +218,7 @@ public open class AuthComponent(
             shownWhen { currentProof() != null }.col {
                 // Debounce to prevent rapid re-renders during proof transitions
                 forEachAnimated(remember { listOfNotNull(currentProof()).map { it to authResult() } }.debounce(10.milliseconds)) { (it, authResult) ->
-                    it.render(this@forEachAnimated, primaryIdentifier.value, authResult) {
+                    it.render(this@forEachAnimated, primaryIdentifier.value, authResult, proofs.value) {
                         if (it != null) {
                             // Proof successfully collected
                             proofs.value += it

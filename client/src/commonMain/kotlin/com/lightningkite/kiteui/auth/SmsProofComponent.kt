@@ -35,8 +35,6 @@ public data class SmsProofComponent(val p: ProofClientEndpoints.Sms) : ProofComp
     override val property: String? = p.property
     override fun name(isPrimary: Boolean): String = "Text Code"
 
-    /** Holds the user-entered verification code */
-    val code: Signal<String> = Signal("")
 
     /** Minimum time between resend attempts to prevent SMS spam and carrier rate limiting */
     val resendTime: Duration = 15.seconds
@@ -63,6 +61,10 @@ public data class SmsProofComponent(val p: ProofClientEndpoints.Sms) : ProofComp
         onResult: (Proof?) -> Unit,
     ) {
         to.col {
+
+            /** Holds the user-entered verification code */
+            val code: Signal<String> = Signal("")
+
             // Listenable to trigger SMS resends - invoking this causes the challenge to be re-fetched
             val resend = BasicListenable()
 
