@@ -127,6 +127,38 @@ public interface ProofComponent {
         option: ProofOption,
         onResult: (Proof?) -> Unit,
     )
+
+    /**
+     * Same as the [ProofsCheckResult] overload of [render], but also receives the proofs already
+     * collected in this authentication flow.
+     *
+     * Most components don't need them, and the default ignores them. [WebAuthNProofComponent] uses one
+     * to show the server that the user already holds another factor, which the server requires before
+     * it will return security key credential ids.
+     *
+     * @param proofs Proofs already collected in this flow, oldest first
+     */
+    public fun render(
+        to: ElementWriter.CanAddTheme,
+        primaryIdentifier: UserIdentification?,
+        checks: ProofsCheckResult<*>?,
+        proofs: List<Proof>,
+        onResult: (Proof?) -> Unit,
+    ): Unit = render(to, primaryIdentifier, checks, onResult)
+
+    /**
+     * Same as the [ProofOption] overload of [render], but also receives the proofs already collected
+     * in this authentication flow. See the [ProofsCheckResult] variant for why.
+     *
+     * @param proofs Proofs already collected in this flow, oldest first
+     */
+    public fun render(
+        to: ElementWriter.CanAddTheme,
+        primaryIdentifier: UserIdentification?,
+        option: ProofOption,
+        proofs: List<Proof>,
+        onResult: (Proof?) -> Unit,
+    ): Unit = render(to, primaryIdentifier, option, onResult)
 }
 
 /*

@@ -179,7 +179,8 @@ public open class ReAuthComponent(
                     component.render(
                         this@forEachAnimated,
                         primaryIdentifier = UserIdentification("$subjectType/_id", subjectId),
-                        option
+                        option,
+                        proofs.value,
                     ) {
                         if (it != null) {
                             // Proof successfully collected
