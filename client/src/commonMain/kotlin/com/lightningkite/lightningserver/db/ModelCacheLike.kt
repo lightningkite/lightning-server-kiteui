@@ -24,7 +24,10 @@ import kotlin.time.Duration.Companion.seconds
  *   reader starts being observed, because that is when someone is watching a screen appear.  It is
  *   not a shelf life: once shown, data keeps being shown until something replaces it.
  * - **pullFrequency** is the whole of how often a reader refreshes itself while it is up.  Zero
- *   means it never does, and a live update socket makes it unnecessary.
+ *   means it never does, and a live update socket makes it unnecessary.  The one exception is a
+ *   reader that took a socket and is not currently covered by it: it falls back to the minimum
+ *   interval until the subscription is live again, because a dropped socket would otherwise leave
+ *   the screen frozen on stale data with nothing to recover it.
  * - **Duration.INFINITE** as a maximumAge accepts whatever is already cached, however old.
  *
  * ## Implementations:

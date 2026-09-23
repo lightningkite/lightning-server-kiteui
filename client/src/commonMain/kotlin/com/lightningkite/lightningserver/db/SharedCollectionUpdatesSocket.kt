@@ -53,8 +53,9 @@ import kotlin.time.Duration.Companion.seconds
  * - Requirements are debounced (100ms) to avoid spam during startup
  *
  * ## Timestamp Tracking
- * Each requirement tracks [Req.activatedAt] timestamp, which is critical for [ModelCache]
- * to determine if cached data is "live".
+ * Each requirement tracks a [Req.coveredSince] timestamp - stamped when the server acknowledges the
+ * subscription, not when the requirement was registered - which is what [ModelCache] uses to decide
+ * whether cached data is "live".
  *
  * ## Error Handling
  * - If acknowledgement isn't received within 4 seconds, the condition is resent
@@ -108,8 +109,8 @@ public class SharedCollectionUpdatesSocket<T : HasId<ID>, ID : Comparable<ID>>(
      * - Automatically deactivates when the reactive context ends
      *
      * ## Lifecycle
-     * - **activate()**: Adds this requirement to [desiredRequirements], records [activatedAt] timestamp
-     * - **deactivate()**: Removes from [desiredRequirements], clears [activatedAt]
+     * - **activate()**: Adds this requirement to [desiredRequirements]
+     * - **deactivate()**: Removes from [desiredRequirements], clears [coveredSince]
      *
      * ## Satisfaction Checking
      * The [satisfied] property allows waiting for the socket to acknowledge this condition:
@@ -122,22 +123,29 @@ public class SharedCollectionUpdatesSocket<T : HasId<ID>, ID : Comparable<ID>>(
      * avoiding the race where we fetch, then socket connects and refetches.
      *
      * @property condition The condition to monitor
-     * @property activatedAt Timestamp when this requirement was activated (null if inactive)
+     * @property coveredSince When the socket's coverage of this condition began (null if uncovered)
      * @property satisfied Reactive boolean indicating if socket is currently listening to this condition
      */
     public inner class Req(public val condition: Condition<T>) : BaseResourceUse() {
-        /** When this requirement was activated, or null while inactive. */
-        public var activatedAt: Instant? = null
-            private set
+        /**
+         * When the server began telling us about changes to [condition], or null while it is not.
+         *
+         * Stamped when the subscription is acknowledged rather than when this was activated, because
+         * that is when the promise actually starts: anything that changed between asking and being
+         * answered was never sent, so data retrieved in that window is not covered by it.  The
+         * distinction only shows itself on a reconnection, which is exactly when it matters - the
+         * stamp has to move forward past the outage, or data from before it reads as live.
+         */
+        public var coveredSince: Instant? = null
+            internal set
 
         override fun activate() {
             desiredRequirements.value += this
-            activatedAt = scope.now()
         }
 
         override fun deactivate() {
             desiredRequirements.value -= this
-            activatedAt = null
+            coveredSince = null
         }
 
         /** Reactive boolean: true when socket is confirmed to be listening to this exact condition */
@@ -173,6 +181,31 @@ public class SharedCollectionUpdatesSocket<T : HasId<ID>, ID : Comparable<ID>>(
         public val fullCondition: Condition<T> = Condition.Never,
         public val requirements: Set<Req> = setOf()
     )
+
+    /**
+     * Publishes what the socket is now covering, stamping each requirement it covers.
+     *
+     * A requirement that is already stamped keeps its stamp: its coverage did not lapse just because
+     * a neighbouring one was added.
+     */
+    private fun nowListening(status: ListeningStatus<T>) {
+        val now = scope.now()
+        status.requirements.forEach { if (it.coveredSince == null) it.coveredSince = now }
+        listeningStatus.value = status
+    }
+
+    /**
+     * Records that the socket is covering nothing.
+     *
+     * Clearing the stamps is the point: the requirements themselves outlive a disconnection and get
+     * resubscribed on the next one, so a stamp left behind would let data retrieved before the outage
+     * pass as covered by the subscription that replaced it.
+     */
+    private fun nowListeningToNothing() {
+        desiredRequirements.value.forEach { it.coveredSince = null }
+        listeningStatus.value.requirements.forEach { it.coveredSince = null }
+        listeningStatus.value = ListeningStatus()
+    }
 
     init {
         /**
@@ -239,7 +272,7 @@ public class SharedCollectionUpdatesSocket<T : HasId<ID>, ID : Comparable<ID>>(
             // Optimization: if the combined condition is semantically equivalent, just update requirements
             // This handles cases where requirements changed but the OR'd condition is the same
             if (listeningStatus.value.fullCondition == willSend.fullCondition) {
-                listeningStatus.value = willSend
+                nowListening(willSend)
                 log?.log("No need to update condition; already satisfied by condition match")
                 return
             }
@@ -281,7 +314,7 @@ public class SharedCollectionUpdatesSocket<T : HasId<ID>, ID : Comparable<ID>>(
                 // Acknowledgement received!
                 lastSent = null
                 // Update listening status to reflect what we now know socket is monitoring
-                listeningStatus.value = l
+                nowListening(l)
 
                 // Check if requirements changed while we were waiting - send update if needed
                 updateCondition()
@@ -301,7 +334,12 @@ public class SharedCollectionUpdatesSocket<T : HasId<ID>, ID : Comparable<ID>>(
         // This forces refetches since we no longer have real-time updates
         socket.onClose {
             log?.log("Closed.")
-            listeningStatus.value = ListeningStatus()
+            // The acknowledgement we were waiting for is never coming - it belonged to a connection
+            // that no longer exists.  Left set, it makes updateCondition() refuse to resubscribe on
+            // the next connection until its four-second timeout expires, so every reconnection
+            // starts with a window of missed changes for no reason.
+            lastSent = null
+            nowListeningToNothing()
         }
 
         // Main reactive loop: manage socket lifecycle based on requirements
@@ -311,7 +349,7 @@ public class SharedCollectionUpdatesSocket<T : HasId<ID>, ID : Comparable<ID>>(
             val requirements = debouncedRequirements()
             // Only keep socket open if we have active requirements
             if (requirements.isEmpty()) {
-                listeningStatus.value = ListeningStatus()
+                nowListeningToNothing()
                 return@reactive
             }
             // Keep socket open and update condition to match requirements

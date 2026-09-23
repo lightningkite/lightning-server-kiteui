@@ -37,6 +37,21 @@ public open class ClientModelRestEndpointsPlusUpdatesWebSocketMock<T : HasId<ID>
                 updatesWs.onOpenList.forEach { it.invoke() }
         }
 
+    /**
+     * Drops the update socket while leaving the REST endpoints answering.
+     *
+     * [connectivityFailure] takes both down together, which is the common outage but not the
+     * interesting one: a client whose socket is dead and whose requests still work is the case where
+     * it matters whether anything falls back to asking.  Set it back to true to reconnect.
+     */
+    public var socketConnected: Boolean = true
+        set(value) {
+            if (field == value) return
+            field = value
+            if (value) updatesWs.onOpenList.toList().forEach { it() }
+            else updatesWs.onCloseList.toList().forEach { it(1000) }
+        }
+
     public val entryChanges: Signal<List<EntryChange<T>>> = Signal<List<EntryChange<T>>>(listOf())
     override fun change(collectionUpdates: CollectionUpdates<T, ID>) {
         val before = collectionUpdates.updates.associate { it._id to data[it._id] } + collectionUpdates.remove.associate { it to data[it] }
@@ -79,7 +94,7 @@ public open class ClientModelRestEndpointsPlusUpdatesWebSocketMock<T : HasId<ID>
 
         override fun connect() {
             myListen = entryChanges.addListener {
-                if(connectivityFailure) return@addListener
+                if(connectivityFailure || !socketConnected) return@addListener
                 log?.log("Entry changes ${entryChanges.value}")
 
                 val v = entryChanges.value.map { EntryChange(it.old?.takeIf { filter(it) }, it.new?.takeIf { filter(it) }) }

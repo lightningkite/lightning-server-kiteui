@@ -23,6 +23,7 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 import kotlin.uuid.Uuid
 
 @OptIn(ExperimentalSerializationApi::class)
@@ -187,6 +188,14 @@ public class BulkFetcher(
  * Channels are reusable: [WebSocketChannel.close] is idempotent, sends exactly one "end" frame, and
  * leaves the channel able to [WebSocketChannel.connect] again later.
  */
+/**
+ * How long to wait for the server to answer a "start" before asking again.
+ *
+ * Matches the acknowledgement timeout [com.lightningkite.lightningserver.db.SharedCollectionUpdatesSocket]
+ * uses for its own subscribe, for the same reason and at the same layer of the same connection.
+ */
+private val START_ACK_TIMEOUT = 4.seconds
+
 internal class MultiplexedSocket(
     private val muxer: TypedWebSocket<MultiplexMessage, MultiplexMessage>,
     private val log: Log? = null,
@@ -231,6 +240,8 @@ internal class MultiplexedSocket(
         /** Dispatched from the single muxer listener for messages on this [channel]. */
         fun handleMessage(message: MultiplexMessage) {
             if (message.start) {
+                opening?.cancel()
+                opening = null
                 connectedSignal.value = true
                 onOpenList.invokeAllSafe()
             }
@@ -262,18 +273,49 @@ internal class MultiplexedSocket(
         }
 
         /**
-         * Sends the "start" frame whenever the channel should be on and the transport is connected
-         * but the channel isn't open yet - covering both the initial subscribe and re-subscribing
-         * after a transport reconnect.  Closing sends its single "end" frame explicitly in [close],
-         * not here, to guarantee exactly one close frame.  This scope lives for the lifetime of the
-         * channel (never cancelled) so the channel can be closed and reconnected repeatedly.
+         * Asks for the channel whenever it should be on and the transport is connected but it isn't
+         * open yet - covering both the initial subscribe and re-subscribing after a transport
+         * reconnect.  Closing sends its single "end" frame explicitly in [close], not here, to
+         * guarantee exactly one close frame.  This scope lives for the lifetime of the channel
+         * (never cancelled) so the channel can be closed and reconnected repeatedly.
          */
         val lifecycle = CoroutineScope(Job()).apply {
             reactiveScope {
                 val shouldBeOn = shouldBeOn()
                 val isOn = connectedSignal()
                 val parentConnected = muxer.connected()
-                if (shouldBeOn && parentConnected && !isOn) {
+                if (shouldBeOn && parentConnected && !isOn) requestStart()
+            }
+        }
+
+        /** The loop currently asking for this channel, if any.  See [requestStart]. */
+        private var opening: Job? = null
+
+        /**
+         * Sends the "start" frame and keeps sending it until the server answers.
+         *
+         * A "start" is a request, not a handshake: the server's own "start" coming back is the only
+         * confirmation there is, and nothing else here would ever ask again.  A frame lost in the
+         * churn around a reconnect therefore leaves this one channel shut for the life of the
+         * session while the transport stays connected and every other channel carries on - which
+         * reads as a single screen frozen for no reason rather than as a connection problem.
+         *
+         * Only the conditions that made it worth asking keep it asking, so this stops on its own
+         * once the channel opens, the transport drops, or the channel is closed.
+         */
+        private fun requestStart() {
+            // Replaced rather than left alone: this is only called when something has changed that
+            // makes asking right, and an older loop may be part-way through a wait it no longer has
+            // any reason to finish - which is exactly the reconnect case.
+            opening?.cancel()
+            opening = lifecycle.launch {
+                while (
+                    isActive &&
+                    shouldBeOn.value &&
+                    muxer.connected.state.getOrNull() == true &&
+                    !connectedSignal.value
+                ) {
+                    log?.log("Requesting channel $channel for $path")
                     muxer.send(
                         MultiplexMessage(
                             channel = channel,
@@ -282,6 +324,7 @@ internal class MultiplexedSocket(
                             start = true
                         )
                     )
+                    delay(START_ACK_TIMEOUT)
                 }
             }
         }
@@ -304,6 +347,8 @@ internal class MultiplexedSocket(
             channels.remove(channel)
             closeChannel?.invoke()
             closeChannel = null
+            opening?.cancel()
+            opening = null
             // [lifecycle] is intentionally NOT cancelled so the channel can be reconnected.
         }
 

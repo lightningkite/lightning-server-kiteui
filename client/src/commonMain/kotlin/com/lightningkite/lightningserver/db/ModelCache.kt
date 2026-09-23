@@ -44,7 +44,9 @@ import kotlin.time.Duration.Companion.seconds
  *
  * When WebSockets are available and [pullFrequency] is under 30 seconds, the cache subscribes rather
  * than polling, and data covered by the subscription stays fresh indefinitely - the socket will say
- * if it changes.
+ * if it changes.  While it is *not* covered - the socket is down, or has not been acknowledged yet -
+ * such a reader polls at the minimum interval regardless of [pullFrequency], since the subscription
+ * it gave up polling for is not currently keeping its promise.
  *
  * ## Important gotchas
  *
@@ -174,10 +176,10 @@ public class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
     /**
      * Whether the update socket has been covering [timestamp] for anything matching [matches].
      *
-     * The `timestamp > activatedAt` comparison is the important part: data cached before the socket
-     * connected may have missed changes that happened during that gap, so the socket's guarantee
-     * does not extend back over it.  When it does, the data can be treated as fresh indefinitely,
-     * because the socket will tell us about any change.
+     * The `timestamp > coveredSince` comparison is the important part: data cached before the server
+     * acknowledged the subscription may have missed changes that happened during that gap, so the
+     * socket's guarantee does not extend back over it.  When it does, the data can be treated as
+     * fresh indefinitely, because the socket will tell us about any change.
      *
      * Derived on every read rather than stored, because sockets close asynchronously and a
      * remembered "this is live" flag would be wrong the instant one does.
@@ -186,7 +188,7 @@ public class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
         sockets?.listeningStatus?.value?.requirements
             ?.asSequence()
             ?.filter { matches(it.condition) }
-            ?.minOfOrNull { it.activatedAt ?: Instant.DISTANT_FUTURE }
+            ?.minOfOrNull { it.coveredSince ?: Instant.DISTANT_FUTURE }
             ?.let { timestamp > it } == true
 
     /**
@@ -330,6 +332,16 @@ public class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
             // how "I'll accept data ten seconds old" turns into hitting the server every ten seconds.
             val cadence: Duration? = pullFrequency.takeIf { it > Duration.ZERO }?.coerceAtLeast(floor)
 
+            // How often to refresh while the subscription is *not* covering this.
+            //
+            // A reader that took a socket did so because polling at its [pullFrequency] would have
+            // been wasteful next to a server that promises to just tell us - and a promise nobody is
+            // keeping is not a reason to stop asking.  Without this, a `pullFrequency` of zero (the
+            // default, and what `watch()` passes) has no cadence at all, so a socket that goes down
+            // and stays down freezes the screen on whatever it last saw, permanently and silently.
+            // A reader with no socket keeps the contract it asked for: zero still means never.
+            val whileUncovered: Duration? = if (socket != null) cadence ?: floor else cadence
+
             while (true) {
                 val held = cached()
                 val wait = when {
@@ -340,7 +352,7 @@ public class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
                     // Measured from when the row was last known rather than from when this reader
                     // arrived, so opening a screen beside data fetched a moment ago waits out the
                     // remainder of the interval instead of starting a fresh one.
-                    else -> cadence?.minus(scope.now() - held.at)
+                    else -> whileUncovered?.minus(scope.now() - held.at)
                 }
                 when {
                     wait == null -> {

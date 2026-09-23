@@ -400,6 +400,71 @@ class ModelCacheTimingTest {
     }
 
     /**
+     * A socket that goes down and stays down has to leave its readers asking again.
+     *
+     * The whole reason a reader takes a socket is that polling at its `pullFrequency` would be
+     * wasteful next to a server that promises to tell us - and `watch()`, which is what nearly every
+     * screen uses, asks for no polling at all. So when the promise stops being kept there is nothing
+     * else holding the screen up: without a fallback the list freezes on whatever it last saw, for as
+     * long as the screen is open, with no error and no way back.
+     */
+    @Test fun aSocketOnlyListKeepsAskingWhileTheSocketIsDown() = runTest2 {
+        val (mock, data, cache) = backgroundScope.socketFixture(3)
+        // No polling and no expiry - the defaults, and what watch() passes.
+        val ref = cache.list(everything())
+        val release = ref.addListener { }
+        delay(7.seconds)
+        assertEquals(data, ref.state.getOrNull())
+
+        // The socket dies; requests still work, which is the case worth testing.
+        mock.socketConnected = false
+        val addedInTheDark = LargeTestModel(int = 4)
+        mock.data[addedInTheDark._id] = addedInTheDark
+        delay(30.seconds)
+
+        assertEquals(
+            data + addedInTheDark,
+            ref.state.getOrNull(),
+            "with the socket down there is nothing keeping this fresh but asking again",
+        )
+        release()
+    }
+
+    /** The same for an item, which is how a detail screen goes quietly wrong. */
+    @Test fun aSocketOnlyItemKeepsAskingWhileTheSocketIsDown() = runTest2 {
+        val (mock, data, cache) = backgroundScope.socketFixture(3)
+        val ref = cache.item(data[0]._id)
+        val release = ref.addListener { }
+        delay(7.seconds)
+        assertEquals(data[0], ref.state.getOrNull())
+
+        mock.socketConnected = false
+        val changed = data[0].copy(string = "changed while the socket was down")
+        mock.data[changed._id] = changed
+        delay(30.seconds)
+
+        assertEquals(changed, ref.state.getOrNull())
+        release()
+    }
+
+    /**
+     * The fallback is a fallback: a covered reader that asked for no polling still asks for nothing.
+     */
+    @Test fun aCoveredSocketOnlyListStillDoesNotPoll() = runTest2 {
+        val (mock, data, cache) = backgroundScope.socketFixture(3)
+        val ref = cache.list(everything())
+        val release = ref.addListener { }
+        delay(7.seconds)
+        assertEquals(data, ref.state.getOrNull())
+        val settled = mock.queries.size
+
+        delay(2.minutes)
+
+        assertEquals(settled, mock.queries.size, "a covered list has nothing to ask for")
+        release()
+    }
+
+    /**
      * A subscription is a promise to be told about changes, so a list it covers neither goes stale on
      * a clock nor needs polling to stay that way.  Not polling is the whole point of preferring a
      * socket, so it is asserted here rather than left implied.

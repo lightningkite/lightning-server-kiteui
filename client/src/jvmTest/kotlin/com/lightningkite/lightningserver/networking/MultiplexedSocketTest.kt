@@ -99,6 +99,61 @@ class MultiplexedSocketTest {
         assertEquals(1, muxer.ends(id), "close() is idempotent: exactly one end frame total")
     }
 
+    /**
+     * A "start" the server never answers has to be asked for again.
+     *
+     * It is the one failure with no other way back: the transport stays connected, so nothing
+     * reconnects, and no other code path ever re-sends.  One channel stays shut for the whole
+     * session while every other channel on the same socket carries on, which presents as a single
+     * screen frozen rather than as anything to do with the connection.
+     */
+    @Test
+    fun anUnansweredStartIsAskedForAgain() {
+        val muxer = FakeMuxer()
+        val channel = MultiplexedSocket(muxer).channel("z/rest")
+
+        channel.connect()
+        awaitTrue { muxer.sent.any { it.start } }
+        val id = muxer.sent.first { it.start }.channel
+
+        // The server never answers.  Nothing else about the transport changes.
+        awaitTrue(timeoutMs = 15_000) { muxer.starts(id) >= 2 }
+        assertTrue(muxer.starts(id) >= 2, "an unanswered start must be retried, sent ${muxer.starts(id)}")
+    }
+
+    /** ...and once it is answered, asking has to stop. */
+    @Test
+    fun anAnsweredStartIsNotAskedForAgain() {
+        val muxer = FakeMuxer()
+        val channel = MultiplexedSocket(muxer).channel("w/rest")
+
+        channel.connect()
+        awaitTrue { muxer.sent.any { it.start } }
+        val id = muxer.sent.first { it.start }.channel
+        muxer.deliver(MultiplexMessage(channel = id, start = true))
+
+        // Well past the retry interval, with the channel open the whole time.
+        Thread.sleep(6_000)
+        assertEquals(1, muxer.starts(id), "an open channel must not keep asking to be opened")
+    }
+
+    /** A closed channel stops asking, however unanswered it was left. */
+    @Test
+    fun closingStopsAnUnansweredStartFromBeingRetried() {
+        val muxer = FakeMuxer()
+        val channel = MultiplexedSocket(muxer).channel("v/rest")
+
+        channel.connect()
+        awaitTrue { muxer.sent.any { it.start } }
+        val id = muxer.sent.first { it.start }.channel
+
+        channel.close(1000, "done")
+        val startsAtClose = muxer.starts(id)
+
+        Thread.sleep(6_000)
+        assertEquals(startsAtClose, muxer.starts(id), "a closed channel must stop asking")
+    }
+
     @Test
     fun transportReconnectResubscribes() {
         val muxer = FakeMuxer()
