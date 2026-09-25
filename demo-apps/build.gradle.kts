@@ -1,10 +1,10 @@
 // by Claude - adapted from ls-kiteui-starter/apps
 import com.lightningkite.kiteui.KiteUiPluginExtension
-import java.util.*
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 
 plugins {
-    alias(libs.plugins.androidApp)
+    alias(libs.plugins.androidKmpLibrary)
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.comLightningkiteKiteui)
@@ -21,11 +21,25 @@ repositories {
 
 kotlin {
     applyDefaultHierarchyTemplate()
-    androidTarget()
+    // The installable Android app lives in :demo-android - AGP 9 doesn't allow com.android.application in a KMP module.
+    android {
+        // Must match the KiteUI packageName below: the generated Resources.android.kt uses an unqualified R.
+        namespace = "com.lightningkite.lskiteuistarter"
+        compileSdk = 36
+        minSdk = 26
+        enableCoreLibraryDesugaring = true
+        androidResources { enable = true }
+        compilerOptions {
+            jvmTarget.set(JvmTarget.JVM_17)
+        }
+    }
     jvm() // Needed for SSR via StaticSiteRenderer
     
-    iosArm64()
-    iosSimulatorArm64()
+    // :client only declares iOS targets on a Mac, so match it or iOS can't resolve the dependency.
+    if (System.getProperty("os.name").contains("Mac", ignoreCase = true)) {
+        iosArm64()
+        iosSimulatorArm64()
+    }
     js {
         binaries.executable()
         browser {
@@ -73,54 +87,8 @@ kotlin {
     }
 }
 
-android {
-    namespace = "com.lightningkite.lskiteuistarter"
-    compileSdk = 36
-
-    defaultConfig {
-        applicationId = "com.lightningkite.lskiteuistarter"
-        minSdk = 26
-        targetSdk = 36
-        versionCode = 1
-        versionName = "0.0.1"
-
-        testInstrumentationRunner = "android.support.test.runner.AndroidJUnitRunner"
-    }
-
-    packaging {
-        resources.excludes.add("com/lightningkite/lightningserver/lightningdb.txt")
-        resources.excludes.add("com/lightningkite/lightningserver/lightningdb-log.txt")
-    }
-
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
-        isCoreLibraryDesugaringEnabled = true
-    }
-    val props = project.rootProject.file("local.properties").takeIf { it.exists() }?.inputStream()?.use { stream ->
-        Properties().apply { load(stream) }
-    }
-    if (props != null && props.getProperty("signingKeystore") != null) {
-        signingConfigs {
-            this.create("release") {
-                storeFile = project.rootProject.file(props.getProperty("signingKeystore"))
-                storePassword = props.getProperty("signingPassword")
-                keyAlias = props.getProperty("signingAlias")
-                keyPassword = props.getProperty("signingAliasPassword")
-            }
-        }
-        buildTypes {
-            this.getByName("release") {
-                this.isMinifyEnabled = false
-                this.proguardFiles(getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro")
-                this.signingConfig = signingConfigs.getByName("release")
-            }
-        }
-    }
-
-    dependencies {
-        coreLibraryDesugaring(libs.androidDesugaring)
-    }
+dependencies {
+    coreLibraryDesugaring(libs.androidDesugaring)
 }
 
 configure<KiteUiPluginExtension> {

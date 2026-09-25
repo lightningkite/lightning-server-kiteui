@@ -1,8 +1,10 @@
 // by Claude - adapted from ls-kiteui-starter/shared
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.kotlin.serialization)
-    alias(libs.plugins.androidLibrary)
+    alias(libs.plugins.androidKmpLibrary)
     alias(libs.plugins.ksp)
 }
 
@@ -11,7 +13,15 @@ version = "1.0-SNAPSHOT"
 
 kotlin {
     applyDefaultHierarchyTemplate()
-    androidTarget()
+    android {
+        namespace = "com.lightningkite.lskiteuistarter.shared"
+        compileSdk = 36
+        minSdk = 26
+        enableCoreLibraryDesugaring = true
+        compilerOptions {
+            jvmTarget.set(JvmTarget.JVM_17)
+        }
+    }
     jvm()
     js {
         browser()
@@ -45,21 +55,5 @@ dependencies {
     configurations.filter { it.name.startsWith("ksp") && it.name != "ksp" }.forEach {
         add(it.name, libs.services.database.processor)
     }
-}
-
-android {
-    namespace = "com.lightningkite.lskiteuistarter.shared"
-    compileSdk = 36
-
-    defaultConfig {
-        minSdk = 26
-    }
-    compileOptions {
-        isCoreLibraryDesugaringEnabled = true
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
-    }
-    dependencies {
-        coreLibraryDesugaring(libs.androidDesugaring)
-    }
+    coreLibraryDesugaring(libs.androidDesugaring)
 }

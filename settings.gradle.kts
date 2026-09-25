@@ -19,4 +19,5 @@ include(":server-client-utils")
 // Demo modules - by Claude
 include(":demo-shared")
 include(":demo-apps")
+include(":demo-android")
 include(":demo-server")

@@ -9,7 +9,7 @@ val iosTarget = System.getProperty("os.name").contains("Mac", ignoreCase = true)
 
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
-    alias(libs.plugins.androidLibrary)
+    alias(libs.plugins.androidKmpLibrary)
     alias(libs.plugins.ksp)
     alias(libs.plugins.kotlin.serialization)
     signing
@@ -28,10 +28,14 @@ dokka {
 kotlin {
     explicitApi()
     applyDefaultHierarchyTemplate()
-    androidTarget {
-        publishLibraryVariants("release", "debug")
+    android {
+        namespace = "com.lightningkite.lightningserver.client"
+        compileSdk = 36
+        minSdk = 21
+        enableCoreLibraryDesugaring = true
+        withHostTest {}
         compilerOptions {
-            this.jvmTarget.set(JvmTarget.JVM_1_8)
+            jvmTarget.set(JvmTarget.JVM_1_8)
         }
     }
 
@@ -82,23 +86,7 @@ dependencies {
     configurations.filter { it.name.startsWith("ksp") && it.name != "ksp" }.forEach {
         add(it.name, libs.services.database.processor)
     }
-}
-
-android {
-    namespace = "com.lightningkite.lightningserver.client"
-    compileSdk = 36
-
-    defaultConfig {
-        minSdk = 21
-    }
-    compileOptions {
-        isCoreLibraryDesugaringEnabled = true
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
-    }
-    dependencies {
         coreLibraryDesugaring(libs.androidDesugaring)
-    }
 }
 
 lkLibrary("lightningkite", "lightning-server-kiteui") {
