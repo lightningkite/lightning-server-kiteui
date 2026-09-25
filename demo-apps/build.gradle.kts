@@ -1,10 +1,11 @@
 // by Claude - adapted from ls-kiteui-starter/apps
 import com.lightningkite.kiteui.KiteUiPluginExtension
-import java.util.*
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
+val iosEnabled: Boolean by rootProject.extra
 
 plugins {
-    alias(libs.plugins.androidApp)
+    alias(libs.plugins.androidKmpLibrary)
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.comLightningkiteKiteui)
@@ -21,11 +22,26 @@ repositories {
 
 kotlin {
     applyDefaultHierarchyTemplate()
-    androidTarget()
+    // The installable Android app lives in :demo-android - AGP 9 doesn't allow com.android.application in a KMP module.
+    android {
+        // Must match the KiteUI packageName below: the generated Resources.android.kt uses an unqualified R.
+        namespace = "com.lightningkite.lskiteuistarter"
+        compileSdk = 36
+        minSdk = 26
+        enableCoreLibraryDesugaring = true
+        androidResources { enable = true }
+        compilerOptions {
+            jvmTarget.set(JvmTarget.JVM_17)
+        }
+    }
     jvm() // Needed for SSR via StaticSiteRenderer
-    
-    iosArm64()
-    iosSimulatorArm64()
+
+    // Must match :client, or iOS can't resolve the dependency.
+    if (iosEnabled) {
+        iosArm64()
+        iosSimulatorArm64()
+    }
+
     js {
         binaries.executable()
         browser {
@@ -38,7 +54,7 @@ kotlin {
     }
 
     sourceSets {
-        val commonMain by getting {
+        val commonMain = getByName("commonMain") {
             dependencies {
                 api(libs.kitui)
                 api(libs.kotlinx.serialization.csv.durable)
@@ -49,17 +65,17 @@ kotlin {
                 api(project(":demo-shared"))
             }
         }
-        val androidMain by getting {
+        val androidMain = getByName("androidMain") {
             dependencies {
                 api(libs.firebaseMessagingKtx)
             }
         }
-        val jsMain by getting {
+        val jsMain = getByName("jsMain") {
             dependencies {
                 implementation(npm("firebase", "10.7.1"))
             }
         }
-        val commonTest by getting {
+        val commonTest = getByName("commonTest") {
             dependencies {
                 implementation(kotlin("test"))
             }
@@ -73,54 +89,8 @@ kotlin {
     }
 }
 
-android {
-    namespace = "com.lightningkite.lskiteuistarter"
-    compileSdk = 36
-
-    defaultConfig {
-        applicationId = "com.lightningkite.lskiteuistarter"
-        minSdk = 26
-        targetSdk = 36
-        versionCode = 1
-        versionName = "0.0.1"
-
-        testInstrumentationRunner = "android.support.test.runner.AndroidJUnitRunner"
-    }
-
-    packaging {
-        resources.excludes.add("com/lightningkite/lightningserver/lightningdb.txt")
-        resources.excludes.add("com/lightningkite/lightningserver/lightningdb-log.txt")
-    }
-
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
-        isCoreLibraryDesugaringEnabled = true
-    }
-    val props = project.rootProject.file("local.properties").takeIf { it.exists() }?.inputStream()?.use { stream ->
-        Properties().apply { load(stream) }
-    }
-    if (props != null && props.getProperty("signingKeystore") != null) {
-        signingConfigs {
-            this.create("release") {
-                storeFile = project.rootProject.file(props.getProperty("signingKeystore"))
-                storePassword = props.getProperty("signingPassword")
-                keyAlias = props.getProperty("signingAlias")
-                keyPassword = props.getProperty("signingAliasPassword")
-            }
-        }
-        buildTypes {
-            this.getByName("release") {
-                this.isMinifyEnabled = false
-                this.proguardFiles(getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro")
-                this.signingConfig = signingConfigs.getByName("release")
-            }
-        }
-    }
-
-    dependencies {
-        coreLibraryDesugaring(libs.androidDesugaring)
-    }
+dependencies {
+    coreLibraryDesugaring(libs.androidDesugaring)
 }
 
 configure<KiteUiPluginExtension> {

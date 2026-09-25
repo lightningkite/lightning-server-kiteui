@@ -20,6 +20,7 @@ import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.serializer
+import kotlin.jvm.JvmInline
 
 /**
  * A model whose primary key is NOT a foreign key: its [ID] references the model itself

@@ -8,6 +8,8 @@ a page here doing it against live data.
 - `demo-shared` - KMP models shared by client and server.
 - `demo-server` - the JVM Lightning Server backend.
 - `demo-apps` - the KiteUI app (Android / JVM / JS / iOS).
+- `demo-android` - the Android application shell that packages `demo-apps` into an APK (AGP 9 no
+  longer allows `com.android.application` in a KMP module).
 
 ## Routes and what each demonstrates
 
@@ -48,7 +50,7 @@ Serves on **port 8091** (`demo-apps/vite/vite.config.mjs`) and proxies `/api` to
 ### Android
 
 ```bash
-./gradlew :demo-apps:installDebug
+./gradlew :demo-android:installDebug
 ```
 
 ### iOS

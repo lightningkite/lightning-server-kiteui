@@ -10,7 +10,7 @@
             android:supportsRtl="true"
             android:theme="@style/Theme.Template">
         <activity
-                android:name=".MainActivity"
+                android:name="com.lightningkite.lskiteuistarter.MainActivity"
                 android:windowSoftInputMode="adjustResize"
                 android:exported="true">
             <intent-filter>

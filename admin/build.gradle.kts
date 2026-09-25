@@ -56,7 +56,7 @@ kotlin {
     }
 
     sourceSets {
-        val commonMain by getting {
+        val commonMain = getByName("commonMain") {
             dependencies {
                 api(project(":client"))
                 api(libs.kotlinx.serialization.csv.durable)
@@ -65,18 +65,18 @@ kotlin {
                 srcDir(file("build/generated/ksp/common/commonMain/kotlin"))
             }
         }
-        val jsTest by getting {
+        val jsTest = getByName("jsTest") {
             dependencies {
                 implementation(kotlin("test"))
             }
         }
-//        val commonJvmMain by creating {
+//        val commonJvmMain = create("commonJvmMain") {
 //            dependsOn(commonMain)
 //        }
-//        val androidMain by getting {
+//        val androidMain = getByName("androidMain") {
 //            dependsOn(commonJvmMain)
 //        }
-        val jsMain by getting {
+        val jsMain = getByName("jsMain") {
             dependencies {
                 implementation(npm("@js-joda/core", "3.2.0"))
                 implementation(npm("@js-joda/timezone", "2.3.0"))
