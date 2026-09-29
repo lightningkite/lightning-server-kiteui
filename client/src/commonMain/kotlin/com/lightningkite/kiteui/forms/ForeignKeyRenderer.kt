@@ -15,7 +15,7 @@ import com.lightningkite.reactive.context.reactiveSuspending
 import com.lightningkite.reactive.core.MutableReactive
 import com.lightningkite.reactive.core.Reactive
 import com.lightningkite.reactive.core.Signal
-import com.lightningkite.reactive.core.remember
+import com.lightningkite.reactive.core.rememberSuspending
 import com.lightningkite.services.data.serialNameFQN
 import com.lightningkite.services.database.*
 import kotlinx.serialization.ExperimentalSerializationApi
@@ -110,19 +110,19 @@ public object ForeignKeyRenderer : Renderer<Any?> {
                                 .any { it.fqn.endsWith("TextIndex") }
 
                             // Build query based on text search
-                            val items = remember {
+                            val items = rememberSuspending {
                                 val cache = typeInfo.cache()
                                 val searchText = textSearch.debounce(500)()
 
                                 if (searchText.isBlank()) {
                                     cache.watch(Query(Condition.Always, listOf()))()
+                                } else if (hasTextIndex) {
+                                    cache.skipCache.textSearch(TextSearch(searchText))
                                 } else {
-                                    val condition = if (hasTextIndex) {
-                                        Condition.FullTextSearch<HasId<Comparable<Comparable<*>>>>(searchText)
-                                    } else {
+                                    val condition = run {
                                         // Search in string fields
                                         val props = typeInfo.serializer.serializableProperties
-                                            ?: return@remember cache.watch(Query(Condition.Always, listOf()))()
+                                            ?: return@rememberSuspending cache.watch(Query(Condition.Always, listOf()))()
 
                                         val stringConditions = props.mapNotNull { prop ->
                                             val serialName = prop.serializer.let {

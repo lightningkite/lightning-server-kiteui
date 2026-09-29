@@ -67,6 +67,7 @@ public open class ClientModelRestEndpointsMock<T : HasId<ID>, ID : Comparable<ID
     }
 
     override suspend fun queryPartial(input: QueryPartial<T>): List<Partial<T>> = TODO()
+    override suspend fun textSearch(input: TextSearch<T>): List<T> = TODO()
     override suspend fun detail(id: ID): T {
         if (connectivityFailure) throw ConnectionException("Dead")
         log?.log("detail")

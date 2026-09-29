@@ -49,6 +49,12 @@ class MockClientModelRestEndpoints<T : HasId<ID>, ID : Comparable<ID>>(val log: 
         TODO("Not yet implemented")
     }
 
+    override suspend fun textSearch(input: TextSearch<T>): List<T> {
+        log("textSearch $input")
+        hold.await()
+        TODO("Not yet implemented")
+    }
+
     override suspend fun detail(id: ID): T {
         log("detail $id")
         hold.await()

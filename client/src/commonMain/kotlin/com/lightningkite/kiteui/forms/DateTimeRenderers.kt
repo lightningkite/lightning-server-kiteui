@@ -1,6 +1,7 @@
 package com.lightningkite.kiteui.forms
 
 import com.lightningkite.kiteui.locale.renderToString
+import com.lightningkite.kiteui.models.px
 import com.lightningkite.kiteui.reactive.Action
 import com.lightningkite.kiteui.views.ElementWriter
 import com.lightningkite.kiteui.views.centered
@@ -25,6 +26,7 @@ public object InstantRenderer : Renderer<Instant> {
         module: FormModule
     ): ElementWriter.CanAddTheme.() -> Unit = {
         fieldTheme.unpadded.row {
+            gap = 0.px
             expanding.padded.localDateTimeField {
                 content bind value.lens(
                     get = { it.toLocalDateTime(TimeZone.currentSystemDefault()) },
@@ -63,6 +65,7 @@ public object NullableInstantRenderer : Renderer<Instant?> {
         module: FormModule
     ): ElementWriter.CanAddTheme.() -> Unit = {
         fieldTheme.unpadded.row {
+            gap = 0.px
             expanding.padded.localDateTimeField {
                 content bind value.lens(
                     get = { it?.toLocalDateTime(TimeZone.currentSystemDefault()) },
@@ -103,6 +106,7 @@ public object LocalDateTimeRenderer : Renderer<LocalDateTime> {
         module: FormModule
     ): ElementWriter.CanAddTheme.() -> Unit = {
         fieldTheme.unpadded.row {
+            gap = 0.px
             expanding.padded.localDateTimeField {
                 content bind value.lens(
                     get = { it },
@@ -141,6 +145,7 @@ public object NullableLocalDateTimeRenderer : Renderer<LocalDateTime?> {
         module: FormModule
     ): ElementWriter.CanAddTheme.() -> Unit = {
         fieldTheme.unpadded.row {
+            gap = 0.px
             expanding.padded.localDateTimeField { content bind value }
             padded.button {
                 centered.text("Now")
@@ -176,6 +181,7 @@ public object LocalDateRenderer : Renderer<LocalDate> {
         module: FormModule
     ): ElementWriter.CanAddTheme.() -> Unit = {
         fieldTheme.unpadded.row {
+            gap = 0.px
             expanding.padded.localDateField {
                 content bind value.lens(
                     get = { it },
@@ -214,6 +220,7 @@ public object NullableLocalDateRenderer : Renderer<LocalDate?> {
         module: FormModule
     ): ElementWriter.CanAddTheme.() -> Unit = {
         fieldTheme.unpadded.row {
+            gap = 0.px
             expanding.padded.localDateField { content bind value }
             padded.button {
                 centered.text("Today")
@@ -249,6 +256,7 @@ public object LocalTimeRenderer : Renderer<LocalTime> {
         module: FormModule
     ): ElementWriter.CanAddTheme.() -> Unit = {
         fieldTheme.unpadded.row {
+            gap = 0.px
             expanding.padded.localTimeField {
                 content bind value.lens(
                     get = { it },
@@ -287,6 +295,7 @@ public object NullableLocalTimeRenderer : Renderer<LocalTime?> {
         module: FormModule
     ): ElementWriter.CanAddTheme.() -> Unit = {
         fieldTheme.unpadded.row {
+            gap = 0.px
             expanding.padded.localTimeField { content bind value }
             padded.button {
                 centered.text("Now")

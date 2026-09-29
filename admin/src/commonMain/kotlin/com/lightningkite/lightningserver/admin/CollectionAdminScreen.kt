@@ -144,10 +144,11 @@ class CollectionAdminPage(val collectionName: String) : Page {
          * All parts are debounced to prevent query spam during rapid UI changes.
          */
         val query: Reactive<Query<UnknownModel>> = remember {
+            val columnSearch = if (hasTextIndex) null else textSearchD().takeUnless { it.isBlank() }
             Query(
                 condition = Condition.And(
                     listOfNotNull(
-                        buildTextSearchCondition(),
+                        columnSearch?.let { buildColumnSearchCondition(it) },
                         conditionD()
                     )
                 ),
@@ -157,17 +158,15 @@ class CollectionAdminPage(val collectionName: String) : Page {
         }
 
         private val textSearchD = textSearch.debounce(DEBOUNCE_MS, mc.scope)
-        /**
-         * Builds a text search condition from the current search text.
-         * Uses full-text search if available, otherwise searches visible string columns.
-         */
-        private fun ReactiveContext.buildTextSearchCondition(): Condition<UnknownModel>? {
-            val text = textSearchD().takeUnless { it.isBlank() } ?: return null
-            return if (hasTextIndex) {
-                Condition.FullTextSearch(text)
-            } else {
-                buildColumnSearchCondition(text)
-            }
+
+        /** Set while searching a text-indexed collection, whose results are ranked by relevance instead of [sort]. */
+        val textSearchQuery: Reactive<TextSearch<UnknownModel>?> = remember {
+            val text = if (hasTextIndex) textSearchD().takeUnless { it.isBlank() } else null
+            text?.let { TextSearch(it, conditionD()) }
+        }
+
+        private val textSearchResults: Reactive<List<UnknownModel>> = rememberSuspending {
+            textSearchQuery()?.let { mc.skipCache.textSearch(it) } ?: listOf()
         }
 
         /**
@@ -337,8 +336,8 @@ class CollectionAdminPage(val collectionName: String) : Page {
             row {
                 subtext {
                     val itemCount = rememberSuspending {
-                        val q = query()
-                        mc.skipCache.count(q.condition)
+                        if (textSearchQuery() != null) textSearchResults().size
+                        else mc.skipCache.count(query().condition)
                     }
                     ::content {
                         buildString {
@@ -356,7 +355,9 @@ class CollectionAdminPage(val collectionName: String) : Page {
                             }
 
                             val s = sort()
-                            if (s.isNotEmpty()) {
+                            if (textSearchQuery() != null) {
+                                append(", most relevant first")
+                            } else if (s.isNotEmpty()) {
                                 append(", sorted by ")
                                 s.forEach {
                                     append(it.field.properties.joinToString("'s ") { it.displayName })
@@ -380,7 +381,10 @@ class CollectionAdminPage(val collectionName: String) : Page {
             expanding.renderTable(
                 module = forms,
                 innerSerializer = mc.serializer,
-                items = remember { mc.list(query(), 0.minutes, 5.minutes) },
+                items = remember {
+                    if (textSearchQuery() != null) textSearchResults
+                    else mc.list(query(), 0.minutes, 5.minutes)
+                },
                 columns = columns as MutableReactive<List<ColumnInfo<UnknownModel>>>,
                 linkTo = {
                     val id = UrlProperties.encodeToString(mc.serializer._id().serializer, it._id)
@@ -397,7 +401,7 @@ class CollectionAdminPage(val collectionName: String) : Page {
                     centered.text("Direct CSV")
                     action = Action("Download", Icon.download) {
                         val csv = createCsvFormat()
-                        val data = mc.query(query().copy(limit = EXPORT_LIMIT))()
+                        val data = exportRows()
                         val content = csv.encodeToString(ListSerializer(mc.serializer), data)
                         ExternalServices.download("data.csv", content.toBlob("text/csv"), DownloadLocation.Downloads)
                         close()
@@ -414,7 +418,7 @@ class CollectionAdminPage(val collectionName: String) : Page {
                     }
                     action = Action("Copy", Icon.download) {
                         val csv = createCsvFormat()
-                        val data = mc.query(query().copy(limit = EXPORT_LIMIT))()
+                        val data = exportRows()
                         val content = csv.encodeToString(ListSerializer(mc.serializer), data)
                         ExternalServices.setClipboardText(content)
                         success.value = true
@@ -483,6 +487,10 @@ class CollectionAdminPage(val collectionName: String) : Page {
                 }
             }
         }
+
+        private suspend fun exportRows(): List<UnknownModel> =
+            textSearchQuery()?.let { mc.skipCache.textSearch(it.copy(limit = EXPORT_LIMIT)) }
+                ?: mc.query(query().copy(limit = EXPORT_LIMIT))()
 
         private fun createCsvFormat() = CsvFormat(StringDeferringConfig(DefaultJson.serializersModule, ignoreUnknownKeys = true))
     }
