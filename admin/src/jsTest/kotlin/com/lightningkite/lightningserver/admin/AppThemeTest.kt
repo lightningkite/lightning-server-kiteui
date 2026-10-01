@@ -138,8 +138,8 @@ class AppThemeTest {
         // Apply CardSemantic to base theme
         val cardTheme = theme[CardSemantic].theme
 
-        // Card should have different background from base
-        assertEquals(card, cardTheme.background, "Card should have card background color")
+        // Card background is a quarter of the way from the base background toward the card color
+        assertEquals(Color.interpolate(background, card, 0.25f), cardTheme.background, "Card should have card background color")
         assertEquals(Color.white, cardTheme.foreground, "Card foreground should be white")
     }
 
@@ -246,8 +246,9 @@ class AppThemeTest {
         assertNotNull(cardImportantTheme, "Nested semantics should work")
 
         // The background should be lightened since card is not the base background
+        val background = Color.fromHex(0x08181D)
         val card = Color.fromHex(0x133C4A)
-        val expected = card.lighten(0.05f)
+        val expected = Color.interpolate(background, card, 0.25f).lighten(0.05f)
         assertEquals(expected, cardImportantTheme.background, "Nested semantic should lighten card background")
     }
 
