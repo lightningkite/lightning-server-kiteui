@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Telemetry
+
+- **Added `telemetryUpload`** for KiteUI's `Telemetry`: `upload = telemetryUpload { api.clientTelemetry.ingest(it) }`. It drops batches the server refused for good (a 4xx other than 401, 408 or 429) and rethrows everything else so `Telemetry` retries them. Needs Lightning Server's `ClientTelemetryEndpoints` mounted on the server.
+
 ### Auth Components
 
 - **Added stable `debugName` values to all interactive auth elements**, making it possible for AI driver tests and automated test suites to reliably target every interactive element without fragile index-based paths.
