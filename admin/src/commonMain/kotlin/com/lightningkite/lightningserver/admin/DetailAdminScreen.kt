@@ -140,7 +140,12 @@ class DetailAdminPage(val collectionName: String, val itemId: String) : Page {
                         danger.button {
                             text("Delete")
                             onClick {
-                                confirmDanger("Delete", "Are you sure?") {
+                                val name = mc.serializer.defaultTitleFields().joinToString(" ") { it.get(item.published()).toString() }
+                                confirmDanger(
+                                    "Delete ${mc.serializer.displayName}",
+                                    "Delete ${name.ifBlank { "this ${mc.serializer.displayName}" }}?  This can't be undone.",
+                                    "Delete"
+                                ) {
                                     val mc = mc()
                                     val actualId =
                                         DefaultUriFormat.decodeFromString(mc.serializer._id().serializer, itemId)
@@ -148,10 +153,11 @@ class DetailAdminPage(val collectionName: String, val itemId: String) : Page {
                                     toast {
                                         row {
                                             centered.icon(Icon.deleteForever, "Deleted")
-                                            centered.text("Item has been deleted.")
+                                            centered.text("${mc.serializer.displayName} deleted.")
                                         }
                                     }
-                                    pageNavigator.goBack()
+                                    // Not goBack(): there may be nothing to go back to after a deep link.
+                                    pageNavigator.replace(CollectionAdminPage(collectionName))
                                 }
                             }
                         }
