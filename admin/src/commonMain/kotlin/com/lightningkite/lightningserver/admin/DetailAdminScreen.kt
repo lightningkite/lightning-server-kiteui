@@ -232,31 +232,35 @@ class DetailAdminPage(val collectionName: String, val itemId: String) : Page {
                     }
                 }
             }
-            atTop.weight(1f).shownWhen { related().isNotEmpty() }.card.col {
-                val itemId = remember { item()._id }
-                h4("Related Records")
-                themed(ListSemantic).col {
-                    reactive {
-                        clearChildren()
-                        val itemId = itemId()
-                        for ((model, property, label) in related()) {
-                            val condition = Condition.OnField(property, Condition.Equal(itemId))
-                            card.link {
-                                row {
-                                    centered.expanding.text(label)
-                                    centered.subtext {
-                                        val count = rememberSuspending {
-                                            (model.value.cache(adminAuthentication()) as ModelCache<HasId<*>, *>).skipCache.count(condition)
+            val hasActions = remember { adminServer().itemActions[collectionName].orEmpty().isNotEmpty() }
+            atTop.weight(1f).shownWhen { exists() && (hasActions() || related().isNotEmpty()) }.col {
+                itemActionsCard(collectionName, itemId)
+                shownWhen { related().isNotEmpty() }.card.col {
+                    val itemId = remember { item()._id }
+                    h4("Related Records")
+                    themed(ListSemantic).col {
+                        reactive {
+                            clearChildren()
+                            val itemId = itemId()
+                            for ((model, property, label) in related()) {
+                                val condition = Condition.OnField(property, Condition.Equal(itemId))
+                                card.link {
+                                    row {
+                                        centered.expanding.text(label)
+                                        centered.subtext {
+                                            val count = rememberSuspending {
+                                                (model.value.cache(adminAuthentication()) as ModelCache<HasId<*>, *>).skipCache.count(condition)
+                                            }
+                                            ::content { count().toString() }
                                         }
-                                        ::content { count().toString() }
                                     }
-                                }
-                                to = {
-                                    CollectionAdminPage(model.key).apply {
-                                        conditionString.value = DefaultJson.encodeToString(
-                                            ConditionSerializer(model.value.serializer),
-                                            condition
-                                        )
+                                    to = {
+                                        CollectionAdminPage(model.key).apply {
+                                            conditionString.value = DefaultJson.encodeToString(
+                                                ConditionSerializer(model.value.serializer),
+                                                condition
+                                            )
+                                        }
                                     }
                                 }
                             }

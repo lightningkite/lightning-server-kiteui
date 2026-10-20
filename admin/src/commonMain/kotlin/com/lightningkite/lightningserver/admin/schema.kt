@@ -115,6 +115,9 @@ class ExternalLightningServer(
     val fileVerify = schema.uploadEarlyVerifyEndpoint()
     val health = schema.healthEndpoint()
 
+    /** Endpoints that act on a single item, by collection path.  See [detectItemActions]. */
+    val itemActions: Map<String, List<ItemAction>> by lazy { schema.detectItemActions() }
+
     private val nullToken: suspend () -> List<Pair<String, String>> = { listOf() }
 
     private val fetcherAuthCache = HashMap<LightningServerAuthentication?, Fetcher>()
