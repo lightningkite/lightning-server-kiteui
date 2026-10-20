@@ -7,6 +7,7 @@ import com.lightningkite.kiteui.forms.displayName
 import com.lightningkite.kiteui.forms.naturalSort
 import com.lightningkite.kiteui.forms.*
 import com.lightningkite.kiteui.models.Icon
+import com.lightningkite.kiteui.models.DangerSemantic
 import com.lightningkite.kiteui.models.SelectedSemantic
 import com.lightningkite.kiteui.models.rem
 import com.lightningkite.kiteui.navigation.DefaultJson
@@ -281,7 +282,7 @@ class CollectionAdminPage(val collectionName: String) : Page {
 
         private fun ViewWriter.renderSortButton() {
             menuButton {
-                dynamicTheme { if (sort().isNotEmpty()) SelectedSemantic else null }
+                dynamicTheme { if (sort() != mc.serializer.naturalSort()) SelectedSemantic else null }
                 icon(Icon.sort, "Sort")
                 requireClick = true
                 opensMenu {
@@ -296,27 +297,30 @@ class CollectionAdminPage(val collectionName: String) : Page {
                 requireClick = true
                 opensMenu {
                     col {
-                        important.button {
-                            text("Export...")
-                            onClick { exportDialog() }
-                        }
-                        important.button {
-                            text("Import...")
-                            onClick { importDialog() }
-                        }
-                        important.button {
-                            text("Bulk Delete...")
-                            onClick { bulkDeleteDialog() }
-                        }
+                        menuItem(Icon.download, "Export...") { exportDialog() }
+                        menuItem(Icon.upload, "Import...") { importDialog() }
+                        menuItem(Icon.deleteForever, "Bulk Delete...", isDanger = true) { bulkDeleteDialog() }
+                        separator()
                         renderPermissionsSection()
                     }
                 }
             }
         }
 
+        private fun ViewWriter.menuItem(icon: Icon, label: String, isDanger: Boolean = false, action: suspend () -> Unit) {
+            button {
+                if (isDanger) themeChoice += DangerSemantic
+                row {
+                    centered.icon(icon, label)
+                    centered.text(label)
+                }
+                onClick(label) { action() }
+            }
+        }
+
         private fun ViewWriter.renderPermissionsSection() {
             col {
-                h3("My Permissions")
+                subtext("My Permissions")
                 val permissions = remember { loadedPermissions().get(collectionName) ?: ModelPermissions() }
 
                 permissionRow("Read") { permissions().read.simplify().friendly() }
@@ -394,9 +398,13 @@ class CollectionAdminPage(val collectionName: String) : Page {
                     }
                 }
                 unpadded.button {
-                    centered.icon(Icon.close.copy(width = 0.75.rem, height = 0.75.rem), "Close")
-                    ::visible { condition() != Condition.Always || sort() != mc.serializer.naturalSort() }
-                    onClick { condition.value = Condition.Always; sort.value = mc.serializer.naturalSort() }
+                    centered.icon(Icon.close.copy(width = 0.75.rem, height = 0.75.rem), "Clear search, filter and sort")
+                    ::visible { textSearch().isNotBlank() || condition() != Condition.Always || sort() != mc.serializer.naturalSort() }
+                    onClick {
+                        textSearch.value = ""
+                        condition.value = Condition.Always
+                        sort.value = mc.serializer.naturalSort()
+                    }
                 }
             }
         }
@@ -418,6 +426,7 @@ class CollectionAdminPage(val collectionName: String) : Page {
         fun ViewWriter.exportDialog() = dialog { close ->
             col {
                 h2("Export")
+                text("Exports the items matching the current search and filter, up to ${EXPORT_LIMIT.toString().reversed().chunked(3).joinToString(",").reversed()}, as CSV.")
 
                 important.button {
                     centered.text("Direct CSV")
@@ -425,7 +434,7 @@ class CollectionAdminPage(val collectionName: String) : Page {
                         val csv = createCsvFormat()
                         val data = mc.query(query().copy(limit = EXPORT_LIMIT))()
                         val content = csv.encodeToString(ListSerializer(mc.serializer), data)
-                        ExternalServices.download("data.csv", content.toBlob("text/csv"), DownloadLocation.Downloads)
+                        ExternalServices.download("${mc.serializer.displayName.pluralize().lowercase().replace(' ', '-')}.csv", content.toBlob("text/csv"), DownloadLocation.Downloads)
                         close()
                     }
                 }
@@ -447,12 +456,15 @@ class CollectionAdminPage(val collectionName: String) : Page {
                         close()
                     }
                 }
+                cancelButton(close)
             }
         }
 
         fun ViewWriter.importDialog() = dialog { close ->
             col {
                 h2("Import")
+                text("Creates one ${mc.serializer.displayName} per row of a CSV file, in the same format Export produces.")
+                destructiveActionsLockedNotice()
                 important.button {
                     centered.text("Upload Direct CSV")
                     ::enabled { unlockDestructiveActions() }
@@ -468,48 +480,66 @@ class CollectionAdminPage(val collectionName: String) : Page {
                         close()
                     }
                 }
+                cancelButton(close)
             }
         }
 
         fun ViewWriter.bulkDeleteDialog() = dialog { close ->
             col {
                 h2("Bulk Delete")
-                reactive<Unit> {
-                    clearChildren()
+                // Its own column: the reactive clears its parent, which would take the heading with it.
+                col {
+                    reactive<Unit> {
+                        clearChildren()
 
-                    val itemCount = rememberSuspending {
-                        val c = query().condition
-                        mc.skipCache.count(c)
-                    }
-
-                    subtext {
-                        ::content {
-                            val c = query().condition.simplify()
-                            when (c) {
-                                Condition.Always -> "This will delete ALL ${itemCount()} items in the collection."
-                                Condition.Never -> "No items will be deleted."
-                                else -> "This will delete ${itemCount()} items where ${c.friendly()}"
-                            }
-                        }
-                    }
-
-                    important.button {
-                        centered.text("Delete All Matching Items")
-                        ::enabled { unlockDestructiveActions() }
-                        action = Action("Delete", Icon.deleteForever) {
+                        val itemCount = rememberSuspending {
                             val c = query().condition
-                            confirmDanger(
-                                "Delete all matching items?",
-                                "Are you sure you want to delete all items matching the current query? This action cannot be undone."
-                            ) {
-                                mc.skipCache.bulkDelete(c)
-                                mc.totallyInvalidate()
-                            }
-                            close()
+                            mc.skipCache.count(c)
                         }
+
+                        subtext {
+                            ::content {
+                                val c = query().condition.simplify()
+                                when (c) {
+                                    Condition.Always -> "This will delete ALL ${itemCount()} items in the collection."
+                                    Condition.Never -> "No items will be deleted."
+                                    else -> "This will delete ${itemCount()} items where ${c.friendly()}"
+                                }
+                            }
+                        }
+
+                        destructiveActionsLockedNotice()
+                        danger.button {
+                            centered.text("Delete All Matching Items")
+                            ::enabled { unlockDestructiveActions() }
+                            action = Action("Delete", Icon.deleteForever) {
+                                val c = query().condition
+                                confirmDanger(
+                                    "Delete all matching items?",
+                                    "Are you sure you want to delete all items matching the current query? This action cannot be undone."
+                                ) {
+                                    mc.skipCache.bulkDelete(c)
+                                    mc.totallyInvalidate()
+                                }
+                                close()
+                            }
+                        }
+                        cancelButton(close)
                     }
                 }
             }
+        }
+
+        private fun ViewWriter.cancelButton(close: () -> Unit) {
+            button {
+                centered.text("Cancel")
+                onClick { close() }
+            }
+        }
+
+        /** Says why a destructive button is disabled, while it is. */
+        private fun ViewWriter.destructiveActionsLockedNotice() {
+            shownWhen { !unlockDestructiveActions() }.subtext("Locked.  Turn on 'Enable destructive actions' on the Home page to use this.")
         }
 
         private fun createCsvFormat() = CsvFormat(StringDeferringConfig(DefaultJson.serializersModule, ignoreUnknownKeys = true))
