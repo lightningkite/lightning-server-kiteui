@@ -60,6 +60,7 @@ import com.lightningkite.reactive.core.Draft
 import com.lightningkite.reactive.core.Reactive
 import com.lightningkite.reactive.core.Signal
 import com.lightningkite.reactive.core.remember
+import com.lightningkite.reactive.core.rememberSuspending
 import com.lightningkite.reactive.extensions.flatten
 import com.lightningkite.reactive.extensions.notNull
 import com.lightningkite.services.data.serialNameFQN
@@ -207,41 +208,55 @@ class DetailAdminPage(val collectionName: String, val itemId: String) : Page {
                     }
                 }
             }
-            atTop.weight(1f).card.col {
+            // Other collections whose @References point at this type, each linking to the records
+            // that point at this item.
+            val related = remember {
+                val myTypeName = mc().serializer.descriptor.serialNameFQN()
+                val permissions = loadedPermissions()
+                adminServer().models.entries.flatMap { model ->
+                    if (permissions[model.key]?.read == Condition.Never) return@flatMap listOf()
+                    model.value.serializer.serializableProperties.orEmpty().mapNotNull {
+                        val anno =
+                            it.serializableAnnotations.find { it.fqn == "com.lightningkite.services.data.References" }
+                                ?: return@mapNotNull null
+                        val typeName = anno.values.get("references")
+                            ?.let { it as? SerializableAnnotationValue.ClassValue }?.fqn ?: return@mapNotNull null
+                        if (typeName != myTypeName) return@mapNotNull null
+                        val reverseName = anno.values.get("reverseName")
+                            ?.let { it as? SerializableAnnotationValue.StringValue }?.value?.takeUnless { it.isEmpty() }
+                        val label = reverseName ?: run {
+                            if (it.displayName == mc().serializer.displayName || it.displayName == "Owner") model.value.serializer.displayName.pluralize()
+                            else "${it.displayName} - ${model.value.serializer.displayName.pluralize()}"
+                        }
+                        Triple(model, it as SerializableProperty<HasId<*>, UnknownId>, label)
+                    }
+                }
+            }
+            atTop.weight(1f).shownWhen { related().isNotEmpty() }.card.col {
                 val itemId = remember { item()._id }
                 h4("Related Records")
                 themed(ListSemantic).col {
                     reactive {
                         clearChildren()
-                        val mc = mc()
                         val itemId = itemId()
-                        val myTypeName = mc.serializer.descriptor.serialNameFQN()
-                        adminServer().models.entries.forEach { model ->
-                            model.value.serializer.serializableProperties?.forEach {
-                                val anno =
-                                    it.serializableAnnotations.find { it.fqn == "com.lightningkite.services.data.References" }
-                                        ?: return@forEach
-                                val typeName = anno.values.get("references")
-                                    ?.let { it as? SerializableAnnotationValue.ClassValue }?.fqn ?: return@forEach
-                                if (typeName != myTypeName) return@forEach
-                                val reverseName = anno.values.get("reverseName")
-                                    ?.let { it as? SerializableAnnotationValue.StringValue }?.value?.takeUnless { it.isEmpty() }
-                                val label = reverseName ?: run {
-                                    if(it.displayName == mc.serializer.displayName || it.displayName == "Owner") model.value.serializer.displayName.pluralize()
-                                    else "${it.displayName} - ${model.value.serializer.displayName.pluralize()}"
-                                }
-                                card.link {
-                                    text(label)
-                                    to = {
-                                        CollectionAdminPage(model.key).apply {
-                                            conditionString.value = DefaultJson.encodeToString(
-                                                ConditionSerializer(model.value.serializer),
-                                                Condition.OnField(
-                                                    it as SerializableProperty<HasId<*>, UnknownId>,
-                                                    Condition.Equal(itemId)
-                                                )
-                                            )
+                        for ((model, property, label) in related()) {
+                            val condition = Condition.OnField(property, Condition.Equal(itemId))
+                            card.link {
+                                row {
+                                    centered.expanding.text(label)
+                                    centered.subtext {
+                                        val count = rememberSuspending {
+                                            (model.value.cache(adminAuthentication()) as ModelCache<HasId<*>, *>).skipCache.count(condition)
                                         }
+                                        ::content { count().toString() }
+                                    }
+                                }
+                                to = {
+                                    CollectionAdminPage(model.key).apply {
+                                        conditionString.value = DefaultJson.encodeToString(
+                                            ConditionSerializer(model.value.serializer),
+                                            condition
+                                        )
                                     }
                                 }
                             }
