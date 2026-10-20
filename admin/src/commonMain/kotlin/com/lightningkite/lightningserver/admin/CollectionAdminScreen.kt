@@ -239,6 +239,7 @@ class CollectionAdminPage(val collectionName: String) : Page {
         private fun ViewWriter.renderToolbar() {
             rowCollapsingToColumn(50.rem) {
                 expanding.fieldTheme.textInput {
+                    hint = "Search ${mc.serializer.displayName.pluralize().lowercase()}"
                     content bind textSearch
                 }
 
@@ -360,6 +361,10 @@ class CollectionAdminPage(val collectionName: String) : Page {
             }
         }
 
+        /** "1 racer", "408 racers". */
+        private fun counted(count: Int): String =
+            "$count " + (if (count == 1) mc.serializer.displayName else mc.serializer.displayName.pluralize()).lowercase()
+
         private fun ViewWriter.renderSummary() {
             row {
                 subtext {
@@ -376,10 +381,10 @@ class CollectionAdminPage(val collectionName: String) : Page {
 
                             when {
                                 c == Condition.Never -> append("Showing NO ITEMS ")
-                                !hasTextSearch && !hasFilter -> append("Showing all ${itemCount()} items")
-                                hasTextSearch && !hasFilter -> append("Showing ${itemCount()} items matching \"$ts\"")
-                                !hasTextSearch && hasFilter -> append("Showing ${itemCount()} items where ${c.friendly()}")
-                                else -> append("Showing ${itemCount()} items matching \"$ts\" where ${c.friendly()}")
+                                !hasTextSearch && !hasFilter -> append("Showing all ${counted(itemCount())}")
+                                hasTextSearch && !hasFilter -> append("Showing ${counted(itemCount())} matching \"$ts\"")
+                                !hasTextSearch && hasFilter -> append("Showing ${counted(itemCount())} where ${c.friendly()}")
+                                else -> append("Showing ${counted(itemCount())} matching \"$ts\" where ${c.friendly()}")
                             }
 
                             val s = sort()
@@ -498,9 +503,9 @@ class CollectionAdminPage(val collectionName: String) : Page {
                             ::content {
                                 val c = query().condition.simplify()
                                 when (c) {
-                                    Condition.Always -> "This will delete ALL ${itemCount()} items in the collection."
+                                    Condition.Always -> "This will delete ALL ${counted(itemCount())} in the collection."
                                     Condition.Never -> "No items will be deleted."
-                                    else -> "This will delete ${itemCount()} items where ${c.friendly()}"
+                                    else -> "This will delete ${counted(itemCount())} where ${c.friendly()}"
                                 }
                             }
                         }
