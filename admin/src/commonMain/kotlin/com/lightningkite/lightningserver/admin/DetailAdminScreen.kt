@@ -42,6 +42,7 @@ import com.lightningkite.kiteui.forms.form
 import com.lightningkite.kiteui.forms.labeledForm
 import com.lightningkite.kiteui.forms.pluralize
 import com.lightningkite.kiteui.models.Icon
+import com.lightningkite.kiteui.models.MediaQuery
 import com.lightningkite.kiteui.models.ListSemantic
 import com.lightningkite.kiteui.models.rem
 import com.lightningkite.kiteui.navigation.*
@@ -68,6 +69,9 @@ import com.lightningkite.services.database.SerializableAnnotationValue
 import com.lightningkite.services.database.SerializableProperty
 import com.lightningkite.services.database.default
 import com.lightningkite.services.database.serializableProperties
+
+/** At least this wide, the detail page puts actions and related records in a sidebar; narrower, in a menu. */
+private val SIDEBAR_BREAKPOINT = 100.rem
 
 @Routable("collections/{collectionName}/detail/{itemId}")
 class DetailAdminPage(val collectionName: String, val itemId: String) : Page {
@@ -119,7 +123,31 @@ class DetailAdminPage(val collectionName: String, val itemId: String) : Page {
             val actualId = DefaultUriFormat.decodeFromString(mc.serializer._id().serializer, itemId)
             tracked().notNull(mc.serializer._id().setCopy(mc.serializer.default(), actualId))
         }.flatten())
-        rowCollapsingToColumn(100.rem) {
+        val related = remember {
+            val myTypeName = mc().serializer.descriptor.serialNameFQN()
+            val permissions = loadedPermissions()
+            adminServer().models.entries.flatMap { model ->
+                if (permissions[model.key]?.read == Condition.Never) return@flatMap listOf()
+                model.value.serializer.serializableProperties.orEmpty().mapNotNull {
+                    val anno =
+                        it.serializableAnnotations.find { it.fqn == "com.lightningkite.services.data.References" }
+                            ?: return@mapNotNull null
+                    val typeName = anno.values.get("references")
+                        ?.let { it as? SerializableAnnotationValue.ClassValue }?.fqn ?: return@mapNotNull null
+                    if (typeName != myTypeName) return@mapNotNull null
+                    val reverseName = anno.values.get("reverseName")
+                        ?.let { it as? SerializableAnnotationValue.StringValue }?.value?.takeUnless { it.isEmpty() }
+                    val label = reverseName ?: run {
+                        if (it.displayName == mc().serializer.displayName || it.displayName == "Owner") model.value.serializer.displayName.pluralize()
+                        else "${it.displayName} - ${model.value.serializer.displayName.pluralize()}"
+                    }
+                    Triple(model, it as SerializableProperty<HasId<*>, UnknownId>, label)
+                }
+            }
+        }
+        val hasActions = remember { adminServer().itemActions[collectionName].orEmpty().isNotEmpty() }
+        val currentId = remember { item()._id }
+        rowCollapsingToColumn(SIDEBAR_BREAKPOINT) {
             space { reactive { item() } }
             weight(2f).card.col {
                 reactive {
@@ -138,6 +166,24 @@ class DetailAdminPage(val collectionName: String, val itemId: String) : Page {
                     labeledForm(forms, mc.serializer, item, "Edit ${mc.serializer.displayName}")
                     atEnd.row {
                         liveControls(collectionName, live, mc)
+                        shownForQuery(MediaQuery.MaxWidth(SIDEBAR_BREAKPOINT)).frame {
+                            shownWhen { hasActions() || related().isNotEmpty() }.menuButton {
+                                icon(Icon.moreVert, "Actions and related records")
+                                requireClick = true
+                                opensMenu {
+                                    col {
+                                        shownWhen { hasActions() }.col {
+                                            subtext("Actions")
+                                            itemActionButtons(collectionName, itemId)
+                                        }
+                                        shownWhen { related().isNotEmpty() }.col {
+                                            subtext("Related Records")
+                                            relatedLinks(related, currentId)
+                                        }
+                                    }
+                                }
+                            }
+                        }
                         danger.button {
                             text("Delete")
                             onClick {
@@ -210,59 +256,47 @@ class DetailAdminPage(val collectionName: String, val itemId: String) : Page {
             }
             // Other collections whose @References point at this type, each linking to the records
             // that point at this item.
-            val related = remember {
-                val myTypeName = mc().serializer.descriptor.serialNameFQN()
-                val permissions = loadedPermissions()
-                adminServer().models.entries.flatMap { model ->
-                    if (permissions[model.key]?.read == Condition.Never) return@flatMap listOf()
-                    model.value.serializer.serializableProperties.orEmpty().mapNotNull {
-                        val anno =
-                            it.serializableAnnotations.find { it.fqn == "com.lightningkite.services.data.References" }
-                                ?: return@mapNotNull null
-                        val typeName = anno.values.get("references")
-                            ?.let { it as? SerializableAnnotationValue.ClassValue }?.fqn ?: return@mapNotNull null
-                        if (typeName != myTypeName) return@mapNotNull null
-                        val reverseName = anno.values.get("reverseName")
-                            ?.let { it as? SerializableAnnotationValue.StringValue }?.value?.takeUnless { it.isEmpty() }
-                        val label = reverseName ?: run {
-                            if (it.displayName == mc().serializer.displayName || it.displayName == "Owner") model.value.serializer.displayName.pluralize()
-                            else "${it.displayName} - ${model.value.serializer.displayName.pluralize()}"
-                        }
-                        Triple(model, it as SerializableProperty<HasId<*>, UnknownId>, label)
+            // Wide: a sidebar beside the form.  Narrow: the same things in the form's ⋮ menu.
+            // (Nested because an element takes only one of shownWhen/shownForQuery.)
+            atTop.weight(1f).shownWhen { exists() && (hasActions() || related().isNotEmpty()) }.col {
+                shownForQuery(MediaQuery.MinWidth(SIDEBAR_BREAKPOINT)).col {
+                    itemActionsCard(collectionName, itemId)
+                    shownWhen { related().isNotEmpty() }.card.col {
+                        h4("Related Records")
+                        relatedLinks(related, currentId)
                     }
                 }
             }
-            val hasActions = remember { adminServer().itemActions[collectionName].orEmpty().isNotEmpty() }
-            atTop.weight(1f).shownWhen { exists() && (hasActions() || related().isNotEmpty()) }.col {
-                itemActionsCard(collectionName, itemId)
-                shownWhen { related().isNotEmpty() }.card.col {
-                    val itemId = remember { item()._id }
-                    h4("Related Records")
-                    themed(ListSemantic).col {
-                        reactive {
-                            clearChildren()
-                            val itemId = itemId()
-                            for ((model, property, label) in related()) {
-                                val condition = Condition.OnField(property, Condition.Equal(itemId))
-                                card.link {
-                                    row {
-                                        centered.expanding.text(label)
-                                        centered.subtext {
-                                            val count = rememberSuspending {
-                                                (model.value.cache(adminAuthentication()) as ModelCache<HasId<*>, *>).skipCache.count(condition)
-                                            }
-                                            ::content { count().toString() }
-                                        }
-                                    }
-                                    to = {
-                                        CollectionAdminPage(model.key).apply {
-                                            conditionString.value = DefaultJson.encodeToString(
-                                                ConditionSerializer(model.value.serializer),
-                                                condition
-                                            )
-                                        }
-                                    }
+        }
+    }
+
+    /** Links to the records in other collections that point at the item [currentId], with counts. */
+    private fun ViewWriter.relatedLinks(
+        related: Reactive<List<Triple<Map.Entry<String, ExternalLightningServer.ModelInfo<*, *>>, SerializableProperty<HasId<*>, UnknownId>, String>>>,
+        currentId: Reactive<UnknownId>,
+    ) {
+        themed(ListSemantic).col {
+            reactive {
+                clearChildren()
+                val itemId = currentId()
+                for ((model, property, label) in related()) {
+                    val condition = Condition.OnField(property, Condition.Equal(itemId))
+                    card.link {
+                        row {
+                            centered.expanding.text(label)
+                            centered.subtext {
+                                val count = rememberSuspending {
+                                    (model.value.cache(adminAuthentication()) as ModelCache<HasId<*>, *>).skipCache.count(condition)
                                 }
+                                ::content { count().toString() }
+                            }
+                        }
+                        to = {
+                            CollectionAdminPage(model.key).apply {
+                                conditionString.value = DefaultJson.encodeToString(
+                                    ConditionSerializer(model.value.serializer),
+                                    condition
+                                )
                             }
                         }
                     }

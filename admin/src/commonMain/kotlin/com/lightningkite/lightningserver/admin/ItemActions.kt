@@ -82,15 +82,21 @@ fun ViewWriter.itemActionsCard(collectionName: String, itemId: String) {
     val actions = remember { adminServer().itemActions[collectionName].orEmpty() }
     shownWhen { actions().isNotEmpty() }.card.col {
         h4("Actions")
-        col {
-            reactive {
-                clearChildren()
-                for (action in actions()) {
-                    button {
-                        text(action.title)
-                        onClick(action.title) {
-                            itemActionDialog(collectionName, itemId, action, adminServer.await(), adminFormModule.await())
-                        }
+        itemActionButtons(collectionName, itemId)
+    }
+}
+
+/** One button per action that applies to item [itemId] of [collectionName], each opening its dialog. */
+fun ViewWriter.itemActionButtons(collectionName: String, itemId: String) {
+    val actions = remember { adminServer().itemActions[collectionName].orEmpty() }
+    col {
+        reactive {
+            clearChildren()
+            for (action in actions()) {
+                button {
+                    text(action.title)
+                    onClick(action.title) {
+                        itemActionDialog(collectionName, itemId, action, adminServer.await(), adminFormModule.await())
                     }
                 }
             }
@@ -99,7 +105,7 @@ fun ViewWriter.itemActionsCard(collectionName: String, itemId: String) {
 }
 
 /**
- * Describes [action], collects any values it needs beyond the ID, and runs it on demand - every
+ * Describes [itemAction], collects any values it needs beyond the ID, and runs it on demand - every
  * action goes through here, so nothing runs from a single misplaced click.
  */
 @Suppress("UNCHECKED_CAST")
