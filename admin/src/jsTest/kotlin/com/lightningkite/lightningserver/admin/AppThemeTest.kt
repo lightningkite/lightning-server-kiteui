@@ -302,6 +302,16 @@ class AppThemeTest {
     }
 
     @Test
+    fun testEnvironmentFromHost() {
+        assertEquals(Environment.Local, environmentFor("http://localhost:8080"))
+        assertEquals(Environment.Local, environmentFor("http://127.0.0.1:8080/meta"))
+        assertEquals(Environment.Development, environmentFor("https://api.dev.example.com"))
+        assertEquals(Environment.Development, environmentFor("https://ls5admin.cs.lightningkite.com"))
+        assertEquals(Environment.Staging, environmentFor("https://STAGING.example.com"))
+        assertEquals(Environment.Production, environmentFor("https://api.example.com/dev-tools"), "Only the host counts")
+    }
+
+    @Test
     fun testLkTintsTowardAccent() {
         assertEquals(Color.fromHex(0x08181D), lk().background.closestColor(), "Default accent keeps the original background")
         val red = lk(accentFor("https://api.example.com")).background.closestColor()

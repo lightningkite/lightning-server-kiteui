@@ -755,23 +755,38 @@ fun lk(accent: Color = lkAccent): Theme {
 /** The accent colour the hosting server asked for, if any, and the URL it was injected for. */
 var injectedAccent: Pair<String, Color>? = null
 
+/** What kind of server the admin is talking to, judged from its host. */
+enum class Environment(val label: String) {
+    Local("Local"), Development("Development"), Staging("Staging"), Production("Production")
+}
+
+private fun hostOf(url: String) = url.substringAfter("://").substringBefore('/').lowercase()
+
+/** Your own machine, a `dev`/`cs.` host, a `stag` host, or otherwise production. */
+fun environmentFor(url: String): Environment {
+    val host = hostOf(url)
+    return when {
+        host.startsWith("localhost") || host.startsWith("127.") || host.startsWith("0.0.0.0") || host.startsWith("[::1]") -> Environment.Local
+        "dev" in host || "cs." in host -> Environment.Development
+        "stag" in host -> Environment.Staging
+        else -> Environment.Production
+    }
+}
+
 /**
  * The accent colour for the server at [url], so you can tell at a glance which environment you're
- * working in.  A server can choose its own; otherwise it follows the host: grey for your own
- * machine, blue for development, yellow for staging, and red for anything else, which is assumed
- * to be production.  All in the same tone as [lkAccent].
+ * working in.  A server can choose its own; otherwise it follows [environmentFor]: grey for your
+ * own machine, blue for development, yellow for staging, and red for production.  All in the same
+ * tone as [lkAccent].
  */
 fun accentFor(url: String): Color {
-    fun host(url: String) = url.substringAfter("://").substringBefore('/').lowercase()
-    val host = host(url)
-    injectedAccent?.let { (injectedUrl, color) -> if (host(injectedUrl) == host) return color }
+    injectedAccent?.let { (injectedUrl, color) -> if (hostOf(injectedUrl) == hostOf(url)) return color }
     val tone = lkAccent.toHSP()
-    return when {
-        host.startsWith("localhost") || host.startsWith("127.") || host.startsWith("0.0.0.0") || host.startsWith("[::1]") ->
-            tone.copy(saturation = 0f).toRGB()
-        "dev" in host || "cs." in host -> tone.copy(hue = 220.degrees).toRGB()
-        "stag" in host -> lkAccent
-        else -> tone.copy(hue = 0.degrees).toRGB()
+    return when (environmentFor(url)) {
+        Environment.Local -> tone.copy(saturation = 0f).toRGB()
+        Environment.Development -> tone.copy(hue = 220.degrees).toRGB()
+        Environment.Staging -> lkAccent
+        Environment.Production -> tone.copy(hue = 0.degrees).toRGB()
     }
 }
 
