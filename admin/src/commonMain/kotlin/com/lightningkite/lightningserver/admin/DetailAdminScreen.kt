@@ -99,12 +99,17 @@ class DetailAdminPage(val collectionName: String, val itemId: String) : Page {
     }
 
     private fun RowOrCol.renderContent() {
+        val tracked = remember {
+            val mc = mc()
+            val actualId = DefaultUriFormat.decodeFromString(mc.serializer._id().serializer, itemId)
+            if (live()) mc.item(actualId, pullFrequency = LIVE_PULL_FREQUENCY) else mc[actualId]
+        }
+        // Only flips when the item appears or disappears, so edits aren't interrupted by updates.
+        val exists = remember { tracked()() != null }
         val item = Draft(remember {
             val mc = mc()
             val actualId = DefaultUriFormat.decodeFromString(mc.serializer._id().serializer, itemId)
-            (if (live()) mc.item(actualId, pullFrequency = LIVE_PULL_FREQUENCY) else mc[actualId]).notNull(mc.serializer.default().also {
-                mc.serializer._id().setCopy(it, actualId)
-            })
+            tracked().notNull(mc.serializer._id().setCopy(mc.serializer.default(), actualId))
         }.flatten())
         rowCollapsingToColumn(100.rem) {
             space { reactive { item() } }
@@ -113,6 +118,15 @@ class DetailAdminPage(val collectionName: String, val itemId: String) : Page {
                     clearChildren()
                     val forms = adminFormModule()
                     val mc = mc()
+                    if (!exists()) {
+                        h2("${mc.serializer.displayName} Not Found")
+                        text("There is no ${mc.serializer.displayName} with the ID '$itemId'.  It may have been deleted.")
+                        link {
+                            text("Back to ${mc.serializer.displayName.pluralize()}")
+                            to = { CollectionAdminPage(collectionName) }
+                        }
+                        return@reactive
+                    }
                     labeledForm(forms, mc.serializer, item, "Edit ${mc.serializer.displayName}")
                     atEnd.row {
                         liveControls(collectionName, live, mc)

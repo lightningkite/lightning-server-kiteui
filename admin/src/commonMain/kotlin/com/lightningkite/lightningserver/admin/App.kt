@@ -32,6 +32,7 @@ package com.lightningkite.lightningserver.admin
 //    @Suppress("UNUSED_VARIABLE")
 
 import com.lightningkite.kiteui.EvolvingAppearance
+import com.lightningkite.kiteui.ExternalServices
 import com.lightningkite.kiteui.ExperimentalKiteUi
 import com.lightningkite.kiteui.auth.authComponent
 import com.lightningkite.kiteui.exceptions.installLsError
@@ -54,6 +55,7 @@ import com.lightningkite.lightningserver.sessions.proofs.LiveAuthClientEndpoints
 import com.lightningkite.reactive.context.ReactiveContext
 import com.lightningkite.reactive.context.invoke
 import com.lightningkite.reactive.context.reactive
+import com.lightningkite.reactive.core.Signal
 import com.lightningkite.reactive.core.remember
 import com.lightningkite.reactive.core.rememberSuspending
 import com.lightningkite.reactive.extensions.debounceWrite
@@ -317,7 +319,7 @@ private fun ViewWriter.profileMenuButton() {
                 // Manual token/session input field
                 // Allows directly pasting a session token instead of logging in
                 // Useful for testing or when token is obtained externally
-                sizeConstraints(width = SETTINGS_FIELD_WIDTH).field("Token") {
+                shownWhen { adminCredentials()?.session == null }.sizeConstraints(width = SETTINGS_FIELD_WIDTH).field("Token") {
                     textInput {
                         content bind adminCredentials.lens(
                             get = { it?.session ?: "" },
@@ -329,12 +331,32 @@ private fun ViewWriter.profileMenuButton() {
                     }
                 }
 
+                // While signed in, the token is masked rather than shown - it's a live credential -
+                // but can still be copied, e.g. for calling the API by hand.
+                shownWhen { adminCredentials()?.session != null }.sizeConstraints(width = SETTINGS_FIELD_WIDTH).field("Token") {
+                    row {
+                        val copied = Signal(false)
+                        centered.expanding.text {
+                            wraps = false
+                            ::content { "•".repeat(12) + (adminCredentials()?.session?.takeLast(4) ?: "") }
+                        }
+                        button {
+                            centered.icon { ::source { if (copied()) Icon.done else Icon.copy } }
+                            onClick("Copy token") {
+                                ExternalServices.setClipboardText(adminCredentials.value?.session ?: return@onClick)
+                                copied.value = true
+                            }
+                        }
+                    }
+                }
+
                 // Dynamic authentication component based on selected user type
                 // Rebuilds when userType or server changes
                 // Provides the full auth flow (password, MFA, etc.)
                 sizeConstraints(width = SETTINGS_FIELD_WIDTH).frame {
                     reactive {
                         clearChildren()
+                        if (adminCredentials()?.session != null) return@reactive
                         try {
                             authComponent(
                                 adminServer().authEndpoints(null),
@@ -357,7 +379,7 @@ private fun ViewWriter.profileMenuButton() {
 
                 // Logout button - only visible when credentials exist
                 // Provides confirmation dialog to prevent accidental logout
-                shownWhen { adminCredentials() != null }.card.button {
+                shownWhen { adminCredentials()?.session != null }.card.button {
                     centered.row {
                         centered.icon(Icon.logout, "Log Out")
                         centered.text("Log Out")

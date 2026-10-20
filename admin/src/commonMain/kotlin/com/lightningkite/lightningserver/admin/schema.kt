@@ -83,7 +83,7 @@ private fun LightningServerKSchema.uploadEarlyVerifyEndpoint(): LightningServerK
 
 private fun LightningServerKSchema.healthEndpoint(): LightningServerKSchemaEndpoint? {
     return endpoints.find {
-        it.output.serialName == "com.lightningkite.lightningserver.serverhealth.ServerHealth"
+        it.output.serialName == "com.lightningkite.lightningserver.typed.ServerHealth"
     }
 }
 

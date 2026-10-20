@@ -45,6 +45,7 @@ import com.lightningkite.reactive.extensions.asyncReactive
 import com.lightningkite.reactive.extensions.withWrite
 import com.lightningkite.services.data.HealthStatus
 import kotlinx.serialization.builtins.serializer
+import kotlin.math.roundToInt
 import kotlin.time.Clock.System.now
 
 @Routable("/")
@@ -158,12 +159,12 @@ class HomePage : Page {
                     row {
                         expanding.card.text {
                             ::content {
-                                "CPU: ${status()?.loadAverageCpu?.toString() ?: "-"}%"
+                                "CPU: ${status()?.loadAverageCpu?.let { (it * 100).roundToInt() } ?: "-"}%"
                             }
                         }
                         expanding.card.text {
                             ::content {
-                                "Memory: ${status()?.memory?.usage?.toString() ?: "-"}%"
+                                "Memory: ${status()?.memory?.usage?.let { (it * 100).roundToInt() } ?: "-"}%"
                             }
                         }
                     }
