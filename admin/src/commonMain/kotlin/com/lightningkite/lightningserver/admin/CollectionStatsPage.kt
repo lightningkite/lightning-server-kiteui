@@ -36,6 +36,7 @@ package com.lightningkite.lightningserver.admin
 import com.lightningkite.kiteui.QueryParameter
 import com.lightningkite.kiteui.Routable
 import com.lightningkite.kiteui.forms.displayName
+import com.lightningkite.kiteui.forms.pluralize
 import com.lightningkite.kiteui.forms.FormModule
 import com.lightningkite.kiteui.forms.form
 import com.lightningkite.kiteui.forms.view
@@ -62,6 +63,7 @@ import kotlinx.serialization.KSerializer
 import kotlinx.serialization.builtins.nullable
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.SerialKind
 import kotlin.time.Duration.Companion.milliseconds
 
 @Routable("collections/{collectionName}/stats")
@@ -110,7 +112,7 @@ class CollectionStatsPage(val collectionName: String) : Page {
              -> true
         else -> false
     }
-    private fun KSerializer<*>.isGroupable() = this.descriptor.kind is PrimitiveKind
+    private fun KSerializer<*>.isGroupable() = this.descriptor.kind.let { it is PrimitiveKind || it == SerialKind.ENUM }
 
     fun toPath(serializer: KSerializer<UnknownModel>, list: List<SerializableProperty<*, *>>): DataClassPath<UnknownModel, *> {
         @Suppress("UNCHECKED_CAST")
@@ -192,41 +194,46 @@ class CollectionStatsPage(val collectionName: String) : Page {
                                     )
                                 )
                             }
+                            val maxCount = remember { counts().values.maxOrNull()?.coerceAtLeast(1)?.toFloat() ?: 1f }
                             themed(ListSemantic).recyclerView {
                                 children(remember { counts().entries.sortedByDescending { it.value } }, id = { it.key }) {
-                                    card.row {
-                                        val ser = groupBy.serializerAny as KSerializer<Any?>
-                                        centered.expanding.view(
-                                            context = forms,
-                                            serializer = ser,
-                                            readable = it.lens {
-                                                parseKey(it.key, ser)
-                                            },
-                                            annotations = groupBy.properties.last().serializableAnnotations
-                                        )
-                                        expanding.link {
-                                            text {
-                                                align = Align.End
-                                                ::content { "${it().value} Items" }
-                                            }
-                                            ::to {
-                                                val keyReq = (groupBy as DataClassPath<UnknownModel, Any?>).eq(
-                                                    parseKey(
-                                                        it().key,
-                                                        ser
-                                                    )
+                                    // A thin bar per group, scaled to the largest, so groups compare at a glance.
+                                    card.col {
+                                        row {
+                                                val ser = groupBy.serializerAny as KSerializer<Any?>
+                                                centered.expanding.view(
+                                                    context = forms,
+                                                    serializer = ser,
+                                                    readable = it.lens {
+                                                        parseKey(it.key, ser)
+                                                    },
+                                                    annotations = groupBy.properties.last().serializableAnnotations
                                                 )
-                                                val fullCondition = (condition() and keyReq).simplify()
-                                                ;{
-                                                CollectionAdminPage(collectionName).also {
-                                                    it.conditionString.value = DefaultJson.encodeToString(
-                                                        Condition.serializer(mc.serializer),
-                                                        fullCondition
-                                                    )
+                                                expanding.link {
+                                                    text {
+                                                        align = Align.End
+                                                        ::content { it().value.let { n -> "$n " + (if (n == 1) mc.serializer.displayName else mc.serializer.displayName.pluralize()).lowercase() } }
+                                                    }
+                                                    ::to {
+                                                        val keyReq = (groupBy as DataClassPath<UnknownModel, Any?>).eq(
+                                                            parseKey(
+                                                                it().key,
+                                                                ser
+                                                            )
+                                                        )
+                                                        val fullCondition = (condition() and keyReq).simplify()
+                                                        ;{
+                                                        CollectionAdminPage(collectionName).also {
+                                                            it.conditionString.value = DefaultJson.encodeToString(
+                                                                Condition.serializer(mc.serializer),
+                                                                fullCondition
+                                                            )
+                                                        }
+                                                    }
+                                                    }
                                                 }
-                                            }
-                                            }
                                         }
+                                        progressBar { ::ratio { it().value.toFloat() / maxCount() } }
                                     }
                                 }
                             }
