@@ -98,8 +98,8 @@ class HomePage : Page {
                         centered.switch {
                             checked bind unlockDestructiveActions
                                 .withWrite {
-                                    if (it) adminSettings.value =
-                                        adminSettings.value.copy(unlockDestructiveActions = now())
+                                    adminSettings.value =
+                                        adminSettings.value.copy(unlockDestructiveActions = if (it) now() else null)
                                 }
                         }
                     }

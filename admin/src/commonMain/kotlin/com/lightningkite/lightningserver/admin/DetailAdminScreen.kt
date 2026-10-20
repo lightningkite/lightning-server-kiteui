@@ -34,6 +34,7 @@
 //
 package com.lightningkite.lightningserver.admin
 
+import com.lightningkite.kiteui.QueryParameter
 import com.lightningkite.kiteui.Routable
 import com.lightningkite.kiteui.forms.displayName
 import com.lightningkite.kiteui.forms.form
@@ -52,9 +53,11 @@ import com.lightningkite.services.database.ConditionSerializer
 import com.lightningkite.services.database.HasId
 import com.lightningkite.services.database._id
 import com.lightningkite.lightningserver.db.ModelCache
+import com.lightningkite.reactive.context.invoke
 import com.lightningkite.reactive.context.reactive
 import com.lightningkite.reactive.core.Draft
 import com.lightningkite.reactive.core.Reactive
+import com.lightningkite.reactive.core.Signal
 import com.lightningkite.reactive.core.remember
 import com.lightningkite.reactive.extensions.flatten
 import com.lightningkite.reactive.extensions.notNull
@@ -66,6 +69,9 @@ import com.lightningkite.services.database.serializableProperties
 
 @Routable("collections/{collectionName}/detail/{itemId}")
 class DetailAdminPage(val collectionName: String, val itemId: String) : Page {
+    @QueryParameter("live")
+    val live: Signal<Boolean> = Signal(false)
+
     // by Claude - added null safety for missing collections
     private val mcOrNull = remember { adminServer().models[collectionName]?.cache(adminAuthentication()) as? ModelCache<UnknownModel, UnknownId> }
     private val mc = remember { mcOrNull()!! }
@@ -96,7 +102,7 @@ class DetailAdminPage(val collectionName: String, val itemId: String) : Page {
         val item = Draft(remember {
             val mc = mc()
             val actualId = DefaultUriFormat.decodeFromString(mc.serializer._id().serializer, itemId)
-            mc[actualId].notNull(mc.serializer.default().also {
+            (if (live()) mc.item(actualId, pullFrequency = LIVE_PULL_FREQUENCY) else mc[actualId]).notNull(mc.serializer.default().also {
                 mc.serializer._id().setCopy(it, actualId)
             })
         }.flatten())
@@ -109,6 +115,7 @@ class DetailAdminPage(val collectionName: String, val itemId: String) : Page {
                     val mc = mc()
                     labeledForm(forms, mc.serializer, item, "Edit ${mc.serializer.displayName}")
                     atEnd.row {
+                        liveControls(collectionName, live, mc)
                         danger.button {
                             text("Delete")
                             onClick {

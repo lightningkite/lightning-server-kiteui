@@ -194,7 +194,7 @@ class ExternalLightningServer(
         val httpPath = inter.path
 
         val hasUpdatesWs =
-            schema.endpoints.any { it.path == inter.path && it.method == "WEBSOCKET" && it.input.serialName == "com.lightningkite.lightningdb.Condition" && it.output.serialName == "com.lightningkite.lightningdb.CollectionUpdates" }
+            schema.endpoints.any { it.path == inter.path && it.method == "WEBSOCKET" && it.input.serialName == "com.lightningkite.services.database.Condition" && it.output.serialName == "com.lightningkite.services.database.CollectionUpdates" }
 
         private var cacheCache = PerAuthCache { auth ->
             when {
