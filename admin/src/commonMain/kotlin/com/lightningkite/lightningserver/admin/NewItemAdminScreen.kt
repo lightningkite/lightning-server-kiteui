@@ -94,6 +94,7 @@ import com.lightningkite.services.database._id
 import com.lightningkite.lightningserver.db.ModelCache
 import com.lightningkite.reactive.context.invoke
 import com.lightningkite.reactive.context.reactive
+import com.lightningkite.reactive.core.Reactive
 import com.lightningkite.reactive.core.Signal
 import com.lightningkite.reactive.core.remember
 import com.lightningkite.reactive.extensions.asyncReactive
@@ -103,6 +104,7 @@ import com.lightningkite.services.database.default
 
 @Routable("collections/{collectionName}/new-item")
 class NewItemAdminPage(val collectionName: String) : Page {
+    override val title: Reactive<String> = remember { "New ${itemTypeTitle(collectionName)}" }
 
     @QueryParameter("condition")
     val conditionString: Signal<String?> = Signal(null)

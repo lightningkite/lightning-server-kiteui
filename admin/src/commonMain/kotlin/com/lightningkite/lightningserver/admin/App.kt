@@ -37,6 +37,7 @@ import com.lightningkite.kiteui.ExperimentalKiteUi
 import com.lightningkite.kiteui.auth.authComponent
 import com.lightningkite.kiteui.exceptions.installLsError
 import com.lightningkite.kiteui.forms.displayName
+import com.lightningkite.kiteui.forms.pluralize
 import com.lightningkite.kiteui.forms.titleCase
 import com.lightningkite.kiteui.models.*
 import com.lightningkite.kiteui.navigation.PageNavigator
@@ -184,44 +185,53 @@ private fun ReactiveContext.collectionMenuItems(): List<Nav.Item> {
             add(Nav.Link(title = "Renderer Gallery", icon = Icon.list) { com.lightningkite.lightningserver.admin.tests.RendererGalleryScreen() })
         }
 
-        // Auto-generate navigation items for each collection in the schema
-        // Sorted alphabetically by display name for consistent ordering
+        // Auto-generate navigation items for each collection the user can read (Condition.Never
+        // means no read access at all), grouped by @Group and sorted alphabetically.
+        val groups = adminServer().models.entries
+            .filter { permissions[it.key]?.read != Condition.Never }
+            .groupBy {
+                it.value.serializer.serializableAnnotations
+                    .find { it.fqn == "com.lightningkite.services.data.Group" }
+                    ?.values
+                    ?.get("name")
+                    ?.let { it as? SerializableAnnotationValue.StringValue }
+                    ?.value
+                    ?: "Other"
+            }
+            .entries.sortedBy { it.key }
+            .map { (group, models) ->
+                group to models
+                    .map { (key, model) -> Nav.Link(title = model.navTitle, icon = Icon.list) { CollectionAdminPage(key) } }
+                    .sortedBy { it.title }
+            }
         add(
             Nav.Group(
                 title = "Collections",
                 icon = Icon.list,
-                children = adminServer().models.entries.groupBy {
-                    it.value.serializer.serializableAnnotations
-                        .find { it.fqn == "com.lightningkite.services.data.Group" }
-                        ?.values
-                        ?.get("name")
-                        ?.let { it as? SerializableAnnotationValue.StringValue }
-                        ?.value
-                        ?: "Other"
-                }.entries.sortedBy { it.key }.map {
-                    Nav.Group(
-                        title = it.key,
-                        icon = Icon.menu,
-                        children = it.value.mapNotNull {
-                            // Only show collections where the user has read permission
-                            // Condition.Never means no read access at all
-                            if (permissions[it.key]?.read != Condition.Never) {
-                                Nav.Link(
-                                    // Use docGroup if available (for organizing related collections),
-                                    // otherwise fall back to serializer display name
-                                    title = it.value.docGroup?.split('.')?.joinToString(" / ") {
-                                        it.removeSuffix("Api").removeSuffix("RestEndpoints").titleCase()
-                                    } ?: it.value.serializer.displayName,
-                                    icon = Icon.list
-                                ) { CollectionAdminPage(it.key) }
-                            } else null
-                        }
-                    )
-                }
+                // A lone group adds a level of nesting and nothing else.
+                children = groups.singleOrNull()?.second
+                    ?: groups.map { (group, links) -> Nav.Group(title = group, icon = Icon.menu, children = links) }
             )
         )
     }
 }
+
+/**
+ * How a collection is named in navigation: by its API's doc group when it has one, which keeps
+ * related collections together ("Race / Club", "Race / Racer"), otherwise by its type.
+ */
+internal val ExternalLightningServer.ModelInfo<*, *>.navTitle: String
+    get() = docGroup?.split('.')?.joinToString(" / ") {
+        it.removeSuffix("Api").removeSuffix("RestEndpoints").titleCase()
+    } ?: serializer.displayName
+
+/** How a collection is named in page titles and headings: its type, plural ("Racers"). */
+internal fun ReactiveContext.collectionTitle(collectionName: String): String =
+    adminServer().models[collectionName]?.serializer?.displayName?.pluralize() ?: collectionName
+
+/** A collection's type, singular ("Racer"). */
+internal fun ReactiveContext.itemTypeTitle(collectionName: String): String =
+    adminServer().models[collectionName]?.serializer?.displayName ?: collectionName
 
 /**
  * The profile menu in the app bar: who you are signed in as, which server the panel talks to, and
@@ -267,11 +277,12 @@ private fun ViewWriter.profileMenuButton() {
             }
         }
         col {
-            centered.icon(Icon.person, "Login")
-            centered.subtext {
-                // Show first 10 characters of user identifier in collapsed menu button
-                // Keeps the button compact while still showing recognizable info
-                ::content { me().take(10) }
+            centered.icon(Icon.person, "Account")
+            // Keeps the button compact; a long identifier ends in an ellipsis rather than mid-word.
+            centered.sizeConstraints(maxWidth = 10.rem).subtext {
+                wraps = false
+                ellipsis = true
+                ::content { me() }
             }
         }
         preferredDirection = PopoverPreferredDirection.belowLeft
@@ -299,19 +310,27 @@ private fun ViewWriter.profileMenuButton() {
                 )
                 sizeConstraints(width = SETTINGS_FIELD_WIDTH).field("User Type") {
                     select {
+                        // Shown by the subject's type ("User") rather than its path ("/auth/session"),
+                        // unless two subjects share a type name.
+                        var names = mapOf<String, String>()
                         bind(
                             userType,
                             remember {
                                 // Fetch available user types from the server schema
                                 // null represents "no auth" option
-                                listOf(null) + try {
-                                    adminServer().authEndpoints(null).subjects.keys.toList()
+                                val subjects = try {
+                                    adminServer().authEndpoints(null).subjects
                                 } catch (e: Exception) {
                                     // TODO: Log error or show warning to user
-                                    listOf()
+                                    mapOf()
                                 }
+                                val typeNames = subjects.mapValues { (_, it) -> (it as LiveAuthClientEndpoints<*, *>).subjectSerializer.displayName }
+                                names = typeNames.mapValues { (path, name) ->
+                                    if (typeNames.values.count { it == name } > 1) "$name ($path)" else name
+                                }
+                                listOf(null) + subjects.keys.toList()
                             },
-                            { it ?: "None" }
+                            { it?.let { names[it] ?: it } ?: "None" }
                         )
                     }
                 }

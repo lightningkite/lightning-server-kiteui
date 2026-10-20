@@ -66,6 +66,7 @@ import kotlin.time.Duration.Companion.milliseconds
 
 @Routable("collections/{collectionName}/stats")
 class CollectionStatsPage(val collectionName: String) : Page {
+    override val title: Reactive<String> = remember { "${itemTypeTitle(collectionName)} Statistics" }
 
     @QueryParameter("condition")
     val conditionString: Signal<String?> = Signal(null)

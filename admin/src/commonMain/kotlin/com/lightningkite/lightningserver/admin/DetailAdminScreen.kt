@@ -36,6 +36,7 @@ package com.lightningkite.lightningserver.admin
 
 import com.lightningkite.kiteui.QueryParameter
 import com.lightningkite.kiteui.Routable
+import com.lightningkite.kiteui.forms.defaultTitleFields
 import com.lightningkite.kiteui.forms.displayName
 import com.lightningkite.kiteui.forms.form
 import com.lightningkite.kiteui.forms.labeledForm
@@ -76,7 +77,13 @@ class DetailAdminPage(val collectionName: String, val itemId: String) : Page {
     private val mcOrNull = remember { adminServer().models[collectionName]?.cache(adminAuthentication()) as? ModelCache<UnknownModel, UnknownId> }
     private val mc = remember { mcOrNull()!! }
 
-    override val title: Reactive<String> = remember { "Edit $collectionName" }
+    override val title: Reactive<String> = remember {
+        val type = itemTypeTitle(collectionName)
+        val mc = mcOrNull() ?: return@remember type
+        val item = mc[DefaultUriFormat.decodeFromString(mc.serializer._id().serializer, itemId)]() ?: return@remember type
+        val name = mc.serializer.defaultTitleFields().joinToString(" ") { it.get(item).toString() }
+        if (name.isBlank()) type else "$type: $name"
+    }
 
     override fun ElementWriter.CanAddTheme.render() {
         scrolling.col {

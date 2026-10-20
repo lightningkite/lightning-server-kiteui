@@ -75,7 +75,7 @@ fun ViewWriter.liveControls(collectionName: String, live: Signal<Boolean>, mc: M
 @Routable("collections/{collectionName}")
 class CollectionAdminPage(val collectionName: String) : Page {
 
-    override val title: Reactive<String> = remember { collectionName }
+    override val title: Reactive<String> = remember { collectionTitle(collectionName) }
 
     companion object {
         private const val DEBOUNCE_MS = 500L
