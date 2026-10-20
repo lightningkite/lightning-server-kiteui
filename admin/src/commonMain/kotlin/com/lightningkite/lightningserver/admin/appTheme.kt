@@ -756,8 +756,8 @@ fun lk(accent: Color = lkAccent): Theme {
 var injectedAccent: Pair<String, Color>? = null
 
 /** What kind of server the admin is talking to, judged from its host. */
-enum class Environment(val label: String) {
-    Local("Local"), Development("Development"), Staging("Staging"), Production("Production")
+enum class Environment(val label: String, val shortLabel: String) {
+    Local("Local", "Local"), Development("Development", "Dev"), Staging("Staging", "Stage"), Production("Production", "Prod")
 }
 
 private fun hostOf(url: String) = url.substringAfter("://").substringBefore('/').lowercase()

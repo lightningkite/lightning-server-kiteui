@@ -46,6 +46,7 @@ import com.lightningkite.kiteui.views.ViewWriter
 import com.lightningkite.kiteui.views.card
 import com.lightningkite.kiteui.views.centered
 import com.lightningkite.kiteui.views.compact
+import com.lightningkite.kiteui.views.critical
 import com.lightningkite.kiteui.views.direct.*
 import com.lightningkite.kiteui.views.direct.icon
 import com.lightningkite.kiteui.views.expanding
@@ -92,6 +93,9 @@ private val SETTINGS_FIELD_WIDTH = 20.rem
 
 private const val APP_NAME = "Lightning Server Admin"
 
+/** Below this width the app bar's badge and account button shrink to make room for the title. */
+private val NARROW_BAR = 40.rem
+
 /**
  * Main application entry point for the Lightning Server admin panel.
  *
@@ -137,7 +141,7 @@ fun ViewWriter.app(navigator: PageNavigator) {
             showNav = { true },
             menuItems = { collectionMenuItems() },
             footerItems = { listOf() },
-            actionItems = { listOf(profileNavItem) },
+            actionItems = { listOf(environmentNavItem, profileNavItem) },
         )
 
         themed(OuterSemantic).col {
@@ -240,6 +244,29 @@ internal fun ReactiveContext.itemTypeTitle(collectionName: String): String =
  * A [Nav.Custom] because none of the other item kinds can hold a popover full of form fields.
  * `narrow` is left to default to `wide` - the button is already icon-sized either way.
  */
+private val environmentNavItem = Nav.Custom(
+    title = "Environment",
+    icon = Icon.info,
+    wide = { environmentBadge() },
+)
+
+/**
+ * Which kind of server this is, filled with its environment colour, so production is never
+ * mistaken for anything else even at a glance.
+ */
+private fun ViewWriter.environmentBadge() {
+    centered.compact.critical.frame {
+        shownForQuery(MediaQuery.MinWidth(NARROW_BAR)).text {
+            wraps = false
+            ::content { environmentFor(serverUrl()).label.uppercase() }
+        }
+        shownForQuery(MediaQuery.MaxWidth(NARROW_BAR)).text {
+            wraps = false
+            ::content { environmentFor(serverUrl()).shortLabel.uppercase() }
+        }
+    }
+}
+
 private val profileNavItem = Nav.Custom(
     title = "Profile",
     icon = Icon.person,
@@ -279,7 +306,7 @@ private fun ViewWriter.profileMenuButton() {
         col {
             centered.icon(Icon.person, "Account")
             // Keeps the button compact; a long identifier ends in an ellipsis rather than mid-word.
-            centered.sizeConstraints(maxWidth = 10.rem).subtext {
+            centered.shownForQuery(MediaQuery.MinWidth(NARROW_BAR)).sizeConstraints(maxWidth = 10.rem).subtext {
                 wraps = false
                 ellipsis = true
                 ::content { me() }

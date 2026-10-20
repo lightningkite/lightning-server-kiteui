@@ -246,10 +246,6 @@ class CollectionAdminPage(val collectionName: String) : Page {
                     renderFilterButton()
                     renderSortButton()
 
-                    link {
-                        icon(Icon.info, "Statistics")
-                        to = { CollectionStatsPage(collectionName) }
-                    }
 
                     liveControls(collectionName, live, mc)
                     renderBulkActionsMenu()
@@ -297,6 +293,7 @@ class CollectionAdminPage(val collectionName: String) : Page {
                 requireClick = true
                 opensMenu {
                     col {
+                        menuItem(Icon.info, "Statistics") { pageNavigator.navigate(CollectionStatsPage(collectionName)) }
                         menuItem(Icon.download, "Export...") { exportDialog() }
                         menuItem(Icon.upload, "Import...") { importDialog() }
                         menuItem(Icon.deleteForever, "Bulk Delete...", isDanger = true) { bulkDeleteDialog() }
