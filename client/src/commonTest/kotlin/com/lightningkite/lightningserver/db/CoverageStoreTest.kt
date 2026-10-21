@@ -520,6 +520,23 @@ class CoverageStoreTest {
         )
     }
 
+    /**
+     * Nor does a complete one: anyone asking for an ID got it from somewhere, most likely from
+     * something that created the row after the list was read.
+     */
+    @Test fun aCompleteListDoesNotSettleIdQueriesForRowsItLacks() {
+        val store = store()
+        store.queried(query(limit = 10), rows(1, 2), t(1))
+        // Lets the list's complete claim re-sort into the ID query's order, as it does in a live cache.
+        store.useMasking(Mask(listOf()))
+
+        store.assertRefuses(
+            store.idQuery(Uuid.random()),
+            control = query(limit = 10),
+            message = "must be fetched, not reported missing",
+        )
+    }
+
     /** A confirmed-missing ID is complete knowledge that the row is not there. */
     @Test fun aMissingIdIsKnownToBeMissing() {
         val store = store()

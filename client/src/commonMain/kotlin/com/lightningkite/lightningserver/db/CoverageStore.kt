@@ -218,15 +218,17 @@ public class CoverageStore<T : HasId<ID>, ID : Comparable<ID>>(
     private fun backing(query: Query<T>): Claim<T>? {
         val extent = query.extent()
         claims[extent]?.let { return it }
-        // Every row we hold carries a one-row claim, so most of [claims] is one-row claims and a
-        // search that considered them all would cost a pass over the collection per miss.  Only a
-        // query pinning an ID can be answered by one, and as with [singleId], failing to recognise
-        // an unfamiliar spelling of that costs a fetch and nothing else.
-        val wantsOneRow = singleId(extent.condition) != null
+        // A query pinning an ID is answered only by that ID's own claim.  Every row we hold carries
+        // one, so a broader claim could only ever add "not there" - and whoever is asking got the ID
+        // from somewhere, most often from something that created the row after the list was read
+        // without this cache seeing it.  Missing is believed only when a lookup or deletion said so.
+        if (singleId(extent.condition) != null) return null
+        // Most of [claims] is one-row claims, which cannot answer anything else, so skipping them
+        // saves a pass over the collection per miss.
         val wanted = extent.effective()
         return claims.entries
             .filter { (e, claim) ->
-                (wantsOneRow || singleId(e.condition) == null) &&
+                singleId(e.condition) == null &&
                         orderCovers(e.order, claim, extent.order) &&
                         implies(wanted, e.effective())
             }

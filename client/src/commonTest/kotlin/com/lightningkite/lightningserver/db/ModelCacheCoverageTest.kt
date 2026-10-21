@@ -459,6 +459,24 @@ class ModelCacheCoverageTest {
         listRelease()
     }
 
+    /** Nor does a complete list know about rows created since by something other than this cache. */
+    @Test fun aRowCreatedBehindACompleteListIsFetchedNotReportedMissing() = runTest2 {
+        val (mock, _, cache) = backgroundScope.fixture(3)
+        val listRelease = cache.quietList().addListener { }
+        delay(1.seconds)
+
+        val created = LargeTestModel(int = 4)
+        mock.data[created._id] = created
+        val item = cache.quietItem(created._id)
+        val itemRelease = item.addListener { }
+        delay(1.seconds)
+
+        assertEquals(created, item.state.getOrNull(), "should have been fetched, not reported missing")
+
+        itemRelease()
+        listRelease()
+    }
+
     /**
      * A limited list that loses a row from inside its covered range comes up short, and fetching the
      * row that moved up to fill the gap is exactly what a completeness claim is for.  The old design
