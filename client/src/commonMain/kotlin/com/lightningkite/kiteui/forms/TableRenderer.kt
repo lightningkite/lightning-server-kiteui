@@ -13,7 +13,7 @@ import com.lightningkite.kiteui.views.direct.icon
 import com.lightningkite.reactive.context.invoke
 import com.lightningkite.reactive.context.reactive
 import com.lightningkite.reactive.core.*
-import com.lightningkite.serialization.lensPath
+import com.lightningkite.serialization.lens
 import com.lightningkite.kiteui.navigation.DefaultJson
 import com.lightningkite.kiteui.views.l2.dialog
 import com.lightningkite.lightningserver.admin.walkDataClassPathsLimitedRecursion
@@ -310,7 +310,7 @@ public fun <T> ElementWriter.CanAddScrolling.renderTable(
                 // Use remember { items()() } to unwrap both layers into a single tracked reactive
                 children(remember { items()() }, id = { (it as? HasId<*>)?._id ?: it }) { itemReactive ->
                     fun ElementWriter.CanAddTheme.rowContent() = themed(ListSemantic).rowOfExpensive(columns) { col ->
-                        col.renderer(module).cellView(col.ctx, itemReactive.lensPath(col.path as Optic<Any?, Any?>), module).invoke(
+                        col.renderer(module).cellView(col.ctx, itemReactive.lens(col.path as Optic<Any?, Any?>), module).invoke(
                             sizeConstraints(width = col.columnWidth(module).rem).padded
                         )
                     }

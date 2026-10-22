@@ -1,6 +1,6 @@
 // Demonstrates editing through the ModelCache write API directly (no forms engine involved
 // here - that's the `forms` package's job): ModelCacheItemReadable.modify()/.delete(), field
-// binding via com.lightningkite.serialization.lensPath + .asString(), and computing a diff with
+// binding via com.lightningkite.serialization.lens + .asString(), and computing a diff with
 // lightningdb.modification(old, new) instead of hand-writing a Modification. Also the page a
 // foreign key to User opens (see forms/FormsSupport.kt's typeInfo wiring).
 package com.lightningkite.lskiteuistarter
@@ -24,7 +24,7 @@ import com.lightningkite.reactive.core.Reactive
 import com.lightningkite.reactive.core.Signal
 import com.lightningkite.reactive.core.remember
 import com.lightningkite.serialization.asString
-import com.lightningkite.serialization.lensPath
+import com.lightningkite.serialization.lens
 import com.lightningkite.services.data.EmailAddress
 import com.lightningkite.services.data.toEmailAddress
 import com.lightningkite.services.database.optics.asType
@@ -73,18 +73,18 @@ class UserDetailPage(val id: String) : Page {
                 field("Name") {
                     textInput {
                         keyboardHints = KeyboardHints.title
-                        content bind draft.lensPath(User.name)
+                        content bind draft.lens(User.name)
                     }
                 }
                 field("Email") {
                     textInput {
                         keyboardHints = KeyboardHints.email
-                        content bind draft.lensPath(User.email).asString()
+                        content bind draft.lens(User.email).asString()
                     }
                 }
                 field("Role") {
                     select {
-                        bind(draft.lensPath(User.role), Constant(UserRole.entries.toList())) { it.name }
+                        bind(draft.lens(User.role), Constant(UserRole.entries.toList())) { it.name }
                     }
                 }
 
