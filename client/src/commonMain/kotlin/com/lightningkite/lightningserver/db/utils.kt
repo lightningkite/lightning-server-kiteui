@@ -1,11 +1,11 @@
 package com.lightningkite.lightningserver.db
 
+import com.lightningkite.services.database.optics.*
 import com.lightningkite.services.database.SortPart
 import com.lightningkite.reactive.core.*
-import com.lightningkite.services.database.DataClassPathAccess
-import com.lightningkite.services.database.DataClassPathSelf
-import com.lightningkite.services.database.SerializableProperty
-import com.lightningkite.services.database.serializableProperties
+import com.lightningkite.services.database.optics.IdentityLens
+import com.lightningkite.services.database.optics.Field
+import com.lightningkite.services.database.optics.fields
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.first
@@ -93,14 +93,9 @@ public class ClockContextElement(public val clock: Clock) : AbstractCoroutineCon
  */
 public fun <T> List<SortPart<T>>.ensureTotal(serializer: KSerializer<T>): List<SortPart<T>> {
     // Check if already sorting by _id as the last field
-    if (lastOrNull()?.field?.properties?.singleOrNull()?.name == "_id") return this
+    if (lastOrNull()?.field?.fields?.singleOrNull()?.name == "_id") return this
 
-    // Find the _id property and append it to the sort
-    @Suppress("UNCHECKED_CAST")
-    return this + SortPart(
-        DataClassPathAccess(
-            DataClassPathSelf<T>(serializer),
-            serializer.serializableProperties!!.find { it.name == "_id" } as SerializableProperty<T, Comparable<*>>))
+    return this + SortPart(serializer.fields!!.first { it.name == "_id" })
 }
 
 

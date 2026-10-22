@@ -216,24 +216,16 @@ public fun Condition<*>.friendly(): String {
         is Condition.Inside<*> -> "is ${values.joinToString(" or ")}"
         is Condition.NotInside<*> -> "isn't ${values.joinToString(" or ")}"
         is Condition.StringContains -> "contains $value"
-        is Condition.GeoDistance -> "is within ${greaterThanKilometers} km and ${lessThanKilometers} km"
+        is Condition.GeoDistance -> "is within ${greaterThan.kilometers} km and ${lessThan.kilometers} km"
         is Condition.IfNotNull<*> -> condition.friendly()
-        is Condition.Exists<*> -> "has key $key"
-        is Condition.FullTextSearch<*> -> "matches ${this.value}"
 //        is Condition.IntBitsAnyClear -> TODO()
 //        is Condition.IntBitsAnySet -> TODO()
 //        is Condition.IntBitsClear -> TODO()
 //        is Condition.IntBitsSet -> TODO()
-        is Condition.ListAllElements<*> -> "all items are ${this.condition.friendly()}"
-        is Condition.ListAnyElements<*> -> "has any item that ${this.condition.friendly()}"
-        is Condition.ListSizesEquals<*> -> "size is $count"
+        is Condition.CollectionAllElements<*, *> -> "all items are ${this.condition.friendly()}"
+        is Condition.CollectionAnyElements<*, *> -> "has any item that ${this.condition.friendly()}"
         is Condition.Not<*> -> "not ${condition.friendly()}"
-        is Condition.OnKey<*> -> "${this.key} ${this.condition.friendly()}"
-        is Condition.RawStringContains<*> -> "contains $value"
         is Condition.RegexMatches -> "matches regex ${this.pattern}"
-        is Condition.SetAllElements<*> -> "all items are ${this.condition.friendly()}"
-        is Condition.SetAnyElements<*> -> "has any item that ${this.condition.friendly()}"
-        is Condition.SetSizesEquals<*> -> "size is $count"
         else -> toString()
     }
 }

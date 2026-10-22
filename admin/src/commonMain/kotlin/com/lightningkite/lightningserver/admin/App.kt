@@ -31,6 +31,7 @@ package com.lightningkite.lightningserver.admin
 //    to force module initialization. Consider adding a suppress annotation for clarity:
 //    @Suppress("UNUSED_VARIABLE")
 
+import com.lightningkite.services.database.optics.*
 import com.lightningkite.kiteui.EvolvingAppearance
 import com.lightningkite.kiteui.ExperimentalKiteUi
 import com.lightningkite.kiteui.auth.authComponent
@@ -61,10 +62,10 @@ import com.lightningkite.reactive.extensions.modify
 import com.lightningkite.services.data.Cents
 import com.lightningkite.services.database.Condition
 import com.lightningkite.services.database.SerializableAnnotationValue
-import com.lightningkite.services.database.SerializableProperty
+import com.lightningkite.services.database.optics.Field
 import com.lightningkite.services.database.SerializationRegistry
 import com.lightningkite.services.database.serializableAnnotations
-import com.lightningkite.services.database.serializableProperties
+import com.lightningkite.services.database.optics.fields
 import com.lightningkite.services.files.DirectServerFileSerializer
 import com.lightningkite.services.files.ServerFile
 import kotlin.time.Duration.Companion.milliseconds
@@ -251,9 +252,9 @@ private fun ViewWriter.profileMenuButton() {
                 // Prefers email/phone/username fields if available
                 // This provides a recognizable identifier in the UI
                 val self = sub.getSelf()
-                serializer.serializableProperties
+                serializer.fields
                     ?.find { it.name == "email" || it.name == "phone" || it.name == "username" }
-                    ?.let { it as SerializableProperty<Any, Any?> }
+                    ?.let { it as Field<Any, Any?> }
                     ?.get(self)
                     ?.toString()
                 // Fallback to toString() but limit to 40 chars to avoid UI overflow

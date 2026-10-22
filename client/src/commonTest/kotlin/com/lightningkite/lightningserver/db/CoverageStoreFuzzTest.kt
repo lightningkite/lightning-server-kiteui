@@ -58,22 +58,22 @@ class CoverageStoreFuzzTest {
         query(Condition.Always, byIntDesc, limit = 4),
         query(Condition.Always, byShort, limit = 5),
         query(Condition.Always, byShortThenInt, limit = 5),
-        query(condition { it.int gt 5 }, byInt, limit = 3),
-        query(condition { it.int gt 3 }, byInt, limit = 6),
-        query(condition { it.int gte 5 }, byInt, limit = 4),
-        query(condition { it.int lte 5 }, byInt, limit = 5),
-        query(condition { it.int lt 9 }, byInt, limit = 6),
-        query(condition { it.int eq 7 }, byInt, limit = 2),
-        query(condition { it.int inside setOf(2, 4, 6) }, byInt, limit = 4),
-        query(condition { it.boolean eq true }, byInt, limit = 4),
-        query(Condition.And(listOf(condition { it.int gt 3 }, condition { it.int lt 9 })), byInt, limit = 4),
-        query(condition { it.int gt 5 }, byIntDesc, limit = 3),
-        query(condition { it.int gt 3 }, byShortThenInt, limit = 4),
-        query(condition { it.short gte 1 }, byShort, limit = 4),
+        query(Condition { it.int gt 5 }, byInt, limit = 3),
+        query(Condition { it.int gt 3 }, byInt, limit = 6),
+        query(Condition { it.int gte 5 }, byInt, limit = 4),
+        query(Condition { it.int lte 5 }, byInt, limit = 5),
+        query(Condition { it.int lt 9 }, byInt, limit = 6),
+        query(Condition { it.int eq 7 }, byInt, limit = 2),
+        query(Condition { it.int inside setOf(2, 4, 6) }, byInt, limit = 4),
+        query(Condition { it.boolean eq true }, byInt, limit = 4),
+        query(Condition.And(listOf(Condition { it.int gt 3 }, Condition { it.int lt 9 })), byInt, limit = 4),
+        query(Condition { it.int gt 5 }, byIntDesc, limit = 3),
+        query(Condition { it.int gt 3 }, byShortThenInt, limit = 4),
+        query(Condition { it.short gte 1 }, byShort, limit = 4),
     )
 
     /** The condition a socket subscribes to, when it is not simply everything. */
-    private val socketHigh: Condition<LargeTestModel> = condition { it.int gt 5 }
+    private val socketHigh: Condition<LargeTestModel> = Condition { it.int gt 5 }
 
     // =========================================================================
     // The server
@@ -456,7 +456,7 @@ class CoverageStoreFuzzTest {
      * a sort that does not, does not.  That asymmetry is the whole reason the store tracks masks.
      */
     private val maskOnInt = Mask<LargeTestModel>(
-        listOf(condition<LargeTestModel> { it.boolean eq true } to modification<LargeTestModel> { it.int assign 0 })
+        listOf(Condition<LargeTestModel> { it.boolean eq true } to Modification<LargeTestModel> { it.int assign 0 })
     )
 
     private fun Counters.assertEveryPathReached(masked: Boolean) {

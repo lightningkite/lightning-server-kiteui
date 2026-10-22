@@ -5,7 +5,7 @@ import com.lightningkite.kiteui.models.DragEvent
 import com.lightningkite.kiteui.models.Icon
 import com.lightningkite.kiteui.models.px
 import com.lightningkite.kiteui.models.rem
-import com.lightningkite.kiteui.views.DropTargetDelegate
+import com.lightningkite.kiteui.models.DropTargetDelegate
 import com.lightningkite.kiteui.views.ElementWriter
 import com.lightningkite.kiteui.views.card
 import com.lightningkite.kiteui.views.centered

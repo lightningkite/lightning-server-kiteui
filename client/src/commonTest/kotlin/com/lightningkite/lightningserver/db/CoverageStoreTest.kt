@@ -97,7 +97,7 @@ class CoverageStoreTest {
     /** An empty answer is still an answer: nothing matches, and we know it. */
     @Test fun anEmptyAnswerIsCompleteKnowledgeOfNothing() {
         val store = store()
-        val q = query(condition { it.int gt 100 }, limit = 10)
+        val q = query(Condition { it.int gt 100 }, limit = 10)
         store.queried(q, listOf(), t(1))
 
         val answer = assertNotNull(store.known(q))
@@ -224,11 +224,11 @@ class CoverageStoreTest {
     /** A claim says nothing about a condition it does not contain. */
     @Test fun aClaimForOneConditionDoesNotAnswerABroaderOne() {
         val store = store()
-        store.queried(query(condition { it.int gt 1 }, limit = 10), rows(2, 3), t(1))
+        store.queried(query(Condition { it.int gt 1 }, limit = 10), rows(2, 3), t(1))
 
         store.assertRefuses(
             query(Condition.Always, limit = 10),
-            control = query(condition { it.int gt 1 }, limit = 10),
+            control = query(Condition { it.int gt 1 }, limit = 10),
             message = "rows at or below 1 were never in evidence",
         )
     }
@@ -236,11 +236,11 @@ class CoverageStoreTest {
     /** Nor about one that merely overlaps it. */
     @Test fun aClaimForOneConditionDoesNotAnswerAnOverlappingOne() {
         val store = store()
-        store.queried(query(condition { it.int gt 1 }, limit = 10), rows(2, 3), t(1))
+        store.queried(query(Condition { it.int gt 1 }, limit = 10), rows(2, 3), t(1))
 
-        val control = query(condition { it.int gt 1 }, limit = 10)
-        store.assertRefuses(query(condition { it.int gt 0 }, limit = 10), control)
-        store.assertRefuses(query(condition { it.short gt 0 }, limit = 10), control)
+        val control = query(Condition { it.int gt 1 }, limit = 10)
+        store.assertRefuses(query(Condition { it.int gt 0 }, limit = 10), control)
+        store.assertRefuses(query(Condition { it.short gt 0 }, limit = 10), control)
     }
 
     /** Descending order works the same way; the boundary is just the other end. */
@@ -272,7 +272,7 @@ class CoverageStoreTest {
         val store = store()
         store.queried(query(Condition.Always, limit = 10), rows(1, 2, 3, 6, 7), t(1))
 
-        val answer = assertNotNull(store.known(query(condition { it.int gt 5 }, limit = 10)))
+        val answer = assertNotNull(store.known(query(Condition { it.int gt 5 }, limit = 10)))
         assertEquals(listOf(6, 7), answer.items.ints())
         assertFalse(answer.partial, "knowing all of them is knowing all of the ones that match")
         assertEquals(t(1), answer.at, "and it is exactly as old as the claim it came from")
@@ -283,7 +283,7 @@ class CoverageStoreTest {
         val store = store()
         // Knows every row through int = 8, and no further.
         store.queried(query(Condition.Always, limit = 4), rows(1, 6, 7, 8), t(1))
-        val narrow = condition<LargeTestModel> { it.int gt 5 }
+        val narrow = Condition<LargeTestModel> { it.int gt 5 }
 
         // Two rows fit inside the boundary, so a limit of two is fully answered.
         val answered = assertNotNull(store.known(query(narrow, limit = 2)))
@@ -301,7 +301,7 @@ class CoverageStoreTest {
         // Held, but from beyond what the claim covers.
         store.mutated(rows(9), t(2))
 
-        val answer = assertNotNull(store.known(query(condition { it.int gt 5 }, limit = 3)))
+        val answer = assertNotNull(store.known(query(Condition { it.int gt 5 }, limit = 3)))
         assertTrue(answer.items.isEmpty(), "row 9 is past the boundary, so it is not in evidence here")
         assertTrue(answer.partial, "which means this has to be fetched")
     }
@@ -309,10 +309,10 @@ class CoverageStoreTest {
     /** A refinement of an existing filter is the everyday shape of this. */
     @Test fun addingAFilterToAnExistingListDoesNotRefetch() {
         val store = store()
-        val broad = condition<LargeTestModel> { it.int gt 5 }
+        val broad = Condition<LargeTestModel> { it.int gt 5 }
         store.queried(query(broad, limit = 10), rows(6, 7, 8), t(1))
 
-        val refined = Condition.And(listOf(broad, condition<LargeTestModel> { it.int lt 8 }))
+        val refined = Condition.And(listOf(broad, Condition<LargeTestModel> { it.int lt 8 }))
         val answer = assertNotNull(store.known(query(refined, limit = 10)))
         assertEquals(listOf(6, 7), answer.items.ints())
         assertFalse(answer.partial)
@@ -321,8 +321,8 @@ class CoverageStoreTest {
     /** Implication is structural, so equivalent spellings answer each other in both directions. */
     @Test fun equivalentSpellingsOfAConditionShareAClaim() {
         val store = store()
-        val a = condition<LargeTestModel> { it.int gt 5 }
-        val b = condition<LargeTestModel> { it.int lt 9 }
+        val a = Condition<LargeTestModel> { it.int gt 5 }
+        val b = Condition<LargeTestModel> { it.int lt 9 }
         store.queried(query(Condition.And(listOf(a, b)), limit = 10), rows(6, 7, 8), t(1))
 
         assertNotNull(store.known(query(Condition.And(listOf(b, a)), limit = 10)), "order of terms")
@@ -331,7 +331,7 @@ class CoverageStoreTest {
 
     @Test fun aSingletonAndIsTheSameClaimAsItsTerm() {
         val store = store()
-        val a = condition<LargeTestModel> { it.int gt 5 }
+        val a = Condition<LargeTestModel> { it.int gt 5 }
         store.queried(query(a, limit = 10), rows(6, 7), t(1))
 
         assertNotNull(store.known(query(Condition.And(listOf(a)), limit = 10)))
@@ -340,8 +340,8 @@ class CoverageStoreTest {
     /** Either branch of an `Or` claim covers a query that lands inside one of them. */
     @Test fun anOrClaimAnswersAQueryInsideOneOfItsBranches() {
         val store = store()
-        val low = condition<LargeTestModel> { it.int lt 3 }
-        val high = condition<LargeTestModel> { it.int gt 7 }
+        val low = Condition<LargeTestModel> { it.int lt 3 }
+        val high = Condition<LargeTestModel> { it.int gt 7 }
         store.queried(query(Condition.Or(listOf(low, high)), limit = 10), rows(1, 2, 8, 9), t(1))
 
         val answer = assertNotNull(store.known(query(high, limit = 10)))
@@ -353,7 +353,7 @@ class CoverageStoreTest {
     @Test fun anExactClaimWinsOverABroaderOne() {
         val store = store()
         val data = rows(1, 6, 7)
-        val narrow = condition<LargeTestModel> { it.int gt 5 }
+        val narrow = Condition<LargeTestModel> { it.int gt 5 }
         store.queried(query(Condition.Always, limit = 10), data, t(1))
         store.queried(query(narrow, limit = 10), data.drop(1), t(9))
 
@@ -364,7 +364,7 @@ class CoverageStoreTest {
     @Test fun aCompleteClaimIsPreferredOverABoundedOne() {
         val store = store()
         val data = rows(1, 6, 7, 8)
-        val narrow = condition<LargeTestModel> { it.int gt 5 }
+        val narrow = Condition<LargeTestModel> { it.int gt 5 }
         // Complete, and older.
         store.queried(query(Condition.Always, limit = 10), data, t(1))
         // Bounded, and newer - but it reaches less far, so it is worth less.
@@ -380,7 +380,7 @@ class CoverageStoreTest {
         val store = store()
         store.queried(query(Condition.Always, byInt, limit = 10), rows(1, 6, 7), t(1))
 
-        val answer = assertNotNull(store.known(query(condition { it.int gt 5 }, byIntDesc, limit = 10)))
+        val answer = assertNotNull(store.known(query(Condition { it.int gt 5 }, byIntDesc, limit = 10)))
         assertEquals(listOf(7, 6), answer.items.ints())
         assertFalse(answer.partial)
     }
@@ -391,7 +391,7 @@ class CoverageStoreTest {
         store.queried(query(Condition.Always, byInt, limit = 3), rows(1, 6, 7), t(1))
 
         store.assertRefuses(
-            query(condition { it.int gt 5 }, byIntDesc, limit = 10),
+            query(Condition { it.int gt 5 }, byIntDesc, limit = 10),
             control = query(Condition.Always, byInt, limit = 3),
         )
     }
@@ -401,7 +401,7 @@ class CoverageStoreTest {
         val store = store()
         val data = rows(6, 7, 8, 9)
         store.queried(query(Condition.Always, limit = 2), data.take(2), t(1))
-        val narrow = condition<LargeTestModel> { it.int gt 5 }
+        val narrow = Condition<LargeTestModel> { it.int gt 5 }
 
         // The broad claim covers the head; the page covers from its boundary on.
         store.paged(query(narrow, limit = 4), after = data[1], result = data.drop(2), pageLimit = 2, at = t(100))
@@ -414,9 +414,9 @@ class CoverageStoreTest {
     /** A nested range is stricter than the range containing it. */
     @Test fun aNarrowerRangeIsAnsweredByAWiderOne() {
         val store = store()
-        store.queried(query(condition { it.int gt 3 }, limit = 10), rows(4, 5, 6, 7), t(1))
+        store.queried(query(Condition { it.int gt 3 }, limit = 10), rows(4, 5, 6, 7), t(1))
 
-        val answer = assertNotNull(store.known(query(condition { it.int gt 5 }, limit = 10)))
+        val answer = assertNotNull(store.known(query(Condition { it.int gt 5 }, limit = 10)))
         assertEquals(listOf(6, 7), answer.items.ints())
         assertFalse(answer.partial)
     }
@@ -424,31 +424,31 @@ class CoverageStoreTest {
     /** Inclusive and exclusive bounds are compared on their actual endpoints, not their spelling. */
     @Test fun boundInclusivityIsRespected() {
         val store = store()
-        store.queried(query(condition { it.int gt 5 }, limit = 10), rows(6, 7), t(1))
+        store.queried(query(Condition { it.int gt 5 }, limit = 10), rows(6, 7), t(1))
 
         // (5, inf) contains [6, inf) but not [5, inf).
-        assertNotNull(store.known(query(condition { it.int gte 6 }, limit = 10)))
-        assertNull(store.known(query(condition { it.int gte 5 }, limit = 10)))
+        assertNotNull(store.known(query(Condition { it.int gte 6 }, limit = 10)))
+        assertNull(store.known(query(Condition { it.int gte 5 }, limit = 10)))
     }
 
     /** Bounds on opposite sides say nothing about each other, however the numbers line up. */
     @Test fun anUpperBoundIsNotAnsweredByALowerOne() {
         val store = store()
-        store.queried(query(condition { it.int gt 3 }, limit = 10), rows(4, 5), t(1))
+        store.queried(query(Condition { it.int gt 3 }, limit = 10), rows(4, 5), t(1))
 
-        val control = query(condition { it.int gt 3 }, limit = 10)
-        store.assertRefuses(query(condition { it.int lt 3 }, limit = 10), control)
-        store.assertRefuses(query(condition { it.int lt 9 }, limit = 10), control)
+        val control = query(Condition { it.int gt 3 }, limit = 10)
+        store.assertRefuses(query(Condition { it.int lt 3 }, limit = 10), control)
+        store.assertRefuses(query(Condition { it.int lt 9 }, limit = 10), control)
     }
 
     /** Merely overlapping ranges are not enough; the narrow one has to sit inside. */
     @Test fun anOverlappingRangeIsNotEnough() {
         val store = store()
-        store.queried(query(condition { it.int gt 5 }, limit = 10), rows(6, 7), t(1))
+        store.queried(query(Condition { it.int gt 5 }, limit = 10), rows(6, 7), t(1))
 
         store.assertRefuses(
-            query(condition { it.int gt 3 }, limit = 10),
-            control = query(condition { it.int gt 5 }, limit = 10),
+            query(Condition { it.int gt 3 }, limit = 10),
+            control = query(Condition { it.int gt 5 }, limit = 10),
             message = "3..5 was never covered",
         )
     }
@@ -459,36 +459,36 @@ class CoverageStoreTest {
      */
     @Test fun aFixedSetOfValuesImpliesWhateverThoseValuesSatisfy() {
         val store = store()
-        store.queried(query(condition { it.int gt 3 }, limit = 10), rows(4, 7, 9), t(1))
+        store.queried(query(Condition { it.int gt 3 }, limit = 10), rows(4, 7, 9), t(1))
 
         // A single value inside the range.
-        assertEquals(listOf(7), assertNotNull(store.known(query(condition { it.int eq 7 }, limit = 10))).items.ints())
+        assertEquals(listOf(7), assertNotNull(store.known(query(Condition { it.int eq 7 }, limit = 10))).items.ints())
         // A set of values, all inside it.
         assertEquals(
             listOf(4, 7),
-            assertNotNull(store.known(query(condition { it.int inside setOf(4, 7) }, limit = 10))).items.ints(),
+            assertNotNull(store.known(query(Condition { it.int inside setOf(4, 7) }, limit = 10))).items.ints(),
         )
         // One value outside it is enough to disqualify the set.
-        assertNull(store.known(query(condition { it.int inside setOf(2, 7) }, limit = 10)))
+        assertNull(store.known(query(Condition { it.int inside setOf(2, 7) }, limit = 10)))
     }
 
     /** Excluding more is stricter than excluding less, which is the same rule read backwards. */
     @Test fun excludingMoreIsStricterThanExcludingLess() {
         val store = store()
-        val broad = condition<LargeTestModel> { it.int notInside setOf(1, 2) }
+        val broad = Condition<LargeTestModel> { it.int notInside setOf(1, 2) }
         store.queried(query(broad, limit = 10), rows(3, 4), t(1))
 
-        assertNotNull(store.known(query(condition { it.int notInside setOf(1, 2, 3) }, limit = 10)))
-        assertNull(store.known(query(condition { it.int notInside setOf(1) }, limit = 10)))
+        assertNotNull(store.known(query(Condition { it.int notInside setOf(1, 2, 3) }, limit = 10)))
+        assertNull(store.known(query(Condition { it.int notInside setOf(1) }, limit = 10)))
     }
 
     /** Implication reaches inside a field, which is what makes any of the value rules reachable. */
     @Test fun implicationReachesInsideNestedFields() {
         val store = store()
-        store.queried(query(condition { it.embedded.value2 gt 3 }, limit = 10), listOf(), t(1))
+        store.queried(query(Condition { it.embedded.value2 gt 3 }, limit = 10), listOf(), t(1))
 
-        assertNotNull(store.known(query(condition { it.embedded.value2 gt 5 }, limit = 10)))
-        assertNull(store.known(query(condition { it.embedded.value1 eq "x" }, limit = 10)))
+        assertNotNull(store.known(query(Condition { it.embedded.value2 gt 5 }, limit = 10)))
+        assertNull(store.known(query(Condition { it.embedded.value1 eq "x" }, limit = 10)))
     }
 
     // =========================================================================
@@ -660,7 +660,7 @@ class CoverageStoreTest {
         val low = rows(1).single()
         store.identified(listOf(low), setOf(), t(1))
 
-        store.queried(query(condition { it.int gt 5 }, limit = 10), rows(6, 7), t(2))
+        store.queried(query(Condition { it.int gt 5 }, limit = 10), rows(6, 7), t(2))
 
         assertEquals(listOf(low), assertNotNull(store.known(store.idQuery(low._id))).items)
     }
@@ -703,7 +703,7 @@ class CoverageStoreTest {
         val store = store()
         val data = rows(1, 2, 3)
         val broad = query(Condition.Always, limit = 10)
-        val narrow = query(condition { it.int lt 3 }, limit = 10)
+        val narrow = query(Condition { it.int lt 3 }, limit = 10)
         store.queried(broad, data, t(1))
         store.queried(narrow, listOf(data[0], data[1]), t(1))
 
@@ -893,7 +893,7 @@ class CoverageStoreTest {
      * and any sort that does not, does not.  That asymmetry is the whole point of tracking it.
      */
     private val maskOnInt = Mask<LargeTestModel>(
-        listOf(condition<LargeTestModel> { it.boolean eq true } to modification<LargeTestModel> { it.int assign 0 })
+        listOf(Condition<LargeTestModel> { it.boolean eq true } to Modification<LargeTestModel> { it.int assign 0 })
     )
 
     /** With no mask at all, the sort imposes nothing, so a complete claim re-sorts into any order. */
@@ -1075,18 +1075,18 @@ class CoverageStoreTest {
             query(Condition.Always, byInt, limit = 3),
             query(Condition.Always, byInt, limit = 10),
             query(Condition.Always, byIntDesc, limit = 4),
-            query(condition { it.int gt 5 }, byInt, limit = 3),
-            query(condition { it.int gt 3 }, byInt, limit = 6),
-            query(condition { it.int gte 5 }, byInt, limit = 4),
-            query(condition { it.int lte 5 }, byInt, limit = 5),
-            query(condition { it.int lt 9 }, byInt, limit = 6),
-            query(condition { it.int eq 7 }, byInt, limit = 2),
-            query(condition { it.int inside setOf(2, 4, 6) }, byInt, limit = 4),
-            query(condition { it.boolean eq true }, byInt, limit = 4),
-            query(Condition.And(listOf(condition { it.int gt 3 }, condition { it.int lt 9 })), byInt, limit = 4),
-            query(condition { it.int gt 5 }, byIntDesc, limit = 3),
+            query(Condition { it.int gt 5 }, byInt, limit = 3),
+            query(Condition { it.int gt 3 }, byInt, limit = 6),
+            query(Condition { it.int gte 5 }, byInt, limit = 4),
+            query(Condition { it.int lte 5 }, byInt, limit = 5),
+            query(Condition { it.int lt 9 }, byInt, limit = 6),
+            query(Condition { it.int eq 7 }, byInt, limit = 2),
+            query(Condition { it.int inside setOf(2, 4, 6) }, byInt, limit = 4),
+            query(Condition { it.boolean eq true }, byInt, limit = 4),
+            query(Condition.And(listOf(Condition { it.int gt 3 }, Condition { it.int lt 9 })), byInt, limit = 4),
+            query(Condition { it.int gt 5 }, byIntDesc, limit = 3),
             query(Condition.Always, byShortThenInt, limit = 5),
-            query(condition { it.int gt 3 }, byShortThenInt, limit = 4),
+            query(Condition { it.int gt 3 }, byShortThenInt, limit = 4),
         )
 
         // Answers that came from a claim some *other* query earned, which is the path this is really

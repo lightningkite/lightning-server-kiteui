@@ -78,6 +78,7 @@ package com.lightningkite.lightningserver.admin
 // - The recursive nature of coerce with Condition.OnField enables nested field initialization
 // - This pattern could be extracted to a shared utility if used elsewhere
 
+import com.lightningkite.services.database.optics.*
 import com.lightningkite.kiteui.QueryParameter
 import com.lightningkite.kiteui.Routable
 import com.lightningkite.kiteui.forms.form
@@ -98,7 +99,7 @@ import com.lightningkite.reactive.core.Signal
 import com.lightningkite.reactive.core.remember
 import com.lightningkite.reactive.extensions.asyncReactive
 import com.lightningkite.reactive.extensions.flatten
-import com.lightningkite.services.database.SerializableProperty
+import com.lightningkite.services.database.optics.Field
 import com.lightningkite.services.database.default
 
 @Routable("collections/{collectionName}/new-item")
@@ -172,7 +173,7 @@ fun <T> T.coerce(condition: Condition<T>): T = when(condition) {
     is Condition.Or<T> -> condition.conditions.fold(this) { a, b -> a.coerce(b) }
     is Condition.Equal<T> -> condition.value
     is Condition.OnField<T, *> -> {
-        val key = condition.key as SerializableProperty<T, Any?>
+        val key = condition.key as Field<T, Any?>
         val sub: Any? = key.get(this).coerce(condition.condition as Condition<Any?>)
         key.setCopy(this, sub)
     }

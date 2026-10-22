@@ -1,24 +1,22 @@
 package com.lightningkite.kiteui.forms
 
-import com.lightningkite.services.data.GenerateDataClassPaths
-import com.lightningkite.services.database.DataClassPathSerializer
+import com.lightningkite.services.database.optics.*
+import com.lightningkite.services.data.Queryable
+import com.lightningkite.services.database.optics.AnyOpticSerializer
 import com.lightningkite.services.database.HasId
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import kotlin.time.Instant
 import kotlin.uuid.Uuid
-import kotlinx.serialization.Serializable
 
-@Serializable
-@GenerateDataClassPaths
+@Queryable
 data class NullablePathAction(
     val at: Instant,
     val reason: String = "",
 )
 
-@Serializable
-@GenerateDataClassPaths
+@Queryable
 data class NullablePathModel(
     override val _id: Uuid = Uuid.random(),
     val voided: NullablePathAction? = null,
@@ -32,7 +30,7 @@ data class NullablePathModel(
  */
 class ColumnInfoNullablePathTest {
     private val module = FormModule().apply { defaults() }
-    private val paths = DataClassPathSerializer(NullablePathModel.serializer())
+    private val paths = AnyOpticSerializer(NullablePathModel.serializer())
 
     @Test
     fun pathThroughNullableIsNullable() {

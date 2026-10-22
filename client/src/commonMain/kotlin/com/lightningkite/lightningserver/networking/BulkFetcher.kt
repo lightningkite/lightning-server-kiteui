@@ -7,7 +7,7 @@ import com.lightningkite.lightningserver.typed.BulkRequest
 import com.lightningkite.lightningserver.typed.BulkResponse
 import com.lightningkite.lightningserver.typed.ClientWebSocket
 import com.lightningkite.lightningserver.typed.Fetcher
-import com.lightningkite.reactive.context.reactiveScope
+import com.lightningkite.reactive.context.reactive
 import com.lightningkite.reactive.core.AppScope
 import com.lightningkite.reactive.core.Reactive
 import com.lightningkite.reactive.core.Signal
@@ -280,7 +280,7 @@ internal class MultiplexedSocket(
          * (never cancelled) so the channel can be closed and reconnected repeatedly.
          */
         val lifecycle = CoroutineScope(Job()).apply {
-            reactiveScope {
+            reactive {
                 val shouldBeOn = shouldBeOn()
                 val isOn = connectedSignal()
                 val parentConnected = muxer.connected()

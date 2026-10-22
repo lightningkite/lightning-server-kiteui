@@ -18,7 +18,6 @@ import com.lightningkite.lskiteuistarter.role
 import com.lightningkite.services.data.toEmailAddress
 import com.lightningkite.services.database.Condition
 import com.lightningkite.services.database.ModelPermissions
-import com.lightningkite.services.database.condition
 import com.lightningkite.services.database.eq
 import com.lightningkite.services.database.insertOne
 import com.lightningkite.services.database.inside
@@ -34,8 +33,8 @@ object UserEndpoints : ServerBuilder() {
         permissions = {
             val allowedRoles = UserRole.entries.filter { it <= auth.userRole() }
             val admin: Condition<User> =
-                if (this.auth.userRole() >= UserRole.Admin) condition { it.role inside allowedRoles } else Condition.Never
-            val self = condition<User> { it._id eq auth.id }
+                if (this.auth.userRole() >= UserRole.Admin) Condition { it.role inside allowedRoles } else Condition.Never
+            val self = Condition<User> { it._id eq auth.id }
             ModelPermissions(
                 create = admin,
                 read = admin or self,
@@ -54,7 +53,7 @@ object UserEndpoints : ServerBuilder() {
     val initAdminUser = path.path("initAdminUser") bind startupOnce(Server.database) {
         println("Adding user")
         val email = "joseph+root@lightningkite.com".toEmailAddress()
-        info.table().deleteMany(condition { it.email.eq(email) })
+        info.table().deleteMany(Condition { it.email.eq(email) })
         info.table().insertOne(
             User(
                 _id = Uuid.Companion.fromLongs(0L, 10L),

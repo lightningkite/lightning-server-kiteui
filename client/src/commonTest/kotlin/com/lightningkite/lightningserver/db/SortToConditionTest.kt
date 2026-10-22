@@ -2,9 +2,9 @@ package com.lightningkite.lightningserver.db
 
 import com.lightningkite.services.database.SortPart
 import com.lightningkite.services.database.comparator
-import com.lightningkite.services.database.path
 import com.lightningkite.services.database.sort
-import com.lightningkite.services.database.notNull
+import com.lightningkite.services.database.optics.Lens
+import com.lightningkite.services.database.optics.notNull
 import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -85,7 +85,7 @@ class SortToConditionTest {
                 val afterLast = sorted.filter { condition(it) }
 
                 // Helper to display sort field values for debugging
-                fun toString(model: LargeTestModel) = sort.joinToString("/") { it.field.getAny(model).toString() }
+                fun toString(model: LargeTestModel) = sort.joinToString("/") { it.field.get(model).toString() }
 
                 // Verify that the condition matches exactly the items after this position
                 assertEquals(secondHalf.joinToString("\n", transform = ::toString), afterLast.joinToString("\n", transform = ::toString), message = "Failed equality on ${sort} index $index.\n${toString(lastElement)}\n${condition}\nFull List: ${sorted.joinToString(transform = ::toString)}")
@@ -101,7 +101,7 @@ class SortToConditionTest {
      */
     @Test
     fun caseInsensitiveSortIsRefused() {
-        val sort = listOf(SortPart(path<LargeTestModel>().string, ascending = true, ignoreCase = true))
+        val sort = listOf(SortPart(Lens<LargeTestModel>().string, ascending = true, ignoreCase = true))
         assertFailsWith<IllegalArgumentException> { sort.after(LargeTestModel(string = "a")) }
     }
 }

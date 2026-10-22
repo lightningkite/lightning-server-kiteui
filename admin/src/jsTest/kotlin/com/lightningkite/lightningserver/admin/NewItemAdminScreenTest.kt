@@ -1,5 +1,6 @@
 package com.lightningkite.lightningserver.admin
 
+import com.lightningkite.services.database.optics.*
 import com.lightningkite.kiteui.navigation.DefaultJson
 import com.lightningkite.services.database.*
 import kotlinx.serialization.Serializable
@@ -164,10 +165,10 @@ class NewItemAdminScreenTest {
     fun testCoerceWithConditionOnField() {
         val model = TestModel(_id = 1, name = "test", age = 25, score = 5.0)
         val serializer = TestModel.serializer()
-        val props = serializer.serializableProperties!!
+        val props = serializer.fields!!
 
         // Get the 'name' property
-        val nameProp = props.first { it.name == "name" } as SerializableProperty<TestModel, String>
+        val nameProp = props.first { it.name == "name" } as Field<TestModel, String>
 
         // Create a condition that sets name to "coerced"
         val condition = Condition.OnField(nameProp, Condition.Equal("coerced"))
@@ -194,15 +195,15 @@ class NewItemAdminScreenTest {
             nested = NestedModel("original", 10)
         )
         val serializer = TestModel.serializer()
-        val props = serializer.serializableProperties!!
+        val props = serializer.fields!!
 
         // Get the 'nested' property
-        val nestedProp = props.first { it.name == "nested" } as SerializableProperty<TestModel, NestedModel?>
+        val nestedProp = props.first { it.name == "nested" } as Field<TestModel, NestedModel?>
 
         // Get the 'value' property of NestedModel
         val nestedSerializer = NestedModel.serializer()
-        val nestedProps = nestedSerializer.serializableProperties!!
-        val valueProp = nestedProps.first { it.name == "value" } as SerializableProperty<NestedModel, String>
+        val nestedProps = nestedSerializer.fields!!
+        val valueProp = nestedProps.first { it.name == "value" } as Field<NestedModel, String>
 
         // Create a nested condition that sets nested.value to "coerced"
         val innerCondition = Condition.OnField(valueProp, Condition.Equal("coerced"))
@@ -320,11 +321,11 @@ class NewItemAdminScreenTest {
     fun testCoerceWithMultipleFields() {
         val model = TestModel(_id = 0, name = "", age = 0, score = 0.0, active = false)
         val serializer = TestModel.serializer()
-        val props = serializer.serializableProperties!!
+        val props = serializer.fields!!
 
-        val nameProp = props.first { it.name == "name" } as SerializableProperty<TestModel, String>
-        val ageProp = props.first { it.name == "age" } as SerializableProperty<TestModel, Int>
-        val activeProp = props.first { it.name == "active" } as SerializableProperty<TestModel, Boolean>
+        val nameProp = props.first { it.name == "name" } as Field<TestModel, String>
+        val ageProp = props.first { it.name == "age" } as Field<TestModel, Int>
+        val activeProp = props.first { it.name == "active" } as Field<TestModel, Boolean>
 
         // Create a condition that sets multiple fields
         val condition = Condition.And(
@@ -354,10 +355,10 @@ class NewItemAdminScreenTest {
     fun testCoerceWithNullNestedField() {
         val model = TestModel(_id = 1, name = "test", age = 25, nested = null)
         val serializer = TestModel.serializer()
-        val props = serializer.serializableProperties!!
+        val props = serializer.fields!!
 
         // Get the 'nested' property
-        val nestedProp = props.first { it.name == "nested" } as SerializableProperty<TestModel, NestedModel?>
+        val nestedProp = props.first { it.name == "nested" } as Field<TestModel, NestedModel?>
 
         // Try to set the nested field to a non-null value
         val newNested = NestedModel("new", 5)
@@ -424,13 +425,13 @@ class NewItemAdminScreenTest {
 
     /**
      * Tests the coerce function type safety with generics.
-     * Ensures that the SerializableProperty casting at line 96 is safe.
+     * Ensures that the Field casting at line 96 is safe.
      */
     @Test
     fun testCoerceTypeSafety() {
         val model = TestModel(_id = 1, name = "test", age = 25)
         val serializer = TestModel.serializer()
-        val props = serializer.serializableProperties!!
+        val props = serializer.fields!!
 
         // Get the 'age' property and verify type
         val ageProp = props.first { it.name == "age" }
@@ -438,7 +439,7 @@ class NewItemAdminScreenTest {
 
         // The property should handle Int values
         @Suppress("UNCHECKED_CAST")
-        val typedProp = ageProp as SerializableProperty<TestModel, Int>
+        val typedProp = ageProp as Field<TestModel, Int>
         val condition = Condition.OnField(typedProp, Condition.Equal(42))
 
         val result = model.coerce(condition)
@@ -453,10 +454,10 @@ class NewItemAdminScreenTest {
     fun testCoerceWithDeeplyNestedAndConditions() {
         val model = TestModel(_id = 0, name = "", age = 0)
         val serializer = TestModel.serializer()
-        val props = serializer.serializableProperties!!
+        val props = serializer.fields!!
 
-        val nameProp = props.first { it.name == "name" } as SerializableProperty<TestModel, String>
-        val ageProp = props.first { it.name == "age" } as SerializableProperty<TestModel, Int>
+        val nameProp = props.first { it.name == "name" } as Field<TestModel, String>
+        val ageProp = props.first { it.name == "age" } as Field<TestModel, Int>
 
         // Create nested And conditions
         val innerAnd = Condition.And(
@@ -488,7 +489,7 @@ class NewItemAdminScreenTest {
     fun testCoerceGenericCasting() {
         val model = TestModel(_id = 1, name = "test", age = 25, score = 5.0)
         val serializer = TestModel.serializer()
-        val props = serializer.serializableProperties!!
+        val props = serializer.fields!!
 
         // Test with different property types
         val stringProp = props.first { it.name == "name" }

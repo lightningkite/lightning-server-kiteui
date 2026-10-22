@@ -1,5 +1,6 @@
 package com.lightningkite.lskiteuistarter
 
+import com.lightningkite.services.database.optics.*
 import com.lightningkite.services.data.*
 import com.lightningkite.services.database.HasId
 import com.lightningkite.services.files.ServerFile
@@ -21,8 +22,7 @@ enum class AppPlatform {
     companion object
 }
 
-@GenerateDataClassPaths
-@Serializable
+@Queryable
 data class AppRelease(
     override val _id: Uuid = Uuid.random(),
     val version: String,
@@ -38,16 +38,14 @@ data class ObjectWithArray(
     val title: String,
 )
 
-@Serializable
-@GenerateDataClassPaths
+@Queryable
 data class User(
     override val _id: Uuid = Uuid.random(),
     val email: EmailAddress,
     val name: String = "No Name Specified",
     val role: UserRole = UserRole.User,
 ) : HasId<Uuid> {
-    @Serializable
-    @GenerateDataClassPaths
+    @Queryable
     data class NestedTypeModel(
         override val _id: Uuid = Uuid.random(),
         val name: String = ""
@@ -63,8 +61,7 @@ enum class UserRole {
     Root
 }
 
-@Serializable
-@GenerateDataClassPaths
+@Queryable
 data class FcmToken(
     @MaxLength(160, 142) override val _id: String,
     @Index @References(User::class) val user: Uuid,
@@ -83,8 +80,7 @@ data class Test(
 //    val testArray:List<Test> = emptyList()
 )
 
-@Serializable
-@GenerateDataClassPaths
+@Queryable
 data class SealedPolymorhphicModel(
     override val _id: Uuid = Uuid.random(),
     val title: String = "Test",
@@ -148,8 +144,7 @@ sealed class SealedClassItem {
  * one real, persisted fixture that drives uploads, foreign keys, and collection fields through
  * the forms engine end-to-end rather than editing throwaway Signals.
  */
-@Serializable
-@GenerateDataClassPaths
+@Queryable
 data class Document(
     override val _id: Uuid = Uuid.random(),
     val title: String = "Untitled Document",

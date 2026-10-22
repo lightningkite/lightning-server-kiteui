@@ -140,7 +140,7 @@
 //                assertEquals(listOf(y), c)
 //                assertEquals(listOf(y), d)
 //
-//                cache[2].modify(modification { it.creation += 1 })
+//                cache[2].modify(Modification { it.creation += 1 })
 //                y = y.copy(creation = y.creation + 1)
 //                assertEquals(listOf(y), c)
 //                assertEquals(listOf(y), d)
@@ -155,7 +155,7 @@
 //        cache.allowLoop = false
 //
 //        testContext {
-//            val p = shared { cache.watch(Query(condition { it._id gte 50 }, limit = 5)) }
+//            val p = shared { cache.watch(Query(Condition { it._id gte 50 }, limit = 5)) }
 //            var out: List<Item> = listOf()
 //            reactiveScope {
 //                out = p()()
@@ -183,7 +183,7 @@
 //        cache.allowLoop = false
 //
 //        testContext {
-//            val p = shared { cache.watch(Query<Item>(condition { it._id gte 50 }, orderBy = sort { it.creation.ascending(); it._id.ascending() }, limit = 5)) }
+//            val p = shared { cache.watch(Query<Item>(Condition { it._id gte 50 }, orderBy = sort { it.creation.ascending(); it._id.ascending() }, limit = 5)) }
 //            var out: List<Item> = listOf()
 //            reactiveScope {
 //                out = p()()
@@ -227,7 +227,7 @@
 //                assertEquals(listOf(x, y), c)
 //
 //                var d: List<Item> = listOf()
-//                reactiveSuspending { d = cache.query(Query(condition = condition { it._id lt 10 }))() }
+//                reactiveSuspending { d = cache.query(Query(condition = Condition { it._id lt 10 }))() }
 //                cache.regularly()
 //                assertEquals(listOf(x, y), d)
 //
@@ -236,7 +236,7 @@
 //                assertEquals(listOf(y), c)
 //                assertEquals(listOf(y), d)
 //
-//                cache[2].modify(modification { it.creation += 1 })
+//                cache[2].modify(Modification { it.creation += 1 })
 //                y = y.copy(creation = y.creation + 1)
 //                assertEquals(listOf(y), c)
 //                assertEquals(listOf(y), d)
@@ -267,7 +267,7 @@
 //                assertEquals(listOf(x, y), c)
 //
 //                var d: List<Item> = listOf()
-//                launch { d = cache.query(Query(condition = condition { it._id lt 10 }))() }
+//                launch { d = cache.query(Query(condition = Condition { it._id lt 10 }))() }
 //                cache.regularly()
 //                println("d2: $d")
 //                assertEquals(listOf(x, y), d)
@@ -276,7 +276,7 @@
 //                cache.regularly()
 //                assertEquals(listOf(y), c)
 //
-//                cache[2].modify(modification { it.creation += 1 })
+//                cache[2].modify(Modification { it.creation += 1 })
 //                y = y.copy(creation = y.creation + 1)
 //                assertEquals(listOf(y), c)
 //            }
@@ -322,7 +322,7 @@
 //                assertEquals(listOf(y), c)
 //                assertEquals(listOf(y), d)
 //
-//                cache[2].modify(modification { it.creation += 1 })
+//                cache[2].modify(Modification { it.creation += 1 })
 //                y = y.copy(creation = y.creation + 1)
 //                assertEquals(listOf(y), c)
 //                assertEquals(listOf(y), d)
@@ -369,7 +369,7 @@
 //                assertEquals(listOf(y), c)
 //                assertEquals(listOf(y), d)
 //
-//                cache.skipCache.modify(2, modification { it.creation += 1 })
+//                cache.skipCache.modify(2, Modification { it.creation += 1 })
 //                y = y.copy(creation = y.creation + 1)
 //                assertEquals(listOf(y), c)
 //                assertEquals(listOf(y), d)
@@ -959,13 +959,13 @@
 //
 //    fun testDatas() = listOf(
 //        TestWrapper<Item, Int>(Query()),
-//        TestWrapper<Item, Int>(Query(condition = condition { it._id lt 10 })),
-//        TestWrapper<Item, Int>(Query(condition = condition { it._id lt 10 }, orderBy = sort { it._id.descending() })),
-//        TestWrapper<Item, Int>(Query(condition = condition { it._id lt 10 }, orderBy = sort { it.creation.descending() })),
+//        TestWrapper<Item, Int>(Query(condition = Condition { it._id lt 10 })),
+//        TestWrapper<Item, Int>(Query(condition = Condition { it._id lt 10 }, orderBy = sort { it._id.descending() })),
+//        TestWrapper<Item, Int>(Query(condition = Condition { it._id lt 10 }, orderBy = sort { it.creation.descending() })),
 //        TestWrapper<Item, Int>(Query(orderBy = sort { it._id.descending() })),
 //        TestWrapper<Item, Int>(Query(orderBy = sort { it.creation.descending() })),
-//        TestWrapper<Item, Int>(Query(condition = condition { it._id lt 10 }, orderBy = sort { it._id.ascending() })),
-//        TestWrapper<Item, Int>(Query(condition = condition { it._id lt 10 }, orderBy = sort { it.creation.ascending() })),
+//        TestWrapper<Item, Int>(Query(condition = Condition { it._id lt 10 }, orderBy = sort { it._id.ascending() })),
+//        TestWrapper<Item, Int>(Query(condition = Condition { it._id lt 10 }, orderBy = sort { it.creation.ascending() })),
 //        TestWrapper<Item, Int>(Query(orderBy = sort { it._id.ascending() })),
 //        TestWrapper<Item, Int>(Query(orderBy = sort { it.creation.ascending() })),
 //        TestWrapper<Item, Int>(Query(limit = 4, orderBy = sort { it._id.ascending() })),
@@ -1170,7 +1170,7 @@
 //        AppScope.launch {
 //            x.update(Condition.Always)
 //            assertEquals(true, artificialSocket.connected.value)
-//            x.update(condition { it._id eq 3 })
+//            x.update(Condition { it._id eq 3 })
 //            assertEquals(true, artificialSocket.connected.value)
 //            serverSends(CollectionUpdates(updates = setOf(Item(1))))
 //            x.update(condition(false))
@@ -1225,7 +1225,7 @@
 //        val x = SharedChangeUpdateWrapper(artificialSocket) { println(it) }
 //        testContext {
 //            launch {
-//                val res = x.outsideResource(condition { it._id.lt(5) })
+//                val res = x.outsideResource(Condition { it._id.lt(5) })
 //                res.start()
 //                println("CONNECTED!")
 //                res.stop()
@@ -1239,7 +1239,7 @@
 //        AppScope.launch {
 ////            x.update(Condition.Always)
 ////            assertEquals(true, artificialSocket.connected.value)
-////            x.update(condition { it._id eq 3 })
+////            x.update(Condition { it._id eq 3 })
 ////            assertEquals(true, artificialSocket.connected.value)
 ////            serverSends(CollectionUpdates(updates = setOf(Item(1))))
 ////            x.update(condition(false))

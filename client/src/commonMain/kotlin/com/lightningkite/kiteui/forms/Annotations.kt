@@ -1,5 +1,6 @@
 package com.lightningkite.kiteui.forms
 
+import com.lightningkite.services.database.optics.*
 import com.lightningkite.kiteui.navigation.DefaultUriFormat
 import com.lightningkite.services.data.serialNameFQN
 import com.lightningkite.services.data.titleCase
@@ -100,7 +101,7 @@ public val KSerializer<*>.displayName: String
     )?.let { it as? SerializableAnnotationValue.StringValue }?.value ?: descriptor.serialName.substringBefore('<')
         .substringAfterLast('.').titleCase()
 
-public val SerializableProperty<*, *>.description: String?
+public val Field<*, *>.description: String?
     get() = this.serializableAnnotations.find { it.fqn == Annotations.Description }?.values?.get(
         "text"
     )?.let { it as? SerializableAnnotationValue.StringValue }?.value
@@ -109,20 +110,20 @@ public val KSerializer<*>.description: String?
         "text"
     )?.let { it as? SerializableAnnotationValue.StringValue }?.value
 
-public val SerializableProperty<*, *>.descriptionOrDisplayName: String get() = description ?: displayName
-public val SerializableProperty<*, *>.hint: String
+public val Field<*, *>.descriptionOrDisplayName: String get() = description ?: displayName
+public val Field<*, *>.hint: String
     get() = serializableAnnotations.find { it.fqn == Annotations.Hint }?.values?.get(
         "text"
     )?.let { it as? SerializableAnnotationValue.StringValue }?.value
         ?: description
         ?: displayName
 
-public val SerializableProperty<*, *>.indexed: Boolean
+public val Field<*, *>.indexed: Boolean
     get() = serializableAnnotations.any {
         it.fqn == Annotations.Index
     }
 
-public fun SerializableProperty<*, *>.visibility(module: FormModule): FieldVisibility =
+public fun Field<*, *>.visibility(module: FormModule): FieldVisibility =
     serializableAnnotations.mapNotNull { module.visibilitySettings[it.fqn] }.minOrNull()
         ?: when {
             name == "_id" &&
@@ -159,7 +160,7 @@ public fun <T> KSerializer<T>.naturalSort(): List<SortPart<T>> {
         (it as? SerializableAnnotationValue.StringValue)?.value?.let {
             DefaultUriFormat.decodeFromString(SortPart.serializer(this@naturalSort), it)
         }
-    } ?: serializableProperties?.find {
+    } ?: fields?.find {
         !it.serializer.descriptor.isNullable && it.serializer.descriptor.serialName.substringBefore(
             '/'
         ) == "kotlinx.datetime.Instant"
@@ -168,36 +169,33 @@ public fun <T> KSerializer<T>.naturalSort(): List<SortPart<T>> {
         @Suppress("UNCHECKED_CAST")
         listOf(
             SortPart(
-                DataClassPathAccess(DataClassPathSelf(this), it as SerializableProperty<T, Instant>),
+                it as Field<T, Instant>,
                 ascending = false
             )
         )
-    } ?: serializableProperties?.find { it.name == "_id" && it.serializer == String.serializer() }?.let {
+    } ?: fields?.find { it.name == "_id" && it.serializer == String.serializer() }?.let {
         // Named IDs (e.g., usernames, slugs) - sort ascending
         @Suppress("UNCHECKED_CAST")
         listOf(
             SortPart(
-                DataClassPathAccess(DataClassPathSelf(this), it as SerializableProperty<T, String>),
+                it as Field<T, String>,
                 ascending = true
             )
         )
-    } ?: serializableProperties?.find { it.name in titleFieldNames && it.serializer == String.serializer() }?.let {
+    } ?: fields?.find { it.name in titleFieldNames && it.serializer == String.serializer() }?.let {
         // Named IDs (e.g., usernames, slugs) - sort ascending
         @Suppress("UNCHECKED_CAST")
         listOf(
             SortPart(
-                DataClassPathAccess(DataClassPathSelf(this), it as SerializableProperty<T, String>),
+                it as Field<T, String>,
                 ascending = true
             )
         )
-    } ?: serializableProperties?.firstOrNull()?.let {
+    } ?: fields?.firstOrNull()?.let {
         // Fallback: use first field, whatever it is
         listOf(
             SortPart(
-                DataClassPathAccess(
-                    DataClassPathSelf(this),
-                    it
-                ), ascending = true
+                it, ascending = true
             )
         )
     } ?: listOf()
@@ -216,17 +214,17 @@ public fun <T> KSerializer<T>.naturalSort(): List<SortPart<T>> {
  *
  * @return List of paths to fields that should be displayed as columns
  */
-public fun <T> KSerializer<T>.defaultColumns(): List<DataClassPath<T, *>> {
+public fun <T> KSerializer<T>.defaultColumns(): List<Optic<T, *>> {
     return serializableAnnotations.find {
         it.fqn == "com.lightningkite.services.data.AdminTableColumns"
     }?.values?.entries?.firstOrNull()?.let { it.value as? SerializableAnnotationValue.ArrayValue }?.value?.mapNotNull {
         (it as? SerializableAnnotationValue.StringValue)?.value?.let {
-            DefaultUriFormat.decodeFromString(DataClassPathPartial.serializer(this), it) as DataClassPath<T, *>
+            DefaultUriFormat.decodeFromString(AnyOptic.serializer(this), it) as Optic<T, *>
         }
-    } ?: serializableProperties!!.sortedBy {
+    } ?: fields!!.sortedBy {
         it.importance // Lower importance values = more important fields
     }.take(5).map {
-        DataClassPathAccess(DataClassPathSelf(this), it)
+        it
     }
 }
 
@@ -254,11 +252,11 @@ public fun <T> KSerializer<T>.defaultColumns(): List<DataClassPath<T, *>> {
  *
  * @return List of paths to fields that should be used to display a title/label for instances
  */
-public fun <T> KSerializer<T>.defaultTitleFields(): List<DataClassPath<T, *>> {
+public fun <T> KSerializer<T>.defaultTitleFields(): List<Optic<T, *>> {
     val serializer = this
-    val it = serializer.serializableProperties!!
-    val dcps = DataClassPathSerializer(serializer)
-    val nameFields: List<DataClassPath<T, *>> = serializer.serializableAnnotations.find {
+    val it = serializer.fields!!
+    val dcps = AnyOpticSerializer(serializer)
+    val nameFields: List<Optic<T, *>> = serializer.serializableAnnotations.find {
         it.fqn == "com.lightningkite.services.data.AdminTitleFields"
     }?.values?.get("fields")?.let { it as? SerializableAnnotationValue.ArrayValue }
         ?.value
@@ -266,16 +264,16 @@ public fun <T> KSerializer<T>.defaultTitleFields(): List<DataClassPath<T, *>> {
         ?.map { it.value }
         ?.toSet()
         ?.let { matching ->
-            matching.map { dcps.fromString(it) as DataClassPath<T, *> }
+            matching.map { dcps.fromString(it) as Optic<T, *> }
         }
-        ?: it.find { it.name == "name" }?.let { DataClassPathAccess(DataClassPathSelf(serializer), it) }?.let(::listOf)
-        ?: it.find { it.name == "title" }?.let { DataClassPathAccess(DataClassPathSelf(serializer), it) }?.let(::listOf)
-        ?: it.find { it.name == "subject" }?.let { DataClassPathAccess(DataClassPathSelf(serializer), it) }
+        ?: it.find { it.name == "name" }?.let(::listOf)
+        ?: it.find { it.name == "title" }?.let(::listOf)
+        ?: it.find { it.name == "subject" }
             ?.let(::listOf)
-        ?: it.find { it.name == "label" }?.let { DataClassPathAccess(DataClassPathSelf(serializer), it) }?.let(::listOf)
+        ?: it.find { it.name == "label" }?.let(::listOf)
         ?: it.find { it.name == "_id" && !it.serializer.descriptor.serialName.contains("Uuid") }
-            ?.let { DataClassPathAccess(DataClassPathSelf(serializer), it) }?.let(::listOf)
-        ?: it.map { DataClassPathAccess(DataClassPathSelf(serializer), it) }.take(3) // Fallback: first 3 fields
+            ?.let(::listOf)
+        ?: it.take(3) // Fallback: first 3 fields
     return nameFields
 }
 

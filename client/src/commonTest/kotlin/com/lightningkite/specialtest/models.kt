@@ -2,11 +2,12 @@
 
 package com.lightningkite.specialtest
 
+import com.lightningkite.services.database.optics.*
 import com.lightningkite.services.data.AdminHidden
 import com.lightningkite.services.data.AdminTableColumns
 import com.lightningkite.services.data.Description
 import com.lightningkite.services.data.DisplayName
-import com.lightningkite.services.data.GenerateDataClassPaths
+import com.lightningkite.services.data.Queryable
 import com.lightningkite.services.data.MimeType
 import com.lightningkite.services.data.Multiline
 import com.lightningkite.services.data.MultipleReferences
@@ -20,8 +21,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.UseContextualSerialization
 import kotlin.time.Clock.System.now
 
-@Serializable
-@GenerateDataClassPaths
+@Queryable
 @AdminTableColumns(["name", "number", "status"])
 @Description("A model for testing Lightning Server.")
 data class TestModel(
@@ -44,8 +44,7 @@ enum class Status {
     @DisplayName("Published") PUBLISHED
 }
 
-@Serializable
-@GenerateDataClassPaths
+@Queryable
 data class User(
     override val _id: Uuid = Uuid.random(),
     override val email: String,

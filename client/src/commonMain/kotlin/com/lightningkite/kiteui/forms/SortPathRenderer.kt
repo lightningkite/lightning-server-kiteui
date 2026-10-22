@@ -2,9 +2,10 @@
 
 package com.lightningkite.kiteui.forms
 
-import com.lightningkite.services.data.CaselessStringSerializer
-import com.lightningkite.services.data.TrimmedCaselessStringSerializer
-import com.lightningkite.services.data.TrimmedStringSerializer
+import com.lightningkite.services.database.optics.*
+import com.lightningkite.services.data.CaselessString
+import com.lightningkite.services.data.TrimmedCaselessString
+import com.lightningkite.services.data.TrimmedString
 import com.lightningkite.kiteui.views.ElementWriter
 import com.lightningkite.kiteui.views.direct.select
 import com.lightningkite.kiteui.views.direct.text
@@ -38,9 +39,9 @@ public object SortPathRenderer : Renderer<Any> {
     private val stringTypes = setOf(
         Char.serializer().descriptor.serialName,
         String.serializer().descriptor.serialName,
-        CaselessStringSerializer.descriptor.serialName,
-        TrimmedStringSerializer.descriptor.serialName,
-        TrimmedCaselessStringSerializer.descriptor.serialName,
+        CaselessString.serializer().descriptor.serialName,
+        TrimmedString.serializer().descriptor.serialName,
+        TrimmedCaselessString.serializer().descriptor.serialName,
     )
 
     private val comparableTypes = setOf(
@@ -76,15 +77,15 @@ public object SortPathRenderer : Renderer<Any> {
         val options = ArrayList<SortPart<Any?>>()
 
         init {
-            fun traverse(serializer: KSerializer<Any?>, base: DataClassPath<Any?, Any?>) {
-                serializer.serializableProperties?.forEach { prop ->
+            fun traverse(serializer: KSerializer<Any?>, base: Optic<Any?, Any?>) {
+                serializer.fields?.forEach { prop ->
                     val ser = prop.serializer.let {
                         @Suppress("UNCHECKED_CAST")
                         if (it is ContextualSerializer<*>) module.serializersModule.getContextual(it as ContextualSerializer<Any>)
                         else it
                     }
                     if (ser.descriptor.serialName in comparableTypes) {
-                        val access = DataClassPathAccess(base, prop)
+                        val access = base + prop
                         if (ser.descriptor.serialName !in stringTypes) {
                             options += listOf(
                                 SortPart(access, ascending = true, ignoreCase = false),
@@ -101,15 +102,15 @@ public object SortPathRenderer : Renderer<Any> {
                     }
                 }
             }
-            traverse(serializer.inner, DataClassPathSelf(serializer.inner))
+            traverse(serializer.inner, IdentityLens(serializer.inner))
             options.sortByDescending {
-                it.field.properties.lastOrNull()?.indexed ?: false
+                it.field.fields.lastOrNull()?.indexed ?: false
             }
         }
 
         fun toString(it: SortPart<Any?>): String {
-            val path = it.field.properties.joinToString(" / ") { it.displayName }
-            return if (it.field.serializerAny.descriptor.serialName in stringTypes) {
+            val path = it.field.fields.joinToString(" / ") { it.displayName }
+            return if (it.field.coerceToOptic().serializer.descriptor.serialName in stringTypes) {
                 when {
                     it.ignoreCase && it.ascending -> "$path A-Z"
                     it.ignoreCase -> "$path Z-A"

@@ -25,7 +25,9 @@ import com.lightningkite.reactive.core.Signal
 import com.lightningkite.reactive.core.remember
 import com.lightningkite.serialization.asString
 import com.lightningkite.serialization.lensPath
+import com.lightningkite.services.data.EmailAddress
 import com.lightningkite.services.data.toEmailAddress
+import com.lightningkite.services.database.optics.asType
 import kotlin.uuid.Uuid
 
 @Routable("/users/{id}")
@@ -64,7 +66,6 @@ class UserDetailPage(val id: String) : Page {
 
         scrolling.col {
             h2("Edit User")
-            subtext("Bound with lensPath()/.asString() straight to the loaded record's fields, saved with lightningdb.modification(old, new) through ModelCacheItemReadable.modify().")
 
             shownWhen { item()() == null }.text("Loading...")
 
@@ -72,18 +73,18 @@ class UserDetailPage(val id: String) : Page {
                 field("Name") {
                     textInput {
                         keyboardHints = KeyboardHints.title
-                        content bind draft.lensPath(User.path[User_name])
+                        content bind draft.lensPath(User.name)
                     }
                 }
                 field("Email") {
                     textInput {
                         keyboardHints = KeyboardHints.email
-                        content bind draft.lensPath(User.path.email).asString()
+                        content bind draft.lensPath(User.email).asString()
                     }
                 }
                 field("Role") {
                     select {
-                        bind(draft.lensPath(User.path.role), Constant(UserRole.entries.toList())) { it.name }
+                        bind(draft.lensPath(User.role), Constant(UserRole.entries.toList())) { it.name }
                     }
                 }
 

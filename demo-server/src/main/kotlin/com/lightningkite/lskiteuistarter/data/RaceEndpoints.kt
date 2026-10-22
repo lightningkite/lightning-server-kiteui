@@ -20,12 +20,10 @@ import com.lightningkite.services.database.Condition
 import com.lightningkite.services.database.Mask
 import com.lightningkite.services.database.ModelPermissions
 import com.lightningkite.services.database.Modification
-import com.lightningkite.services.database.condition
 import com.lightningkite.services.database.eq
 import com.lightningkite.services.database.interceptChange
 import com.lightningkite.services.database.mask
 import com.lightningkite.services.database.SortPart
-import com.lightningkite.services.database.modification
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.toList
 import kotlinx.serialization.builtins.serializer
@@ -80,7 +78,7 @@ object RaceEndpoints : ServerBuilder() {
                     Modification.Chain(
                         listOf(
                             incoming,
-                            modification<Racer> {
+                            Modification<Racer> {
                                 it.version += 1L
                                 it.updatedAt assign Clock.System.now()
                             },
@@ -142,7 +140,7 @@ object RaceEndpoints : ServerBuilder() {
             val random = input.seed?.let { Random(it) } ?: Random.Default
             val racerTable = RacerEndpoints.info.table()
             val running = racerTable
-                .find(condition { it.status eq RaceStatus.Racing })
+                .find(Condition { it.status eq RaceStatus.Racing })
                 .toList()
                 .shuffled(random)
                 .take(input.racers)
@@ -152,8 +150,8 @@ object RaceEndpoints : ServerBuilder() {
                 val legSeconds = 200 + random.nextInt(400)
                 val finishing = racer.checkpoint + 1 >= Racer.CHECKPOINTS
                 racerTable.updateOneIgnoringResult(
-                    condition { it._id eq racer._id },
-                    modification {
+                    Condition { it._id eq racer._id },
+                    Modification {
                         it.checkpoint += 1
                         it.elapsedSeconds += legSeconds
                         if (finishing) it.status assign RaceStatus.Finished
@@ -173,7 +171,7 @@ object RaceEndpoints : ServerBuilder() {
             val victim = input
                 ?: racerTable.find(Condition.Always, limit = 1).toList().firstOrNull()?._id
                 ?: throw IllegalStateException("No racers to scratch")
-            racerTable.deleteOneIgnoringOld(condition { it._id eq victim })
+            racerTable.deleteOneIgnoringOld(Condition { it._id eq victim })
             state()
         }
     )
@@ -277,7 +275,7 @@ private suspend fun stormLoop(input: StormRequest) {
         val tickStarted = Clock.System.now()
 
         var head = racers
-            .find(condition { it.status eq RaceStatus.Racing }, orderBy = leaderboardOrder, limit = 200)
+            .find(Condition { it.status eq RaceStatus.Racing }, orderBy = leaderboardOrder, limit = 200)
             .toList()
 
         if (head.isEmpty()) {
@@ -285,8 +283,8 @@ private suspend fun stormLoop(input: StormRequest) {
             // out of racers stops testing anything - worse, a filtered board then agrees with an
             // equally empty server and grades as correct.  So send the field back out for another lap.
             val restarted = racers.updateManyIgnoringResult(
-                condition { it.status eq RaceStatus.Finished },
-                modification {
+                Condition { it.status eq RaceStatus.Finished },
+                Modification {
                     it.status assign RaceStatus.Racing
                     it.checkpoint assign 0
                     it.elapsedSeconds assign 0
@@ -294,7 +292,7 @@ private suspend fun stormLoop(input: StormRequest) {
             )
             if (restarted == 0) return
             head = racers
-                .find(condition { it.status eq RaceStatus.Racing }, orderBy = leaderboardOrder, limit = 200)
+                .find(Condition { it.status eq RaceStatus.Racing }, orderBy = leaderboardOrder, limit = 200)
                 .toList()
             if (head.isEmpty()) return
         }
@@ -314,8 +312,8 @@ private suspend fun stormLoop(input: StormRequest) {
                     val legSeconds = 200 + random.nextInt(400)
                     val finishing = target.checkpoint + 1 >= Racer.CHECKPOINTS
                     racers.updateOneIgnoringResult(
-                        condition { it._id eq target._id },
-                        modification {
+                        Condition { it._id eq target._id },
+                        Modification {
                             it.checkpoint += 1
                             it.elapsedSeconds += legSeconds
                             if (finishing) it.status assign RaceStatus.Finished
@@ -342,11 +340,11 @@ private suspend fun stormLoop(input: StormRequest) {
                     )
                 }
 
-                StormOp.Delete -> racers.deleteOneIgnoringOld(condition { it._id eq target._id })
+                StormOp.Delete -> racers.deleteOneIgnoringOld(Condition { it._id eq target._id })
 
                 StormOp.MassModify -> racers.updateManyIgnoringResult(
-                    condition { it.division eq target.division },
-                    modification { it.status assign RaceStatus.Finished },
+                    Condition { it.division eq target.division },
+                    Modification { it.status assign RaceStatus.Finished },
                 )
             }
             applied++
@@ -362,8 +360,8 @@ private enum class StormOp { Advance, Insert, Delete, MassModify }
 
 /** The order the leaderboard is read in; the storm aims at the rows a reader can see. */
 private val leaderboardOrder = listOf(
-    SortPart(Racer.path.checkpoint, ascending = false),
-    SortPart(Racer.path.elapsedSeconds, ascending = true),
+    SortPart(Racer.checkpoint, ascending = false),
+    SortPart(Racer.elapsedSeconds, ascending = true),
 )
 
 context(server: ServerRuntime)
@@ -371,8 +369,8 @@ private suspend fun state(): RaceState {
     val racers = RaceEndpoints.RacerEndpoints.info.table()
     return RaceState(
         racers = racers.count(Condition.Always),
-        racing = racers.count(condition { it.status eq RaceStatus.Racing }),
-        finished = racers.count(condition { it.status eq RaceStatus.Finished }),
+        racing = racers.count(Condition { it.status eq RaceStatus.Racing }),
+        finished = racers.count(Condition { it.status eq RaceStatus.Finished }),
         clubs = RaceEndpoints.ClubEndpoints.info.table().count(Condition.Always),
     )
 }

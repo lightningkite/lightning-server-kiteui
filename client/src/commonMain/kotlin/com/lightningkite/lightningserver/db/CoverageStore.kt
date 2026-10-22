@@ -1,8 +1,9 @@
 package com.lightningkite.lightningserver.db
 
+import com.lightningkite.services.database.optics.*
 import com.lightningkite.reactive.core.BasicListenable
 import com.lightningkite.services.database.Condition
-import com.lightningkite.services.database.DataClassPathPartial
+import com.lightningkite.services.database.optics.AnyOptic
 import com.lightningkite.services.database.HasId
 import com.lightningkite.services.database.Mask
 import com.lightningkite.services.database.Query
@@ -184,7 +185,7 @@ public class CoverageStore<T : HasId<ID>, ID : Comparable<ID>>(
     }
 
     /** The fields a sort reads, which is all the read mask cares about.  See [orderCovers]. */
-    private fun sortFields(order: List<SortPart<T>>): Set<DataClassPathPartial<T>> =
+    private fun sortFields(order: List<SortPart<T>>): Set<AnyOptic<T>> =
         order.mapTo(HashSet()) { it.field }
 
     /**

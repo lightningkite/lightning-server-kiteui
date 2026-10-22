@@ -40,7 +40,7 @@ object UserAuth : PrincipalType<User, Uuid>, ServerBuilder() {
     override suspend fun fetchByProperty(property: String, value: String): User? = when (property) {
         "email" -> UserEndpoints.info.table()
             .run {
-                findOne(condition { it.email eq value.toEmailAddress() })
+                findOne(Condition { it.email eq value.toEmailAddress() })
                     ?: insertOne(User(email = value.toEmailAddress()))
             }
 
@@ -81,7 +81,7 @@ object UserAuth : PrincipalType<User, Uuid>, ServerBuilder() {
             pin = pins,
             email = Server.email,
             emailTemplate = { to, pin ->
-                val name = Server.users.info.table().findOne(condition { it.email eq to.toEmailAddress() })?.name
+                val name = Server.users.info.table().findOne(Condition { it.email eq to.toEmailAddress() })?.name
                 Email(
                     subject = "Log In Code",
                     to = listOf(EmailAddressWithName(to)),

@@ -95,37 +95,13 @@ public object ConditionRenderer : Renderer<Condition<Any?>> {
         serialName = Condition.LessThanOrEqual.serializer(NothingSerializer()).descriptor.serialName,
         niceName = "<=",
     )
-    public val listAllElements:ExtendedSubtypeData = ExtendedSubtypeData(
-        serialName = Condition.ListAllElements.serializer(NothingSerializer()).descriptor.serialName,
+    public val collectionAllElements: ExtendedSubtypeData = ExtendedSubtypeData(
+        serialName = Condition.CollectionAllElements.serializer(NothingSerializer(), NothingSerializer()).descriptor.serialName,
         niceName = "entries all",
     )
-    public val listAnyElements:ExtendedSubtypeData = ExtendedSubtypeData(
-        serialName = Condition.ListAnyElements.serializer(NothingSerializer()).descriptor.serialName,
+    public val collectionAnyElements: ExtendedSubtypeData = ExtendedSubtypeData(
+        serialName = Condition.CollectionAnyElements.serializer(NothingSerializer(), NothingSerializer()).descriptor.serialName,
         niceName = "any entry",
-    )
-    public val listSizesEquals:ExtendedSubtypeData = ExtendedSubtypeData(
-        serialName = Condition.ListSizesEquals.serializer(NothingSerializer()).descriptor.serialName,
-        niceName = "size is",
-    )
-    public val setAllElements:ExtendedSubtypeData = ExtendedSubtypeData(
-        serialName = Condition.SetAllElements.serializer(NothingSerializer()).descriptor.serialName,
-        niceName = "entries all",
-    )
-    public val setAnyElements:ExtendedSubtypeData = ExtendedSubtypeData(
-        serialName = Condition.SetAnyElements.serializer(NothingSerializer()).descriptor.serialName,
-        niceName = "any entry",
-    )
-    public val setSizesEquals:ExtendedSubtypeData = ExtendedSubtypeData(
-        serialName = Condition.SetSizesEquals.serializer(NothingSerializer()).descriptor.serialName,
-        niceName = "size is",
-    )
-    public val exists:ExtendedSubtypeData = ExtendedSubtypeData(
-        serialName = Condition.Exists.serializer(NothingSerializer()).descriptor.serialName,
-        niceName = "has key",
-    )
-    public val onKey:ExtendedSubtypeData = ExtendedSubtypeData(
-        serialName = Condition.OnKey.serializer(NothingSerializer()).descriptor.serialName,
-        niceName = "where key",
     )
     public val intBitsClear:ExtendedSubtypeData = ExtendedSubtypeData(
         serialName = Condition.IntBitsClear.serializer().descriptor.serialName,
@@ -155,14 +131,6 @@ public object ConditionRenderer : Renderer<Condition<Any?>> {
         serialName = Condition.RegexMatches.serializer().descriptor.serialName,
         niceName = "matches regex",
     )
-    public val rawStringContains:ExtendedSubtypeData = ExtendedSubtypeData(
-        serialName = Condition.RawStringContains.serializer(NothingSerializer()).descriptor.serialName,
-        niceName = "contains",
-    )
-    public val fullTextSearch:ExtendedSubtypeData = ExtendedSubtypeData(
-        serialName = Condition.FullTextSearch.serializer(NothingSerializer()).descriptor.serialName,
-        niceName = "matches search",
-    )
     public val all: Map<String, ExtendedSubtypeData> = listOf(
         never,
         always,
@@ -178,14 +146,8 @@ public object ConditionRenderer : Renderer<Condition<Any?>> {
         lessThan,
         greaterThanOrEqual,
         lessThanOrEqual,
-        listAllElements,
-        listAnyElements,
-        listSizesEquals,
-        setAllElements,
-        setAnyElements,
-        setSizesEquals,
-        exists,
-        onKey,
+        collectionAllElements,
+        collectionAnyElements,
         intBitsClear,
         intBitsSet,
         intBitsAnyClear,
@@ -193,8 +155,6 @@ public object ConditionRenderer : Renderer<Condition<Any?>> {
         geoDistance,
         stringContains,
         regexMatches,
-        rawStringContains,
-        fullTextSearch,
     ).associateBy { it.serialName }
 
     public val MySealedClassSerializer.Option<Condition<Any?>, *>.extended: ExtendedSubtypeData?

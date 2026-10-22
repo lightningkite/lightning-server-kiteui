@@ -71,14 +71,6 @@ public object ModificationRenderer : Renderer<Modification<Any?>> {
         serialName = Modification.Multiply.serializer(NothingSerializer()).descriptor.serialName,
         niceName = "multiply by",
     )
-    public val appendString: ExtendedSubtypeData = ExtendedSubtypeData(
-        serialName = Modification.AppendString.serializer().descriptor.serialName,
-        niceName = "append",
-    )
-    public val appendRawString: ExtendedSubtypeData = ExtendedSubtypeData(
-        serialName = Modification.AppendRawString.serializer(NothingSerializer()).descriptor.serialName,
-        niceName = "append",
-    )
     public val listAppend: ExtendedSubtypeData = ExtendedSubtypeData(
         serialName = Modification.ListAppend.serializer(NothingSerializer()).descriptor.serialName,
         niceName = "add items",
@@ -90,14 +82,6 @@ public object ModificationRenderer : Renderer<Modification<Any?>> {
     public val listRemoveInstances: ExtendedSubtypeData = ExtendedSubtypeData(
         serialName = Modification.ListRemoveInstances.serializer(NothingSerializer()).descriptor.serialName,
         niceName = "remove items",
-    )
-    public val listDropFirst: ExtendedSubtypeData = ExtendedSubtypeData(
-        serialName = Modification.ListDropFirst.serializer(NothingSerializer()).descriptor.serialName,
-        niceName = "drop first",
-    )
-    public val listDropLast: ExtendedSubtypeData = ExtendedSubtypeData(
-        serialName = Modification.ListDropLast.serializer(NothingSerializer()).descriptor.serialName,
-        niceName = "drop last",
     )
     public val listPerElement: ExtendedSubtypeData = ExtendedSubtypeData(
         serialName = "ListPerElement",
@@ -115,25 +99,9 @@ public object ModificationRenderer : Renderer<Modification<Any?>> {
         serialName = Modification.SetRemoveInstances.serializer(NothingSerializer()).descriptor.serialName,
         niceName = "remove items",
     )
-    public val setDropFirst: ExtendedSubtypeData = ExtendedSubtypeData(
-        serialName = Modification.SetDropFirst.serializer(NothingSerializer()).descriptor.serialName,
-        niceName = "drop first",
-    )
-    public val setDropLast: ExtendedSubtypeData = ExtendedSubtypeData(
-        serialName = Modification.SetDropLast.serializer(NothingSerializer()).descriptor.serialName,
-        niceName = "drop last",
-    )
     public val setPerElement: ExtendedSubtypeData = ExtendedSubtypeData(
         serialName = "SetPerElement",
         niceName = "for each",
-    )
-    public val combine: ExtendedSubtypeData = ExtendedSubtypeData(
-        serialName = Modification.Combine.serializer(NothingSerializer()).descriptor.serialName,
-        niceName = "merge",
-    )
-    public val removeKeys: ExtendedSubtypeData = ExtendedSubtypeData(
-        serialName = Modification.RemoveKeys.serializer(NothingSerializer()).descriptor.serialName,
-        niceName = "remove keys",
     )
 
     public val all: Map<String, ExtendedSubtypeData> = listOf(
@@ -145,22 +113,14 @@ public object ModificationRenderer : Renderer<Modification<Any?>> {
         coerceAtLeast,
         increment,
         multiply,
-        appendString,
-        appendRawString,
         listAppend,
         listRemove,
         listRemoveInstances,
-        listDropFirst,
-        listDropLast,
         listPerElement,
         setAppend,
         setRemove,
         setRemoveInstances,
-        setDropFirst,
-        setDropLast,
         setPerElement,
-        combine,
-        removeKeys,
     ).associateBy { it.serialName }
 
     public val MySealedClassSerializer.Option<Modification<Any?>, *>.extended: ExtendedSubtypeData?

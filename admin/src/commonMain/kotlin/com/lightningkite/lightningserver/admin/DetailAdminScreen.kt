@@ -34,6 +34,7 @@
 //
 package com.lightningkite.lightningserver.admin
 
+import com.lightningkite.services.database.optics.*
 import com.lightningkite.kiteui.Routable
 import com.lightningkite.kiteui.forms.displayName
 import com.lightningkite.kiteui.forms.form
@@ -60,9 +61,9 @@ import com.lightningkite.reactive.extensions.flatten
 import com.lightningkite.reactive.extensions.notNull
 import com.lightningkite.services.data.serialNameFQN
 import com.lightningkite.services.database.SerializableAnnotationValue
-import com.lightningkite.services.database.SerializableProperty
+import com.lightningkite.services.database.optics.Field
 import com.lightningkite.services.database.default
-import com.lightningkite.services.database.serializableProperties
+import com.lightningkite.services.database.optics.fields
 
 @Routable("collections/{collectionName}/detail/{itemId}")
 class DetailAdminPage(val collectionName: String, val itemId: String) : Page {
@@ -183,7 +184,7 @@ class DetailAdminPage(val collectionName: String, val itemId: String) : Page {
                         val itemId = itemId()
                         val myTypeName = mc.serializer.descriptor.serialNameFQN()
                         adminServer().models.entries.forEach { model ->
-                            model.value.serializer.serializableProperties?.forEach {
+                            model.value.serializer.fields?.forEach {
                                 val anno =
                                     it.serializableAnnotations.find { it.fqn == "com.lightningkite.services.data.References" }
                                         ?: return@forEach
@@ -203,7 +204,7 @@ class DetailAdminPage(val collectionName: String, val itemId: String) : Page {
                                             conditionString.value = DefaultJson.encodeToString(
                                                 ConditionSerializer(model.value.serializer),
                                                 Condition.OnField(
-                                                    it as SerializableProperty<HasId<*>, UnknownId>,
+                                                    it as Field<HasId<*>, UnknownId>,
                                                     Condition.Equal(itemId)
                                                 )
                                             )

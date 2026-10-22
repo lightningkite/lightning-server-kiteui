@@ -14,8 +14,8 @@ import com.lightningkite.reactive.core.MutableReactive
 import com.lightningkite.reactive.core.Reactive
 import com.lightningkite.reactive.lensing.lens
 import com.lightningkite.services.database.SerializableAnnotationValue
-import com.lightningkite.services.database.SerializableProperty
-import com.lightningkite.services.database.serializableProperties
+import com.lightningkite.services.database.optics.Field
+import com.lightningkite.services.database.optics.fields
 import com.lightningkite.services.data.titleCase
 import com.lightningkite.services.database.SerializableAnnotation
 import com.lightningkite.services.database.serializableAnnotations
@@ -52,7 +52,7 @@ public object DataClassRenderer : Renderer<Any> {
     override fun priority(context: RenderContext<Any>, module: FormModule): Float {
         val descriptor = context.serializer.descriptor
         if (descriptor.kind != StructureKind.CLASS) return -1f
-        if (context.serializer.serializableProperties.isNullOrEmpty()) return -1f
+        if (context.serializer.fields.isNullOrEmpty()) return -1f
         // Lower priority to let more specific renderers win
         return 0.6f
     }
@@ -86,7 +86,7 @@ public object DataClassRenderer : Renderer<Any> {
         module: FormModule
     ): ElementWriter.CanAddTheme.() -> Unit {
         // In cell view, show only the "title" field (name, title, subject, etc.)
-        val properties = context.serializer.serializableProperties
+        val properties = context.serializer.fields
         val titleProp = properties?.let {
             it.find { it.name == "name" }
                 ?: it.find { it.name == "title" }
@@ -136,20 +136,20 @@ public object DataClassRenderer : Renderer<Any> {
 // ===== Layout =====
 
 /** A property together with everything needed to render and size it. */
-private class Field(
-    val property: SerializableProperty<Any, Any?>,
+private class FormField(
+    val property: Field<Any, Any?>,
     val context: RenderContext<Any?>,
     val width: Double,
 )
 
 @Suppress("UNCHECKED_CAST")
-private fun SerializableProperty<*, *>.asField(ownerSerialName: String, module: FormModule): Field {
-    val property = this as SerializableProperty<Any, Any?>
+private fun Field<*, *>.asField(ownerSerialName: String, module: FormModule): FormField {
+    val property = this as Field<Any, Any?>
     val context = RenderContext(property.serializer, property.serializableAnnotationsWithPkAnnotationIfId(ownerSerialName))
-    return Field(property, context, module.columnWidth(context) ?: UNKNOWN_FIELD_WIDTH)
+    return FormField(property, context, module.columnWidth(context) ?: UNKNOWN_FIELD_WIDTH)
 }
 
-private fun List<Field>.fitsInOneRow(): Boolean =
+private fun List<FormField>.fitsInOneRow(): Boolean =
     size <= MAX_ROW_FIELDS && sumOf { it.width } <= MAX_ROW_WIDTH
 
 /**
@@ -157,9 +157,9 @@ private fun List<Field>.fitsInOneRow(): Boolean =
  *
  * A short data class becomes a single row; otherwise `@Group` members share a row when they fit.
  */
-private fun fieldRows(context: RenderContext<Any>, module: FormModule): List<List<Field>> {
+private fun fieldRows(context: RenderContext<Any>, module: FormModule): List<List<FormField>> {
     val ownerSerialName = context.serializer.descriptor.serialName
-    val fields = context.serializer.serializableProperties.orEmpty()
+    val fields = context.serializer.fields.orEmpty()
         .filter { it.fieldVisibility(module) != FieldVisibility.HIDDEN }
         .sortedBy { it.importance }
         .map { it.asField(ownerSerialName, module) }
@@ -168,7 +168,7 @@ private fun fieldRows(context: RenderContext<Any>, module: FormModule): List<Lis
     // A short class with no explicit grouping goes on one row; an explicit @Group is honored instead
     if (fields.none { it.property.group != null } && fields.fitsInOneRow()) return listOf(fields)
 
-    val rows = mutableListOf<List<Field>>()
+    val rows = mutableListOf<List<FormField>>()
     val emittedGroups = mutableSetOf<String>()
     for (field in fields) {
         val groupName = field.property.group
@@ -184,7 +184,7 @@ private fun fieldRows(context: RenderContext<Any>, module: FormModule): List<Lis
     return rows
 }
 
-private fun ElementWriter.CanAddTheme.renderRows(rows: List<List<Field>>, renderField: ViewWriter.(Field) -> Unit) {
+private fun ElementWriter.CanAddTheme.renderRows(rows: List<List<FormField>>, renderField: ViewWriter.(FormField) -> Unit) {
     col {
         for (fieldRow in rows) {
             if (fieldRow.size == 1) {
@@ -201,12 +201,12 @@ private fun ElementWriter.CanAddTheme.renderRows(rows: List<List<Field>>, render
 
 // ===== Field Rendering =====
 
-private fun ViewWriter.renderFieldForm(field: Field, parentValue: MutableReactive<Any>, module: FormModule) {
+private fun ViewWriter.renderFieldForm(field: FormField, parentValue: MutableReactive<Any>, module: FormModule) {
     val property = field.property
     // Use modify since we're updating one field of an object
     val fieldValue = parentValue.lens(
         get = { property.get(it) },
-        modify = { parent, newFieldValue -> property.setCopy(parent, newFieldValue) }
+        modify = { parent, newFieldValue -> property.set(parent, newFieldValue) }
     )
     val sentenceText = property.sentence
     when {
@@ -216,7 +216,7 @@ private fun ViewWriter.renderFieldForm(field: Field, parentValue: MutableReactiv
     }
 }
 
-private fun ViewWriter.renderFieldView(field: Field, parentValue: Reactive<Any>, module: FormModule) {
+private fun ViewWriter.renderFieldView(field: FormField, parentValue: Reactive<Any>, module: FormModule) {
     val property = field.property
     val fieldValue = parentValue.lens { property.get(it) }
     val sentenceText = property.sentence
@@ -250,27 +250,27 @@ private fun ViewWriter.sectionHeader(label: String, description: String?) {
  *
  * by Claude - migrated to use FormModule.effectiveVisibility for admin settings support
  */
-public fun SerializableProperty<*, *>.fieldVisibility(module: FormModule): FieldVisibility {
+public fun Field<*, *>.fieldVisibility(module: FormModule): FieldVisibility {
     @Suppress("UNCHECKED_CAST")
     val context = RenderContext(serializer as KSerializer<Any?>, serializableAnnotations)
     return module.effectiveVisibility(context)
 }
 
-public val SerializableProperty<*, *>.displayName: String
+public val Field<*, *>.displayName: String
     get() = serializableAnnotations.find { it.fqn == Annotations.DisplayName }
         ?.values?.get("text")
         ?.let { it as? SerializableAnnotationValue.StringValue }?.value
         ?: if (name == "_id") "ID" else name.titleCase()
 
-public val SerializableProperty<*, *>.doesNotNeedLabel: Boolean
+public val Field<*, *>.doesNotNeedLabel: Boolean
     get() = serializableAnnotations.any { it.fqn == Annotations.DoesNotNeedLabel }
 
-public val SerializableProperty<*, *>.sentence: String?
+public val Field<*, *>.sentence: String?
     get() = serializableAnnotations.find { it.fqn == Annotations.Sentence }
         ?.values?.values?.firstOrNull()
         ?.let { it as? SerializableAnnotationValue.StringValue }?.value
 
-public val SerializableProperty<*, *>.importance: Int
+public val Field<*, *>.importance: Int
     get() = serializableAnnotations.find { it.fqn == Annotations.Importance }
         ?.values?.values?.firstOrNull()
         ?.let { it as? SerializableAnnotationValue.ByteValue }?.value?.toInt()
@@ -282,7 +282,7 @@ public val SerializableProperty<*, *>.importance: Int
         }
 
 /** Get the `@Group` annotation value, if present. */
-public val SerializableProperty<*, *>.group: String?
+public val Field<*, *>.group: String?
     get() = serializableAnnotations.find { it.fqn == Annotations.Group }
         ?.values?.values?.firstOrNull()
         ?.let { it as? SerializableAnnotationValue.StringValue }?.value
@@ -291,6 +291,6 @@ public fun FormModule.registerObject() {
     register(Selector(kind = StructureKind.CLASS), DataClassRenderer)
 }
 
-internal fun SerializableProperty<*, *>.serializableAnnotationsWithPkAnnotationIfId(fqn: String) = if(this.name == "_id" && this.serializableAnnotations.any {
+internal fun Field<*, *>.serializableAnnotationsWithPkAnnotationIfId(fqn: String) = if(this.name == "_id" && this.serializableAnnotations.any {
     it.fqn == "com.lightningkite.services.data.References" && (it.values["references"] as? SerializableAnnotationValue.ClassValue)?.fqn == fqn
 }) serializableAnnotations + SerializableAnnotation(ForeignKeyRenderer.IS_PRIMARY_KEY_FQN, mapOf()) else serializableAnnotations

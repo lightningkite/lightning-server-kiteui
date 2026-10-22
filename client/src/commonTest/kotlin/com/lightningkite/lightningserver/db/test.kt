@@ -1,22 +1,21 @@
 package com.lightningkite.lightningserver.db
 
+import com.lightningkite.services.database.optics.*
 import kotlin.uuid.Uuid
 import com.lightningkite.services.database.*
 import com.lightningkite.services.data.ExpectedPattern
-import com.lightningkite.services.data.GenerateDataClassPaths
+import com.lightningkite.services.data.Queryable
 import com.lightningkite.services.data.Index
 import com.lightningkite.services.data.IndexUniqueness
 import com.lightningkite.services.data.MaxLength
 import kotlinx.serialization.Serializable
 
 
-@GenerateDataClassPaths
-@Serializable
+@Queryable
 data class ValidatedModel(
     @ExpectedPattern("[a-zA-Z ]+") @MaxLength(15) val name: String,
 )
-@GenerateDataClassPaths
-@Serializable
+@Queryable
 data class NestedEnumTestModel(
     override val _id: Uuid = Uuid.random(),
     val thing: NestedEnumHolder = NestedEnumHolder()
@@ -24,13 +23,11 @@ data class NestedEnumTestModel(
     companion object
 }
 
-@GenerateDataClassPaths
-@Serializable
+@Queryable
 data class NestedEnumHolder(
     val enumValue: TestEnum = TestEnum.One
 )
-@GenerateDataClassPaths()
-@Serializable
+@Queryable
 data class User(
     override val _id: Uuid = Uuid.random(),
     // by Claude - fixed Index annotation to use IndexUniqueness enum

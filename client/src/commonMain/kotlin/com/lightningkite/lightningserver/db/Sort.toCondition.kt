@@ -1,9 +1,10 @@
 package com.lightningkite.lightningserver.db
 
+import com.lightningkite.services.database.optics.*
 import com.lightningkite.services.database.Condition
 import com.lightningkite.services.database.SortPart
-import com.lightningkite.services.database.DataClassPath
-import com.lightningkite.services.database.DataClassPathNotNull
+import com.lightningkite.services.database.optics.Optic
+import com.lightningkite.services.database.optics.NotNullOptic
 
 /**
  * Converts a list of [SortPart]s into a [Condition] that matches all items that come "after" the given item
@@ -50,10 +51,10 @@ public fun <T> List<SortPart<T>>.after(after: T): Condition<T> {
             val isLast = index == count - 1
             val f = it.field
 
-            // Handle nullable fields (wrapped in DataClassPathNotNull)
-            if(f is DataClassPathNotNull<*, *>) {
+            // Handle nullable fields (wrapped in NotNullOptic)
+            if(f is NotNullOptic<*, *>) {
                 @Suppress("UNCHECKED_CAST")
-                f as DataClassPathNotNull<T, Comparable<Comparable<*>>>
+                f as NotNullOptic<T, Comparable<Comparable<*>>>
                 val v = f.get(after)
 
                 f.wraps.mapCondition(
@@ -85,7 +86,7 @@ public fun <T> List<SortPart<T>>.after(after: T): Condition<T> {
             } else {
                 @Suppress("UNCHECKED_CAST")
                 // Handle non-nullable fields
-                f as DataClassPath<T, Comparable<Comparable<*>>>
+                f as Optic<T, Comparable<Comparable<*>>>
                 val v = f.get(after)
                 // TODO: This error handling is inconsistent - nullable paths can have null values but this throws.
                 // Consider whether this should return Condition.Never or handle gracefully instead of throwing.
@@ -142,7 +143,7 @@ public fun <T> List<SortPart<T>>.after(after: T): Condition<T> {
  *    - Show generated SQL-like pseudo-code for clarity
  *
  * 8. Inconsistent error handling between nullable and non-nullable paths
- *    - DataClassPath throws Error on null, DataClassPathNotNull handles gracefully
+ *    - Optic throws Error on null, NotNullOptic handles gracefully
  *    - Should unify approach - either both throw or both handle gracefully
  *    - Consider using Result<Condition<T>> return type instead of throwing
  */

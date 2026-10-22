@@ -1,5 +1,6 @@
 package com.lightningkite.lightningserver.admin
 
+import com.lightningkite.services.database.optics.*
 import com.lightningkite.services.data.*
 import com.lightningkite.kiteui.*
 import com.lightningkite.kiteui.forms.defaultColumns
@@ -72,7 +73,7 @@ class CollectionAdminPage(val collectionName: String) : Page {
     @QueryParameter("sort")
     val sortString: Signal<String?> = Signal(null)
 
-    /** Serialized list of DataClassPath for visible columns */
+    /** Serialized list of Optic for visible columns */
     @QueryParameter("columns")
     val columnsString: Signal<String?> = Signal(null)
 
@@ -133,9 +134,6 @@ class CollectionAdminPage(val collectionName: String) : Page {
                 mc.serializer.defaultColumns().map { ColumnInfo(it, forms) }
             } as MutableReactiveValue<List<ColumnInfo<UnknownModel>>>
 
-        val hasTextIndex: Boolean =
-            mc.serializer.serializableAnnotations.any { it.fqn.endsWith("TextIndex") }
-
         private val conditionD = condition.debounce(DEBOUNCE_MS, mc.scope)
         private val sortD = sort.debounce(DEBOUNCE_MS, mc.scope)
 
@@ -158,34 +156,22 @@ class CollectionAdminPage(val collectionName: String) : Page {
 
         private val textSearchD = textSearch.debounce(DEBOUNCE_MS, mc.scope)
         /**
-         * Builds a text search condition from the current search text.
-         * Uses full-text search if available, otherwise searches visible string columns.
+         * Builds a text search condition from the current search text: each word must match at least one
+         * visible string column (AND of ORs).
          */
         private fun ReactiveContext.buildTextSearchCondition(): Condition<UnknownModel>? {
             val text = textSearchD().takeUnless { it.isBlank() } ?: return null
-            return if (hasTextIndex) {
-                Condition.FullTextSearch(text)
-            } else {
-                buildColumnSearchCondition(text)
-            }
-        }
-
-        /**
-         * Fallback text search: searches each word across all visible string columns.
-         * Each word must match at least one column (AND of ORs).
-         */
-        private fun ReactiveContext.buildColumnSearchCondition(text: String): Condition<UnknownModel> {
             val cols = columns()
             return text.split(' ').map { term ->
                 cols.mapNotNull { c ->
                     @Suppress("UNCHECKED_CAST")
-                    val path = c.path as DataClassPath<UnknownModel, Any?>
+                    val path = c.path as Optic<UnknownModel, Any?>
                     val baseSerialName = path.serializer
                         .let { it.nullElement() ?: it }
                         .descriptor.serialName.substringBefore('/')
 
                     val searchPath = if (path.serializer.descriptor.isNullable) {
-                        DataClassPathNotNull(path)
+                        NotNullOptic(path)
                     } else {
                         path
                     }
@@ -195,9 +181,8 @@ class CollectionAdminPage(val collectionName: String) : Page {
                         baseSerialName == "kotlin.String" -> searchPath.mapCondition(
                             Condition.StringContains(term, ignoreCase = true) as Condition<Any?>
                         )
-                        baseSerialName in IsRawString.serialNames -> searchPath.mapCondition(
-                            Condition.RawStringContains<TrimmedString>(term, ignoreCase = true) as Condition<Any?>
-                        )
+                        baseSerialName in IsRawString.serialNames -> (searchPath as Optic<UnknownModel, IsRawString>).raw
+                            .mapCondition(Condition.StringContains(term, ignoreCase = true))
                         else -> null
                     }
                 }.takeUnless { it.isEmpty() }?.let { Condition.Or(it) } ?: Condition.Always

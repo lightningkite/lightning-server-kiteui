@@ -29,9 +29,8 @@ import com.lightningkite.services.database.MassModification
 import com.lightningkite.services.database.Query
 import com.lightningkite.services.database.SortPart
 import com.lightningkite.services.database.andNotNull
-import com.lightningkite.services.database.condition
 import com.lightningkite.services.database.eq
-import com.lightningkite.services.database.modification
+import com.lightningkite.services.database.Modification
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -51,8 +50,8 @@ private const val PAGE_SIZE = 25
  * cache has to keep a pagination boundary meaningful while rows move across it in both directions.
  */
 private val leaderboardOrder = listOf(
-    SortPart(Racer.path.checkpoint, ascending = false),
-    SortPart(Racer.path.elapsedSeconds, ascending = true),
+    SortPart(Racer.checkpoint, ascending = false),
+    SortPart(Racer.elapsedSeconds, ascending = true),
 )
 
 private data class ScenarioResult(val name: String, val passed: Boolean, val detail: String)
@@ -85,8 +84,8 @@ class RaceConsolePage : Page {
         val query = remember {
             Query(
                 condition = Condition.andNotNull(
-                    divisionFilter()?.let { d -> condition<Racer> { it.division eq d } },
-                    statusFilter()?.let { s -> condition<Racer> { it.status eq s } },
+                    divisionFilter()?.let { d -> Condition<Racer> { it.division eq d } },
+                    statusFilter()?.let { s -> Condition<Racer> { it.status eq s } },
                 ),
                 orderBy = leaderboardOrder,
                 limit = PAGE_SIZE,
@@ -514,8 +513,8 @@ class RaceConsolePage : Page {
                 // this asks only about the rows on screen - which it must get right.
                 val changed = s.racers.bulkModify(
                     MassModification(
-                        condition<Racer> { it.division eq division },
-                        modification<Racer> { it.status assign RaceStatus.Finished },
+                        Condition<Racer> { it.division eq division },
+                        Modification<Racer> { it.status assign RaceStatus.Finished },
                     )
                 )
                 val settled = awaitOracle(s, Clock.System.now(), Oracle.Verdict.Ok)
@@ -533,7 +532,7 @@ class RaceConsolePage : Page {
                 val before = s.racers.item(target._id).awaitOnce()
                 httpOffline.value = true
                 val thrown = try {
-                    s.racers.item(target._id).modify(modification<Racer> { it.name assign "SHOULD NOT STICK" })
+                    s.racers.item(target._id).modify(Modification<Racer> { it.name assign "SHOULD NOT STICK" })
                     null
                 } catch (e: Exception) {
                     e

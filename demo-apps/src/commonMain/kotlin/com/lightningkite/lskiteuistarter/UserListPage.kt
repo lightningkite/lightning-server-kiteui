@@ -13,7 +13,7 @@ import com.lightningkite.reactive.core.Reactive
 import com.lightningkite.reactive.core.remember
 import com.lightningkite.services.database.Query
 import com.lightningkite.services.database.always
-import com.lightningkite.services.database.condition
+import com.lightningkite.services.database.Condition
 
 // by Claude
 @Routable("/users")
@@ -24,7 +24,7 @@ class UserListPage : Page {
         // Outer reactive tracks session changes, inner is the ModelCacheLimitReadable
         val users = remember {
             currentSessionNotNull().users.list(
-                Query(condition<User> { it.always })
+                Query(Condition<User> { it.always() })
             )
         }
 

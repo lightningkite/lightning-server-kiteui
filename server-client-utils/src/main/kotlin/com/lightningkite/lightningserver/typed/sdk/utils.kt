@@ -1,11 +1,11 @@
 package com.lightningkite.lightningserver.typed.sdk
 
-import com.lightningkite.lightningserver.runtime.ServerRuntime
+import com.lightningkite.lightningserver.runtime.Engine
 import com.lightningkite.services.data.ExperimentalLightningServer
 
 @OptIn(ExperimentalLightningServer::class)
 private class MergedFormat(val formats: List<SDK.Format>): SDK.Format {
-    context(_: ServerRuntime)
+    context(_: Engine)
     override fun write(archive: Archive) =
         formats.forEach { it.write(archive) }
 }

@@ -1,5 +1,6 @@
 package com.lightningkite.lightningserver.admin.tests
 
+import com.lightningkite.services.database.optics.*
 import com.lightningkite.kiteui.Routable
 import com.lightningkite.kiteui.fileName
 import com.lightningkite.kiteui.forms.*
@@ -9,7 +10,7 @@ import com.lightningkite.kiteui.views.*
 import com.lightningkite.kiteui.views.direct.*
 import com.lightningkite.reactive.core.Signal
 import com.lightningkite.services.data.Description
-import com.lightningkite.services.data.GenerateDataClassPaths
+import com.lightningkite.services.data.Queryable
 import com.lightningkite.services.data.Group
 import com.lightningkite.services.database.Condition
 import com.lightningkite.services.database.Modification
@@ -24,8 +25,7 @@ import kotlinx.serialization.Serializable
  *
  * by Claude
  */
-@GenerateDataClassPaths
-@Serializable
+@Queryable
 data class TestFormData(
     @Description("Enable this option to activate the feature. When enabled, additional options become available.")
     @Group("A") val active: Boolean = false,

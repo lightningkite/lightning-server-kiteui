@@ -64,7 +64,7 @@ fun ViewWriter.app(navigator: PageNavigator) {
             val releases = try {
                 selectedApi.await().api.appRelease.query(
                     Query(
-                        condition { it.platform.eq(Platform.current.toAppPlatform()) }
+                        Condition { it.platform.eq(Platform.current.toAppPlatform()) }
                     ))
             } catch (_: Exception) {
                 return@launch

@@ -2,6 +2,7 @@
 
 package com.lightningkite.kiteui.forms
 
+import com.lightningkite.services.database.optics.*
 import com.lightningkite.kiteui.components.CodeBlockSemantic
 import com.lightningkite.kiteui.views.ElementWriter
 import com.lightningkite.kiteui.views.direct.*
@@ -9,8 +10,8 @@ import com.lightningkite.kiteui.views.themed
 import com.lightningkite.reactive.core.MutableReactive
 import com.lightningkite.reactive.core.Reactive
 import com.lightningkite.reactive.core.Signal
-import com.lightningkite.services.database.SerializableProperty
-import com.lightningkite.services.database.serializableProperties
+import com.lightningkite.services.database.optics.Field
+import com.lightningkite.services.database.optics.fields
 import com.lightningkite.services.database.listElement
 import com.lightningkite.services.database.default
 import kotlinx.serialization.ExperimentalSerializationApi
@@ -33,7 +34,7 @@ public object CsvRenderer : Renderer<List<Any?>> {
         if (context.serializer.descriptor.kind != StructureKind.LIST) return -1f
         val elementSerializer = context.serializer.listElement() ?: return -1f
         if (elementSerializer.descriptor.kind != StructureKind.CLASS) return -1f
-        if (elementSerializer.serializableProperties.isNullOrEmpty()) return -1f
+        if (elementSerializer.fields.isNullOrEmpty()) return -1f
 
         // Low priority - should be selected via switcher
         return 0.2f
@@ -42,7 +43,7 @@ public object CsvRenderer : Renderer<List<Any?>> {
     @Suppress("UNCHECKED_CAST")
     override fun form(context: RenderContext<List<Any?>>, value: MutableReactive<List<Any?>>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit {
         val elementSerializer = context.serializer.listElement() as? KSerializer<Any?> ?: return { text("Not a valid list") }
-        val properties = elementSerializer.serializableProperties?.toList() ?: return { text("Not a data class") }
+        val properties = elementSerializer.fields?.toList() ?: return { text("Not a data class") }
 
         return {
             val errorMessage = Signal<String?>(null)
@@ -73,7 +74,7 @@ public object CsvRenderer : Renderer<List<Any?>> {
     @Suppress("UNCHECKED_CAST")
     override fun view(context: RenderContext<List<Any?>>, value: Reactive<List<Any?>>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit {
         val elementSerializer = context.serializer.listElement() as? KSerializer<Any?> ?: return { text("Not a valid list") }
-        val properties = elementSerializer.serializableProperties?.toList() ?: return { text("Not a data class") }
+        val properties = elementSerializer.fields?.toList() ?: return { text("Not a data class") }
 
         return {
             themed(CodeBlockSemantic).text {
@@ -92,7 +93,7 @@ public object CsvRenderer : Renderer<List<Any?>> {
     // ===== CSV Helpers =====
 
     @Suppress("UNCHECKED_CAST")
-    private fun toCsv(list: List<Any?>, properties: List<SerializableProperty<*, *>>): String {
+    private fun toCsv(list: List<Any?>, properties: List<Field<*, *>>): String {
         val sb = StringBuilder()
 
         // Header row
@@ -102,7 +103,7 @@ public object CsvRenderer : Renderer<List<Any?>> {
         for (item in list) {
             if (item == null) continue
             val row = properties.map { prop ->
-                val typedProp = prop as SerializableProperty<Any, Any?>
+                val typedProp = prop as Field<Any, Any?>
                 val fieldValue = typedProp.get(item)
                 escapeCsvField(fieldValue?.toString() ?: "")
             }
@@ -113,7 +114,7 @@ public object CsvRenderer : Renderer<List<Any?>> {
     }
 
     @Suppress("UNCHECKED_CAST")
-    private fun fromCsv(csv: String, properties: List<SerializableProperty<*, *>>, elementSerializer: KSerializer<Any?>): List<Any?> {
+    private fun fromCsv(csv: String, properties: List<Field<*, *>>, elementSerializer: KSerializer<Any?>): List<Any?> {
         val lines = csv.lines().filter { it.isNotBlank() }
         if (lines.isEmpty()) return emptyList()
 
@@ -134,12 +135,12 @@ public object CsvRenderer : Renderer<List<Any?>> {
                 if (colIndex >= fields.size) continue
 
                 val fieldValue = fields[colIndex]
-                val typedProp = prop as SerializableProperty<Any, Any?>
+                val typedProp = prop as Field<Any, Any?>
 
                 // Parse the field value based on the property type
                 val parsedValue = parseFieldValue(fieldValue, prop)
                 if (parsedValue != null || prop.serializer.descriptor.isNullable) {
-                    instance = typedProp.setCopy(instance, parsedValue)
+                    instance = typedProp.set(instance, parsedValue)
                 }
             }
 
@@ -192,7 +193,7 @@ public object CsvRenderer : Renderer<List<Any?>> {
         return serializer.default() as Any
     }
 
-    private fun parseFieldValue(value: String, prop: SerializableProperty<*, *>): Any? {
+    private fun parseFieldValue(value: String, prop: Field<*, *>): Any? {
         if (value.isBlank() && prop.serializer.descriptor.isNullable) return null
 
         val typeName = prop.serializer.descriptor.serialName

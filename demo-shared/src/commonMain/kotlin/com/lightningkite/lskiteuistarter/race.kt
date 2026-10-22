@@ -1,6 +1,7 @@
 package com.lightningkite.lskiteuistarter
 
-import com.lightningkite.services.data.GenerateDataClassPaths
+import com.lightningkite.services.database.optics.*
+import com.lightningkite.services.data.Queryable
 import com.lightningkite.services.data.Index
 import com.lightningkite.services.data.References
 import com.lightningkite.services.database.HasId
@@ -15,8 +16,7 @@ import kotlin.uuid.Uuid
  * Every field here is chosen to stress one property of the cache rather than to model a race well.
  * See each field for which one.
  */
-@Serializable
-@GenerateDataClassPaths
+@Queryable
 data class Club(
     override val _id: Uuid = Uuid.random(),
     val name: String,
@@ -29,8 +29,7 @@ enum class Division { MOpen, M40, M50, WOpen, W40, W50 }
 @Serializable
 enum class RaceStatus { Registered, Racing, Finished, DNF, DQ }
 
-@Serializable
-@GenerateDataClassPaths
+@Queryable
 data class Racer(
     override val _id: Uuid = Uuid.random(),
     @Index val bib: Int,

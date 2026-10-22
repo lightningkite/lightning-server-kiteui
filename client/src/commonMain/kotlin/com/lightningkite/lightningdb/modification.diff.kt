@@ -2,10 +2,11 @@
 
 package com.lightningkite.lightningdb
 
+import com.lightningkite.services.database.optics.*
 import com.lightningkite.services.database.Modification
-import com.lightningkite.services.database.SerializableProperty
+import com.lightningkite.services.database.optics.Field
 import com.lightningkite.services.database.nullElement
-import com.lightningkite.services.database.serializableProperties
+import com.lightningkite.services.database.optics.fields
 import com.lightningkite.services.database.serializerOrContextual
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
@@ -14,10 +15,10 @@ public inline fun <reified T> modification(old: T, new: T): Modification<T>? = m
 public fun <T> modification(serializer: KSerializer<T>, old: T, new: T): Modification<T>? = run {
     if(old == new) return@run null
     if(old == null || new == null) return@run Modification.Assign(new)
-    return@run (serializer.nullElement() ?: serializer).serializableProperties?.let {
+    return@run (serializer.nullElement() ?: serializer).fields?.let {
         Modification.Chain<T>(it.mapNotNull {
             @Suppress("UNCHECKED_CAST")
-            it as SerializableProperty<T, Any?>
+            it as Field<T, Any?>
             val oldValue = it.get(old as T)
             val newValue = it.get(new as T)
             val inner = modification(it.serializer, oldValue, newValue)?.let { mod ->

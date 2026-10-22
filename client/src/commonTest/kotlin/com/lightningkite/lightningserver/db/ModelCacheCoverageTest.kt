@@ -110,8 +110,8 @@ class ModelCacheCoverageTest {
     /** A row that stops matching one condition and starts matching another moves between lists. */
     @Test fun mutationsMoveRowsBetweenLists() = runTest2 {
         val (_, data, cache) = backgroundScope.fixture(10)
-        val low = cache.quietList(condition { it.int lt 6 })
-        val high = cache.quietList(condition { it.int gte 6 })
+        val low = cache.quietList(Condition { it.int lt 6 })
+        val high = cache.quietList(Condition { it.int gte 6 })
         val releases = listOf(low.addListener { }, high.addListener { })
         delay(1.seconds)
         assertEquals(listOf(1, 2, 3, 4, 5), low.state.getOrNull()?.map { it.int })
@@ -129,7 +129,7 @@ class ModelCacheCoverageTest {
     @Test fun aDeletionDisappearsFromEveryList() = runTest2 {
         val (_, data, cache) = backgroundScope.fixture(5)
         val all = cache.quietList()
-        val some = cache.quietList(condition { it.int gt 2 })
+        val some = cache.quietList(Condition { it.int gt 2 })
         val releases = listOf(all.addListener { }, some.addListener { })
         delay(1.seconds)
         assertEquals(5, all.state.getOrNull()?.size)
@@ -190,14 +190,14 @@ class ModelCacheCoverageTest {
         val cache = ModelCache(mock, LargeTestModel.serializer(), scope = backgroundScope, log = testLog)
 
         // Subscribed, so the socket's condition is this one.
-        val subscribed = cache.list(Query(condition { it.int gt 2 }, sort { it.int.ascending() }), pullFrequency = 10.seconds)
+        val subscribed = cache.list(Query(Condition { it.int gt 2 }, sort { it.int.ascending() }), pullFrequency = 10.seconds)
         // Polls slowly instead of subscribing, so it can only learn from the other one's socket.
         val polling = cache.quietList()
         val releases = listOf(subscribed.addListener { }, polling.addListener { })
         delay(7.seconds)
         assertEquals(data, polling.state.getOrNull())
 
-        val updated = mock.modify(data[4]._id, modification { it.short assign 7 })
+        val updated = mock.modify(data[4]._id, Modification { it.short assign 7 })
         delay(1.seconds)
 
         assertEquals(updated, polling.state.getOrNull()?.last(), "the polling list should have the new value")
@@ -212,14 +212,14 @@ class ModelCacheCoverageTest {
         mock.data.putAll(data.associateBy { it._id })
         val cache = ModelCache(mock, LargeTestModel.serializer(), scope = backgroundScope, log = testLog)
 
-        val ref = cache.list(Query(condition { it.int gt 2 }, sort { it.int.ascending() }), pullFrequency = 10.seconds)
+        val ref = cache.list(Query(Condition { it.int gt 2 }, sort { it.int.ascending() }), pullFrequency = 10.seconds)
         val release = ref.addListener { }
         delay(7.seconds)
         assertEquals(listOf(3, 4, 5), ref.state.getOrNull()?.map { it.int })
         val retrievedAt = assertNotNull(ref.lastUpdatedAt.state.getOrNull())
 
         // Moves out of the subscribed condition; the server reports that as a removal.
-        mock.modify(data[3]._id, modification { it.int assign 1 })
+        mock.modify(data[3]._id, Modification { it.int assign 1 })
         delay(1.seconds)
 
         assertEquals(listOf(3, 5), ref.state.getOrNull()?.map { it.int })
@@ -246,7 +246,7 @@ class ModelCacheCoverageTest {
         val cache = ModelCache(mock, LargeTestModel.serializer(), scope = backgroundScope, log = testLog)
 
         // Subscribed, so the socket's condition is this list's.
-        val list = cache.list(Query(condition { it.int gt 5 }, sort { it.int.ascending() }), pullFrequency = 10.seconds)
+        val list = cache.list(Query(Condition { it.int gt 5 }, sort { it.int.ascending() }), pullFrequency = 10.seconds)
         // Polls rather than subscribing, so the removal says nothing about this ID.
         val item = cache.item(leaving._id, maximumAge = 10.minutes, pullFrequency = 31.seconds)
         var reportedDeleted = false
@@ -257,7 +257,7 @@ class ModelCacheCoverageTest {
         delay(7.seconds)
         assertEquals(leaving, item.state.getOrNull())
 
-        val moved = mock.modify(leaving._id, modification { it.int assign 1 })
+        val moved = mock.modify(leaving._id, Modification { it.int assign 1 })
         delay(40.seconds) // long enough for the item's own poll to find out the truth
 
         assertEquals(listOf(staying), list.state.getOrNull(), "the row left the list")
@@ -295,7 +295,7 @@ class ModelCacheCoverageTest {
         delay(1.seconds)
         mock.queries.clear()
 
-        val narrow = cache.quietList(condition { it.int gt 3 })
+        val narrow = cache.quietList(Condition { it.int gt 3 })
         val narrowRelease = narrow.addListener { }
         delay(1.seconds)
 
@@ -316,7 +316,7 @@ class ModelCacheCoverageTest {
         delay(1.seconds)
         mock.queries.clear()
 
-        val narrow = cache.quietList(condition { it.int gt 5 })
+        val narrow = cache.quietList(Condition { it.int gt 5 })
         val narrowRelease = narrow.addListener { }
         delay(1.seconds)
 
@@ -337,7 +337,7 @@ class ModelCacheCoverageTest {
      * through the permissions it fetches, which is the whole reason it fetches them.
      */
     private val maskOnInt = Mask<LargeTestModel>(
-        listOf(condition<LargeTestModel> { it.boolean eq true } to modification<LargeTestModel> { it.int assign 0 })
+        listOf(Condition<LargeTestModel> { it.boolean eq true } to Modification<LargeTestModel> { it.int assign 0 })
     )
 
     /** Three rows, one of which the mask hides from any `int`-sorted query. */

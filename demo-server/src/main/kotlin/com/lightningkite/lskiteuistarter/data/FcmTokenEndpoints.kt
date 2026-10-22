@@ -15,11 +15,11 @@ import com.lightningkite.lskiteuistarter.UserAuth.RoleCache.userRole
 import com.lightningkite.lskiteuistarter._id
 import com.lightningkite.lskiteuistarter.user
 import com.lightningkite.services.database.ModelPermissions
-import com.lightningkite.services.database.condition
+import com.lightningkite.services.database.Condition
 import com.lightningkite.services.database.deleteOneById
 import com.lightningkite.services.database.eq
 import com.lightningkite.services.database.get
-import com.lightningkite.services.database.modification
+import com.lightningkite.services.database.Modification
 import com.lightningkite.services.database.or
 import com.lightningkite.services.notifications.Notification
 import com.lightningkite.services.notifications.NotificationData
@@ -29,8 +29,8 @@ object FcmTokenEndpoints : ServerBuilder() {
         auth = UserAuth.require(),
         tableName = "FcmToken",
         permissions = {
-            val admin = condition<FcmToken>(auth.userRole() >= UserRole.Admin)
-            val mine = condition<FcmToken> { it.user eq auth.id }
+            val admin: Condition<FcmToken> = Condition(auth.userRole() >= UserRole.Admin)
+            val mine = Condition<FcmToken> { it.user eq auth.id }
             ModelPermissions(
                 create = admin or mine,
                 read = admin or mine,
@@ -45,8 +45,8 @@ object FcmTokenEndpoints : ServerBuilder() {
         auth = UserAuth.require(),
         implementation = { id: String ->
             info.table().upsertOne(
-                condition { it._id eq id },
-                modification { it.user assign auth.id },
+                Condition { it._id eq id },
+                Modification { it.user assign auth.id },
                 FcmToken(id, auth.id)
             )
         }

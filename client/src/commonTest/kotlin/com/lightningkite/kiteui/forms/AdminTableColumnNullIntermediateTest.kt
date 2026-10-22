@@ -1,24 +1,22 @@
 package com.lightningkite.kiteui.forms
 
+import com.lightningkite.services.database.optics.*
 import com.lightningkite.services.data.AdminTableColumns
-import com.lightningkite.services.data.GenerateDataClassPaths
+import com.lightningkite.services.data.Queryable
 import com.lightningkite.services.database.HasId
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.time.Instant
 import kotlin.uuid.Uuid
-import kotlinx.serialization.Serializable
 
-@Serializable
-@GenerateDataClassPaths
+@Queryable
 data class VoidAction(
     val at: Instant,
     val by: String = "",
 )
 
-@Serializable
-@GenerateDataClassPaths
+@Queryable
 @AdminTableColumns(["amount", "voided.at"])
 data class VoidablePayment(
     override val _id: Uuid = Uuid.random(),
@@ -46,7 +44,7 @@ class AdminTableColumnNullIntermediateTest {
 
     @Test
     fun nullIntermediateMakesTheColumnReadNull() {
-        assertNull(column.getAny(VoidablePayment(amount = 100, voided = null)))
+        assertNull(column.get(VoidablePayment(amount = 100, voided = null)))
     }
 
     @Test
@@ -61,6 +59,6 @@ class AdminTableColumnNullIntermediateTest {
      */
     @Test
     fun theLeafSerializerAloneWouldPickTheCrashingRenderer() {
-        assertEquals<Any?>(InstantRenderer, module.select(RenderContext(column.serializerAny)))
+        assertEquals<Any?>(InstantRenderer, module.select(RenderContext(column.coerceToOptic().serializer)))
     }
 }

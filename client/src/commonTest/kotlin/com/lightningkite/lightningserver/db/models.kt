@@ -1,20 +1,18 @@
 package com.lightningkite.lightningserver.db
 
-import com.lightningkite.services.data.GenerateDataClassPaths
+import com.lightningkite.services.database.optics.*
+import com.lightningkite.services.data.Queryable
 import com.lightningkite.services.data.Index
 import kotlin.uuid.Uuid
 import com.lightningkite.services.database.HasId
 import kotlin.time.Instant
 import kotlinx.serialization.Contextual
-import kotlinx.serialization.Serializable
 
 
-@GenerateDataClassPaths
-@Serializable
+@Queryable
 data class Item(override val _id: Int, val creation: Int = 0) : HasId<Int>
 
-@GenerateDataClassPaths
-@Serializable
+@Queryable
 data class LargeTestModel(
     override val _id: Uuid = Uuid.random(),
     var boolean: Boolean = false,
@@ -51,8 +49,7 @@ data class LargeTestModel(
 ) : HasId<Uuid> {
     companion object
 }
-@GenerateDataClassPaths
-@Serializable
+@Queryable
 data class ClassUsedForEmbedding(
     var value1:String = "default",
     var value2:Int = 1

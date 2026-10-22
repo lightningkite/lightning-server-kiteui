@@ -70,7 +70,7 @@ class ModelCacheTest {
         delay(5.seconds)
 
         // Start out as working - verify initial modification is received
-        val mod = modification<LargeTestModel> { it.short assign 2 }
+        val mod = Modification<LargeTestModel> { it.short assign 2 }
         currentValue = mod(currentValue)
         mock.modify(currentValue._id, mod)
         delay(5.seconds)
@@ -155,7 +155,7 @@ class ModelCacheTest {
 
         var currentValue = dataToInsert[2]
 
-        val ref = cache.list(Query(condition { it.int gt 2 }, sort { it.int.ascending() }))
+        val ref = cache.list(Query(Condition { it.int gt 2 }, sort { it.int.ascending() }))
         reactive {
             val currentList = ref()
             assertContains(
@@ -165,7 +165,7 @@ class ModelCacheTest {
         }
         delay(7.seconds)
 
-        val mod = modification<LargeTestModel> { it.short assign 2 }
+        val mod = Modification<LargeTestModel> { it.short assign 2 }
         currentValue = mod(currentValue)
         mock.modify(currentValue._id, mod)
         delay(5.seconds)
@@ -202,7 +202,7 @@ class ModelCacheTest {
             // Polling has to be asked for: the defaults say this never expires and is never pulled,
             // which is exactly the case where nothing should go back to the server at all.
             val ref = cache.list(
-                Query(condition { it.int gt 2 }, sort { it.int.ascending() }),
+                Query(Condition { it.int gt 2 }, sort { it.int.ascending() }),
                 pullFrequency = 10.seconds,
             )
             lastRead = ref()
@@ -214,7 +214,7 @@ class ModelCacheTest {
         )
 
         // Modify the item on the server side and verify polling detects the change
-        val mod = modification<LargeTestModel> { it.short assign 2 }
+        val mod = Modification<LargeTestModel> { it.short assign 2 }
         currentValue = mod(currentValue)
         mock.modify(currentValue._id, mod)
         delay(80.seconds) // Wait long enough for polling to detect the change
@@ -254,7 +254,7 @@ class ModelCacheTest {
         delay(5.seconds)
 
         // Modify the item via WebSocket and verify cache receives the update
-        val mod = modification<LargeTestModel> { it.short assign 2 }
+        val mod = Modification<LargeTestModel> { it.short assign 2 }
         currentValue = mod(currentValue)
         mock.modify(currentValue._id, mod)
         delay(5.seconds)
@@ -292,7 +292,7 @@ class ModelCacheTest {
             lastRead
         )
 
-        val mod = modification<LargeTestModel> { it.short assign 2 }
+        val mod = Modification<LargeTestModel> { it.short assign 2 }
         currentValue = mod(currentValue)
         mock.modify(currentValue._id, mod)
         delay(80.seconds)
@@ -432,7 +432,7 @@ class ModelCacheTest {
             log = testLog
         )
 
-        val ref = cache.list(Query(condition { it.int lt 4 }, orderBy = sort { it.int.ascending() }))
+        val ref = cache.list(Query(Condition { it.int lt 4 }, orderBy = sort { it.int.ascending() }))
         reactive {
             val list = ref()
             assertEquals(
@@ -473,7 +473,7 @@ class ModelCacheTest {
         var reactions = 0
         reactive {
             reactions++
-            val ref = cache.list(Query(condition { it.int lt 4 }, orderBy = sort { it.int.ascending() }))
+            val ref = cache.list(Query(Condition { it.int lt 4 }, orderBy = sort { it.int.ascending() }))
             val list = ref()
             assertEquals(
                 dataToInsert.filter { it.int < 4 }.sortedBy { it.int },
@@ -510,7 +510,7 @@ class ModelCacheTest {
             log = testLog
         )
 
-        val ref = cache.list(Query(condition { it.int lt 4 }, orderBy = sort { it.int.ascending() }))
+        val ref = cache.list(Query(Condition { it.int lt 4 }, orderBy = sort { it.int.ascending() }))
         reactive {
             val list = ref()
             assertEquals(
@@ -791,8 +791,8 @@ class ModelCacheTest {
 
         // Perform bulk modification
         val bulkUpdate = MassModification(
-            condition = condition { it.int gt 1 },
-            modification = modification { it.short assign 99 }
+            condition = Condition { it.int gt 1 },
+            modification = Modification { it.short assign 99 }
         )
         cache.bulkModify(bulkUpdate)
         delay(5.seconds)
@@ -1197,8 +1197,8 @@ class ModelCacheTest {
 
         // Perform a bulk modification
         cache.bulkModify(MassModification(
-            condition = condition { it.int gt 1 },
-            modification = modification { it.short assign 99 },
+            condition = Condition { it.int gt 1 },
+            modification = Modification { it.short assign 99 },
         ))
 
         // The list should refetch within a reasonable window after bulkModify.
@@ -1254,8 +1254,8 @@ class ModelCacheTest {
 
         bulkModifyDone = true
         cache.bulkModify(MassModification(
-            condition = condition { it.int gt 0 },
-            modification = modification { it.short assign 42 },
+            condition = Condition { it.int gt 0 },
+            modification = Modification { it.short assign 42 },
         ))
 
         // Within 30s, polling loop should refetch exactly once and then settle.
@@ -1295,8 +1295,8 @@ class ModelCacheTest {
         assertEquals(initial, lastRead)
 
         cache.bulkModify(MassModification(
-            condition = condition { it.int gt 0 },
-            modification = modification { it.short assign 42 },
+            condition = Condition { it.int gt 0 },
+            modification = Modification { it.short assign 42 },
         ))
 
         // Should refetch promptly, not after pullFrequency

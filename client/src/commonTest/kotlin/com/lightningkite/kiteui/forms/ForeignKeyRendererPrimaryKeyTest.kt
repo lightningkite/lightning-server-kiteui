@@ -2,15 +2,19 @@
 
 package com.lightningkite.kiteui.forms
 
-import com.lightningkite.services.data.GenerateDataClassPaths
+import com.lightningkite.services.database.optics.*
+import com.lightningkite.services.data.Queryable
 import com.lightningkite.services.data.References
 import com.lightningkite.services.database.HasId
+import com.lightningkite.services.database.SerializationRegistry
+import com.lightningkite.services.database.VirtualField
+import com.lightningkite.services.database.VirtualTypeReference
 import com.lightningkite.services.database.SerializableAnnotation
 import com.lightningkite.services.database.SerializableAnnotationValue
-import com.lightningkite.services.database.SerializableProperty
+import com.lightningkite.services.database.optics.Field
 import com.lightningkite.services.database.TypedId
 import com.lightningkite.services.database.serializableAnnotations
-import com.lightningkite.services.database.serializableProperties
+import com.lightningkite.services.database.optics.fields
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -20,14 +24,14 @@ import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.serializer
+import kotlinx.serialization.modules.EmptySerializersModule
 import kotlin.jvm.JvmInline
 
 /**
  * A model whose primary key is NOT a foreign key: its [ID] references the model itself
  * (the common pattern used by Lightning Server's `_id` value classes).
  */
-@Serializable
-@GenerateDataClassPaths
+@Queryable
 data class FkTestOrg(
     override val _id: FkTestOrg.ID = FkTestOrg.ID(Uuid.random()),
     val name: String = "",
@@ -44,15 +48,13 @@ data class FkTestOrg(
  * A model whose primary key IS an intentional foreign key to a different type.
  * Used for one-to-ones, e.g. a profile whose primary key is the user it belongs to.
  */
-@Serializable
-@GenerateDataClassPaths
+@Queryable
 data class FkTestUser(
     override val _id: Uuid = Uuid.random(),
     val name: String = "",
 ) : HasId<Uuid>
 
-@Serializable
-@GenerateDataClassPaths
+@Queryable
 data class FkTestProfile(
     override val _id: FkTestProfile.ID = FkTestProfile.ID(Uuid.random()),
     val bio: String = "",
@@ -76,7 +78,7 @@ class ForeignKeyRendererPrimaryKeyTest {
 
     private fun fieldContext(serializer: KSerializer<*>, parentSerialName: String): RenderContext<Any?> {
         @Suppress("UNCHECKED_CAST")
-        val prop = serializer.serializableProperties!!.first { it.name == "_id" }
+        val prop = serializer.fields!!.first { it.name == "_id" }
         return RenderContext(prop.serializer as KSerializer<Any?>, prop.serializableAnnotationsWithPkAnnotationIfId(parentSerialName))
     }
 
@@ -126,28 +128,30 @@ class ForeignKeyRendererPrimaryKeyTest {
     /**
      * Reproduces the admin's runtime path, where models are deserialized from kschema and the
      * `@References` annotation lives on the `_id` *field* while the ID serializer's type annotations
-     * are empty (see [FieldRefProperty.serializableAnnotations]). This is exactly how the live
+     * are empty (see [fieldRefProperty]). This is exactly how the live
      * `User._id` looks at runtime.
      */
-    private class FieldRefProperty(
-        private val refFqn: String,
-    ) : SerializableProperty<Any, Any?> {
-        override val name: String get() = "_id"
-        override val serializer: KSerializer<Any?> = String.serializer() as KSerializer<Any?>
-        override fun get(receiver: Any): Any? = null
-        override fun setCopy(receiver: Any, value: Any?): Any = receiver
-        override val serializableAnnotations: List<SerializableAnnotation> get() = listOf(
-            SerializableAnnotation(
-                "com.lightningkite.services.data.References",
-                mapOf("references" to SerializableAnnotationValue.ClassValue(refFqn))
-            )
-        )
-    }
+    private fun fieldRefProperty(refFqn: String): Field<*, *> = Field.FromVirtualField(
+        source = VirtualField(
+            index = 0,
+            name = "_id",
+            type = VirtualTypeReference("kotlin.String", listOf(), isNullable = false),
+            optional = false,
+            annotations = listOf(
+                SerializableAnnotation(
+                    "com.lightningkite.services.data.References",
+                    mapOf("references" to SerializableAnnotationValue.ClassValue(refFqn))
+                )
+            ),
+        ),
+        registry = SerializationRegistry(EmptySerializersModule()),
+        context = mapOf(),
+    )
 
     @Test
     fun runtimeFieldAnnotation_selfReferencingPrimaryKey_isTreatedAsPrimaryKey() {
         // _id field references this model itself -> flagged, FK disabled.
-        val prop = FieldRefProperty("com.example.Self")
+        val prop = fieldRefProperty("com.example.Self")
         val annotated = prop.serializableAnnotationsWithPkAnnotationIfId("com.example.Self")
 
         assertTrue(
@@ -159,7 +163,7 @@ class ForeignKeyRendererPrimaryKeyTest {
     @Test
     fun runtimeFieldAnnotation_primaryKeyReferencingDifferentType_isNotTreatedAsPrimaryKey() {
         // _id field references a *different* type -> not flagged (the one-to-one case).
-        val prop = FieldRefProperty("com.example.User")
+        val prop = fieldRefProperty("com.example.User")
         val annotated = prop.serializableAnnotationsWithPkAnnotationIfId("com.example.Profile")
 
         assertFalse(

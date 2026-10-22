@@ -164,12 +164,12 @@ class MockClientModelRestEndpoints<T : HasId<ID>, ID : Comparable<ID>>(val log: 
     override suspend fun groupCount(input: GroupCountQuery<T>): Map<String, Int> {
         log("groupCount $input")
         hold.await()
-        return items.values.groupBy { input.groupBy.getAny(it).toString() }.mapValues { it.value.size }
+        return items.values.groupBy { input.groupBy.get(it).toString() }.mapValues { it.value.size }
     }
     override suspend fun groupCount2(input: GroupCountQuery<T>): Map<String, Int> {
         log("groupCount $input")
         hold.await()
-        return items.values.groupBy { input.groupBy.getAny(it).toString() }.mapValues { it.value.size }
+        return items.values.groupBy { input.groupBy.get(it).toString() }.mapValues { it.value.size }
     }
 
     override suspend fun aggregate(input: AggregateQuery<T>): Double? {

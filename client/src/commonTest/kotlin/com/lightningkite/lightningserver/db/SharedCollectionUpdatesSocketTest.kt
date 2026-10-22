@@ -5,7 +5,7 @@ import com.lightningkite.kiteui.Log
 import com.lightningkite.kiteui.Platform
 import com.lightningkite.kiteui.current
 import com.lightningkite.lightningserver.networking.toTypedWebSocket
-import com.lightningkite.services.database.condition
+import com.lightningkite.services.database.Condition
 import com.lightningkite.services.database.gt
 import com.lightningkite.services.database.lt
 import com.lightningkite.reactive.context.onRemove
@@ -27,21 +27,21 @@ class SharedCollectionUpdatesSocketTest {
         )
         println("OK")
         run {
-            val req = remember.require(condition { it.int gt 4 })
+            val req = remember.require(Condition { it.int gt 4 })
             onRemove(req.beginUse())
             println("Req created")
             delay(1000)
             assertContains(remember.listeningStatus.value.requirements, req)
         }
         run {
-            val req = remember.require(condition { it.int gt 9 })
+            val req = remember.require(Condition { it.int gt 9 })
             onRemove(req.beginUse())
             println("Req created")
             delay(1000)
             assertContains(remember.listeningStatus.value.requirements, req)
         }
         run {
-            val req = remember.require(condition { it.int lt 2 })
+            val req = remember.require(Condition { it.int lt 2 })
             onRemove(req.beginUse())
             println("Req created")
             delay(1000)

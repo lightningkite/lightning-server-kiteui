@@ -2,6 +2,7 @@
 
 package com.lightningkite.kiteui.forms
 
+import com.lightningkite.services.database.optics.*
 import com.lightningkite.kiteui.models.*
 import com.lightningkite.kiteui.models.DropTargetDelegate
 import com.lightningkite.kiteui.navigation.Page
@@ -32,7 +33,7 @@ import kotlinx.serialization.descriptors.StructureKind
 /**
  * Renderer for List<T> as a table with columns.
  *
- * Only matches when inner element is a data class (has serializableProperties).
+ * Only matches when inner element is a data class (has fields).
  * Primitive collections like List<String> will use the default ListRenderer.
  *
  * Features:
@@ -48,11 +49,11 @@ public object TableRenderer : Renderer<List<Any?>> {
     override val name: String = "Table"  // by Claude
 
     override fun priority(context: RenderContext<List<Any?>>, module: FormModule): Float {
-        // Only match lists where inner type has serializableProperties
+        // Only match lists where inner type has fields
         if (context.serializer.descriptor.kind != StructureKind.LIST) return -1f
 
         val innerSerializer = context.serializer.listElement() ?: return -1f
-        val properties = innerSerializer.serializableProperties ?: return -1f
+        val properties = innerSerializer.fields ?: return -1f
 
         // Higher priority than ListRenderer (0.8f) for data classes - tables are better for structured data
         // by Claude
@@ -131,32 +132,32 @@ public object TableRenderer : Renderer<List<Any?>> {
 /**
  * The serializer for what reading this path actually yields.
  *
- * [DataClassPath.get] returns null as soon as any step along the way is null, so a path that
+ * [Optic.get] returns null as soon as any step along the way is null, so a path that
  * reaches through a nullable property yields a nullable value even when its own last property
  * is not nullable - `voided.at` on a `voided: RecordedAction?` being the typical case. Renderers
  * are picked from this serializer, so it has to say so or a non-null renderer gets handed a null.
  */
-public val DataClassPathPartial<*>.readSerializer: KSerializer<Any?>
+public val AnyOptic<*>.readSerializer: KSerializer<Any?>
     get() {
         @Suppress("UNCHECKED_CAST")
-        val leaf = serializerAny as KSerializer<Any?>
+        val leaf = coerceToOptic().serializer as KSerializer<Any?>
         if (leaf.descriptor.isNullable) return leaf
-        if (properties.dropLast(1).none { it.serializer.descriptor.isNullable }) return leaf
+        if (fields.dropLast(1).none { it.serializer.descriptor.isNullable }) return leaf
         @Suppress("UNCHECKED_CAST")
         return (leaf as KSerializer<Any>).nullable as KSerializer<Any?>
     }
 
 @Serializable
 public data class ColumnInfo<T>(
-    val path: DataClassPathPartial<T>,
+    val path: AnyOptic<T>,
     val rendererSelected: String? = null
 ) {
-    public constructor(path: DataClassPathPartial<T>, renderer: Renderer<*>): this(path, renderer.name)
-    public constructor(path: DataClassPathPartial<T>, formModule: FormModule): this(path, formModule.select(RenderContext(path.readSerializer, path.properties.lastOrNull()?.serializableAnnotations ?: listOf())))
+    public constructor(path: AnyOptic<T>, renderer: Renderer<*>): this(path, renderer.name)
+    public constructor(path: AnyOptic<T>, formModule: FormModule): this(path, formModule.select(RenderContext(path.readSerializer, path.fields.lastOrNull()?.serializableAnnotations ?: listOf())))
     @Transient private var cached: Renderer<Any?>? = null
     @Transient val ctx: RenderContext<Any?> = RenderContext(
         path.readSerializer,
-        path.properties.lastOrNull()?.serializableAnnotations ?: listOf()
+        path.fields.lastOrNull()?.serializableAnnotations ?: listOf()
     )
     public fun renderer(formModule: FormModule): Renderer<Any?> {
         return cached ?: run {
@@ -194,14 +195,14 @@ public fun <T> ElementWriter.CanAddScrolling.renderTable(
     linkTo: ((T) -> () -> Page)? = null,
     action: (suspend (T) -> Unit)? = null
 ) {
-    val properties = innerSerializer.serializableProperties as? Array<SerializableProperty<T, Any?>>
+    val properties = innerSerializer.fields as? Array<Field<T, Any?>>
     if (properties == null) {
         text("Not a data class")
         return
     }
 
     // Cache contexts for performance - by Claude
-    val contextCache = HashMap<DataClassPath<T, Any?>, RenderContext<Any?>>()
+    val contextCache = HashMap<Optic<T, Any?>, RenderContext<Any?>>()
     // Per-column renderer selections (keyed by column path string) - by Claude
     val columnRendererSelections = HashMap<String, Signal<Renderer<Any?>>>()
 
@@ -238,7 +239,7 @@ public fun <T> ElementWriter.CanAddScrolling.renderTable(
                                 } ?: false
                             }
                         }
-                        centered.expanding.text(col.path.properties.joinToString(" ") { it.displayName })
+                        centered.expanding.text(col.path.fields.joinToString(" ") { it.displayName })
 
                         centered.row {
                             gap = 0.px
@@ -273,11 +274,11 @@ public fun <T> ElementWriter.CanAddScrolling.renderTable(
                             col {
                                 sizeConstraints(height = 30.rem).scrolling.col {
                                     // Show available properties to add
-                                    (properties as Array<SerializableProperty<T, *>>)
+                                    (properties as Array<Field<T, *>>)
                                         .walkDataClassPathsLimitedRecursion(innerSerializer)
                                         .forEach { path ->
                                             toggleButton {
-                                                text(path.properties.joinToString(" - ") { it.displayName })
+                                                text(path.fields.joinToString(" - ") { it.displayName })
                                                 checked bind columns.contains(ColumnInfo(path, module))
                                             }
                                         }
@@ -309,7 +310,7 @@ public fun <T> ElementWriter.CanAddScrolling.renderTable(
                 // Use remember { items()() } to unwrap both layers into a single tracked reactive
                 children(remember { items()() }, id = { (it as? HasId<*>)?._id ?: it }) { itemReactive ->
                     fun ElementWriter.CanAddTheme.rowContent() = themed(ListSemantic).rowOfExpensive(columns) { col ->
-                        col.renderer(module).cellView(col.ctx, itemReactive.lensPath(col.path as DataClassPath<Any?, Any?>), module).invoke(
+                        col.renderer(module).cellView(col.ctx, itemReactive.lensPath(col.path as Optic<Any?, Any?>), module).invoke(
                             sizeConstraints(width = col.columnWidth(module).rem).padded
                         )
                     }

@@ -25,7 +25,7 @@ package com.lightningkite.lightningserver.admin
 // 5. Lines 159 & 211: Consider extracting the sorting logic (sortedByDescending { it.value })
 //    into a parameter or making it configurable (ascending vs descending)
 // 6. The toPath function could benefit from inline documentation explaining the nullable
-//    handling logic and when DataClassPathNotNull wrapper is needed
+//    handling logic and when NotNullOptic wrapper is needed
 // 7. Consider adding a loading state indicator while rememberSuspending fetches data
 //    (currently shows nothing during the fetch)
 // 8. The empty state at line 146 ("Select something to group by") could link to help docs
@@ -33,6 +33,7 @@ package com.lightningkite.lightningserver.admin
 // 10. The lens transformations in aggregateWritable/groupByWritable/conditionWritable all
 //     follow the same pattern - could be extracted to a helper function
 
+import com.lightningkite.services.database.optics.*
 import com.lightningkite.kiteui.QueryParameter
 import com.lightningkite.kiteui.Routable
 import com.lightningkite.kiteui.forms.displayName
@@ -111,23 +112,17 @@ class CollectionStatsPage(val collectionName: String) : Page {
     }
     private fun KSerializer<*>.isGroupable() = this.descriptor.kind is PrimitiveKind
 
-    fun toPath(serializer: KSerializer<UnknownModel>, list: List<SerializableProperty<*, *>>): DataClassPath<UnknownModel, *> {
+    fun toPath(serializer: KSerializer<UnknownModel>, list: List<Field<*, *>>): Optic<UnknownModel, *> {
         @Suppress("UNCHECKED_CAST")
-        var out: DataClassPath<UnknownModel, Any?> = DataClassPathSelf(serializer) as DataClassPath<UnknownModel, Any?>
+        var out: Optic<UnknownModel, Any?> = IdentityLens(serializer) as Optic<UnknownModel, Any?>
         var lastNullable = false
         for (prop in list) {
             if (lastNullable) {
                 @Suppress("UNCHECKED_CAST")
-                out = DataClassPathAccess<UnknownModel, Any, Any?>(
-                    DataClassPathNotNull(out),
-                    prop as SerializableProperty<Any, Any?>
-                )
+                out = NotNullOptic(out) + prop as Field<Any, Any?>
             } else {
                 @Suppress("UNCHECKED_CAST")
-                out = DataClassPathAccess<UnknownModel, Any, Any?>(
-                    out as DataClassPath<UnknownModel, Any>,
-                    prop as SerializableProperty<Any, Any?>
-                )
+                out = (out as Optic<UnknownModel, Any>) + prop as Field<Any, Any?>
             }
         }
         return out
@@ -149,8 +144,8 @@ class CollectionStatsPage(val collectionName: String) : Page {
             }
             weight(1f).field("Group By") {
                 select {
-                    val candidates = mc.serializer.serializableProperties!!.flatMap {
-                        it.serializer.serializableProperties?.map { it2 ->
+                    val candidates = mc.serializer.fields!!.flatMap {
+                        it.serializer.fields?.map { it2 ->
                             toPath(mc.serializer, listOf(it, it2))
                         } ?: listOf(toPath(mc.serializer, listOf(it)))
                     }.filter { it.serializer.isGroupable() }
@@ -159,8 +154,8 @@ class CollectionStatsPage(val collectionName: String) : Page {
             }
             weight(1f).field("Aggregate") {
                 select {
-                    val candidates = mc.serializer.serializableProperties!!.flatMap {
-                        it.serializer.serializableProperties?.map { it2 ->
+                    val candidates = mc.serializer.fields!!.flatMap {
+                        it.serializer.fields?.map { it2 ->
                             toPath(mc.serializer, listOf(it, it2))
                         } ?: listOf(toPath(mc.serializer, listOf(it)))
                     }.filter { it.serializer.isAggregatable() }
@@ -194,7 +189,7 @@ class CollectionStatsPage(val collectionName: String) : Page {
                             themed(ListSemantic).recyclerView {
                                 children(remember { counts().entries.sortedByDescending { it.value } }, id = { it.key }) {
                                     card.row {
-                                        val ser = groupBy.serializerAny as KSerializer<Any?>
+                                        val ser = groupBy.coerceToOptic().serializer as KSerializer<Any?>
                                         centered.expanding.view(
                                             context = forms,
                                             serializer = ser,
@@ -209,7 +204,7 @@ class CollectionStatsPage(val collectionName: String) : Page {
                                                 ::content { "${it().value} Items" }
                                             }
                                             ::to {
-                                                val keyReq = (groupBy as DataClassPath<UnknownModel, Any?>).eq(
+                                                val keyReq = (groupBy as Optic<UnknownModel, Any?>).eq(
                                                     parseKey(
                                                         it().key,
                                                         ser
@@ -238,7 +233,8 @@ class CollectionStatsPage(val collectionName: String) : Page {
                                         aggregate = aggregationType(),
                                         condition(),
                                         groupBy,
-                                        aggregateProperty
+                                        @Suppress("UNCHECKED_CAST")
+                                        (aggregateProperty as Optic<HasId<UnknownId>, out Number?>)
                                     )
                                 )
                             }
@@ -247,7 +243,7 @@ class CollectionStatsPage(val collectionName: String) : Page {
                                     remember { aggregation().entries.sortedByDescending { it.value } },
                                     id = { it.key }) {
                                     card.row {
-                                        val ser = groupBy.serializerAny as KSerializer<Any?>
+                                        val ser = groupBy.coerceToOptic().serializer as KSerializer<Any?>
                                         centered.expanding.view(
                                             context = forms,
                                             serializer = ser,
@@ -268,7 +264,7 @@ class CollectionStatsPage(val collectionName: String) : Page {
                                                 }
                                             }
                                             ::to {
-                                                val keyReq = (groupBy as DataClassPath<UnknownModel, Any?>).eq(
+                                                val keyReq = (groupBy as Optic<UnknownModel, Any?>).eq(
                                                     parseKey(
                                                         it().key,
                                                         ser
@@ -313,10 +309,10 @@ class CollectionStatsPage(val collectionName: String) : Page {
 
     // by Claude - simplified using lensJson utilities
     private fun aggregateWritable(mc: ModelCache<UnknownModel, UnknownId>) =
-        aggregateString.lensJsonNullable(DataClassPathPartial.serializer(mc.serializer).nullable)
+        aggregateString.lensJsonNullable(AnyOptic.serializer(mc.serializer).nullable)
 
     private fun groupByWritable(mc: ModelCache<UnknownModel, UnknownId>) =
-        groupByString.lensJsonNullable(DataClassPathPartial.serializer(mc.serializer).nullable)
+        groupByString.lensJsonNullable(AnyOptic.serializer(mc.serializer).nullable)
 
     private fun conditionWritable(mc: ModelCache<UnknownModel, UnknownId>) =
         conditionString.lensJson(Condition.serializer(mc.serializer)) { Condition.Always }

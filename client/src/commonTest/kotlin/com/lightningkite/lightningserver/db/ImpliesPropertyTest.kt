@@ -1,6 +1,7 @@
 package com.lightningkite.lightningserver.db
 
 import com.lightningkite.services.database.*
+import com.lightningkite.services.database.optics.*
 import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -26,7 +27,7 @@ import kotlin.uuid.Uuid
  */
 class ImpliesPropertyTest {
     private val serializer = LargeTestModel.serializer()
-    private val p = path(serializer)
+    private val p = IdentityLens(serializer)
 
     /** Total, as every sort reaching the store is; ties break on `_id` so the order never wobbles. */
     private val byInt = sort<LargeTestModel> { it.int.ascending() }.ensureTotal(serializer)
@@ -112,13 +113,10 @@ class ImpliesPropertyTest {
         p.intNullable.notNull gt 3, p.intNullable.notNull gte 3,
         p.embedded.value2 gt 3, p.embedded.value2 gte 3, p.embedded.value1 eq "cat",
         p.list.elements gt 1, p.list.elements gt 2,
-        p.list.mapCondition(Condition.ListAnyElements(Condition.GreaterThan(1))),
-        p.list.mapCondition(Condition.ListAnyElements(Condition.GreaterThan(2))),
+        p.list.mapCondition(Condition.CollectionAnyElements(Condition.GreaterThan(1))),
+        p.list.mapCondition(Condition.CollectionAnyElements(Condition.GreaterThan(2))),
         p.set.elements gt 1,
-        p.set.mapCondition(Condition.SetAnyElements(Condition.GreaterThan(1))),
-        p.map.mapCondition(Condition.OnKey("k", Condition.GreaterThan(1))),
-        p.map.mapCondition(Condition.OnKey("k", Condition.GreaterThan(2))),
-        p.map.mapCondition(Condition.OnKey("j", Condition.GreaterThan(1))),
+        p.set.mapCondition(Condition.CollectionAnyElements(Condition.GreaterThan(1))),
     )
 
     /** Empty `And` and `Or` come out of this too - they are the degenerate cases worth reaching. */
@@ -394,7 +392,7 @@ class ImpliesPropertyTest {
      */
     @Test fun allElementsAndAnyElementsAreNotInterchangeable() {
         val all = p.list.elements gt 1
-        val any = p.list.mapCondition(Condition.ListAnyElements(Condition.GreaterThan(1)))
+        val any = p.list.mapCondition(Condition.CollectionAnyElements(Condition.GreaterThan(1)))
 
         assertFalse(covers(any, all), "an empty list matches all and not any")
         assertFalse(covers(all, any), "a list of [0, 2] matches any and not all")
@@ -413,22 +411,6 @@ class ImpliesPropertyTest {
             world = listOf(
                 LargeTestModel(int = 1, list = listOf(0, 2)),
                 LargeTestModel(int = 2, list = listOf(2, 3)),
-            ),
-        )
-    }
-
-    /** Two map keys are two different questions, however similar the conditions under them. */
-    @Test fun conditionsUnderDifferentMapKeysDoNotCoverEachOther() {
-        val onK = p.map.mapCondition(Condition.OnKey("k", Condition.GreaterThan(1)))
-        val onJ = p.map.mapCondition(Condition.OnKey("j", Condition.GreaterThan(2)))
-        assertFalse(covers(onK, onJ))
-        assertTrue(covers(onK, p.map.mapCondition(Condition.OnKey("k", Condition.GreaterThan(2)))))
-        assertServesEveryMatch(
-            broad = onK,
-            narrow = onJ,
-            world = listOf(
-                LargeTestModel(int = 1, map = mapOf("j" to 5)),
-                LargeTestModel(int = 2, map = mapOf("k" to 5, "j" to 5)),
             ),
         )
     }

@@ -1,5 +1,6 @@
 package com.lightningkite.lightningserver.admin
 
+import com.lightningkite.services.database.optics.*
 import com.lightningkite.kiteui.forms.FormModule
 import com.lightningkite.services.database.*
 import kotlinx.serialization.Serializable
@@ -63,14 +64,14 @@ class CollectionStatsPageTest {
     }
 
     /**
-     * Tests that we can construct DataClassPath chains using properties.
+     * Tests that we can construct Optic chains using properties.
      * This indirectly tests the toPath function logic at lines 78-98
      * by verifying the data structures it uses.
      */
     @Test
     fun testDataClassPathConstruction() {
         val serializer = TestModel.serializer()
-        val properties = serializer.serializableProperties!!
+        val properties = serializer.fields!!
 
         // Test that we can access properties needed for path construction
         val nameProp = properties.first { it.name == "name" }
@@ -79,7 +80,7 @@ class CollectionStatsPageTest {
 
         // Test nested path property access
         val nestedProp = properties.first { it.name == "nested" }
-        val nestedProps = nestedProp.serializer.serializableProperties
+        val nestedProps = nestedProp.serializer.fields
         if (nestedProps != null && nestedProps.isNotEmpty()) {
             val nestedValueProp = nestedProps.firstOrNull { it.name == "value" }
             assertNotNull(nestedValueProp)
@@ -278,7 +279,7 @@ class CollectionStatsPageTest {
     @Test
     fun testSerializablePropertiesAccess() {
         val serializer = TestModel.serializer()
-        val props = serializer.serializableProperties
+        val props = serializer.fields
 
         assertNotNull(props)
         assertTrue(props!!.isNotEmpty())
@@ -299,14 +300,14 @@ class CollectionStatsPageTest {
     @Test
     fun testNestedPropertyAccess() {
         val serializer = TestModel.serializer()
-        val props = serializer.serializableProperties!!
+        val props = serializer.fields!!
 
         // Find the nested property
         val nestedProp = props.firstOrNull { it.name == "nested" }
         assertNotNull(nestedProp)
 
         // Access nested properties - some nested types may not have serializable properties
-        val nestedProps = nestedProp!!.serializer.serializableProperties
+        val nestedProps = nestedProp!!.serializer.fields
 
         // If we have nested properties, verify structure
         if (nestedProps != null && nestedProps.isNotEmpty()) {

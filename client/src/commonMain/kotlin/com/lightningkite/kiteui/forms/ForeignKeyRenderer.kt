@@ -2,8 +2,8 @@
 
 package com.lightningkite.kiteui.forms
 
+import com.lightningkite.services.database.optics.*
 import com.lightningkite.services.data.IsRawString
-import com.lightningkite.services.data.TrimmedString
 import com.lightningkite.kiteui.models.*
 import com.lightningkite.kiteui.reactive.Action
 import com.lightningkite.kiteui.views.*
@@ -106,9 +106,6 @@ public object ForeignKeyRenderer : Renderer<Any?> {
 
                         sizeConstraints(width = 25.rem, height = 25.rem).col {
                             val textSearch = Signal("")
-                            val hasTextIndex = typeInfo.serializer.serializableAnnotations
-                                .any { it.fqn.endsWith("TextIndex") }
-
                             // Build query based on text search
                             val items = remember {
                                 val cache = typeInfo.cache()
@@ -117,47 +114,37 @@ public object ForeignKeyRenderer : Renderer<Any?> {
                                 if (searchText.isBlank()) {
                                     cache.watch(Query(Condition.Always, listOf()))()
                                 } else {
-                                    val condition = if (hasTextIndex) {
-                                        Condition.FullTextSearch<HasId<Comparable<Comparable<*>>>>(searchText)
-                                    } else {
-                                        // Search in string fields
-                                        val props = typeInfo.serializer.serializableProperties
-                                            ?: return@remember cache.watch(Query(Condition.Always, listOf()))()
+                                    // Search in string fields
+                                    val props = typeInfo.serializer.fields
+                                        ?: return@remember cache.watch(Query(Condition.Always, listOf()))()
 
-                                        val stringConditions = props.mapNotNull { prop ->
-                                            val serialName = prop.serializer.let {
-                                                it.nullElement() ?: it
-                                            }.descriptor.serialNameFQN()
+                                    val stringConditions = props.mapNotNull { prop ->
+                                        val serialName = prop.serializer.let {
+                                            it.nullElement() ?: it
+                                        }.descriptor.serialNameFQN()
 
-                                            when {
-                                                serialName == "kotlin.String" -> {
-                                                    val path = DataClassPathAccess(
-                                                        DataClassPathSelf(typeInfo.serializer),
-                                                        prop as SerializableProperty<HasId<Comparable<Comparable<*>>>, Any?>
-                                                    )
-                                                    path.mapCondition(
-                                                        Condition.StringContains(searchText, true) as Condition<Any?>
-                                                    )
-                                                }
-                                                serialName in IsRawString.serialNames -> {
-                                                    val path = DataClassPathAccess(
-                                                        DataClassPathSelf(typeInfo.serializer),
-                                                        prop as SerializableProperty<HasId<Comparable<Comparable<*>>>, Any?>
-                                                    )
-                                                    path.mapCondition(
-                                                        Condition.RawStringContains<TrimmedString>(searchText, true)
-                                                            as Condition<Any?>
-                                                    )
-                                                }
-                                                else -> null
+                                        when {
+                                            serialName == "kotlin.String" -> {
+                                                val path = prop as Field<HasId<Comparable<Comparable<*>>>, Any?>
+                                                path.mapCondition(
+                                                    Condition.StringContains(searchText, true) as Condition<Any?>
+                                                )
                                             }
+                                            serialName in IsRawString.serialNames -> {
+                                                val field = prop as Field<HasId<Comparable<Comparable<*>>>, IsRawString?>
+                                                val path =
+                                                    if (field.serializer.descriptor.isNullable) field.notNull
+                                                    else field as Field<HasId<Comparable<Comparable<*>>>, IsRawString>
+                                                path.raw.mapCondition(Condition.StringContains(searchText, true))
+                                            }
+                                            else -> null
                                         }
+                                    }
 
-                                        if (stringConditions.isNotEmpty()) {
-                                            Condition.Or(stringConditions)
-                                        } else {
-                                            Condition.Always
-                                        }
+                                    val condition = if (stringConditions.isNotEmpty()) {
+                                        Condition.Or(stringConditions)
+                                    } else {
+                                        Condition.Always
                                     }
 
                                     cache.watch(Query(condition, listOf()))()

@@ -1,6 +1,6 @@
 package com.lightningkite.lightningserver.db
 
-import com.lightningkite.reactive.context.reactiveScope
+import com.lightningkite.reactive.context.reactive
 import com.lightningkite.reactive.core.Signal
 import com.lightningkite.reactive.extensions.modify
 import com.lightningkite.reactive.lensing.lensByElementAssumingSetNeverManipulates
@@ -17,7 +17,7 @@ class PropTest {
         val view = model.lensPath { it.int }
         runTest2 {
             assertEquals(model.value.int, view.state.getOrNull())
-            reactiveScope { println(view()) }
+            reactive { println(view()) }
             assertEquals(model.value.int, view.state.getOrNull())
             launch { view.set(42) }
             assertEquals(model.value.int, view.state.getOrNull())
@@ -31,8 +31,8 @@ class PropTest {
             delay(1.seconds)
             val view = views.state.getOrNull()!!.find { it.value.value2 == 52 }!!
             val prop = view.lensPath { it.value2 }
-            reactiveScope { println(view()) }
-            reactiveScope { println(prop()) }
+            reactive { println(view()) }
+            reactive { println(prop()) }
             launch { prop.set(2) }
         }
     }

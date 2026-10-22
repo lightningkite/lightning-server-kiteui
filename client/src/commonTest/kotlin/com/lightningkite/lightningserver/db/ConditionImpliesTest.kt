@@ -32,19 +32,19 @@ class ConditionImpliesTest {
         val n = random.nextInt(0, 6)
         val m = random.nextInt(0, 6)
         return when (random.nextInt(14)) {
-            0 -> condition { it.int gt n }
-            1 -> condition { it.int gte n }
-            2 -> condition { it.int lt n }
-            3 -> condition { it.int lte n }
-            4 -> condition { it.int eq n }
-            5 -> condition { it.int neq n }
-            6 -> condition { it.int inside setOf(n, m) }
-            7 -> condition { it.int notInside setOf(n, m) }
-            8 -> condition { it.short gt n.toShort() }
-            9 -> condition { it.short lte n.toShort() }
-            10 -> condition { it.boolean eq (n % 2 == 0) }
-            11 -> condition { it.string eq "s$n" }
-            12 -> condition { it.embedded.value2 gt n }
+            0 -> Condition { it.int gt n }
+            1 -> Condition { it.int gte n }
+            2 -> Condition { it.int lt n }
+            3 -> Condition { it.int lte n }
+            4 -> Condition { it.int eq n }
+            5 -> Condition { it.int neq n }
+            6 -> Condition { it.int inside setOf(n, m) }
+            7 -> Condition { it.int notInside setOf(n, m) }
+            8 -> Condition { it.short gt n.toShort() }
+            9 -> Condition { it.short lte n.toShort() }
+            10 -> Condition { it.boolean eq (n % 2 == 0) }
+            11 -> Condition { it.string eq "s$n" }
+            12 -> Condition { it.embedded.value2 gt n }
             else -> if (n % 2 == 0) Condition.Always else Condition.Never
         }
     }
@@ -152,7 +152,7 @@ class ConditionImpliesTest {
 
     /** An empty conjunction constrains nothing; an empty disjunction admits nothing. */
     @Test fun emptyCompositesAreTheAbsolutes() {
-        val nothing = condition<LargeTestModel> { it.int gt 3 }
+        val nothing = Condition<LargeTestModel> { it.int gt 3 }
         assertTrue(impliesCondition(nothing, Condition.And(listOf())), "an empty And is Always")
         assertTrue(impliesCondition(Condition.Or(listOf()), nothing), "an empty Or is Never")
         assertFalse(impliesCondition(Condition.And(listOf()), nothing), "Always implies almost nothing")
@@ -160,40 +160,40 @@ class ConditionImpliesTest {
 
     /** An empty value set matches nothing; an empty exclusion excludes nothing. */
     @Test fun emptyValueSetsSitAtTheExtremes() {
-        val some = condition<LargeTestModel> { it.int gt 3 }
-        assertTrue(impliesCondition(condition<LargeTestModel> { it.int inside setOf<Int>() }, some))
-        assertTrue(impliesCondition(some, condition<LargeTestModel> { it.int notInside setOf<Int>() }))
-        assertFalse(impliesCondition(condition<LargeTestModel> { it.int notInside setOf<Int>() }, some))
+        val some = Condition<LargeTestModel> { it.int gt 3 }
+        assertTrue(impliesCondition(Condition<LargeTestModel> { it.int inside setOf<Int>() }, some))
+        assertTrue(impliesCondition(some, Condition<LargeTestModel> { it.int notInside setOf<Int>() }))
+        assertFalse(impliesCondition(Condition<LargeTestModel> { it.int notInside setOf<Int>() }, some))
     }
 
     /** Endpoints are where inclusive and exclusive bounds actually differ. */
     @Test fun boundsAreComparedAtTheirEndpoints() {
-        assertTrue(impliesCondition(condition { it.int gt 5 }, condition { it.int gte 5 }))
-        assertFalse(impliesCondition(condition { it.int gte 5 }, condition { it.int gt 5 }))
-        assertTrue(impliesCondition(condition { it.int lt 5 }, condition { it.int lte 5 }))
-        assertFalse(impliesCondition(condition { it.int lte 5 }, condition { it.int lt 5 }))
+        assertTrue(impliesCondition(Condition { it.int gt 5 }, Condition { it.int gte 5 }))
+        assertFalse(impliesCondition(Condition { it.int gte 5 }, Condition { it.int gt 5 }))
+        assertTrue(impliesCondition(Condition { it.int lt 5 }, Condition { it.int lte 5 }))
+        assertFalse(impliesCondition(Condition { it.int lte 5 }, Condition { it.int lt 5 }))
         // Same side, strictly further in, either inclusivity.
-        assertTrue(impliesCondition(condition { it.int gte 6 }, condition { it.int gt 5 }))
-        assertTrue(impliesCondition(condition { it.int lte 4 }, condition { it.int lt 5 }))
+        assertTrue(impliesCondition(Condition { it.int gte 6 }, Condition { it.int gt 5 }))
+        assertTrue(impliesCondition(Condition { it.int lte 4 }, Condition { it.int lt 5 }))
     }
 
     /** Opposite sides never cover each other, however the numbers line up. */
     @Test fun oppositeBoundsNeverCoverEachOther() {
-        assertFalse(impliesCondition(condition { it.int gt 5 }, condition { it.int lt 9 }))
-        assertFalse(impliesCondition(condition { it.int lt 5 }, condition { it.int gt 1 }))
+        assertFalse(impliesCondition(Condition { it.int gt 5 }, Condition { it.int lt 9 }))
+        assertFalse(impliesCondition(Condition { it.int lt 5 }, Condition { it.int gt 1 }))
     }
 
     /** The same value on two different fields proves nothing. */
     @Test fun fieldsAreNotInterchangeable() {
-        assertFalse(impliesCondition(condition { it.int gt 5 }, condition { it.short gt 5.toShort() }))
-        assertFalse(impliesCondition(condition { it.int eq 3 }, condition { it.embedded.value2 eq 3 }))
+        assertFalse(impliesCondition(Condition { it.int gt 5 }, Condition { it.short gt 5.toShort() }))
+        assertFalse(impliesCondition(Condition { it.int eq 3 }, Condition { it.embedded.value2 eq 3 }))
     }
 
     /** Excluding more is stricter than excluding less - the rule read backwards. */
     @Test fun exclusionsReverse() {
-        assertTrue(impliesCondition(condition { it.int notInside setOf(1, 2, 3) }, condition { it.int notInside setOf(1, 2) }))
-        assertFalse(impliesCondition(condition { it.int notInside setOf(1, 2) }, condition { it.int notInside setOf(1, 2, 3) }))
-        assertTrue(impliesCondition(Condition.Not(condition { it.int gt 3 }), Condition.Not(condition { it.int gt 5 })))
+        assertTrue(impliesCondition(Condition { it.int notInside setOf(1, 2, 3) }, Condition { it.int notInside setOf(1, 2) }))
+        assertFalse(impliesCondition(Condition { it.int notInside setOf(1, 2) }, Condition { it.int notInside setOf(1, 2, 3) }))
+        assertTrue(impliesCondition(Condition.Not(Condition { it.int gt 3 }), Condition.Not(Condition { it.int gt 5 })))
     }
 
     /**
@@ -201,16 +201,16 @@ class ConditionImpliesTest {
      * conditions the bound rules know nothing about.
      */
     @Test fun aKnownValueIsJudgedByEvaluation() {
-        assertTrue(impliesCondition(condition { it.string eq "cat" }, condition { it.string.contains("at") }))
-        assertFalse(impliesCondition(condition { it.string eq "dog" }, condition { it.string.contains("at") }))
-        assertTrue(impliesCondition(condition { it.int inside setOf(6, 7) }, condition { it.int gt 5 }))
-        assertFalse(impliesCondition(condition { it.int inside setOf(5, 7) }, condition { it.int gt 5 }))
+        assertTrue(impliesCondition(Condition { it.string eq "cat" }, Condition { it.string.contains("at") }))
+        assertFalse(impliesCondition(Condition { it.string eq "dog" }, Condition { it.string.contains("at") }))
+        assertTrue(impliesCondition(Condition { it.int inside setOf(6, 7) }, Condition { it.int gt 5 }))
+        assertFalse(impliesCondition(Condition { it.int inside setOf(5, 7) }, Condition { it.int gt 5 }))
     }
 
     /** Conjunctions are stronger than any of their terms; disjunctions weaker than all of theirs. */
     @Test fun compositesRelateToTheirTerms() {
-        val a = condition<LargeTestModel> { it.int gt 3 }
-        val b = condition<LargeTestModel> { it.boolean eq true }
+        val a = Condition<LargeTestModel> { it.int gt 3 }
+        val b = Condition<LargeTestModel> { it.boolean eq true }
         assertTrue(impliesCondition(Condition.And(listOf(a, b)), a))
         assertFalse(impliesCondition(a, Condition.And(listOf(a, b))))
         assertTrue(impliesCondition(a, Condition.Or(listOf(a, b))))

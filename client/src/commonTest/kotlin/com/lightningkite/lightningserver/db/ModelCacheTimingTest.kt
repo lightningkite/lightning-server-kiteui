@@ -496,7 +496,7 @@ class ModelCacheTimingTest {
         val (mock, data, cache) = backgroundScope.socketFixture(3)
         // Subscribed, and matching nothing in the collection.
         val elsewhere = cache.list(
-            Query(condition { it.int gt 100 }, order),
+            Query(Condition { it.int gt 100 }, order),
             maximumAge = 10.minutes,
             pullFrequency = 5.seconds,
         )
@@ -508,7 +508,7 @@ class ModelCacheTimingTest {
         assertEquals(data[0], item.state.getOrNull())
 
         // Changed on the server, with nothing subscribed that would carry the news.
-        mock.modify(data[0]._id, modification { it.short assign 7 })
+        mock.modify(data[0]._id, Modification { it.short assign 7 })
         delay(30.seconds)
         assertEquals(data[0], item.state.getOrNull(), "nothing was promising to tell us about this row")
 

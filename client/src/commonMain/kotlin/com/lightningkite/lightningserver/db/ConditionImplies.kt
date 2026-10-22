@@ -114,23 +114,13 @@ private fun <V> unwrapMatching(narrow: Condition<V>, broad: Condition<V>): Pair<
             if (narrow.key == broad.key) narrow.condition as Condition<Any?> to broad.condition as Condition<Any?>
             else null
 
-        narrow is Condition.OnKey<*> && broad is Condition.OnKey<*> ->
-            if (narrow.key == broad.key) narrow.condition as Condition<Any?> to broad.condition as Condition<Any?>
-            else null
-
         narrow is Condition.IfNotNull<*> && broad is Condition.IfNotNull<*> ->
             narrow.condition as Condition<Any?> to broad.condition as Condition<Any?>
 
-        narrow is Condition.ListAllElements<*> && broad is Condition.ListAllElements<*> ->
+        narrow is Condition.CollectionAllElements<*, *> && broad is Condition.CollectionAllElements<*, *> ->
             narrow.condition as Condition<Any?> to broad.condition as Condition<Any?>
 
-        narrow is Condition.ListAnyElements<*> && broad is Condition.ListAnyElements<*> ->
-            narrow.condition as Condition<Any?> to broad.condition as Condition<Any?>
-
-        narrow is Condition.SetAllElements<*> && broad is Condition.SetAllElements<*> ->
-            narrow.condition as Condition<Any?> to broad.condition as Condition<Any?>
-
-        narrow is Condition.SetAnyElements<*> && broad is Condition.SetAnyElements<*> ->
+        narrow is Condition.CollectionAnyElements<*, *> && broad is Condition.CollectionAnyElements<*, *> ->
             narrow.condition as Condition<Any?> to broad.condition as Condition<Any?>
 
         else -> null

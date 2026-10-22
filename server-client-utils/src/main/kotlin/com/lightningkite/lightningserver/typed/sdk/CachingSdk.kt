@@ -1,6 +1,6 @@
 package com.lightningkite.lightningserver.typed.sdk
 
-import com.lightningkite.lightningserver.runtime.ServerRuntime
+import com.lightningkite.lightningserver.runtime.Engine
 import com.lightningkite.lightningserver.typed.ClientModelRestEndpoints
 import com.lightningkite.lightningserver.typed.sdk.SDK.processToModules
 import com.lightningkite.lightningserver.typed.sdk.SDK.sdk
@@ -51,14 +51,14 @@ public class CachingSdk(
         }
     }
 
-    context(server: ServerRuntime)
+    context(server: Engine)
     override fun write(archive: Archive) {
         val processed = server.server.sdk(rootInfo).processToModules().ensureUniqueNames()
 
         archive.appendableEntry(filename) { writeCache(processed, packageName) }
     }
 
-    context(_: ServerRuntime)
+    context(_: Engine)
     private fun Appendable.writeCache(data: SDK.Module, packageName: String) {
         appendLine("package $packageName")
 

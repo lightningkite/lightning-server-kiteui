@@ -25,6 +25,7 @@ package com.lightningkite.lightningserver.admin
 // 6. The formModule typeInfo callback (lines 234-251) has nested lambdas that could benefit from
 //    extracting into separate named functions for better testability and readability
 
+import com.lightningkite.services.database.optics.*
 import com.lightningkite.kiteui.HttpMethod
 import com.lightningkite.kiteui.RequestBodyFile
 import com.lightningkite.kiteui.connectivityFetch
@@ -56,7 +57,7 @@ import com.lightningkite.lightningserver.typed.LiveClientModelRestEndpoints
 import com.lightningkite.lightningserver.typed.LiveClientModelRestEndpointsAndUpdatesWebSocket
 import com.lightningkite.reactive.context.invoke
 import com.lightningkite.services.database.SerializationRegistry
-import com.lightningkite.services.database.serializableProperties
+import com.lightningkite.services.database.optics.fields
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.builtins.serializer
@@ -187,10 +188,10 @@ class ExternalLightningServer(
     inner class ModelInfo<T : HasId<ID>, ID : Comparable<ID>>(val inter: LightningServerKSchemaInterface) {
         val docGroup = inter.docGroup
         val serializer = inter.matches.arguments[0].serializer(registry, mapOf()) as KSerializer<T>
-        val idserializer = serializer.serializableProperties!!.find { it.name == "_id" }!!.serializer as KSerializer<ID>
+        val idserializer = serializer.fields!!.find { it.name == "_id" }!!.serializer as KSerializer<ID>
         val vserializer = inter.matches.arguments[0].serializer(registry, mapOf()) as KSerializer<UnknownModel>
         val vidserializer =
-            serializer.serializableProperties!!.find { it.name == "_id" }!!.serializer as KSerializer<UnknownId>
+            serializer.fields!!.find { it.name == "_id" }!!.serializer as KSerializer<UnknownId>
         val httpPath = inter.path
 
         val hasUpdatesWs =

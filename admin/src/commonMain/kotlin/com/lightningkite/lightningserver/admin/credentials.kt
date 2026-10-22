@@ -35,6 +35,7 @@
 //
 package com.lightningkite.lightningserver.admin
 
+import com.lightningkite.services.database.optics.*
 import com.lightningkite.kiteui.fetch
 import com.lightningkite.kiteui.forms.FieldVisibility
 import com.lightningkite.kiteui.forms.FormModule
@@ -55,7 +56,7 @@ import com.lightningkite.services.database.HasId
 import com.lightningkite.services.database.ModelPermissions
 import com.lightningkite.services.database.WrappingSerializer
 import com.lightningkite.services.database.childSerializersOrNull
-import com.lightningkite.services.database.serializableProperties
+import com.lightningkite.services.database.optics.fields
 import com.lightningkite.services.database.typeParametersSerializersOrNull
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -140,7 +141,7 @@ private fun KSerializer<*>.printDescriptorBetter(): String = descriptor.serialNa
 private fun KSerializer<*>.printDescriptorNested(label: String, tab: Int = 0) {
     println("${"  ".repeat(tab)}$label: ${if(this is WrappingSerializer<*, *>) this.to.descriptor.serialName else descriptor.serialName}")
     if(tab > 3) return
-    serializableProperties?.forEach { prop ->
+    fields?.forEach { prop ->
         prop.serializer.printDescriptorNested(prop.name, tab + 1)
     }
 }

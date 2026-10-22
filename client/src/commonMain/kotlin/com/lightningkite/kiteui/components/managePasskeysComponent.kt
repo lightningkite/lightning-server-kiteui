@@ -25,7 +25,7 @@ public fun ElementWriter.manageWebAuthNCredentialsComponent(
 ) {
     val credentials: Reactive<LimitReactiveList<WebAuthNCredential>> = remember {
         webAuthNCCredentials.awaitNotNull()
-            .query(Query(condition { it.subjectId.eq(subjectId()) }))
+            .query(Query(Condition { it.subjectId.eq(subjectId()) }))
     }
 
     recyclerView {
@@ -48,7 +48,7 @@ public fun ElementWriter.manageWebAuthNCredentialsComponent(
                             "Delete Passkey",
                             "Are you sure you want to delete this passkey? You won't be able to use it to sign in."
                         ) {
-                            webAuthNCCredentials.await()?.get(credential.await()._id)?.modify(modification {
+                            webAuthNCCredentials.await()?.get(credential.await()._id)?.modify(Modification {
                                 it.disabledAt assign now()
                             })
                         }

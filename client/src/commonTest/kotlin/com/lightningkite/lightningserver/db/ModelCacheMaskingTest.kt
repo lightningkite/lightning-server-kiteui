@@ -52,15 +52,15 @@ class ModelCacheMaskingTest {
     // =========================================================================
 
     /** Hides `int` from anyone who cannot see it, so any `int`-sorted query loses those rows. */
-    private val hidesInt = condition<LargeTestModel> { it.boolean eq true } to
-            modification<LargeTestModel> { it.int assign 0 }
+    private val hidesInt = Condition<LargeTestModel> { it.boolean eq true } to
+            Modification<LargeTestModel> { it.int assign 0 }
 
     /**
      * A second entry, over two fields at once, so a sort on *either* of them picks this term up.
      * The one-modification-one-field case would not tell the two apart.
      */
-    private val hidesStringAndLong = condition<LargeTestModel> { it.short gt 0 } to
-            modification<LargeTestModel> { it.string assign ""; it.long assign 0 }
+    private val hidesStringAndLong = Condition<LargeTestModel> { it.short gt 0 } to
+            Modification<LargeTestModel> { it.string assign ""; it.long assign 0 }
 
     private val twoMasks = Mask(listOf(hidesInt, hidesStringAndLong))
 
@@ -224,7 +224,7 @@ class ModelCacheMaskingTest {
 
         // Exactly the mask's own condition, in a different order entirely.
         val sameRows = cache.quietList(
-            condition = condition { it.boolean eq true },
+            condition = Condition { it.boolean eq true },
             sort = sort { it.short.ascending() },
         )
         val sameRowsRelease = sameRows.addListener { }
@@ -411,7 +411,7 @@ class ModelCacheMaskingTest {
         val masked = cache.quietList(sort = sort { it.int.ascending() })
         // Subscribes, so the socket starts delivering changes to rows the masked list cannot see.
         val subscribed = cache.list(
-            Query(condition { it.short gt 0 }, sort { it.short.ascending() }, limit = 100),
+            Query(Condition { it.short gt 0 }, sort { it.short.ascending() }, limit = 100),
             pullFrequency = 10.seconds,
         )
         val releases = listOf(masked.addListener { }, subscribed.addListener { })
@@ -419,7 +419,7 @@ class ModelCacheMaskingTest {
         assertEquals(listOf(1, 3), masked.tags())
 
         val invisible = data.single { it.byte == 2.toByte() }
-        mock.modify(invisible._id, modification { it.string assign "changed" })
+        mock.modify(invisible._id, Modification { it.string assign "changed" })
         delay(1.seconds)
 
         assertTrue(subscribed.state.getOrNull()?.any { it._id == invisible._id } == true, "the socket delivered it")
@@ -442,7 +442,7 @@ class ModelCacheMaskingTest {
 
         val masked = cache.quietList(sort = sort { it.int.ascending() })
         val subscribed = cache.list(
-            Query(condition { it.short gt 0 }, sort { it.short.ascending() }, limit = 100),
+            Query(Condition { it.short gt 0 }, sort { it.short.ascending() }, limit = 100),
             pullFrequency = 10.seconds,
         )
         val releases = listOf(masked.addListener { }, subscribed.addListener { })
@@ -452,7 +452,7 @@ class ModelCacheMaskingTest {
 
         // Moves out of the subscribed condition; the server reports that as a removal.
         val invisible = data.single { it.byte == 2.toByte() }
-        mock.modify(invisible._id, modification { it.short assign 0 })
+        mock.modify(invisible._id, Modification { it.short assign 0 })
         delay(1.seconds)
 
         assertEquals(listOf(1, 3), masked.tags(), "the row was never in this list to begin with")
@@ -476,7 +476,7 @@ class ModelCacheMaskingTest {
 
         val masked = cache.quietList(sort = sort { it.int.ascending() })
         val subscribed = cache.list(
-            Query(condition { it.short gt 0 }, sort { it.short.ascending() }, limit = 100),
+            Query(Condition { it.short gt 0 }, sort { it.short.ascending() }, limit = 100),
             pullFrequency = 10.seconds,
         )
         val releases = listOf(masked.addListener { }, subscribed.addListener { })
@@ -486,7 +486,7 @@ class ModelCacheMaskingTest {
 
         // Row 1 is visible to the int sort and inside the subscription; take it out of the latter.
         val visible = data.single { it.byte == 1.toByte() }
-        mock.modify(visible._id, modification { it.short assign 0 })
+        mock.modify(visible._id, Modification { it.short assign 0 })
         delay(1.seconds)
 
         assertNotEquals(retrievedAt, masked.lastUpdatedAt.state.getOrNull(), "this one had to be re-read")

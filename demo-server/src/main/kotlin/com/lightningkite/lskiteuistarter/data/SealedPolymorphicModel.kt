@@ -18,7 +18,6 @@ import com.lightningkite.lskiteuistarter.email
 import com.lightningkite.lskiteuistarter.role
 import com.lightningkite.services.database.Condition
 import com.lightningkite.services.database.ModelPermissions
-import com.lightningkite.services.database.condition
 import com.lightningkite.services.database.eq
 import com.lightningkite.services.database.insertOne
 import com.lightningkite.services.database.inside
