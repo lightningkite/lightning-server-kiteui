@@ -26,7 +26,7 @@ private fun <A, B> Optic<A, B>.trySet(source: A, value: B?): A =
     else source
 
 public fun <O, T> MutableReactive<O>.lens(optic: Optic<O, T>): MutableReactive<T?> = lens(optic::get, optic::trySet)
-public fun <O, T> MutableReactive<O>.lens(path: Lens<O, T>): MutableReactive<T> = lens(path::get, path::set)
+public fun <O, T> MutableReactive<O>.lens(lens: Lens<O, T>): MutableReactive<T> = lens(lens::get, lens::set)
 
 public fun <O, T> MutableWithReactiveValue<O>.lens(optic: Optic<O, T>): MutableReactive<T?> = lens(optic::get, optic::trySet)
 public fun <O, T> MutableWithReactiveValue<O>.lens(lens: Lens<O, T>): MutableReactive<T> = lens(lens::get, lens::set)
