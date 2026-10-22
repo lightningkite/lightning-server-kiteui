@@ -87,11 +87,20 @@ Forms are **cached** to handle recursive/nested data structures efficiently.
   - `ModelCacheLimitReadable<T>` - Collection tracking with queries
 - **One store**: `CoverageStore` holds every item once, plus timestamped *claims* about which queries
   it knows completely. A read is answered locally only when a claim backs it; otherwise it fetches.
-  Looking an item up by ID is not a special case - it is a query for one row, so a list that already
-  covered the item answers it without a request.
+  Looking an item up by ID is a query for one row, answered only by that ID's own claim: a list that
+  held the item answers it without a request, but a list that lacked it does not make it "missing" -
+  an unknown ID fetches. Missing is believed only from a lookup by ID or a deletion.
 - **Where claims come from**: mostly one inference - a query returning fewer rows than its limit has
   run off the end of its results, so it knows that condition completely. A query that fills its limit
   knows only as far as its last row, and pagination extends that boundary with a cursor.
+- **Custom endpoints**: the cache sees only writes made through it (and the socket, if any). When a
+  custom endpoint creates or changes rows, tell it: `cache.localInsert(obj)` if the endpoint returns
+  the object (saves a fetch; also joins matching cached lists), `cache.item(id).invalidate()` for a
+  changed row it didn't return, and `cache.totallyInvalidate()` when lists may have changed in ways you
+  can't enumerate. Without this, cached lists lag until their next poll or socket update.
+- **Time windows in queries**: a `Query` built inside `remember {}` with `Clock.System.now()` is a new
+  query on every recomputation, so each recomputation starts a new fetch, whose result recomputes it
+  again - a refetch loop. Compute the window once outside the `remember` (e.g. `val since = now() - 7.days`).
 
 ### Authentication System
 
