@@ -33,8 +33,9 @@ import kotlin.time.Duration.Companion.seconds
  *
  * Everything - items and lists alike - lives in one [store], which knows not only the values it
  * holds but which queries it holds *completely*.  Reads are answered from it whenever a completeness
- * claim backs them; otherwise this class fetches.  Looking an item up by ID is not a special case:
- * it is [CoverageStore.idQuery], a query for one row.
+ * claim backs them; otherwise this class fetches.  Looking an item up by ID is
+ * [CoverageStore.idQuery], a query for one row, answered only by that ID's own claim: a list that
+ * lacked the ID does not make it missing, so an unknown ID fetches.
  *
  * ## Polling strategy
  *
@@ -55,6 +56,12 @@ import kotlin.time.Duration.Companion.seconds
  * - **Overload clearing**: an overloaded socket, and any bulk modification, clears everything.
  *   Intentionally aggressive - serving stale data is worse than refetching.
  * - **Minimum pull frequency**: polling never runs faster than every 5 seconds.
+ * - **Writes made elsewhere**: rows a custom endpoint creates or changes are invisible until a poll
+ *   or socket update.  Call [localInsert] with the returned object, `item(id).invalidate()` for a
+ *   changed row, or [totallyInvalidate] when lists may have changed.
+ * - **Time windows**: a [Query] built inside `remember {}` with `Clock.System.now()` differs on every
+ *   recomputation, so each one fetches anew and the result recomputes it again.  Compute the window
+ *   once, outside.
  *
  * @param T The model type with an ID field
  * @param ID The ID type, must be comparable
@@ -457,7 +464,7 @@ public class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
     /**
      * Tracks a single item by ID.  See [SelfRefreshing] for the lifecycle.
      *
-     * This is a one-row query against the same [store] as any list, so a list that already covered
+     * This is a one-row query against the same [store] as any list, so a list that already held
      * the item answers this without a request, and vice versa.  It stays a separate class only
      * because retrieval batches through [multiget] and because a socket subscription on any
      * condition the item matches keeps it live, not just a subscription to its ID.
