@@ -25,6 +25,7 @@ import com.lightningkite.reactive.core.Signal
 import com.lightningkite.reactive.core.remember
 import com.lightningkite.optics.asString
 import com.lightningkite.optics.lens
+import com.lightningkite.reactive.lensing.validation.validated
 import com.lightningkite.services.data.toEmailAddress
 import kotlin.uuid.Uuid
 
@@ -40,7 +41,8 @@ class UserDetailPage(val id: String) : Page {
         // Local edit buffer, seeded once from the loaded record - editing the live cache value
         // directly would fight every background refresh (see kiteui skill pitfall #8).
         var seeded = false
-        val draft = Signal(User(_id = userId, email = "pending@example.com".toEmailAddress()))
+        val draft = Signal(User(_id = userId, email = "pending@example.com".toEmailAddress())).validated()
+
         reactive {
             val loaded = item()() ?: return@reactive
             if (!seeded) {
