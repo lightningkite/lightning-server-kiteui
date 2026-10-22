@@ -23,11 +23,9 @@ import com.lightningkite.reactive.core.Constant
 import com.lightningkite.reactive.core.Reactive
 import com.lightningkite.reactive.core.Signal
 import com.lightningkite.reactive.core.remember
-import com.lightningkite.serialization.asString
-import com.lightningkite.serialization.lens
-import com.lightningkite.services.data.EmailAddress
+import com.lightningkite.optics.asString
+import com.lightningkite.optics.lens
 import com.lightningkite.services.data.toEmailAddress
-import com.lightningkite.services.database.optics.asType
 import kotlin.uuid.Uuid
 
 @Routable("/users/{id}")

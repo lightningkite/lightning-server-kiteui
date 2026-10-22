@@ -1,4 +1,4 @@
-package com.lightningkite.serialization
+package com.lightningkite.optics
 
 import com.lightningkite.services.data.EmailAddress
 import com.lightningkite.services.data.PhoneNumber

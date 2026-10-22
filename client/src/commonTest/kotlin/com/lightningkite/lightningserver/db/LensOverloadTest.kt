@@ -5,7 +5,7 @@ import com.lightningkite.reactive.core.Reactive
 import com.lightningkite.reactive.core.ReactiveValue
 import com.lightningkite.reactive.core.Signal
 import com.lightningkite.reactive.lensing.lens
-import com.lightningkite.serialization.lens
+import com.lightningkite.optics.lens
 import com.lightningkite.services.database.optics.notNull
 import kotlin.test.Test
 import kotlin.test.assertEquals

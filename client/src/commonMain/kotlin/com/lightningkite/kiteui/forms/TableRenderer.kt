@@ -13,7 +13,7 @@ import com.lightningkite.kiteui.views.direct.icon
 import com.lightningkite.reactive.context.invoke
 import com.lightningkite.reactive.context.reactive
 import com.lightningkite.reactive.core.*
-import com.lightningkite.serialization.lens
+import com.lightningkite.optics.lens
 import com.lightningkite.kiteui.navigation.DefaultJson
 import com.lightningkite.kiteui.views.l2.dialog
 import com.lightningkite.lightningserver.admin.walkDataClassPathsLimitedRecursion
