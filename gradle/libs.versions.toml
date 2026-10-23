@@ -46,6 +46,7 @@ lightningServer-media-shared = { module = "com.lightningkite.lightningserver:med
 lightningServer-sessions = { module = "com.lightningkite.lightningserver:sessions", version = { ref = "lightningServer" } }
 lightningServer-sessions-email = { module = "com.lightningkite.lightningserver:sessions-email", version = { ref = "lightningServer" } }
 lightningServer-sessions-sms = { module = "com.lightningkite.lightningserver:sessions-sms", version = { ref = "lightningServer" } }
+lightningServer-sessions-totp = { module = "com.lightningkite.lightningserver:sessions-totp", version = { ref = "lightningServer" } }
 services-database = { module = "com.lightningkite.services:database", version = { ref = "serviceAbstractions" } }
 services-database-jsonfile = { module = "com.lightningkite.services:database-jsonfile", version = { ref = "serviceAbstractions" } }
 services-database-mongodb = { module = "com.lightningkite.services:database-mongodb", version = { ref = "serviceAbstractions" } }

@@ -27,6 +27,7 @@ dependencies {
     implementation(libs.lightningServer.sessions)
     implementation(libs.lightningServer.sessions.email)
     implementation(libs.lightningServer.sessions.sms)
+    implementation(libs.lightningServer.sessions.totp)
     implementation(libs.lightningServer.engine.netty)
     implementation(libs.lightningServer.engine.ktor)
     implementation(libs.services.database)
