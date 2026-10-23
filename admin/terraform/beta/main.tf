@@ -32,7 +32,7 @@ provider "aws" {
 }
 
 module "web" {
-  source = "git@github.com:lightningkite/terraform-static-site.git?ref=1.2.0"
+  source = "git@github.com:lightningkite/terraform-static-site.git?ref=1.2.3"
   providers = {
     aws = aws
     aws.acm = aws.acm
