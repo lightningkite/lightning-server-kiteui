@@ -81,7 +81,10 @@ package com.lightningkite.lightningserver.admin
 import com.lightningkite.services.database.optics.*
 import com.lightningkite.kiteui.QueryParameter
 import com.lightningkite.kiteui.Routable
-import com.lightningkite.kiteui.forms.form
+import com.lightningkite.kiteui.forms.displayName
+import com.lightningkite.kiteui.forms.labeledForm
+import com.lightningkite.kiteui.views.card
+import com.lightningkite.kiteui.views.l2.toast
 import com.lightningkite.kiteui.navigation.*
 import com.lightningkite.kiteui.views.ElementWriter
 
@@ -95,6 +98,7 @@ import com.lightningkite.services.database._id
 import com.lightningkite.lightningserver.db.ModelCache
 import com.lightningkite.reactive.context.invoke
 import com.lightningkite.reactive.context.reactive
+import com.lightningkite.reactive.core.Reactive
 import com.lightningkite.reactive.core.Signal
 import com.lightningkite.reactive.core.remember
 import com.lightningkite.reactive.extensions.asyncReactive
@@ -104,6 +108,7 @@ import com.lightningkite.services.database.default
 
 @Routable("collections/{collectionName}/new-item")
 class NewItemAdminPage(val collectionName: String) : Page {
+    override val title: Reactive<String> = remember { "New ${itemTypeTitle(collectionName)}" }
 
     @QueryParameter("condition")
     val conditionString: Signal<String?> = Signal(null)
@@ -150,17 +155,27 @@ class NewItemAdminPage(val collectionName: String) : Page {
             )
         }.flatten()
         scrolling.col {
-            reactive {
-                clearChildren()
-                val forms = adminFormModuleCreate()
-                form(forms, mc().serializer, item)
-                atEnd.important.button {
-                    text("Save")
-                    onClick {
-                        val mc = mc()
-                        val newItemId = mc.insert(item())()!!._id
-                        val id = UrlProperties.encodeToString(mc.serializer._id().serializer, newItemId)
-                        pageNavigator.replace(DetailAdminPage(collectionName, id))
+            card.col {
+                reactive {
+                    clearChildren()
+                    val forms = adminFormModuleCreate()
+                    val mc = mc()
+                    labeledForm(forms, mc.serializer, item, "New ${mc.serializer.displayName}")
+                    atEnd.row {
+                        card.button {
+                            text("Cancel")
+                            onClick { pageNavigator.replace(CollectionAdminPage(collectionName)) }
+                        }
+                        important.button {
+                            text("Create")
+                            onClick {
+                                // add() throws on failure, which is shown to the user; insert()!! crashed.
+                                val created = mc.add(item())
+                                context.toast("${mc.serializer.displayName} created")
+                                val id = UrlProperties.encodeToString(mc.serializer._id().serializer, created._id)
+                                pageNavigator.replace(DetailAdminPage(collectionName, id))
+                            }
+                        }
                     }
                 }
             }

@@ -84,7 +84,7 @@ private fun LightningServerKSchema.uploadEarlyVerifyEndpoint(): LightningServerK
 
 private fun LightningServerKSchema.healthEndpoint(): LightningServerKSchemaEndpoint? {
     return endpoints.find {
-        it.output.serialName == "com.lightningkite.lightningserver.serverhealth.ServerHealth"
+        it.output.serialName == "com.lightningkite.lightningserver.typed.ServerHealth"
     }
 }
 
@@ -115,6 +115,9 @@ class ExternalLightningServer(
     val file = schema.uploadEarlyEndpoint()
     val fileVerify = schema.uploadEarlyVerifyEndpoint()
     val health = schema.healthEndpoint()
+
+    /** Endpoints that act on a single item, by collection path.  See [detectItemActions]. */
+    val itemActions: Map<String, List<ItemAction>> by lazy { schema.detectItemActions() }
 
     private val nullToken: suspend () -> List<Pair<String, String>> = { listOf() }
 
@@ -195,7 +198,7 @@ class ExternalLightningServer(
         val httpPath = inter.path
 
         val hasUpdatesWs =
-            schema.endpoints.any { it.path == inter.path && it.method == "WEBSOCKET" && it.input.serialName == "com.lightningkite.lightningdb.Condition" && it.output.serialName == "com.lightningkite.lightningdb.CollectionUpdates" }
+            schema.endpoints.any { it.path == inter.path && it.method == "WEBSOCKET" && it.input.serialName == "com.lightningkite.services.database.Condition" && it.output.serialName == "com.lightningkite.services.database.CollectionUpdates" }
 
         private var cacheCache = PerAuthCache { auth ->
             when {
