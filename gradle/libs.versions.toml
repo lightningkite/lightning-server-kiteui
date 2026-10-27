@@ -14,6 +14,7 @@ ksp = "2.3.12"
 lightningServer = "5.4.0-prerelease-91-4fae1cd64"
 lkGradleHelpers = "4.1.2"
 proguard = "7.10.0"
+qrcodeKotlin = "4.5.0"
 serviceAbstractions = "1.4.0-prerelease-74-5a93babc"
 shadow = "8.1.1"
 vanniktechPublishing = "0.37.0"
@@ -30,6 +31,7 @@ lightningServer-sessions-shared = { module = "com.lightningkite.lightningserver:
 lightningServer-typed = { module = "com.lightningkite.lightningserver:typed", version = { ref = "lightningServer" } }
 lightningServer-typed-shared = { module = "com.lightningkite.lightningserver:typed-shared", version = { ref = "lightningServer" } }
 lkGradleHelpers = { module = "com.lightningkite:lk-gradle-helpers", version = { ref = "lkGradleHelpers" } }
+qrcode-kotlin = { module = "io.github.g0dkar:qrcode-kotlin", version = { ref = "qrcodeKotlin" } }
 proguard = { module = "com.guardsquare:proguard-gradle", version = { ref = "proguard" } }
 services-database-processor = { module = "com.lightningkite.services:database-processor", version = { ref = "serviceAbstractions" } }
 services-database-shared = { module = "com.lightningkite.services:database-shared", version = { ref = "serviceAbstractions" } }

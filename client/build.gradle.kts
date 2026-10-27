@@ -59,6 +59,7 @@ kotlin {
                 api(libs.services.database.shared)
                 api(libs.services.currency)
                 api(libs.kitui)
+                implementation(libs.qrcode.kotlin)
             }
             kotlin {
                 srcDir(file("build/generated/ksp/common/commonMain/kotlin"))
