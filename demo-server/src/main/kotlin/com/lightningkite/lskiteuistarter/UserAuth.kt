@@ -81,7 +81,7 @@ object UserAuth : PrincipalType<User, Uuid>, ServerBuilder() {
             pin = pins,
             email = Server.email,
             emailTemplate = { to, pin ->
-                val name = Server.users.info.table().findOne(Condition { it.email eq to.toEmailAddress() })?.name
+                val name = Server.users.info.table().findOne(Condition { it.email eq to })?.name
                 Email(
                     subject = "Log In Code",
                     to = listOf(EmailAddressWithName(to)),
