@@ -284,8 +284,15 @@ public fun <T> KSerializer<T>.defaultTitleFields(): List<Optic<T, *>> {
  * Convert a camelCase or PascalCase string to Title Case with spaces.
  */
 public fun String.titleCase(): String = buildString {
-    this@titleCase.forEachIndexed { index, c ->
-        if (index > 0 && c.isUpperCase()) append(' ')
+    val s = this@titleCase
+    s.forEachIndexed { index, c ->
+        // A word starts at a capital following a lowercase letter or digit ("userId"), or at the
+        // last capital of an acronym that runs into a word ("OTPProof"), so acronyms stay whole.
+        if (index > 0 && c.isUpperCase()) {
+            val prev = s[index - 1]
+            val next = s.getOrNull(index + 1)
+            if (!prev.isUpperCase() || (next != null && next.isLowerCase())) append(' ')
+        }
         append(if (index == 0) c.uppercaseChar() else c)
     }
 }

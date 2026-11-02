@@ -35,12 +35,15 @@
 package com.lightningkite.lightningserver.admin
 
 import com.lightningkite.services.database.optics.*
+import com.lightningkite.kiteui.QueryParameter
 import com.lightningkite.kiteui.Routable
+import com.lightningkite.kiteui.forms.defaultTitleFields
 import com.lightningkite.kiteui.forms.displayName
 import com.lightningkite.kiteui.forms.form
 import com.lightningkite.kiteui.forms.labeledForm
 import com.lightningkite.kiteui.forms.pluralize
 import com.lightningkite.kiteui.models.Icon
+import com.lightningkite.kiteui.models.MediaQuery
 import com.lightningkite.kiteui.models.ListSemantic
 import com.lightningkite.kiteui.models.rem
 import com.lightningkite.kiteui.navigation.*
@@ -53,10 +56,13 @@ import com.lightningkite.services.database.ConditionSerializer
 import com.lightningkite.services.database.HasId
 import com.lightningkite.services.database._id
 import com.lightningkite.lightningserver.db.ModelCache
+import com.lightningkite.reactive.context.invoke
 import com.lightningkite.reactive.context.reactive
 import com.lightningkite.reactive.core.Draft
 import com.lightningkite.reactive.core.Reactive
+import com.lightningkite.reactive.core.Signal
 import com.lightningkite.reactive.core.remember
+import com.lightningkite.reactive.core.rememberSuspending
 import com.lightningkite.reactive.extensions.flatten
 import com.lightningkite.reactive.extensions.notNull
 import com.lightningkite.services.data.serialNameFQN
@@ -65,13 +71,25 @@ import com.lightningkite.services.database.optics.Field
 import com.lightningkite.services.database.default
 import com.lightningkite.services.database.optics.fields
 
+/** At least this wide, the detail page puts actions and related records in a sidebar; narrower, in a menu. */
+private val SIDEBAR_BREAKPOINT = 100.rem
+
 @Routable("collections/{collectionName}/detail/{itemId}")
 class DetailAdminPage(val collectionName: String, val itemId: String) : Page {
+    @QueryParameter("live")
+    val live: Signal<Boolean> = Signal(false)
+
     // by Claude - added null safety for missing collections
     private val mcOrNull = remember { adminServer().models[collectionName]?.cache(adminAuthentication()) as? ModelCache<UnknownModel, UnknownId> }
     private val mc = remember { mcOrNull()!! }
 
-    override val title: Reactive<String> = remember { "Edit $collectionName" }
+    override val title: Reactive<String> = remember {
+        val type = itemTypeTitle(collectionName)
+        val mc = mcOrNull() ?: return@remember type
+        val item = mc[DefaultUriFormat.decodeFromString(mc.serializer._id().serializer, itemId)]() ?: return@remember type
+        val name = mc.serializer.defaultTitleFields().joinToString(" ") { it.get(item).toString() }
+        if (name.isBlank()) type else "$type: $name"
+    }
 
     override fun ElementWriter.CanAddTheme.render() {
         scrolling.col {
@@ -94,26 +112,88 @@ class DetailAdminPage(val collectionName: String, val itemId: String) : Page {
     }
 
     private fun RowOrCol.renderContent() {
+        val tracked = remember {
+            val mc = mc()
+            val actualId = DefaultUriFormat.decodeFromString(mc.serializer._id().serializer, itemId)
+            if (live()) mc.item(actualId, pullFrequency = LIVE_PULL_FREQUENCY) else mc[actualId]
+        }
+        // Only flips when the item appears or disappears, so edits aren't interrupted by updates.
+        val exists = remember { tracked()() != null }
         val item = Draft(remember {
             val mc = mc()
             val actualId = DefaultUriFormat.decodeFromString(mc.serializer._id().serializer, itemId)
-            mc[actualId].notNull(mc.serializer.default().also {
-                mc.serializer._id().setCopy(it, actualId)
-            })
+            tracked().notNull(mc.serializer._id().setCopy(mc.serializer.default(), actualId))
         }.flatten())
-        rowCollapsingToColumn(100.rem) {
+        val related = remember {
+            val myTypeName = mc().serializer.descriptor.serialNameFQN()
+            val permissions = loadedPermissions()
+            adminServer().models.entries.flatMap { model ->
+                if (permissions[model.key]?.read == Condition.Never) return@flatMap listOf()
+                model.value.serializer.fields.orEmpty().mapNotNull {
+                    val anno =
+                        it.serializableAnnotations.find { it.fqn == "com.lightningkite.services.data.References" }
+                            ?: return@mapNotNull null
+                    val typeName = anno.values.get("references")
+                        ?.let { it as? SerializableAnnotationValue.ClassValue }?.fqn ?: return@mapNotNull null
+                    if (typeName != myTypeName) return@mapNotNull null
+                    val reverseName = anno.values.get("reverseName")
+                        ?.let { it as? SerializableAnnotationValue.StringValue }?.value?.takeUnless { it.isEmpty() }
+                    val label = reverseName ?: run {
+                        if (it.displayName == mc().serializer.displayName || it.displayName == "Owner") model.value.serializer.displayName.pluralize()
+                        else "${it.displayName} - ${model.value.serializer.displayName.pluralize()}"
+                    }
+                    Triple(model, it as Field<HasId<*>, UnknownId>, label)
+                }
+            }
+        }
+        val hasActions = remember { adminServer().itemActions[collectionName].orEmpty().isNotEmpty() }
+        val currentId = remember { item()._id }
+        rowCollapsingToColumn(SIDEBAR_BREAKPOINT) {
             space { reactive { item() } }
             weight(2f).card.col {
                 reactive {
                     clearChildren()
                     val forms = adminFormModule()
                     val mc = mc()
+                    if (!exists()) {
+                        h2("${mc.serializer.displayName} Not Found")
+                        text("There is no ${mc.serializer.displayName} with the ID '$itemId'.  It may have been deleted.")
+                        link {
+                            text("Back to ${mc.serializer.displayName.pluralize()}")
+                            to = { CollectionAdminPage(collectionName) }
+                        }
+                        return@reactive
+                    }
                     labeledForm(forms, mc.serializer, item, "Edit ${mc.serializer.displayName}")
                     atEnd.row {
+                        liveControls(collectionName, live, mc)
+                        shownForQuery(MediaQuery.MaxWidth(SIDEBAR_BREAKPOINT)).frame {
+                            shownWhen { hasActions() || related().isNotEmpty() }.menuButton {
+                                icon(Icon.moreVert, "Actions and related records")
+                                requireClick = true
+                                opensMenu {
+                                    col {
+                                        shownWhen { hasActions() }.col {
+                                            subtext("Actions")
+                                            itemActionButtons(collectionName, itemId)
+                                        }
+                                        shownWhen { related().isNotEmpty() }.col {
+                                            subtext("Related Records")
+                                            relatedLinks(related, currentId)
+                                        }
+                                    }
+                                }
+                            }
+                        }
                         danger.button {
                             text("Delete")
                             onClick {
-                                confirmDanger("Delete", "Are you sure?") {
+                                val name = mc.serializer.defaultTitleFields().joinToString(" ") { it.get(item.published()).toString() }
+                                confirmDanger(
+                                    "Delete ${mc.serializer.displayName}",
+                                    "Delete ${name.ifBlank { "this ${mc.serializer.displayName}" }}?  This can't be undone.",
+                                    "Delete"
+                                ) {
                                     val mc = mc()
                                     val actualId =
                                         DefaultUriFormat.decodeFromString(mc.serializer._id().serializer, itemId)
@@ -121,10 +201,11 @@ class DetailAdminPage(val collectionName: String, val itemId: String) : Page {
                                     toast {
                                         row {
                                             centered.icon(Icon.deleteForever, "Deleted")
-                                            centered.text("Item has been deleted.")
+                                            centered.text("${mc.serializer.displayName} deleted.")
                                         }
                                     }
-                                    pageNavigator.goBack()
+                                    // Not goBack(): there may be nothing to go back to after a deep link.
+                                    pageNavigator.replace(CollectionAdminPage(collectionName))
                                 }
                             }
                         }
@@ -174,43 +255,49 @@ class DetailAdminPage(val collectionName: String, val itemId: String) : Page {
                     }
                 }
             }
-            atTop.weight(1f).card.col {
-                val itemId = remember { item()._id }
-                h4("Related Records")
-                themed(ListSemantic).col {
-                    reactive {
-                        clearChildren()
-                        val mc = mc()
-                        val itemId = itemId()
-                        val myTypeName = mc.serializer.descriptor.serialNameFQN()
-                        adminServer().models.entries.forEach { model ->
-                            model.value.serializer.fields?.forEach {
-                                val anno =
-                                    it.serializableAnnotations.find { it.fqn == "com.lightningkite.services.data.References" }
-                                        ?: return@forEach
-                                val typeName = anno.values.get("references")
-                                    ?.let { it as? SerializableAnnotationValue.ClassValue }?.fqn ?: return@forEach
-                                if (typeName != myTypeName) return@forEach
-                                val reverseName = anno.values.get("reverseName")
-                                    ?.let { it as? SerializableAnnotationValue.StringValue }?.value?.takeUnless { it.isEmpty() }
-                                val label = reverseName ?: run {
-                                    if(it.displayName == mc.serializer.displayName || it.displayName == "Owner") model.value.serializer.displayName.pluralize()
-                                    else "${it.displayName} - ${model.value.serializer.displayName.pluralize()}"
+            // Other collections whose @References point at this type, each linking to the records
+            // that point at this item.
+            // Wide: a sidebar beside the form.  Narrow: the same things in the form's ⋮ menu.
+            // (Nested because an element takes only one of shownWhen/shownForQuery.)
+            atTop.weight(1f).shownWhen { exists() && (hasActions() || related().isNotEmpty()) }.col {
+                shownForQuery(MediaQuery.MinWidth(SIDEBAR_BREAKPOINT)).col {
+                    itemActionsCard(collectionName, itemId)
+                    shownWhen { related().isNotEmpty() }.card.col {
+                        h4("Related Records")
+                        relatedLinks(related, currentId)
+                    }
+                }
+            }
+        }
+    }
+
+    /** Links to the records in other collections that point at the item [currentId], with counts. */
+    private fun ViewWriter.relatedLinks(
+        related: Reactive<List<Triple<Map.Entry<String, ExternalLightningServer.ModelInfo<*, *>>, Field<HasId<*>, UnknownId>, String>>>,
+        currentId: Reactive<UnknownId>,
+    ) {
+        themed(ListSemantic).col {
+            reactive {
+                clearChildren()
+                val itemId = currentId()
+                for ((model, property, label) in related()) {
+                    val condition = Condition.OnField(property, Condition.Equal(itemId))
+                    card.link {
+                        row {
+                            centered.expanding.text(label)
+                            centered.subtext {
+                                val count = rememberSuspending {
+                                    (model.value.cache(adminAuthentication()) as ModelCache<HasId<*>, *>).skipCache.count(condition)
                                 }
-                                card.link {
-                                    text(label)
-                                    to = {
-                                        CollectionAdminPage(model.key).apply {
-                                            conditionString.value = DefaultJson.encodeToString(
-                                                ConditionSerializer(model.value.serializer),
-                                                Condition.OnField(
-                                                    it as Field<HasId<*>, UnknownId>,
-                                                    Condition.Equal(itemId)
-                                                )
-                                            )
-                                        }
-                                    }
-                                }
+                                ::content { count().toString() }
+                            }
+                        }
+                        to = {
+                            CollectionAdminPage(model.key).apply {
+                                conditionString.value = DefaultJson.encodeToString(
+                                    ConditionSerializer(model.value.serializer),
+                                    condition
+                                )
                             }
                         }
                     }

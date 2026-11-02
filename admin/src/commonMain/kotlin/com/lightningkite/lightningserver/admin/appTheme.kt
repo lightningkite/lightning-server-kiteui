@@ -35,7 +35,8 @@ package com.lightningkite.lightningserver.admin
 // - All tests passing
 
 import com.lightningkite.kiteui.models.*
-import com.lightningkite.reactive.core.Constant
+import com.lightningkite.reactive.context.invoke
+import com.lightningkite.reactive.core.remember
 
 //fun default(color: Color?): Theme {
 //    val baseColor = Color.fromHex(0x2D3237).toHSP()
@@ -159,17 +160,28 @@ import com.lightningkite.reactive.core.Constant
 //    )
 //}
 //
-fun lk(): Theme {
-    val background = Color.fromHex(0x08181D)
+val lkAccent = Color.fromHex(0xF4B61B)
+
+fun lk(accent: Color = lkAccent): Theme {
+    // Any other accent tints the whole theme toward its hue; a grey accent makes it neutral.
+    fun tinted(color: Color): Color = if (accent == lkAccent) color else {
+        val hsp = color.toHSP()
+        val accentHsp = accent.toHSP()
+        hsp.copy(hue = accentHsp.hue, saturation = if (accentHsp.saturation == 0f) 0f else hsp.saturation).toRGB()
+    }
+    val background = tinted(Color.fromHex(0x08181D))
     val foreground = Color.white
-    val card = Color.fromHex(0x133C4A)
-    val titleColor = Color.fromHex(0xF4B61B)
+    val card = tinted(Color.fromHex(0x133C4A))
+    val floating = Color.interpolate(background, card, 0.6f)
+    val floatingLine = Color.interpolate(card, foreground, 0.2f)
+    val titleColor = accent
     val title: FontAndStyle = FontAndStyle(Resources.barlow, allCaps = true)
     val title2: FontAndStyle = FontAndStyle(Resources.barlow, weight = 600, allCaps = true)
     val body: FontAndStyle = FontAndStyle(Resources.lato)
 
     return Theme(
-        id = "lk",
+        // KiteUI generates CSS once per id, so every accent needs its own.
+        id = if (accent == lkAccent) "lk" else "lk-${accent.toInt().toUInt().toString(16)}",
         font = body,
         elevation = 0.dp,
         cornerRadii = CornerRadii.Constant(0.5.rem),
@@ -205,8 +217,29 @@ fun lk(): Theme {
                     foreground = titleColor.highlight(1f)
                 )
             },
+            // Things that float get a lighter surface than cards, a quiet border and a shadow, so
+            // they read as above the page rather than part of it.
             DialogSemantic to {
-                it.withBack(outlineWidth = 1.dp, gap = 2.rem, cascading = false)
+                it.alter(
+                    cascading = false,
+                    outlineWidth = 1.dp,
+                    outline = floatingLine,
+                    elevation = 8.dp,
+                    cornerRadii = CornerRadii.Fixed(0.75.rem),
+                    padding = Edges(1.5.rem),
+                    gap = 1.rem,
+                ).withBack(background = floating, foreground = foreground)
+            },
+            PopoverSemantic to {
+                it.alter(
+                    cascading = false,
+                    outlineWidth = 1.dp,
+                    outline = floatingLine,
+                    elevation = 4.dp,
+                    cornerRadii = CornerRadii.Fixed(0.5.rem),
+                    padding = Edges(0.75.rem),
+                    gap = 0.5.rem,
+                ).withBack(background = floating, foreground = foreground)
             },
             ListSemantic to {
                 it.withoutBack(gap = 2.dp, cascading = false)
@@ -718,4 +751,43 @@ fun lk(): Theme {
 //val themePreference = PersistentProperty("theme-preference", ThemePreference.Default, ThemePreference.serializer())
 //val appTheme = remember { themePreference().theme(themePreferenceColor()) }
 //val appTheme = Constant(Theme.clean(null))
-val appTheme = Constant(lk())
+
+/** The accent colour the hosting server asked for, if any, and the URL it was injected for. */
+var injectedAccent: Pair<String, Color>? = null
+
+/** What kind of server the admin is talking to, judged from its host. */
+enum class Environment(val label: String, val shortLabel: String) {
+    Local("Local", "Local"), Development("Development", "Dev"), Staging("Staging", "Stage"), Production("Production", "Prod")
+}
+
+private fun hostOf(url: String) = url.substringAfter("://").substringBefore('/').lowercase()
+
+/** Your own machine, a `dev`/`cs.` host, a `stag` host, or otherwise production. */
+fun environmentFor(url: String): Environment {
+    val host = hostOf(url)
+    return when {
+        host.startsWith("localhost") || host.startsWith("127.") || host.startsWith("0.0.0.0") || host.startsWith("[::1]") -> Environment.Local
+        "dev" in host || "cs." in host -> Environment.Development
+        "stag" in host -> Environment.Staging
+        else -> Environment.Production
+    }
+}
+
+/**
+ * The accent colour for the server at [url], so you can tell at a glance which environment you're
+ * working in.  A server can choose its own; otherwise it follows [environmentFor]: grey for your
+ * own machine, blue for development, yellow for staging, and red for production.  All in the same
+ * tone as [lkAccent].
+ */
+fun accentFor(url: String): Color {
+    injectedAccent?.let { (injectedUrl, color) -> if (hostOf(injectedUrl) == hostOf(url)) return color }
+    val tone = lkAccent.toHSP()
+    return when (environmentFor(url)) {
+        Environment.Local -> tone.copy(saturation = 0f).toRGB()
+        Environment.Development -> tone.copy(hue = 220.degrees).toRGB()
+        Environment.Staging -> lkAccent
+        Environment.Production -> tone.copy(hue = 0.degrees).toRGB()
+    }
+}
+
+val appTheme = remember { lk(accentFor(serverUrl())) }

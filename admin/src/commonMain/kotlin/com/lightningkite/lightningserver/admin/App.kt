@@ -33,10 +33,12 @@ package com.lightningkite.lightningserver.admin
 
 import com.lightningkite.services.database.optics.*
 import com.lightningkite.kiteui.EvolvingAppearance
+import com.lightningkite.kiteui.ExternalServices
 import com.lightningkite.kiteui.ExperimentalKiteUi
 import com.lightningkite.kiteui.auth.authComponent
 import com.lightningkite.kiteui.exceptions.installLsError
 import com.lightningkite.kiteui.forms.displayName
+import com.lightningkite.kiteui.forms.pluralize
 import com.lightningkite.kiteui.forms.titleCase
 import com.lightningkite.kiteui.models.*
 import com.lightningkite.kiteui.navigation.PageNavigator
@@ -45,6 +47,7 @@ import com.lightningkite.kiteui.views.ViewWriter
 import com.lightningkite.kiteui.views.card
 import com.lightningkite.kiteui.views.centered
 import com.lightningkite.kiteui.views.compact
+import com.lightningkite.kiteui.views.critical
 import com.lightningkite.kiteui.views.direct.*
 import com.lightningkite.kiteui.views.direct.icon
 import com.lightningkite.kiteui.views.expanding
@@ -55,6 +58,7 @@ import com.lightningkite.lightningserver.sessions.proofs.LiveAuthClientEndpoints
 import com.lightningkite.reactive.context.ReactiveContext
 import com.lightningkite.reactive.context.invoke
 import com.lightningkite.reactive.context.reactive
+import com.lightningkite.reactive.core.Signal
 import com.lightningkite.reactive.core.remember
 import com.lightningkite.reactive.core.rememberSuspending
 import com.lightningkite.reactive.extensions.debounceWrite
@@ -89,6 +93,9 @@ private val SERVER_URL_DEBOUNCE_TIME = 500.milliseconds
 private val SETTINGS_FIELD_WIDTH = 20.rem
 
 private const val APP_NAME = "Lightning Server Admin"
+
+/** Below this width the app bar's badge and account button shrink to make room for the title. */
+private val NARROW_BAR = 40.rem
 
 /**
  * Main application entry point for the Lightning Server admin panel.
@@ -135,7 +142,7 @@ fun ViewWriter.app(navigator: PageNavigator) {
             showNav = { true },
             menuItems = { collectionMenuItems() },
             footerItems = { listOf() },
-            actionItems = { listOf(profileNavItem) },
+            actionItems = { listOf(environmentNavItem, profileNavItem) },
         )
 
         themed(OuterSemantic).col {
@@ -183,44 +190,53 @@ private fun ReactiveContext.collectionMenuItems(): List<Nav.Item> {
             add(Nav.Link(title = "Renderer Gallery", icon = Icon.list) { com.lightningkite.lightningserver.admin.tests.RendererGalleryScreen() })
         }
 
-        // Auto-generate navigation items for each collection in the schema
-        // Sorted alphabetically by display name for consistent ordering
+        // Auto-generate navigation items for each collection the user can read (Condition.Never
+        // means no read access at all), grouped by @Group and sorted alphabetically.
+        val groups = adminServer().models.entries
+            .filter { permissions[it.key]?.read != Condition.Never }
+            .groupBy {
+                it.value.serializer.serializableAnnotations
+                    .find { it.fqn == "com.lightningkite.services.data.Group" }
+                    ?.values
+                    ?.get("name")
+                    ?.let { it as? SerializableAnnotationValue.StringValue }
+                    ?.value
+                    ?: "Other"
+            }
+            .entries.sortedBy { it.key }
+            .map { (group, models) ->
+                group to models
+                    .map { (key, model) -> Nav.Link(title = model.navTitle, icon = Icon.list) { CollectionAdminPage(key) } }
+                    .sortedBy { it.title }
+            }
         add(
             Nav.Group(
                 title = "Collections",
                 icon = Icon.list,
-                children = adminServer().models.entries.groupBy {
-                    it.value.serializer.serializableAnnotations
-                        .find { it.fqn == "com.lightningkite.services.data.Group" }
-                        ?.values
-                        ?.get("name")
-                        ?.let { it as? SerializableAnnotationValue.StringValue }
-                        ?.value
-                        ?: "Other"
-                }.entries.sortedBy { it.key }.map {
-                    Nav.Group(
-                        title = it.key,
-                        icon = Icon.menu,
-                        children = it.value.mapNotNull {
-                            // Only show collections where the user has read permission
-                            // Condition.Never means no read access at all
-                            if (permissions[it.key]?.read != Condition.Never) {
-                                Nav.Link(
-                                    // Use docGroup if available (for organizing related collections),
-                                    // otherwise fall back to serializer display name
-                                    title = it.value.docGroup?.split('.')?.joinToString(" / ") {
-                                        it.removeSuffix("Api").removeSuffix("RestEndpoints").titleCase()
-                                    } ?: it.value.serializer.displayName,
-                                    icon = Icon.list
-                                ) { CollectionAdminPage(it.key) }
-                            } else null
-                        }
-                    )
-                }
+                // A lone group adds a level of nesting and nothing else.
+                children = groups.singleOrNull()?.second
+                    ?: groups.map { (group, links) -> Nav.Group(title = group, icon = Icon.menu, children = links) }
             )
         )
     }
 }
+
+/**
+ * How a collection is named in navigation: by its API's doc group when it has one, which keeps
+ * related collections together ("Race / Club", "Race / Racer"), otherwise by its type.
+ */
+internal val ExternalLightningServer.ModelInfo<*, *>.navTitle: String
+    get() = docGroup?.split('.')?.joinToString(" / ") {
+        it.removeSuffix("Api").removeSuffix("RestEndpoints").titleCase()
+    } ?: serializer.displayName
+
+/** How a collection is named in page titles and headings: its type, plural ("Racers"). */
+internal fun ReactiveContext.collectionTitle(collectionName: String): String =
+    adminServer().models[collectionName]?.serializer?.displayName?.pluralize() ?: collectionName
+
+/** A collection's type, singular ("Racer"). */
+internal fun ReactiveContext.itemTypeTitle(collectionName: String): String =
+    adminServer().models[collectionName]?.serializer?.displayName ?: collectionName
 
 /**
  * The profile menu in the app bar: who you are signed in as, which server the panel talks to, and
@@ -229,6 +245,29 @@ private fun ReactiveContext.collectionMenuItems(): List<Nav.Item> {
  * A [Nav.Custom] because none of the other item kinds can hold a popover full of form fields.
  * `narrow` is left to default to `wide` - the button is already icon-sized either way.
  */
+private val environmentNavItem = Nav.Custom(
+    title = "Environment",
+    icon = Icon.info,
+    wide = { environmentBadge() },
+)
+
+/**
+ * Which kind of server this is, filled with its environment colour, so production is never
+ * mistaken for anything else even at a glance.
+ */
+private fun ViewWriter.environmentBadge() {
+    centered.compact.critical.frame {
+        shownForQuery(MediaQuery.MinWidth(NARROW_BAR)).text {
+            wraps = false
+            ::content { environmentFor(serverUrl()).label.uppercase() }
+        }
+        shownForQuery(MediaQuery.MaxWidth(NARROW_BAR)).text {
+            wraps = false
+            ::content { environmentFor(serverUrl()).shortLabel.uppercase() }
+        }
+    }
+}
+
 private val profileNavItem = Nav.Custom(
     title = "Profile",
     icon = Icon.person,
@@ -266,11 +305,12 @@ private fun ViewWriter.profileMenuButton() {
             }
         }
         col {
-            centered.icon(Icon.person, "Login")
-            centered.subtext {
-                // Show first 10 characters of user identifier in collapsed menu button
-                // Keeps the button compact while still showing recognizable info
-                ::content { me().take(10) }
+            centered.icon(Icon.person, "Account")
+            // Keeps the button compact; a long identifier ends in an ellipsis rather than mid-word.
+            centered.shownForQuery(MediaQuery.MinWidth(NARROW_BAR)).sizeConstraints(maxWidth = 10.rem).subtext {
+                wraps = false
+                ellipsis = true
+                ::content { me() }
             }
         }
         preferredDirection = PopoverPreferredDirection.belowLeft
@@ -298,19 +338,27 @@ private fun ViewWriter.profileMenuButton() {
                 )
                 sizeConstraints(width = SETTINGS_FIELD_WIDTH).field("User Type") {
                     select {
+                        // Shown by the subject's type ("User") rather than its path ("/auth/session"),
+                        // unless two subjects share a type name.
+                        var names = mapOf<String, String>()
                         bind(
                             userType,
                             remember {
                                 // Fetch available user types from the server schema
                                 // null represents "no auth" option
-                                listOf(null) + try {
-                                    adminServer().authEndpoints(null).subjects.keys.toList()
+                                val subjects = try {
+                                    adminServer().authEndpoints(null).subjects
                                 } catch (e: Exception) {
                                     // TODO: Log error or show warning to user
-                                    listOf()
+                                    mapOf()
                                 }
+                                val typeNames = subjects.mapValues { (_, it) -> (it as LiveAuthClientEndpoints<*, *>).subjectSerializer.displayName }
+                                names = typeNames.mapValues { (path, name) ->
+                                    if (typeNames.values.count { it == name } > 1) "$name ($path)" else name
+                                }
+                                listOf(null) + subjects.keys.toList()
                             },
-                            { it ?: "None" }
+                            { it?.let { names[it] ?: it } ?: "None" }
                         )
                     }
                 }
@@ -318,7 +366,7 @@ private fun ViewWriter.profileMenuButton() {
                 // Manual token/session input field
                 // Allows directly pasting a session token instead of logging in
                 // Useful for testing or when token is obtained externally
-                sizeConstraints(width = SETTINGS_FIELD_WIDTH).field("Token") {
+                shownWhen { adminCredentials()?.session == null }.sizeConstraints(width = SETTINGS_FIELD_WIDTH).field("Token") {
                     textInput {
                         content bind adminCredentials.lens(
                             get = { it?.session ?: "" },
@@ -330,12 +378,32 @@ private fun ViewWriter.profileMenuButton() {
                     }
                 }
 
+                // While signed in, the token is masked rather than shown - it's a live credential -
+                // but can still be copied, e.g. for calling the API by hand.
+                shownWhen { adminCredentials()?.session != null }.sizeConstraints(width = SETTINGS_FIELD_WIDTH).field("Token") {
+                    row {
+                        val copied = Signal(false)
+                        centered.expanding.text {
+                            wraps = false
+                            ::content { "•".repeat(12) + (adminCredentials()?.session?.takeLast(4) ?: "") }
+                        }
+                        button {
+                            centered.icon { ::source { if (copied()) Icon.done else Icon.copy } }
+                            onClick("Copy token") {
+                                ExternalServices.setClipboardText(adminCredentials.value?.session ?: return@onClick)
+                                copied.value = true
+                            }
+                        }
+                    }
+                }
+
                 // Dynamic authentication component based on selected user type
                 // Rebuilds when userType or server changes
                 // Provides the full auth flow (password, MFA, etc.)
                 sizeConstraints(width = SETTINGS_FIELD_WIDTH).frame {
                     reactive {
                         clearChildren()
+                        if (adminCredentials()?.session != null) return@reactive
                         try {
                             authComponent(
                                 adminServer().authEndpoints(null),
@@ -358,7 +426,7 @@ private fun ViewWriter.profileMenuButton() {
 
                 // Logout button - only visible when credentials exist
                 // Provides confirmation dialog to prevent accidental logout
-                shownWhen { adminCredentials() != null }.card.button {
+                shownWhen { adminCredentials()?.session != null }.card.button {
                     centered.row {
                         centered.icon(Icon.logout, "Log Out")
                         centered.text("Log Out")

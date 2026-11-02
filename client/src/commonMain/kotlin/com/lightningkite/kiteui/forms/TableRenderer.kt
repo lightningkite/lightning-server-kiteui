@@ -10,6 +10,7 @@ import com.lightningkite.kiteui.views.*
 import com.lightningkite.kiteui.views.direct.*
 import com.lightningkite.kiteui.views.l2.children
 import com.lightningkite.kiteui.views.direct.icon
+import com.lightningkite.kiteui.views.fieldTheme
 import com.lightningkite.reactive.context.invoke
 import com.lightningkite.reactive.context.reactive
 import com.lightningkite.reactive.core.*
@@ -272,13 +273,22 @@ public fun <T> ElementWriter.CanAddScrolling.renderTable(
                     onClick {
                         context.dialog { closer ->
                             col {
-                                sizeConstraints(height = 30.rem).scrolling.col {
+                                h3("Columns")
+                                val search = Signal("")
+                                fieldTheme.textInput {
+                                    hint = "Search fields"
+                                    content bind search
+                                }
+                                // A ceiling rather than a fixed height, so a short list doesn't leave a gap
+                                // and a long one scrolls instead of running out of the dialog.
+                                sizeConstraints(maxHeight = 30.rem, minWidth = 16.rem).scrolling.col {
                                     // Show available properties to add
                                     (properties as Array<Field<T, *>>)
                                         .walkDataClassPathsLimitedRecursion(innerSerializer)
                                         .forEach { path ->
-                                            toggleButton {
-                                                text(path.fields.joinToString(" - ") { it.displayName })
+                                            val name = path.fields.joinToString(" - ") { it.displayName }
+                                            shownWhen { name.contains(search(), ignoreCase = true) }.toggleButton {
+                                                text(name)
                                                 checked bind columns.contains(ColumnInfo(path, module))
                                             }
                                         }
@@ -293,46 +303,47 @@ public fun <T> ElementWriter.CanAddScrolling.renderTable(
                 }
             }
 
-            // Table body
-            expanding.themed(ListSemantic).recyclerView {
-                // Handle LimitReadable pagination - by Claude
-                reactive {
-                    val innerItems = items()
-                    if (innerItems is LimitReactiveList<T>) {
-                        if (innerItems.limit < lastIndex() + 50) {
-                            innerItems.limit = lastIndex() + 100
-                            // TODO: Modify to load using the suspend mode
+            // Table body, with the empty state laid over it so it sits in the table rather than below it
+            expanding.frame {
+                themed(ListSemantic).recyclerView {
+                    // Handle LimitReadable pagination - by Claude
+                    reactive {
+                        val innerItems = items()
+                        if (innerItems is LimitReactiveList<T>) {
+                            if (innerItems.limit < lastIndex() + 50) {
+                                innerItems.limit = lastIndex() + 100
+                                // TODO: Modify to load using the suspend mode
+                            }
+                        }
+                    }
+
+                    // by Claude - items is double-wrapped: Reactive<Reactive<List<T>>>
+                    // Use remember { items()() } to unwrap both layers into a single tracked reactive
+                    children(remember { items()() }, id = { (it as? HasId<*>)?._id ?: it }) { itemReactive ->
+                        fun ElementWriter.CanAddTheme.rowContent() = themed(ListSemantic).rowOfExpensive(columns) { col ->
+                            col.renderer(module).cellView(col.ctx, itemReactive.lens(col.path as Optic<Any?, Any?>), module).invoke(
+                                sizeConstraints(width = col.columnWidth(module).rem).padded
+                            )
+                        }
+
+                        if (linkTo != null) {
+                            card.unpadded.link {
+                                rowContent()
+                                ::to { linkTo(itemReactive()) }
+                            }
+                        } else if (action != null) {
+                            card.unpadded.button {
+                                rowContent()
+                                onClick { action(itemReactive()) }
+                            }
+                        } else {
+                            card.unpadded.rowContent()
                         }
                     }
                 }
-
-                // by Claude - items is double-wrapped: Reactive<Reactive<List<T>>>
-                // Use remember { items()() } to unwrap both layers into a single tracked reactive
-                children(remember { items()() }, id = { (it as? HasId<*>)?._id ?: it }) { itemReactive ->
-                    fun ElementWriter.CanAddTheme.rowContent() = themed(ListSemantic).rowOfExpensive(columns) { col ->
-                        col.renderer(module).cellView(col.ctx, itemReactive.lens(col.path as Optic<Any?, Any?>), module).invoke(
-                            sizeConstraints(width = col.columnWidth(module).rem).padded
-                        )
-                    }
-
-                    if (linkTo != null) {
-                        card.unpadded.link {
-                            rowContent()
-                            ::to { linkTo(itemReactive()) }
-                        }
-                    } else if (action != null) {
-                        card.unpadded.button {
-                            rowContent()
-                            onClick { action(itemReactive()) }
-                        }
-                    } else {
-                        card.unpadded.rowContent()
-                    }
-                }
+                // by Claude - unwrap double-nested reactive
+                centered.shownWhen { items()().isEmpty() }.subtext("No items")
             }
-
-            // Empty state - by Claude - unwrap double-nested reactive
-            centered.shownWhen { items()().isEmpty() }.text("No items")
         }
     }
 }

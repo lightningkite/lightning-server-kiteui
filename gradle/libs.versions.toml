@@ -5,16 +5,17 @@ dokka = "2.2.0"
 firebaseMessagingKtx = "24.1.2"
 graalVmNative = "1.1.14"
 kfc = "19.16.0"
-kiteui = "8.4.0-prerelease-97-3cb706f63"
+kiteui = "8.3.0-101-d1ee94eed-1-local"
 kotlin = "2.4.20"
 kotlinerCli = "1.0.5"
 kotlinxCoroutinesTest = "1.11.0"
 kotlinxSerializationCsvDurable = "0.2.21-1"
 ksp = "2.3.12"
-lightningServer = "5.4.0-prerelease-106-395d06668"
+lightningServer = "5.4.0-prerelease-114-973de947d"
 lkGradleHelpers = "4.1.2"
 proguard = "7.10.0"
-serviceAbstractions = "1.4.0-prerelease-86-540ad33b"
+qrcodeKotlin = "4.5.0"
+serviceAbstractions = "1.4.0-prerelease-108-7c1383c2"
 shadow = "8.1.1"
 vanniktechPublishing = "0.37.0"
 
@@ -30,6 +31,7 @@ lightningServer-sessions-shared = { module = "com.lightningkite.lightningserver:
 lightningServer-typed = { module = "com.lightningkite.lightningserver:typed", version = { ref = "lightningServer" } }
 lightningServer-typed-shared = { module = "com.lightningkite.lightningserver:typed-shared", version = { ref = "lightningServer" } }
 lkGradleHelpers = { module = "com.lightningkite:lk-gradle-helpers", version = { ref = "lkGradleHelpers" } }
+qrcode-kotlin = { module = "io.github.g0dkar:qrcode-kotlin", version = { ref = "qrcodeKotlin" } }
 proguard = { module = "com.guardsquare:proguard-gradle", version = { ref = "proguard" } }
 services-database-processor = { module = "com.lightningkite.services:database-processor", version = { ref = "serviceAbstractions" } }
 services-database-shared = { module = "com.lightningkite.services:database-shared", version = { ref = "serviceAbstractions" } }

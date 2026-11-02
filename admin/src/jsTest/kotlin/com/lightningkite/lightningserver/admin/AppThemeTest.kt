@@ -3,6 +3,7 @@ package com.lightningkite.lightningserver.admin
 import com.lightningkite.kiteui.models.*
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
@@ -228,9 +229,6 @@ class AppThemeTest {
     @Test
     fun testAppThemeConstant() {
         assertNotNull(appTheme, "appTheme should not be null")
-        val themeValue = appTheme.value
-        assertNotNull(themeValue, "appTheme should have a value")
-        assertEquals("lk", themeValue.id, "appTheme should use lk theme")
     }
 
     /**
@@ -278,5 +276,74 @@ class AppThemeTest {
         val lightened = card.lighten(0.05f)
 
         assertNotNull(lightened, "Lighten should produce a color")
+    }
+
+    @Test
+    fun testAccentIgnoresSchemePathAndCase() {
+        assertEquals(accentFor("https://api.example.com/"), accentFor("http://API.example.com/meta/admin"))
+    }
+
+    @Test
+    fun testAccentFollowsEnvironment() {
+        val local = accentFor("http://localhost:8080")
+        val dev = accentFor("https://api.dev.example.com")
+        val staging = accentFor("https://staging.example.com")
+        val production = accentFor("https://api.example.com")
+
+        assertEquals(local, accentFor("http://127.0.0.1:8080"), "Loopback addresses are local")
+        assertEquals(local.red, local.green, "Local is grey")
+        assertEquals(local.green, local.blue, "Local is grey")
+        assertEquals(dev, accentFor("https://ls5admin.cs.lightningkite.com"), "cs. hosts count as development")
+        assertTrue(dev.blue > dev.red, "Development is blue")
+        assertEquals(lkAccent, staging, "Staging is Lightning Kite yellow")
+        assertEquals(staging, accentFor("https://stage.example.com"))
+        assertTrue(production.red > production.green && production.red > production.blue, "Production is red")
+        assertEquals(4, setOf(local, dev, staging, production).size)
+    }
+
+    @Test
+    fun testEnvironmentFromHost() {
+        assertEquals(Environment.Local, environmentFor("http://localhost:8080"))
+        assertEquals(Environment.Local, environmentFor("http://127.0.0.1:8080/meta"))
+        assertEquals(Environment.Development, environmentFor("https://api.dev.example.com"))
+        assertEquals(Environment.Development, environmentFor("https://ls5admin.cs.lightningkite.com"))
+        assertEquals(Environment.Staging, environmentFor("https://STAGING.example.com"))
+        assertEquals(Environment.Production, environmentFor("https://api.example.com/dev-tools"), "Only the host counts")
+    }
+
+    @Test
+    fun testLkTintsTowardAccent() {
+        assertEquals(Color.fromHex(0x08181D), lk().background.closestColor(), "Default accent keeps the original background")
+        val red = lk(accentFor("https://api.example.com")).background.closestColor()
+        assertTrue(red.red > red.blue, "A red accent tints the background red")
+        val grey = lk(accentFor("http://localhost:8080")).background.closestColor()
+        assertEquals(grey.red, grey.blue, "A grey accent gives a neutral background")
+    }
+
+    @Test
+    fun testInjectedAccentAppliesOnlyToItsHost() {
+        val chosen = Color.fromHex(0x123456)
+        injectedAccent = "https://api.example.com" to chosen
+        try {
+            assertEquals(chosen, accentFor("https://api.example.com/"))
+            assertNotEquals(chosen, accentFor("https://other.example.com"))
+        } finally {
+            injectedAccent = null
+        }
+    }
+
+    @Test
+    fun testAccentedThemesGetDistinctIds() {
+        assertEquals("lk", lk().id)
+        assertNotEquals(lk().id, lk(Color.fromHex(0x123456)).id)
+        assertNotEquals(lk(Color.fromHex(0x654321)).id, lk(Color.fromHex(0x123456)).id)
+    }
+
+    @Test
+    fun testThemeIdsAreValidCssClassNames() {
+        // Ids become CSS class names; a '.' or '#' silently breaks the generated rules.
+        for (theme in listOf(lk(), lk(Color.fromHex(0x123456)), lk(accentFor("http://localhost:8080")), lk(accentFor("https://api.example.com")))) {
+            assertTrue(Regex("[A-Za-z0-9_-]+").matches(theme.id), "Bad theme id: ${theme.id}")
+        }
     }
 }

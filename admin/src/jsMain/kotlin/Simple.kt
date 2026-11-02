@@ -26,6 +26,7 @@
 //
 package com.lightningkite.admin
 
+import com.lightningkite.kiteui.models.Color
 import com.lightningkite.kiteui.navigation.DefaultJson
 import com.lightningkite.kiteui.navigation.PageNavigator
 import com.lightningkite.kiteui.printStackTrace2
@@ -34,6 +35,7 @@ import com.lightningkite.kiteui.views.Element
 import com.lightningkite.lightningserver.admin.AutoRoutes
 import com.lightningkite.lightningserver.admin.app
 import com.lightningkite.lightningserver.admin.appTheme
+import com.lightningkite.lightningserver.admin.injectedAccent
 import com.lightningkite.lightningserver.admin.serverUrl
 import kotlinx.browser.document
 import kotlinx.browser.window
@@ -49,6 +51,7 @@ fun main() {
     (document.getElementById("injectedBackendInformation") as? HTMLScriptElement)?.innerText?.let {
         val info = DefaultJson.decodeFromString<InjectedBackendInformation>(it)
         serverUrl.value = info.url
+        info.color?.let { runCatching { Color.fromHexString(it) }.getOrNull() }?.let { injectedAccent = info.url to it }
     }
     root(appTheme) {
         app(PageNavigator { AutoRoutes })
@@ -56,4 +59,8 @@ fun main() {
 }
 
 @Serializable
-data class InjectedBackendInformation(val url: String)
+data class InjectedBackendInformation(
+    val url: String,
+    /** The admin's accent colour for this server, as `#RRGGBB`.  Hashed from the host when absent. */
+    val color: String? = null,
+)

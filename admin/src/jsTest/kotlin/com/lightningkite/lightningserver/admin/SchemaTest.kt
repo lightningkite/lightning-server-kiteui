@@ -515,4 +515,63 @@ class SchemaTest {
         assertNotNull(externalServer)
         assertFalse(externalServer.useLiveData)
     }
+
+    private fun schemaWithModel(updatesSocket: Boolean): LightningServerKSchema {
+        SerializationRegistry.master.register(TestModel.serializer())
+        val model = VirtualTypeReference(TestModel.serializer().descriptor.serialName, listOf(), false)
+        val id = VirtualTypeReference("kotlin.String", listOf(), false)
+        return LightningServerKSchema(
+            baseUrl = "http://localhost:8080",
+            baseWsUrl = "ws://localhost:8080",
+            structures = mapOf(),
+            enums = mapOf(),
+            aliases = mapOf(),
+            endpoints = if (updatesSocket) listOf(
+                LightningServerKSchemaEndpoint(
+                    description = "",
+                    summary = "",
+                    method = "WEBSOCKET",
+                    path = "/test-models/rest",
+                    routes = mapOf(),
+                    input = VirtualTypeReference("com.lightningkite.services.database.Condition", listOf(model), false),
+                    output = VirtualTypeReference("com.lightningkite.services.database.CollectionUpdates", listOf(model, id), false),
+                    belongsToInterface = null,
+                )
+            ) else listOf(),
+            interfaces = listOf(
+                LightningServerKSchemaInterface(
+                    matches = VirtualTypeReference(
+                        "com.lightningkite.lightningserver.typed.ClientModelRestEndpoints",
+                        listOf(model, id),
+                        false
+                    ),
+                    path = "/test-models/rest",
+                )
+            )
+        )
+    }
+
+    /**
+     * Tests that an update socket is recognized by its current serial names, and that a
+     * collection without one gets a cache that can't open a socket.
+     */
+    @Test
+    fun testUpdatesSocketDetected() {
+        val withSocket = ExternalLightningServer(schemaWithModel(updatesSocket = true))
+        assertTrue(withSocket.models.getValue("/test-models/rest").hasUpdatesWs)
+
+        val withoutSocket = ExternalLightningServer(schemaWithModel(updatesSocket = false))
+        assertFalse(withoutSocket.models.getValue("/test-models/rest").hasUpdatesWs)
+        assertNull(withoutSocket.models.getValue("/test-models/rest").cache(null).sockets)
+    }
+
+    /**
+     * Tests that useLiveData = false keeps the cache off the update socket entirely, even when the
+     * server offers one.
+     */
+    @Test
+    fun testUseLiveDataFalseDisablesSockets() {
+        val server = ExternalLightningServer(schemaWithModel(updatesSocket = true), useLiveData = false)
+        assertNull(server.models.getValue("/test-models/rest").cache(null).sockets)
+    }
 }

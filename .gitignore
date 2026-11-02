@@ -32,3 +32,5 @@ tmp
 local.version.txt
 
 .claude/
+
+secrets.properties

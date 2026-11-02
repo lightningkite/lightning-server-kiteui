@@ -50,6 +50,11 @@ class HomePage : Page {
             }
 
             important.buttonTheme.button {
+                centered.text("Security")
+                onClick { context.pageNavigator.navigate(SecurityPage()) }
+            }
+
+            important.buttonTheme.button {
                 centered.text("Logout")
                 onClick {
                     try {

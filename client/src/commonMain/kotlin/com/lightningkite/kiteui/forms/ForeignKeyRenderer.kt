@@ -19,6 +19,7 @@ import com.lightningkite.reactive.core.remember
 import com.lightningkite.services.data.serialNameFQN
 import com.lightningkite.services.database.*
 import kotlinx.serialization.ExperimentalSerializationApi
+import kotlin.time.Duration.Companion.minutes
 
 /**
  * Renderer for foreign key fields annotated with @References.
@@ -112,11 +113,11 @@ public object ForeignKeyRenderer : Renderer<Any?> {
                                 val searchText = textSearch.debounce(500)()
 
                                 if (searchText.isBlank()) {
-                                    cache.watch(Query(Condition.Always, listOf()))()
+                                    cache.list(Query(Condition.Always, listOf()), pullFrequency = 1.minutes)()
                                 } else {
                                     // Search in string fields
                                     val props = typeInfo.serializer.fields
-                                        ?: return@remember cache.watch(Query(Condition.Always, listOf()))()
+                                        ?: return@remember cache.list(Query(Condition.Always, listOf()), pullFrequency = 1.minutes)()
 
                                     val stringConditions = props.mapNotNull { prop ->
                                         val serialName = prop.serializer.let {
@@ -147,7 +148,7 @@ public object ForeignKeyRenderer : Renderer<Any?> {
                                         Condition.Always
                                     }
 
-                                    cache.watch(Query(condition, listOf()))()
+                                    cache.list(Query(condition, listOf()), pullFrequency = 1.minutes)()
                                 }
                             }
 
