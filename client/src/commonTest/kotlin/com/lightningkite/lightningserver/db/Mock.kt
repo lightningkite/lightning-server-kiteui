@@ -305,7 +305,7 @@ val connectivityFetchGate = ConnectivityGate()
 suspend fun connectivityFetch(
     url: String,
     method: HttpMethod = HttpMethod.GET,
-    headers: suspend () -> HttpHeaders = { httpHeaders() },
+    headers: suspend () -> HttpHeaders = { HttpHeaders() },
     body: RequestBody,
 ): RequestResponse {
     return if (currentCoroutineContext()[ConnectivityIssueSuppress.Key] == null) {

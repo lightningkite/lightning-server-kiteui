@@ -88,7 +88,7 @@ public class BulkFetcher(
             connectivityFetch(
                 url = httpBulk,
                 method = HttpMethod.POST.kiteUi,
-                headers = { httpHeaders(calculator()) },
+                headers = { HttpHeaders(calculator()) },
                 body = RequestBodyText(
                     json.encodeToString(
                         MapSerializer(String.serializer(), BulkRequest.serializer()),

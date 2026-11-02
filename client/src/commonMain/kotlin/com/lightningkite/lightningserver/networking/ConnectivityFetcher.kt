@@ -2,7 +2,7 @@ package com.lightningkite.lightningserver.networking
 
 import com.lightningkite.kiteui.RequestBodyText
 import com.lightningkite.kiteui.connectivityFetch
-import com.lightningkite.kiteui.httpHeaders
+import com.lightningkite.kiteui.HttpHeaders
 import com.lightningkite.kiteui.navigation.DefaultJson
 import com.lightningkite.kiteui.retryWebSocket
 import com.lightningkite.kiteui.typed
@@ -41,7 +41,7 @@ public class ConnectivityFetcher(
             url = "$http${url.asPath()}",
             method = method.kiteUi,
             headers = {
-                httpHeaders(listOf("Accept" to "application/json") + calculator())
+                HttpHeaders(listOf("Accept" to "application/json") + calculator())
             },
             body = if (inSerializer.descriptor.serialName != "kotlin.Unit")
                 RequestBodyText(json.encodeToString(inSerializer, body), "application/json")
