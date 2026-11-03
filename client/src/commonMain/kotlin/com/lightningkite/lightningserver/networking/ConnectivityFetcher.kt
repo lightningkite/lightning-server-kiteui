@@ -11,6 +11,7 @@ import com.lightningkite.lightningserver.LSError
 import com.lightningkite.lightningserver.LsErrorException
 import com.lightningkite.lightningserver.typed.ClientWebSocket
 import com.lightningkite.lightningserver.typed.Fetcher
+import com.lightningkite.lightningserver.typed.RequestMetadata
 import com.lightningkite.services.data.StringArrayFormat
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
@@ -19,16 +20,26 @@ import kotlinx.serialization.json.Json
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 
+// Claude: a function rather than a secondary constructor, whose JVM signature would clash with the primary's.
+@Deprecated("Use metadata", ReplaceWith("ConnectivityFetcher(http, ws, json, pingTime, metadata = { for ((name, value) in calculator()) append(name, value) })"))
+public fun ConnectivityFetcher(
+    http: String,
+    ws: String,
+    json: Json = DefaultJson,
+    pingTime: Duration = 5_000.milliseconds,
+    calculator: suspend () -> List<Pair<String, String>>,
+): ConnectivityFetcher = ConnectivityFetcher(http, ws, json, pingTime, metadata = { for ((name, value) in calculator()) append(name, value) })
+
 @OptIn(ExperimentalSerializationApi::class)
 public class ConnectivityFetcher(
     public val http: String,
     public val ws: String,
     public val json: Json = DefaultJson,
     public val pingTime: Duration = 5_000.milliseconds,
-    public val calculator: suspend () -> List<Pair<String, String>> = { listOf() },
+    public val metadata: suspend RequestMetadata.() -> Unit = {},
 ) : Fetcher {
-    override fun withHeaderCalculator(calculator: suspend () -> List<Pair<String, String>>): Fetcher =
-        ConnectivityFetcher(http, ws, json, pingTime, calculator)
+    override fun withMetadata(block: suspend RequestMetadata.() -> Unit): Fetcher =
+        ConnectivityFetcher(http, ws, json, pingTime, metadata = { metadata(); block() })
 
     override suspend fun <I, O> invoke(
         url: String,
@@ -41,7 +52,7 @@ public class ConnectivityFetcher(
             url = "$http${url.asPath()}",
             method = method.kiteUi,
             headers = {
-                HttpHeaders(listOf("Accept" to "application/json") + calculator())
+                HttpHeaders(RequestMetadata().apply { set("Accept", "application/json"); metadata() }.toList())
             },
             body = if (inSerializer.descriptor.serialName != "kotlin.Unit")
                 RequestBodyText(json.encodeToString(inSerializer, body), "application/json")
@@ -76,17 +87,7 @@ public class ConnectivityFetcher(
         outSerializer: KSerializer<O>,
     ): ClientWebSocket<I, O> {
         return retryWebSocket(
-            underlyingSocket = {
-                val headers = calculator()
-                val base = "$ws${url.asPath()}"
-                com.lightningkite.kiteui.webSocket(
-                    if (headers.isEmpty()) base
-                    else {
-                        val separator = if (base.contains('?')) '&' else '?'
-                        base + separator + headers.joinToString("&") { "${it.first}=${it.second}" }
-                    }
-                )
-            },
+            underlyingSocket = { com.lightningkite.kiteui.webSocket("$ws${url.asPath()}".withQuery(RequestMetadata().apply { metadata() })) },
             pingTime = pingTime.inWholeMilliseconds
         ).typed(json, inSerializer, outSerializer).toClientWebSocket()
     }

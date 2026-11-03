@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Networking
+
+- **`ConnectivityFetcher` and `BulkFetcher` take `metadata: suspend RequestMetadata.() -> Unit`** in place of `calculator`, and implement `Fetcher.withMetadata`. Creating them with `calculator` is deprecated.
+- **WebSocket metadata is now URL-encoded** when appended to the socket URL as query parameters.
+- **Added `AccessToken`** (`suspend () -> String`) and an `AccessToken(endpoints, sessionToken, forceInvalidate)` factory that caches the token for 4 minutes. Send it with `api.withMetadata { set("Authorization", accessToken()) }`. `AuthClientEndpoints.accessToken(...)` is deprecated.
+- **`LightningServerAuthentication.accessToken` is now an `AccessToken`**, not a header-list lambda.
+
 ### Auth Components
 
 - **Added stable `debugName` values to all interactive auth elements**, making it possible for AI driver tests and automated test suites to reliably target every interactive element without fragile index-based paths.

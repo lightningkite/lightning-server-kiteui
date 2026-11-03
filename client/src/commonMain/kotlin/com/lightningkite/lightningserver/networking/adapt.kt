@@ -5,6 +5,8 @@ import com.lightningkite.kiteui.TypedWebSocket
 import com.lightningkite.kiteui.report
 import com.lightningkite.lightningserver.db.BaseResourceUse
 import com.lightningkite.lightningserver.typed.ClientWebSocket
+import com.lightningkite.lightningserver.typed.RequestMetadata
+import com.lightningkite.kotlinx.serialization.uri.encodeURIComponent
 import com.lightningkite.reactive.core.Reactive
 import com.lightningkite.reactive.core.Signal
 import kotlinx.coroutines.*
@@ -34,6 +36,14 @@ public val HttpMethod.lightningServer: LsHttpMethod get() = when (this) {
     HttpMethod.PATCH -> LsHttpMethod.PATCH
     HttpMethod.DELETE -> LsHttpMethod.DELETE
     HttpMethod.HEAD -> LsHttpMethod.HEAD
+}
+
+/** Returns this URL with [metadata] appended as query parameters, since browsers cannot set WebSocket headers. */
+internal fun String.withQuery(metadata: RequestMetadata): String {
+    val entries = metadata.toList()
+    return if (entries.isEmpty()) this
+    else this + (if ('?' in this) '&' else '?') +
+        entries.joinToString("&") { "${encodeURIComponent(it.first)}=${encodeURIComponent(it.second)}" }
 }
 
 

@@ -26,7 +26,7 @@ public data class LightningServerAuthentication(
     val subjectPath: String,
     val sessionToken: String,
 ) {
-    val accessToken: suspend () -> List<Pair<String, String>> = subject.accessToken(sessionToken)
+    val accessToken: AccessToken = AccessToken(subject, sessionToken)
 }
 
 public data class AuthEndpoints(
@@ -317,13 +317,26 @@ public data class AuthEndpoints(
     }
 }
 
-public fun <USER : HasId<ID>, ID : Comparable<ID>> AuthClientEndpoints<USER, ID>.accessToken(sessionToken: String): suspend () -> List<Pair<String, String>> =
-    accessToken(sessionToken, null)
+/** Returns a valid access token each time it is invoked. */
+public typealias AccessToken = suspend () -> String
 
-public fun <USER : HasId<ID>, ID : Comparable<ID>> AuthClientEndpoints<USER, ID>.accessToken(
+/**
+ * Returns an [AccessToken] for [sessionToken], fetched from [endpoints] and reused for 4 minutes.
+ *
+ * Send it with every request through [com.lightningkite.lightningserver.typed.Fetcher.withMetadata]:
+ *
+ * ```kotlin
+ * val accessToken = AccessToken(api.userAuth, sessionToken)
+ * val authApi = api.withMetadata { set("Authorization", accessToken()) }
+ * ```
+ *
+ * @param forceInvalidate when it fires, the next invocation fetches a new token.
+ */
+public fun AccessToken(
+    endpoints: AuthClientEndpoints<*, *>,
     sessionToken: String,
-    forceInvalidate: Listenable?,
-): suspend () -> List<Pair<String, String>> {
+    forceInvalidate: Listenable? = null,
+): AccessToken {
     var lastRefresh: Instant = Instant.DISTANT_PAST
     var token: Deferred<String>? = null
     forceInvalidate?.let {
@@ -337,11 +350,24 @@ public fun <USER : HasId<ID>, ID : Comparable<ID>> AuthClientEndpoints<USER, ID>
         if (now() - lastRefresh > 4.minutes || toUse == null) {
             lastRefresh = now()
             val out = AppScope.async {
-                getTokenSimple(sessionToken)
+                endpoints.getTokenSimple(sessionToken)
             }
             token = out
             toUse = out
         }
-        listOf("Authorization" to toUse.await())
+        toUse.await()
     }
+}
+
+@Deprecated("Use AccessToken and send it with withMetadata { set(\"Authorization\", accessToken()) }")
+public fun <USER : HasId<ID>, ID : Comparable<ID>> AuthClientEndpoints<USER, ID>.accessToken(sessionToken: String): suspend () -> List<Pair<String, String>> =
+    accessToken(sessionToken, null)
+
+@Deprecated("Use AccessToken and send it with withMetadata { set(\"Authorization\", accessToken()) }")
+public fun <USER : HasId<ID>, ID : Comparable<ID>> AuthClientEndpoints<USER, ID>.accessToken(
+    sessionToken: String,
+    forceInvalidate: Listenable?,
+): suspend () -> List<Pair<String, String>> {
+    val accessToken = AccessToken(this, sessionToken, forceInvalidate)
+    return { listOf("Authorization" to accessToken()) }
 }

@@ -119,18 +119,12 @@ class ExternalLightningServer(
     /** Endpoints that act on a single item, by collection path.  See [detectItemActions]. */
     val itemActions: Map<String, List<ItemAction>> by lazy { schema.detectItemActions() }
 
-    private val nullToken: suspend () -> List<Pair<String, String>> = { listOf() }
-
     private val fetcherAuthCache = HashMap<LightningServerAuthentication?, Fetcher>()
     fun fetcher(auth: LightningServerAuthentication?): Fetcher = fetcherAuthCache.getOrPut(auth) {
-        bulk?.let {
-            BulkFetcher(
-                schema.baseUrl + it.path,
-                schema.baseWsUrl + "/multiplex",
-                json,
-                calculator = auth?.accessToken ?: nullToken
-            )
-        } ?: ConnectivityFetcher(schema.baseUrl, schema.baseWsUrl, json, calculator = auth?.accessToken ?: nullToken)
+        val fetcher = bulk?.let { BulkFetcher(schema.baseUrl + it.path, schema.baseWsUrl + "/multiplex", json) }
+            ?: ConnectivityFetcher(schema.baseUrl, schema.baseWsUrl, json)
+        if (auth == null) fetcher
+        else fetcher.withMetadata { set("Authorization", auth.accessToken()) }
     }
 
     private val endpointsAuthCache = HashMap<LightningServerAuthentication?, AuthEndpoints>()

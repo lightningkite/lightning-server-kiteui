@@ -7,6 +7,7 @@ import com.lightningkite.lightningserver.typed.BulkRequest
 import com.lightningkite.lightningserver.typed.BulkResponse
 import com.lightningkite.lightningserver.typed.ClientWebSocket
 import com.lightningkite.lightningserver.typed.Fetcher
+import com.lightningkite.lightningserver.typed.RequestMetadata
 import com.lightningkite.reactive.context.reactive
 import com.lightningkite.reactive.core.AppScope
 import com.lightningkite.reactive.core.Reactive
@@ -26,6 +27,18 @@ import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 import kotlin.uuid.Uuid
 
+// Claude: a function rather than a secondary constructor, whose JVM signature would clash with the primary's.
+@Deprecated("Use metadata", ReplaceWith("BulkFetcher(httpBulk, wsMultiplex, json, pingTime, delay, log, metadata = { for ((name, value) in calculator()) append(name, value) })"))
+public fun BulkFetcher(
+    httpBulk: String,
+    wsMultiplex: String,
+    json: Json = DefaultJson,
+    pingTime: Duration = 5_000.milliseconds,
+    delay: Duration = 100.milliseconds,
+    log: Log? = null,
+    calculator: suspend () -> List<Pair<String, String>>,
+): BulkFetcher = BulkFetcher(httpBulk, wsMultiplex, json, pingTime, delay, log, metadata = { for ((name, value) in calculator()) append(name, value) })
+
 @OptIn(ExperimentalSerializationApi::class)
 public class BulkFetcher(
     public val httpBulk: String,
@@ -34,13 +47,13 @@ public class BulkFetcher(
     public val pingTime: Duration = 5_000.milliseconds,
     public val delay: Duration = 100.milliseconds,
     public val log: Log? = null,
-    public val calculator: suspend () -> List<Pair<String, String>> = { listOf() },
+    public val metadata: suspend RequestMetadata.() -> Unit = {},
 ) : Fetcher {
     private val stringArrayFormat = StringArrayFormat(json.serializersModule)
     override fun <T> url(value: T, serializer: KSerializer<T>): String = stringArrayFormat.encodeToString(serializer, value)
 
-    override fun withHeaderCalculator(calculator: suspend () -> List<Pair<String, String>>): Fetcher =
-        BulkFetcher(httpBulk, wsMultiplex, json, pingTime, delay, log, calculator)
+    override fun withMetadata(block: suspend RequestMetadata.() -> Unit): Fetcher =
+        BulkFetcher(httpBulk, wsMultiplex, json, pingTime, delay, log, metadata = { metadata(); block() })
 
     private var fetchQueue = HashMap<String, Pair<BulkRequest, CancellableContinuation<BulkResponse>>>()
     private var scheduled = false
@@ -88,7 +101,7 @@ public class BulkFetcher(
             connectivityFetch(
                 url = httpBulk,
                 method = HttpMethod.POST.kiteUi,
-                headers = { HttpHeaders(calculator()) },
+                headers = { HttpHeaders(RequestMetadata().apply { metadata() }.toList()) },
                 body = RequestBodyText(
                     json.encodeToString(
                         MapSerializer(String.serializer(), BulkRequest.serializer()),
@@ -115,15 +128,7 @@ public class BulkFetcher(
     }
 
     public val wsMuxer: TypedWebSocket<MultiplexMessage, MultiplexMessage> = retryWebSocket(
-        underlyingSocket = {
-            val headers = calculator()
-
-            val url = if(headers.isNotEmpty()){
-                val terminator = if(wsMultiplex.contains('?')) '&' else '?'
-                wsMultiplex + "$terminator${headers.joinToString("&"){ "${it.first}=${it.second}" }}"
-            } else wsMultiplex
-            webSocket(url)
-        },
+        underlyingSocket = { webSocket(wsMultiplex.withQuery(RequestMetadata().apply { metadata() })) },
         pingTime = pingTime.inWholeMilliseconds,
         log = log
     ).typedWithDebug(json, MultiplexMessage.serializer(), MultiplexMessage.serializer())
