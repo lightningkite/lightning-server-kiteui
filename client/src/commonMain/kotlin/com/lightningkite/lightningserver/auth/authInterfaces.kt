@@ -14,6 +14,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlin.time.Clock.System.now
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
@@ -26,7 +27,7 @@ public data class LightningServerAuthentication(
     val subjectPath: String,
     val sessionToken: String,
 ) {
-    val accessToken: AccessToken = AccessToken(subject, sessionToken)
+    val accessToken: AccessToken = subject.accessToken(sessionToken)
 }
 
 public data class AuthEndpoints(
@@ -321,21 +322,21 @@ public data class AuthEndpoints(
 public typealias AccessToken = suspend () -> String
 
 /**
- * Returns an [AccessToken] for [sessionToken], fetched from [endpoints] and reused for 4 minutes.
+ * Returns an [AccessToken] for [sessionToken], fetched from these endpoints and reused for [maxAge].
  *
  * Send it with every request through [com.lightningkite.lightningserver.typed.Fetcher.withMetadata]:
  *
  * ```kotlin
- * val accessToken = AccessToken(api.userAuth, sessionToken)
+ * val accessToken = api.userAuth.accessToken(sessionToken)
  * val authApi = api.withMetadata { set("Authorization", accessToken()) }
  * ```
  *
  * @param forceInvalidate when it fires, the next invocation fetches a new token.
  */
-public fun AccessToken(
-    endpoints: AuthClientEndpoints<*, *>,
+public fun AuthClientEndpoints<*, *>.accessToken(
     sessionToken: String,
     forceInvalidate: Listenable? = null,
+    maxAge: Duration = 4.minutes,
 ): AccessToken {
     var lastRefresh: Instant = Instant.DISTANT_PAST
     var token: Deferred<String>? = null
@@ -347,27 +348,14 @@ public fun AccessToken(
     }
     return {
         var toUse = token
-        if (now() - lastRefresh > 4.minutes || toUse == null) {
+        if (now() - lastRefresh > maxAge || toUse == null) {
             lastRefresh = now()
             val out = AppScope.async {
-                endpoints.getTokenSimple(sessionToken)
+                getTokenSimple(sessionToken)
             }
             token = out
             toUse = out
         }
         toUse.await()
     }
-}
-
-@Deprecated("Use AccessToken and send it with withMetadata { set(\"Authorization\", accessToken()) }")
-public fun <USER : HasId<ID>, ID : Comparable<ID>> AuthClientEndpoints<USER, ID>.accessToken(sessionToken: String): suspend () -> List<Pair<String, String>> =
-    accessToken(sessionToken, null)
-
-@Deprecated("Use AccessToken and send it with withMetadata { set(\"Authorization\", accessToken()) }")
-public fun <USER : HasId<ID>, ID : Comparable<ID>> AuthClientEndpoints<USER, ID>.accessToken(
-    sessionToken: String,
-    forceInvalidate: Listenable?,
-): suspend () -> List<Pair<String, String>> {
-    val accessToken = AccessToken(this, sessionToken, forceInvalidate)
-    return { listOf("Authorization" to accessToken()) }
 }

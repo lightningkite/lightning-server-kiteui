@@ -7,7 +7,7 @@ import com.lightningkite.kiteui.navigation.Page
 import com.lightningkite.kiteui.views.*
 import com.lightningkite.kiteui.views.direct.*
 import com.lightningkite.lightningserver.auth.AuthEndpoints
-import com.lightningkite.lightningserver.auth.AccessToken
+import com.lightningkite.lightningserver.auth.accessToken
 import com.lightningkite.lskiteuistarter.sdk.currentSession
 import com.lightningkite.reactive.context.invoke
 import com.lightningkite.reactive.context.reactive
@@ -33,7 +33,7 @@ class SecurityPage : Page {
                 ),
                 subjectId = session.userId.toString(),
                 elevate = { token ->
-                    val accessToken = AccessToken(api.userAuth, token)
+                    val accessToken = api.userAuth.accessToken(token)
                     val auth = api.withMetadata { set("Authorization", accessToken()) }.userAuth
                     SecurityComponent.Elevated(
                         password = auth.password,

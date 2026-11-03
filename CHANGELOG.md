@@ -6,7 +6,7 @@
 
 - **`ConnectivityFetcher` and `BulkFetcher` take `metadata: suspend RequestMetadata.() -> Unit`** in place of `calculator`, and implement `Fetcher.withMetadata`. Creating them with `calculator` is deprecated.
 - **WebSocket metadata is now URL-encoded** when appended to the socket URL as query parameters.
-- **Added `AccessToken`** (`suspend () -> String`) and an `AccessToken(endpoints, sessionToken, forceInvalidate)` factory that caches the token for 4 minutes. Send it with `api.withMetadata { set("Authorization", accessToken()) }`. `AuthClientEndpoints.accessToken(...)` is deprecated.
+- **`AuthClientEndpoints.accessToken(sessionToken, forceInvalidate, maxAge)` now returns an `AccessToken`** (`suspend () -> String`), the bare token, instead of a header-list lambda (breaking). `maxAge` (default 4 minutes) is how long a fetched token is reused. Send it with `api.withMetadata { set("Authorization", accessToken()) }`.
 - **`LightningServerAuthentication.accessToken` is now an `AccessToken`**, not a header-list lambda.
 
 ### Auth Components
