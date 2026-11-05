@@ -16,8 +16,8 @@ qrcodeKotlin = "4.5.0"
 shadow = "8.1.1"
 vanniktechPublishing = "0.37.0"
 kiteui = "8.4.0-prerelease-276-ec117d50b"
-serviceAbstractions = "1.4.0-prerelease-132-dfd2dc63"
-lightningServer = "5.4.0-prerelease-163-f2bd8e94a"
+serviceAbstractions = "1.4.0-prerelease-134-0107ea13"
+lightningServer = "5.4.0-prerelease-164-597525dbf"
 
 [libraries]
 androidDesugaring = { module = "com.android.tools:desugar_jdk_libs", version = { ref = "androidDesugaring" } }
