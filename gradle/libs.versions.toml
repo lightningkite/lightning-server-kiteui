@@ -15,8 +15,8 @@ proguard = "7.10.0"
 qrcodeKotlin = "4.5.0"
 shadow = "8.1.1"
 vanniktechPublishing = "0.37.0"
-kiteui = "8.4.0-prerelease-274-8bc5a935c"
-serviceAbstractions = "1.4.0-prerelease-129-e0cd3f36"
+kiteui = "8.4.0-prerelease-276-ec117d50b"
+serviceAbstractions = "1.4.0-prerelease-136-0107ea13"
 lightningServer = "5.4.0-prerelease-166-a8ac90ac0"
 
 [libraries]

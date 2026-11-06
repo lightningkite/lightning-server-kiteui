@@ -31,7 +31,6 @@ plugins {
     alias(libs.plugins.androidKmpLibrary) apply false
     alias(libs.plugins.graalVmNative) apply false
     alias(libs.plugins.shadow) apply false
-    alias(libs.plugins.kotlin.cocoapods) apply false
     alias(libs.plugins.vanniktechPublishing) apply false
     alias(libs.plugins.dokka) apply false
 }
