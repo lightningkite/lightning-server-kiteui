@@ -58,6 +58,7 @@ dependencies {
     coreLibraryDesugaring(libs.androidDesugaring)
 }
 
-// commonMain compiles the common KSP output as plain source, so every other KSP run and compile must wait for it.
+// commonMain compiles the database processor's shared output (written by kspCommonMainKotlinMetadata alone) as plain
+// source, so every other KSP run and compile must wait for it.
 tasks.matching { (it.name.startsWith("ksp") || it.name.startsWith("compile")) && it.name != "kspCommonMainKotlinMetadata" }
     .configureEach { dependsOn("kspCommonMainKotlinMetadata") }
