@@ -14,7 +14,7 @@ kotlin {
     applyDefaultHierarchyTemplate()
     android {
         namespace = "com.lightningkite.lskiteuistarter.shared"
-        compileSdk = 36
+        compileSdk = 37
         minSdk = 26
         enableCoreLibraryDesugaring = true
         compilerOptions {
