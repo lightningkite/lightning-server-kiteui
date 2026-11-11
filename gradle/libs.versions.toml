@@ -15,9 +15,9 @@ proguard = "7.10.0"
 qrcodeKotlin = "4.5.0"
 shadow = "8.1.1"
 vanniktechPublishing = "0.37.0"
-kiteui = "8.4.0-prerelease-276-ec117d50b"
-serviceAbstractions = "1.4.0-prerelease-136-d4718aad"
-lightningServer = "5.4.0-prerelease-166-a8ac90ac0"
+kiteui = "8.4.0-prerelease-275-8a34eb9a4"
+serviceAbstractions = "1.4.0-prerelease-164-74b4e184"
+lightningServer = "5.4.0-prerelease-182-ae4cc39be"
 
 [libraries]
 androidDesugaring = { module = "com.android.tools:desugar_jdk_libs", version = { ref = "androidDesugaring" } }
