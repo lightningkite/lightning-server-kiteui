@@ -11,7 +11,7 @@ plugins {
 //    alias(libs.plugins.dokka)
     alias(libs.plugins.kjsplain)
     alias(libs.plugins.kfc)
-    alias(libs.plugins.comLightningkiteKiteui)
+    alias(kui.plugins.kiteui)
 }
 apply<KiteUiPlugin>()
 
@@ -90,7 +90,7 @@ ksp {
 
 dependencies {
     configurations.filter { it.name.startsWith("ksp") && it.name != "ksp" }.forEach {
-        add(it.name, libs.services.database.processor)
+        add(it.name, sa.database.processor)
     }
 }
 

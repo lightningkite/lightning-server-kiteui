@@ -7,7 +7,6 @@ plugins {
 }
 
 group = "com.lightningkite.lskiteuistarter"
-version = "1.0-SNAPSHOT"
 
 application {
     mainClass.set("com.lightningkite.lskiteuistarter.MainKt")
@@ -17,28 +16,28 @@ dependencies {
     implementation(project(":demo-shared"))
     implementation(project(":demo-apps"))
     implementation(project(":server-client-utils"))
-    implementation(libs.kitui.jvm.ssr)
+    implementation("com.lightningkite.kiteui:library-jvmssr:${kui.library.asProvider().get().version}")
     implementation(libs.kotlinerCli)
     implementation(libs.kotlinx.serialization.csv.durable)
-    implementation(libs.lightningServer.core)
-    implementation(libs.lightningServer.typed)
-    implementation(libs.lightningServer.files)
-    implementation(libs.lightningServer.media)
-    implementation(libs.lightningServer.sessions)
-    implementation(libs.lightningServer.sessions.email)
-    implementation(libs.lightningServer.sessions.sms)
-    implementation(libs.lightningServer.sessions.totp)
-    implementation(libs.lightningServer.engine.netty)
-    implementation(libs.lightningServer.engine.ktor)
-    implementation(libs.services.database)
-    implementation(libs.services.database.jsonfile)
-    implementation(libs.services.database.mongodb)
-    implementation(libs.services.notifications.firebase)
-    implementation(libs.services.email.javasmtp)
-    implementation(libs.services.files.s3)
+    implementation(ls.core)
+    implementation(ls.typed)
+    implementation(ls.files)
+    implementation(ls.media)
+    implementation(ls.sessions)
+    implementation(ls.sessions.email)
+    implementation(ls.sessions.sms)
+    implementation(ls.sessions.totp)
+    implementation(ls.engine.netty)
+    implementation(ls.engine.ktor)
+    implementation(sa.database)
+    implementation(sa.database.jsonfile)
+    implementation(sa.database.mongodb)
+    implementation(sa.notifications.fcm)
+    implementation(sa.email.javasmtp)
+    implementation(sa.files.s3)
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-swing") // Provides Dispatchers.Main for SSR
 
-    ksp(libs.services.database.processor)
+    ksp(sa.database.processor)
 
     testImplementation(kotlin("test"))
 }

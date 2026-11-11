@@ -1,7 +1,4 @@
-import com.lightningkite.deployhelpers.lkLibrary
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-
-group = "com.lightningkite.lightningserver"
 
 val iosEnabled: Boolean by rootProject.extra
 
@@ -51,14 +48,14 @@ kotlin {
     sourceSets {
         val commonMain = getByName("commonMain") {
             dependencies {
-                api(libs.lightningServer.core.shared)
-                api(libs.lightningServer.media.shared)
-                api(libs.lightningServer.files.shared)
-                api(libs.lightningServer.typed.shared)
-                api(libs.lightningServer.sessions.shared)
-                api(libs.services.database.shared)
-                api(libs.services.currency)
-                api(libs.kitui)
+                api(ls.core.shared)
+                api(ls.media.shared)
+                api(ls.files.shared)
+                api(ls.typed.shared)
+                api(ls.sessions.shared)
+                api(sa.database.shared)
+                api(sa.currency)
+                api(kui.library)
                 implementation(libs.qrcode.kotlin)
             }
             kotlin {
@@ -83,14 +80,16 @@ kotlin {
 
 dependencies {
     configurations.filter { it.name.startsWith("ksp") && it.name != "ksp" }.forEach {
-        add(it.name, libs.services.database.processor)
+        add(it.name, sa.database.processor)
     }
         coreLibraryDesugaring(libs.androidDesugaring)
 }
 
-lkLibrary("lightningkite", "lightning-server-kiteui") {
-    description.set("The client side of communication between server and client.")
-    name.set("Lightning-Server-Client")
+mavenPublishing {
+    pom {
+        description.set("The client side of communication between server and client.")
+        name.set("Lightning-Server-Client")
+    }
 }
 // commonMain compiles the database processor's shared output (written by kspCommonMainKotlinMetadata alone) as plain
 // source, so every other KSP run and compile must wait for it.

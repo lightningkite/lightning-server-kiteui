@@ -1,5 +1,3 @@
-import com.lightningkite.deployhelpers.*
-
 plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.ksp)
@@ -11,8 +9,9 @@ plugins {
 
 dependencies {
 //    api(project(":client"))
-    api(libs.lightningServer.typed)
-    api(libs.kitui.jvm.ssr)
+    api(ls.typed)
+    // The artifact of kiteui library's jvmSsr target: two JVM targets can't be told apart by attributes.
+    api("com.lightningkite.kiteui:library-jvmssr:${kui.library.asProvider().get().version}")
 }
 
 ksp {
@@ -34,6 +33,6 @@ kotlin {
     }
 }
 
-lkLibrary("lightningkite", "lightning-server-kiteui") {
-    description.set("Server-side utils that only make sense along-side the client")
+mavenPublishing {
+    pom { description.set("Server-side utils that only make sense along-side the client") }
 }

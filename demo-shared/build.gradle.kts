@@ -9,7 +9,6 @@ plugins {
 }
 
 group = "com.lightningkite.lskiteuistarter"
-version = "1.0-SNAPSHOT"
 
 kotlin {
     applyDefaultHierarchyTemplate()
@@ -33,11 +32,11 @@ kotlin {
     sourceSets {
         val commonMain = getByName("commonMain") {
             dependencies {
-                api(libs.lightningServer.core.shared)
-                api(libs.lightningServer.typed.shared)
-                api(libs.lightningServer.sessions.shared)
-                api(libs.lightningServer.files.shared)
-                api(libs.lightningServer.media.shared)
+                api(ls.core.shared)
+                api(ls.typed.shared)
+                api(ls.sessions.shared)
+                api(ls.files.shared)
+                api(ls.media.shared)
             }
             kotlin {
                 srcDir(file("build/generated/ksp/common/commonMain/kotlin"))
@@ -53,7 +52,7 @@ kotlin {
 
 dependencies {
     configurations.filter { it.name.startsWith("ksp") && it.name != "ksp" }.forEach {
-        add(it.name, libs.services.database.processor)
+        add(it.name, sa.database.processor)
     }
     coreLibraryDesugaring(libs.androidDesugaring)
 }

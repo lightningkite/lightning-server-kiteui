@@ -8,13 +8,12 @@ plugins {
     alias(libs.plugins.androidKmpLibrary)
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.kotlin.serialization)
-    alias(libs.plugins.comLightningkiteKiteui)
+    alias(kui.plugins.kiteui)
     alias(libs.plugins.kjsplain)
     alias(libs.plugins.kfc)
 }
 
 group = "com.lightningkite.lskiteuistarter"
-version = "1.0-SNAPSHOT"
 
 repositories {
     maven("https://jitpack.io")
@@ -56,11 +55,11 @@ kotlin {
     sourceSets {
         val commonMain = getByName("commonMain") {
             dependencies {
-                api(libs.kitui)
+                api(kui.library)
                 api(libs.kotlinx.serialization.csv.durable)
-                api(libs.lightningServer.core.shared)
-                api(libs.lightningServer.typed.shared)
-                api(libs.lightningServer.sessions.shared)
+                api(ls.core.shared)
+                api(ls.typed.shared)
+                api(ls.sessions.shared)
                 api(project(":client"))
                 api(project(":demo-shared"))
             }
