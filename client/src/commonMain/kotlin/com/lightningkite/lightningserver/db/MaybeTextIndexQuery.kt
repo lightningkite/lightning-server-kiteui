@@ -51,6 +51,6 @@ public fun <T : HasId<ID>, ID : Comparable<ID>> ModelCache<T, ID>.listOrTextSear
 ): Reactive<List<T>> {
     return when (query) {
         is MaybeTextIndexQuery.Filter<T> -> list(query.query, maximumAge, pullFrequency)
-        is MaybeTextIndexQuery.Search<T> -> rememberSuspending { skipCache.textQuery(query.query).map(ScoredResult<T>::model) }
+        is MaybeTextIndexQuery.Search<T> -> rememberSuspending { uncached.textQuery(query.query).map(ScoredResult<T>::model) }
     }
 }

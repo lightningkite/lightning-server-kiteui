@@ -31,7 +31,7 @@ fun UserSession.formModule(): FormModule = FormModule().apply {
                 serializer = User.serializer(),
                 cache = { users },
                 page = { id -> { com.lightningkite.lskiteuistarter.UserDetailPage(id.toString()) } },
-                renderToString = { id -> users.item(id).awaitOnce()?.name ?: "Unknown user" },
+                renderToString = { id -> users.ref(id).awaitOnce()?.name ?: "Unknown user" },
             )
         } else null
     }

@@ -23,7 +23,7 @@ class UserListPage : Page {
         // Double-wrapped: Reactive<Reactive<List<User>>>
         // Outer reactive tracks session changes, inner is the ModelCacheLimitReadable
         val users = remember {
-            currentSessionNotNull().users.list(
+            currentSessionNotNull().users.query(
                 Query(Condition<User> { it.always() })
             )
         }

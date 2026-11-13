@@ -83,8 +83,9 @@ Forms are **cached** to handle recursive/nested data structures efficiently.
 - **Smart Polling**: Automatically fetches based on `maximumAge` and `pullFrequency` parameters
 - **WebSocket Integration**: When available, uses `SharedCollectionUpdatesSocket` for real-time updates to reduce polling
 - **Reactive Tracking**:
-  - `ModelCacheItemReadable<T>` - Single item tracking by ID
-  - `ModelCacheLimitReadable<T>` - Collection tracking with queries
+  - `detail(id)` - Single item tracking by ID (`Reactive<T?>`)
+  - `query(query)` - Collection tracking with pagination (`LimitReactiveList<T>`)
+  - `ref(id)` - `ModelReference`: the cache plus an ID, readable/writable like a file handle, with `draft()` for edit forms
 - **One store**: `CoverageStore` holds every item once, plus timestamped *claims* about which queries
   it knows completely. A read is answered locally only when a claim backs it; otherwise it fetches.
   Looking an item up by ID is not a special case - it is a query for one row, so a list that already

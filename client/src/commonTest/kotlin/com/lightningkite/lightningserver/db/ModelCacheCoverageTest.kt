@@ -152,14 +152,58 @@ class ModelCacheCoverageTest {
         val ref = cache.quietList()
         val release = ref.addListener { }
         delay(1.seconds)
-        val retrievedAt = assertNotNull(ref.lastUpdatedAt.state.getOrNull())
+        val query = Query<LargeTestModel>(Condition.Always, sort { it.int.ascending() }, limit = 100)
+        val retrievedAt = assertNotNull(cache.lastUpdate(query).state.getOrNull()?.at)
 
         delay(1.minutes)
         cache.localInsert(LargeTestModel(int = 9))
 
-        assertEquals(retrievedAt, ref.lastUpdatedAt.state.getOrNull())
+        assertEquals(retrievedAt, cache.lastUpdate(query).state.getOrNull()?.at)
 
         release()
+    }
+
+    /** Modifying named rows re-reads just those rows; the list holding them is not thrown away. */
+    @Test fun aBulkModifyByIdRereadsOnlyThoseRows() = runTest2 {
+        val (mock, data, cache) = backgroundScope.fixture(4)
+        val query = Query<LargeTestModel>(Condition.Always, sort { it.int.ascending() }, limit = 100)
+        val ref = cache.query(query, maximumAge = 10.minutes, pullFrequency = 10.minutes)
+        val release = ref.addListener { }
+        delay(1.seconds)
+        val retrievedAt = assertNotNull(cache.lastUpdate(query).state.getOrNull()?.at)
+        val queriesBefore = mock.queries.size
+
+        cache.bulkModify(setOf(data[0]._id, data[1]._id), Modification { it.int += 10 })
+        delay(1.seconds)
+
+        assertEquals(listOf(3, 4, 11, 12), ref.state.getOrNull()?.map { it.int })
+        assertEquals(1, mock.queries.size - queriesBefore, "one batched lookup for both rows")
+        assertEquals(retrievedAt, cache.lastUpdate(query).state.getOrNull()?.at, "the list kept its claim")
+        release()
+    }
+
+    /**
+     * A bulk modify by condition can move rows nobody holds into a list, but only a list that reads a
+     * field it writes.  That list starts over; any other keeps its claim, with its held rows re-read.
+     */
+    @Test fun aBulkModifyByConditionOnlyDropsListsReadingWhatItWrites() = runTest2 {
+        val (_, data, cache) = backgroundScope.fixture(4)
+        val byInt = Query<LargeTestModel>(Condition.Always, sort { it.int.ascending() }, limit = 100)
+        val byShort = Query<LargeTestModel>(Condition { it.short gt 0 }, sort { it.int.ascending() }, limit = 100)
+        val intList = cache.query(byInt, maximumAge = 10.minutes, pullFrequency = 10.minutes)
+        val shortList = cache.query(byShort, maximumAge = 10.minutes, pullFrequency = 10.minutes)
+        val releases = listOf(intList.addListener { }, shortList.addListener { })
+        delay(1.seconds)
+        assertEquals(listOf(), shortList.state.getOrNull())
+        val intRetrievedAt = assertNotNull(cache.lastUpdate(byInt).state.getOrNull()?.at)
+
+        cache.bulkModify(MassModification(Condition { it.int gt 2 }, Modification { it.short assign 5 }))
+        delay(1.seconds)
+
+        assertEquals(listOf(3, 4), shortList.state.getOrNull()?.map { it.int })
+        assertEquals(listOf<Short>(0, 0, 5, 5), intList.state.getOrNull()?.map { it.short })
+        assertEquals(intRetrievedAt, cache.lastUpdate(byInt).state.getOrNull()?.at, "writes to short cannot move rows in a list that only reads int")
+        releases.forEach { it() }
     }
 
     /** An ID lookup that comes back empty is a deletion, and has to be applied everywhere. */
@@ -212,18 +256,19 @@ class ModelCacheCoverageTest {
         mock.data.putAll(data.associateBy { it._id })
         val cache = ModelCache(mock, LargeTestModel.serializer(), scope = backgroundScope, log = testLog)
 
-        val ref = cache.list(Query(Condition { it.int gt 2 }, sort { it.int.ascending() }), pullFrequency = 10.seconds)
+        val query = Query<LargeTestModel>(Condition { it.int gt 2 }, sort { it.int.ascending() })
+        val ref = cache.list(query, pullFrequency = 10.seconds)
         val release = ref.addListener { }
         delay(7.seconds)
         assertEquals(listOf(3, 4, 5), ref.state.getOrNull()?.map { it.int })
-        val retrievedAt = assertNotNull(ref.lastUpdatedAt.state.getOrNull())
+        val retrievedAt = assertNotNull(cache.lastUpdate(query).state.getOrNull()?.at)
 
         // Moves out of the subscribed condition; the server reports that as a removal.
         mock.modify(data[3]._id, Modification { it.int assign 1 })
         delay(1.seconds)
 
         assertEquals(listOf(3, 5), ref.state.getOrNull()?.map { it.int })
-        assertEquals(retrievedAt, ref.lastUpdatedAt.state.getOrNull(), "the list is still complete; it just lost a row")
+        assertEquals(retrievedAt, cache.lastUpdate(query).state.getOrNull()?.at, "the list is still complete; it just lost a row")
 
         release()
     }

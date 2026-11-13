@@ -65,9 +65,15 @@ public class CachingSdk(
         data.appendImports(
             "com.lightningkite.lightningserver.db.*",
             "kotlinx.serialization.builtins.*",
+            "kotlin.time.Duration",
+            "kotlin.time.Duration.Companion.minutes",
         )
 
-        appendLine("open class Cached${data.info.interfaceName}(val uncached: ${data.info.interfaceName}) {")
+        appendLine("open class Cached${data.info.interfaceName}(")
+        appendLine("\tval uncached: ${data.info.interfaceName},")
+        appendLine("\tdefaultMaxAge: Duration = Duration.INFINITE,")
+        appendLine("\tdefaultPullFrequency: Duration = 5.minutes,")
+        appendLine(") {")
 
         fun SDK.Module.appendCaches(chain: List<SDK.Module>) {
             extendsInterfaces
@@ -81,7 +87,7 @@ public class CachingSdk(
                             ?: throw IllegalArgumentException("${info.interfaceName} inherits ClientModelRestEndpoints but does not have a type parameter serializer")
                     )
 
-                    appendLine("\topen val $typeName = ModelCache(uncached.${(chain + this).drop(1).joinToString(".") { it.info.valueName }}, ${interfaceInfo.typeParameters[0].kotlinSerializer()})")
+                    appendLine("\topen val $typeName = ModelCache(uncached.${(chain + this).drop(1).joinToString(".") { it.info.valueName }}, ${interfaceInfo.typeParameters[0].kotlinSerializer()}, defaultMaxAge = defaultMaxAge, defaultPullFrequency = defaultPullFrequency)")
                 }
 
             for (child in children) child.appendCaches(chain + this)

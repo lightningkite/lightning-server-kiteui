@@ -9,7 +9,6 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertNotEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
@@ -345,21 +344,18 @@ class ModelCacheMaskingTest {
         mock.data.putAll(rows().associateBy { it._id })
         val cache = ModelCache(mock, LargeTestModel.serializer(), scope = backgroundScope, log = testLog)
 
-        val ref = cache.list(
-            Query(Condition.Always, sort { it.short.ascending() }, limit = 100),
-            maximumAge = 10.minutes,
-            pullFrequency = 10.minutes,
-        )
+        val query = Query<LargeTestModel>(Condition.Always, sort { it.short.ascending() }, limit = 100)
+        val ref = cache.list(query, maximumAge = 10.minutes, pullFrequency = 10.minutes)
         val release = ref.addListener { }
         delay(1.seconds)
         assertEquals(4, ref.state.getOrNull()?.size)
-        val retrievedAt = assertNotNull(ref.lastUpdatedAt.state.getOrNull())
+        val retrievedAt = assertNotNull(cache.lastUpdate(query).state.getOrNull()?.at)
         val queriesSoFar = mock.queries.size
 
         delay(3.seconds)
 
         assertEquals(4, ref.state.getOrNull()?.size, "there is no mask, so nothing was assumed wrongly")
-        assertEquals(retrievedAt, ref.lastUpdatedAt.state.getOrNull(), "and nothing had to be re-read")
+        assertEquals(retrievedAt, cache.lastUpdate(query).state.getOrNull()?.at, "and nothing had to be re-read")
         assertEquals(queriesSoFar, mock.queries.size)
 
         release()
@@ -448,7 +444,8 @@ class ModelCacheMaskingTest {
         val releases = listOf(masked.addListener { }, subscribed.addListener { })
         delay(7.seconds)
         assertEquals(listOf(1, 3), masked.tags())
-        val retrievedAt = assertNotNull(masked.lastUpdatedAt.state.getOrNull())
+        val maskedQuery = Query<LargeTestModel>(Condition.Always, sort { it.int.ascending() }, limit = 100)
+        val retrievedAt = assertNotNull(cache.lastUpdate(maskedQuery).state.getOrNull()?.at)
 
         // Moves out of the subscribed condition; the server reports that as a removal.
         val invisible = data.single { it.byte == 2.toByte() }
@@ -456,7 +453,7 @@ class ModelCacheMaskingTest {
         delay(1.seconds)
 
         assertEquals(listOf(1, 3), masked.tags(), "the row was never in this list to begin with")
-        assertEquals(retrievedAt, masked.lastUpdatedAt.state.getOrNull(), "so nothing here had to be re-read")
+        assertEquals(retrievedAt, cache.lastUpdate(maskedQuery).state.getOrNull()?.at, "so nothing here had to be re-read")
 
         releases.forEach { it() }
     }
@@ -482,14 +479,15 @@ class ModelCacheMaskingTest {
         val releases = listOf(masked.addListener { }, subscribed.addListener { })
         delay(7.seconds)
         assertEquals(listOf(1, 3), masked.tags())
-        val retrievedAt = assertNotNull(masked.lastUpdatedAt.state.getOrNull())
+        val maskedQuery = Query<LargeTestModel>(Condition.Always, sort { it.int.ascending() }, limit = 100)
+        val retrievedAt = assertNotNull(cache.lastUpdate(maskedQuery).state.getOrNull()?.at)
 
         // Row 1 is visible to the int sort and inside the subscription; take it out of the latter.
         val visible = data.single { it.byte == 1.toByte() }
         mock.modify(visible._id, Modification { it.short assign 0 })
         delay(1.seconds)
 
-        assertNotEquals(retrievedAt, masked.lastUpdatedAt.state.getOrNull(), "this one had to be re-read")
+        assertNotEquals(retrievedAt, cache.lastUpdate(maskedQuery).state.getOrNull()?.at, "this one had to be re-read")
         assertEquals(listOf(1, 3), masked.tags(), "and the row was still there all along")
 
         releases.forEach { it() }

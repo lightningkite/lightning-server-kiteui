@@ -23,7 +23,7 @@ package com.lightningkite.lightningserver.admin
 //    Severity: HIGH - causes crash on insert failure
 //
 // 2. ISSUE - Lines 66-68: Double try-catch for default() is suspicious
-//    Problem: First tries mc().skipCache.default(), then falls back to mc().serializer.default()
+//    Problem: First tries mc().uncached.default(), then falls back to mc().serializer.default()
 //    Question: When would skipCache.default() fail but serializer.default() succeed?
 //    Impact: Unclear failure modes, potential masking of real errors
 //    Recommendation: Document why this fallback exists or remove if unnecessary
@@ -148,7 +148,7 @@ class NewItemAdminPage(val collectionName: String) : Page {
             } ?: Condition.Always
             Signal(
                 try {
-                    mc().skipCache.default().coerce(coerceCondition)
+                    mc().uncached.default().coerce(coerceCondition)
                 } catch (e: Exception) {
                     mc().serializer.default().coerce(coerceCondition)
                 }
@@ -170,7 +170,7 @@ class NewItemAdminPage(val collectionName: String) : Page {
                             text("Create")
                             onClick {
                                 // add() throws on failure, which is shown to the user; insert()!! crashed.
-                                val created = mc.add(item())
+                                val created = mc.insert(item())
                                 context.toast("${mc.serializer.displayName} created")
                                 val id = UrlProperties.encodeToString(mc.serializer._id().serializer, created._id)
                                 pageNavigator.replace(DetailAdminPage(collectionName, id))

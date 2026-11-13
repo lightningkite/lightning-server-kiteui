@@ -118,7 +118,7 @@ val loadedPermissions: Reactive<Map<String, ModelPermissions<out HasId<out Compa
     adminServer().models.entries.map {
         async {
             it.key to try {
-                it.value.cache(auth).skipCache.permissions()
+                it.value.cache(auth).uncached.permissions()
             } catch (e: LsErrorException) {
                 if (e.status == 403) ModelPermissions()
                 else if (e.status == 401) ModelPermissions()

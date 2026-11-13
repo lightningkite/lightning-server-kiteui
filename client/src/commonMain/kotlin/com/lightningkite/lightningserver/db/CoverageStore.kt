@@ -6,6 +6,9 @@ import com.lightningkite.services.database.Condition
 import com.lightningkite.services.database.optics.AnyOptic
 import com.lightningkite.services.database.HasId
 import com.lightningkite.services.database.Mask
+import com.lightningkite.services.database.Modification
+import com.lightningkite.services.database.affects
+import com.lightningkite.services.database.readPaths
 import com.lightningkite.services.database.Query
 import com.lightningkite.services.database.SortPart
 import com.lightningkite.services.database._id
@@ -433,13 +436,27 @@ public class CoverageStore<T : HasId<ID>, ID : Comparable<ID>>(
     /**
      * Forgets everything.
      *
-     * For when the socket admits it fell behind, and after a bulk modification, where the server does
-     * not say which rows it touched.  Intentionally aggressive: nothing here can be trusted, and
-     * serving stale data is worse than fetching again.
+     * For when the socket admits it fell behind.  Intentionally aggressive: nothing here can be
+     * trusted, and serving stale data is worse than fetching again.
      */
     public fun invalidate() {
         items.clear()
         claims.clear()
+        updates.invokeAll()
+    }
+
+    /**
+     * Forgets every claim that a [modification] of rows nobody named could have broken.
+     *
+     * Rows this store does not hold may have moved into a claimed query, but only if that query's
+     * condition or sort reads a field the modification writes; every other claim stays true.  Rows it
+     * does hold are the caller's to re-read.
+     */
+    public fun bulkModified(modification: Modification<T>) {
+        claims.keys.removeAll { extent ->
+            extent.effective().readPaths().any { modification.affects(it) } ||
+                extent.order.any { modification.affects(it.field) }
+        }
         updates.invokeAll()
     }
 

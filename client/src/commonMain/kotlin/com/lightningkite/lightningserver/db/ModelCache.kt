@@ -1,12 +1,10 @@
 package com.lightningkite.lightningserver.db
 
 import com.lightningkite.kiteui.Log
-import com.lightningkite.lightningdb.modification
 import com.lightningkite.lightningserver.networking.toTypedWebSocket
 import com.lightningkite.lightningserver.typed.ClientModelRestEndpoints
 import com.lightningkite.lightningserver.typed.ClientModelRestUpdatesWebSocket
 import com.lightningkite.services.database.*
-import com.lightningkite.reactive.context.awaitOnce
 import com.lightningkite.reactive.context.onRemove
 import com.lightningkite.reactive.core.*
 import com.lightningkite.reactive.extensions.plus
@@ -17,79 +15,50 @@ import kotlinx.coroutines.*
 import kotlin.time.Instant
 import kotlinx.serialization.KSerializer
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
-
-/**
- * A multi-layer caching system for model collections with real-time synchronization.
- *
- * ModelCache sits between your application and the REST API, providing:
- * - Caching of both individual items and query results in a single [CoverageStore]
- * - Automatic background polling with configurable staleness thresholds
- * - Optional WebSocket integration for real-time updates
- * - Request batching, so many items requested at once become a single multi-ID query
- *
- * ## What is cached
- *
- * Everything - items and lists alike - lives in one [store], which knows not only the values it
- * holds but which queries it holds *completely*.  Reads are answered from it whenever a completeness
- * claim backs them; otherwise this class fetches.  Looking an item up by ID is not a special case:
- * it is [CoverageStore.idQuery], a query for one row.
- *
- * ## Polling strategy
- *
- * Items and queries are fetched based on two parameters:
- * - **maximumAge**: how stale an answer may be before a reader stops accepting it
- * - **pullFrequency**: how often to poll when not relying on the socket
- *
- * When WebSockets are available and [pullFrequency] is under 30 seconds, the cache subscribes rather
- * than polling, and data covered by the subscription stays fresh indefinitely - the socket will say
- * if it changes.  While it is *not* covered - the socket is down, or has not been acknowledged yet -
- * such a reader polls at the minimum interval regardless of [pullFrequency], since the subscription
- * it gave up polling for is not currently keeping its promise.
- *
- * ## Important gotchas
- *
- * - **Socket activation timing**: data cached before the socket connected may have missed changes
- *   during the gap, so the socket's guarantee does not extend back over it.  See [socketCoveredSince].
- * - **Overload clearing**: an overloaded socket, and any bulk modification, clears everything.
- *   Intentionally aggressive - serving stale data is worse than refetching.
- * - **Minimum pull frequency**: polling never runs faster than every 5 seconds.
- *
- * @param T The model type with an ID field
- * @param ID The ID type, must be comparable
- * @param skipCache The REST API endpoints to fetch from (no caching)
- * @param serializer Serializer for the model type
- * @param scope Coroutine scope for background operations (defaults to AppScope)
- * @param log Optional logger for debugging
- */
-public class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
-    public val skipCache: ClientModelRestEndpoints<T, ID>,
+public open class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
+    public val uncached: ClientModelRestEndpoints<T, ID>,
     override val serializer: KSerializer<T>,
+    public val websocket: ClientModelRestUpdatesWebSocket<T, ID>? = @Suppress("UNCHECKED_CAST") (uncached as? ClientModelRestUpdatesWebSocket<T, ID>),
+    override val defaultMaxAge: Duration = Duration.INFINITE,
+    override val defaultPullFrequency: Duration = 5.minutes,
     public val scope: CoroutineScope = AppScope,
     public val log: Log? = null,
-    /**
-     * Reads a row's version, for models that carry one, so that conflicting accounts of the same row
-     * are settled by which is genuinely later rather than by clocks.  See [CoverageStore].
-     */
     versionOf: ((T) -> Long?)? = null,
-) : ModelCacheLike<T, ID> {
-    private val idProp = serializer._id()
+) : CachedRestEndpoints<T, ID> {
+    internal val store: CoverageStore<T, ID> = CoverageStore(serializer, versionOf)
+    private val interrupt: InterruptibleDelay = InterruptibleDelay()
 
-    /** Everything known about the collection.  See [CoverageStore]. */
-    public val store: CoverageStore<T, ID> = CoverageStore(serializer, versionOf)
+    public val sockets: SharedCollectionUpdatesSocket<T, ID>? = websocket?.let {
+        SharedCollectionUpdatesSocket(
+            scope = scope,
+            socket = it.updates().toTypedWebSocket(),
+            log = log?.tag("Sockets"),
+            onChange = { update ->
+                if (update.overload) {
+                    invalidateAll()
+                } else {
+                    store.socketDelta(
+                        changed = update.updates,
+                        removed = update.remove,
+                        at = scope.now(),
+                        live = { condition, since -> queryIsLive(condition, since) },
+                    )
+                    // A list that lost a row is now short of the limit its reader asked for.
+                    if (update.remove.isNotEmpty()) interrupt.interrupt()
+                }
+            }
+        )
+    }
 
-    /**
-     * Fetches the read mask, so the store can tell what the server actually filtered by.
-     *
-     * Until this lands the store assumes nothing about masks, which costs some reuse but is never
-     * wrong; see [CoverageStore.useMasking].  A failure here is therefore not worth retrying or
-     * surfacing - it leaves the cache exactly as correct as it was, only less clever.
-     */
+    private val freshnessChanges: Listenable = sockets?.let { store.updates + it.listeningStatus } ?: store.updates
+
     init {
         scope.launch {
             try {
-                store.useMasking(skipCache.permissions().readMask)
+                store.useMasking(uncached.permissions().readMask)
                 // A non-empty mask invalidates the store, which can empty out what readers already
                 // hold - and they may be part-way through a poll interval worked out from it.
                 // Every other invalidation in this class wakes them; this one has to as well.
@@ -102,46 +71,128 @@ public class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
         }
     }
 
-    /** Interrupts pending polling delays.  Each tracked item/query takes a child of this. */
-    private val interrupt: InterruptibleDelay = InterruptibleDelay()
+    @Deprecated("Renamed to uncached", ReplaceWith("uncached"))
+    public val skipCache: ClientModelRestEndpoints<T, ID> get() = uncached
 
-    /** Real-time updates, if [skipCache] supports them. */
-    @Suppress("UNCHECKED_CAST")
-    public val sockets: SharedCollectionUpdatesSocket<T, ID>? =
-        (skipCache as? ClientModelRestUpdatesWebSocket<T, ID>)?.let {
-            SharedCollectionUpdatesSocket(
-                scope = scope,
-                socket = it.updates().toTypedWebSocket(),
-                log = log?.tag("Sockets"),
-                onChange = { update ->
-                    if (update.overload) {
-                        store.invalidate()
-                        interrupt.interrupt()
-                    } else {
-                        store.socketDelta(
-                            changed = update.updates,
-                            removed = update.remove,
-                            at = scope.now(),
-                            live = { condition, since -> socketCoveredSince(since) { it == condition } },
-                        )
-                        // A list that lost a row is now short of the limit its reader asked for.
-                        if (update.remove.isNotEmpty()) interrupt.interrupt()
-                    }
-                }
-            )
+    // =============================================================================
+    // Reads
+    // =============================================================================
+
+    override fun detail(id: ID, maximumAge: Duration, pullFrequency: Duration): Reactive<T?> =
+        ItemReader(id, maximumAge, pullFrequency)
+
+    override fun query(query: Query<T>, maximumAge: Duration, pullFrequency: Duration): LimitReactiveList<T> {
+        // A skipped query says nothing about the rows before it, so "everything from the start of
+        // the order through here" - the only claim this cache knows how to make - is unavailable.
+        require(query.skip == 0) { "ModelCache cannot cache a query with skip; page with limit() instead." }
+        require(query.limit > 0) { "ModelCache needs a positive limit; a limit of ${query.limit} asks the server for nothing." }
+        return ListReader(totallyOrdered(query), maximumAge, pullFrequency)
+    }
+
+    override fun lastUpdate(id: ID): Reactive<LastUpdate?> {
+        val query = store.idQuery(id)
+        return freshnessChanges.lensListenable {
+            store.known(query)?.let { LastUpdate(it.at, live = itemIsLive(it.items.firstOrNull(), it.at)) }
         }
+    }
 
-    /**
-     * Looks up items by ID, coalescing concurrent requests into a single `_id inside [...]` query.
-     *
-     * This batching is the reason [ModelCacheItemReadableImpl] does not simply run its own one-row
-     * query: without it, a screen showing fifty referenced items would issue fifty requests.
-     *
-     * @return For each requested ID, either the found item or null if missing
-     */
+    override fun lastUpdate(query: Query<T>): Reactive<LastUpdate?> {
+        val query = totallyOrdered(query)
+        return freshnessChanges.lensListenable {
+            store.known(query)?.let { LastUpdate(it.at, live = queryIsLive(query.condition, it.at)) }
+        }
+    }
+
+    // =============================================================================
+    // Writes - all recorded in the store as changes we watched happen
+    // =============================================================================
+
+    override suspend fun insert(item: T): T =
+        uncached.insert(item).also { store.mutated(listOf(it), scope.now()) }
+
+    override suspend fun insertBulk(items: List<T>): List<T> =
+        uncached.insertBulk(items).also { store.mutated(it, scope.now()) }
+
+    override suspend fun upsert(id: ID, item: T): T =
+        uncached.upsert(id, item).also { store.mutated(listOf(it), scope.now()) }
+
+    override suspend fun replace(id: ID, item: T): T =
+        uncached.replace(id, item).also { store.mutated(listOf(it), scope.now()) }
+
+    override suspend fun modify(id: ID, modification: Modification<T>): T =
+        uncached.modify(id, modification).also { store.mutated(listOf(it), scope.now()) }
+
+    override suspend fun delete(id: ID) {
+        uncached.delete(id)
+        deletionRecorded(setOf(id))
+    }
+
+    override suspend fun bulkModify(bulkUpdate: MassModification<T>): Int {
+        // Claude: Read before the change; afterwards the modified rows may no longer match.
+        val held = store.cachedItems().filter { bulkUpdate.condition(it) }.mapTo(HashSet()) { it._id }
+        val count = uncached.bulkModify(bulkUpdate)
+        store.bulkModified(bulkUpdate.modification)
+        reread(held)
+        return count
+    }
+
+    override suspend fun bulkModify(ids: Set<ID>, modification: Modification<T>): Int {
+        val count = uncached.bulkModify(MassModification(Condition.OnField(idProp, Condition.Inside(ids)), modification))
+        reread(ids)
+        return count
+    }
+
+    // Claude: Fetches rather than only forgetting, because a list that covers this ID would otherwise keep answering for it.
+    override suspend fun invalidate(id: ID) {
+        store.invalidate(id)
+        multiget(id)
+        interrupt.interrupt()
+    }
+
+    override fun invalidateAll() {
+        store.invalidate()
+        interrupt.interrupt()
+    }
+
+    // Claude: Waking the readers lets a list that lost a row fetch the one that moved up to fill the gap.
+    private suspend fun reread(ids: Set<ID>) {
+        coroutineScope { ids.map { async { multiget(it) } }.awaitAll() }
+        interrupt.interrupt()
+    }
+
+    private fun deletionRecorded(ids: Set<ID>) {
+        store.deleted(ids, scope.now())
+        interrupt.interrupt()
+    }
+
+    // =============================================================================
+    // Local updates - change the cache without calling the server
+    // =============================================================================
+
+    public fun localSignalUpdate(matching: (T) -> Boolean, modify: (T) -> T?) {
+        val updates = HashSet<T>()
+        val removals = HashSet<ID>()
+        store.cachedItems().filter(matching).forEach {
+            modify(it)?.let { updated -> updates.add(updated) } ?: removals.add(it._id)
+        }
+        if (updates.isNotEmpty()) store.mutated(updates, scope.now())
+        if (removals.isNotEmpty()) deletionRecorded(removals)
+    }
+
+    public fun localInsert(item: T): T {
+        store.mutated(listOf(item), scope.now())
+        return item
+    }
+
+    // =============================================================================
+    // Fetching
+    // =============================================================================
+
+    private val idProp = serializer._id()
+
     private val multiget: BatchAndQueue<ID, T?> = BatchAndQueue<ID, T?>(scope, log = log?.tag("multiget")) { ids ->
         val at = scope.now()
-        val found = skipCache.query(
+        val found = uncached.query(
             Query(
                 condition = Condition.OnField(idProp, Condition.Inside(ids)),
                 // Must cover the whole batch.  Anything the query doesn't return is treated as
@@ -155,10 +206,6 @@ public class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
         ids.map { map[it] }
     }
 
-    /**
-     * Runs queries.  Unlike [multiget] these are not merged - each executes separately, just
-     * concurrently, so the batching only coordinates timing.
-     */
     private val queryInternal: BatchAndQueue<Query<T>, List<T>> =
         BatchAndQueue<Query<T>, List<T>>(scope, log = log?.tag("queryInternal")) { queries ->
             coroutineScope {
@@ -167,23 +214,22 @@ public class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
                         // Stamped before the request goes out, not after it returns, so a fetch that
                         // raced a change is never authoritative for longer than it was in flight.
                         val at = scope.now()
-                        skipCache.query(query).also { store.queried(query, it, at) }
+                        uncached.query(query).also { store.queried(query, it, at) }
                     }
                 }.awaitAll()
             }
         }
 
-    /**
-     * Whether the update socket has been covering [timestamp] for anything matching [matches].
-     *
-     * The `timestamp > coveredSince` comparison is the important part: data cached before the server
-     * acknowledged the subscription may have missed changes that happened during that gap, so the
-     * socket's guarantee does not extend back over it.  When it does, the data can be treated as
-     * fresh indefinitely, because the socket will tell us about any change.
-     *
-     * Derived on every read rather than stored, because sockets close asynchronously and a
-     * remembered "this is live" flag would be wrong the instant one does.
-     */
+    // Make the sort total before it ever reaches the server.  The cache already materializes
+    // lists with `ensureTotal` applied, so without this the server and the client can disagree
+    // about which tied rows fall inside the limit; it is also what makes a pagination cursor
+    // (`orderBy.after`) well defined.  Note this changes the ORDER BY sent to the server.
+    private fun totallyOrdered(query: Query<T>): Query<T> = query.copy(orderBy = query.orderBy.ensureTotal(serializer))
+
+    // =============================================================================
+    // Liveness
+    // =============================================================================
+
     private fun socketCoveredSince(timestamp: Instant, matches: (Condition<T>) -> Boolean): Boolean =
         sockets?.listeningStatus?.value?.requirements
             ?.asSequence()
@@ -191,80 +237,48 @@ public class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
             ?.minOfOrNull { it.coveredSince ?: Instant.DISTANT_FUTURE }
             ?.let { timestamp > it } == true
 
-    /**
-     * A cached value that keeps itself fresh for as long as anything is listening to it.
-     *
-     * Subclasses say *what* to watch and how to retrieve it; everything about *when* to retrieve,
-     * and how freshness and failure turn into a [ReactiveState], lives here.
-     *
-     * ## Lifecycle
-     * The background work starts when the first listener is added and stops when the last one is
-     * removed.  It registers a socket requirement (when sockets are in use and [pullFrequency] is
-     * short enough to make polling wasteful), does an initial retrieve if nothing acceptable is
-     * cached, then polls until nobody is listening.
-     */
-    public abstract inner class SelfRefreshing<V> internal constructor(
+    private fun itemIsLive(item: T?, at: Instant): Boolean =
+        item != null && socketCoveredSince(at) { it(item) }
+
+    private fun queryIsLive(condition: Condition<T>, at: Instant): Boolean =
+        socketCoveredSince(at) { it == condition }
+
+    // =============================================================================
+    // Readers
+    // =============================================================================
+
+    private abstract inner class SelfRefreshing<V>(
         protected val maximumAge: Duration,
         protected val pullFrequency: Duration,
-    ) : ModelCacheReadable<V> {
-        /** The condition to subscribe the update socket to. */
+    ) : Reactive<V> {
         protected abstract val socketCondition: Condition<T>
 
-        /** The currently cached value, or null if nothing in [store] backs it. */
         protected abstract fun cached(): WithTimestamp<V>?
 
-        /** Whether the socket is currently keeping [cached] up to date on its own. */
         protected abstract fun isLive(cached: WithTimestamp<V>): Boolean
 
-        /** Whether more must be retrieved even though [cached] is fresh - e.g. a raised limit. */
         protected open fun needsMore(): Boolean = false
 
-        /** Retrieves from the server; results reach [cached] by way of [store]. */
         protected abstract suspend fun retrieve()
 
         protected abstract val log: Log?
 
-        /** Fires whenever [cached] may have changed. */
         protected val changes: Listenable get() = store.updates
 
         private val interrupt: InterruptibleDelay = this@ModelCache.interrupt.child()
 
-        /**
-         * The failure from the most recent retrieve attempt, or null if it succeeded.
-         *
-         * Kept separate from the cached value, which only ever holds data that was successfully
-         * retrieved - a failure belongs to the reader that attempted it.
-         */
         private val fetchError: Signal<Exception?> = Signal(null)
 
-        /**
-         * When this reader last started being observed - in practice, when its screen appeared.
-         *
-         * [maximumAge] is judged against this rather than against the passing moment, which is what
-         * makes it a condition for arriving somewhere rather than a shelf life that keeps running out
-         * while you sit there.  Before the first observation it reads as the distant past, so a
-         * caller peeking at [state] without listening is simply shown whatever is held.
-         */
         private var enteredAt: Instant = Instant.DISTANT_PAST
 
-        /**
-         * Whether this was fresh enough to open a screen on.
-         *
-         * Data retrieved since arriving always is, since [enteredAt] precedes it.
-         */
         private fun WithTimestamp<V>.acceptableOnArrival(): Boolean =
             isLive(this) || enteredAt - at < maximumAge
 
         private fun WithTimestamp<V>.freshWithin(window: Duration): Boolean =
             isLive(this) || scope.now() - at < window
 
-        /**
-         * Retrieves and records the outcome, so [state] can report a failure instead of sitting in
-         * a loading state forever.  Rethrows, so callers that can react to it themselves still see it.
-         */
         protected suspend fun fetch(): Unit = recordingOutcome { retrieve() }
 
-        /** [fetch] for retrievals other than [retrieve], such as a pagination extension. */
         protected suspend fun <R> recordingOutcome(action: suspend () -> R): R {
             try {
                 return action().also { fetchError.value = null }
@@ -276,7 +290,6 @@ public class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
             }
         }
 
-        /** [fetch] for the background loop, which has no caller to report a failure to. */
         private suspend fun fetchInBackground() {
             try {
                 fetch()
@@ -330,17 +343,8 @@ public class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
             // what people expect a page transition to do.  Staying on that screen is a different
             // question, and letting a tolerance for slightly stale data double as a polling rate is
             // how "I'll accept data ten seconds old" turns into hitting the server every ten seconds.
-            val cadence: Duration? = pullFrequency.takeIf { it > Duration.ZERO }?.coerceAtLeast(floor)
-
-            // How often to refresh while the subscription is *not* covering this.
-            //
-            // A reader that took a socket did so because polling at its [pullFrequency] would have
-            // been wasteful next to a server that promises to just tell us - and a promise nobody is
-            // keeping is not a reason to stop asking.  Without this, a `pullFrequency` of zero (the
-            // default, and what `watch()` passes) has no cadence at all, so a socket that goes down
-            // and stays down freezes the screen on whatever it last saw, permanently and silently.
-            // A reader with no socket keeps the contract it asked for: zero still means never.
-            val whileUncovered: Duration? = if (socket != null) cadence ?: floor else cadence
+            // Zero asks for live data, which without a covering socket means polling at the floor.
+            val cadence: Duration? = pullFrequency.takeIf { it.isFinite() }?.coerceAtLeast(floor)
 
             while (true) {
                 val held = cached()
@@ -352,7 +356,7 @@ public class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
                     // Measured from when the row was last known rather than from when this reader
                     // arrived, so opening a screen beside data fetched a moment ago waits out the
                     // remainder of the interval instead of starting a fresh one.
-                    else -> whileUncovered?.minus(scope.now() - held.at)
+                    else -> cadence?.minus(scope.now() - held.at)
                 }
                 when {
                     wait == null -> {
@@ -378,15 +382,6 @@ public class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
             }
         }
 
-        /**
-         * [refreshing], with the arrival stamped before it starts.
-         *
-         * The stamp has to be taken synchronously, as the listener attaches: [state] is read the
-         * instant that happens, and [refreshing]'s coroutine does not get a turn until afterwards.
-         * Leaving it to the coroutine would show data inherited from elsewhere for the whole length
-         * of the retrieve meant to replace it - precisely the flash of stale content that judging
-         * [maximumAge] on arrival exists to prevent.
-         */
         private val processWhileRunning: ResourceUse = object : ResourceUse {
             override fun beginUse(): () -> Unit {
                 enteredAt = scope.now()
@@ -394,18 +389,6 @@ public class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
             }
         }
 
-        /**
-         * The current value.
-         *
-         * What we hold keeps being served until something replaces it; age alone never takes it
-         * away.  [maximumAge] decides one thing only - whether data inherited from elsewhere was
-         * fresh enough to show on arrival, or whether this waits for a retrieve first.
-         *
-         * The exception is a refresh that is failing, which surfaces once what we hold is older than
-         * [maximumAge].  Use [showPreviousOnLoadOrError] to keep displaying data past that point.
-         *
-         * Reading this does not start the background work; adding a listener does.
-         */
         override val state: ReactiveState<V>
             get() {
                 val held = cached()
@@ -422,15 +405,6 @@ public class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
                 return fetchError.value?.let { ReactiveState.exception(it) } ?: ReactiveState.notReady
             }
 
-        /**
-         * [state] as a plain [Reactive]: keeps [processWhileRunning] alive while anything is
-         * listening, and fires only when the state actually changes.
-         *
-         * The `lens { it }` is what deduplicates.  It matters that this compares *states* rather
-         * than values, so that "nothing loaded yet" and "loaded, and the item is null" are told
-         * apart - the latter is how a confirmed-missing item is reported.  It is also what keeps
-         * [store]'s single change signal from waking every reader on every unrelated update.
-         */
         private val observed: Reactive<V> by lazy {
             object : Reactive<V> {
                 override val state: ReactiveState<V> get() = this@SelfRefreshing.state
@@ -442,31 +416,14 @@ public class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
         // see, so both have to be listened to.
         override fun addListener(listener: () -> Unit): Release = (observed + fetchError).addListener(listener)
 
-        override val lastUpdatedAt: Reactive<Instant?> by lazy { changes.lensListenable { cached()?.at } }
-
-        /** Discards any pending delay so the polling loop reconsiders immediately. */
         protected fun interruptPolling(): Unit = interrupt.interrupt()
     }
 
-    override fun item(
-        id: ID,
+    private inner class ItemReader(
+        val id: ID,
         maximumAge: Duration,
         pullFrequency: Duration,
-    ): ModelCacheItemReadable<T> = ModelCacheItemReadableImpl(id, maximumAge, pullFrequency)
-
-    /**
-     * Tracks a single item by ID.  See [SelfRefreshing] for the lifecycle.
-     *
-     * This is a one-row query against the same [store] as any list, so a list that already covered
-     * the item answers this without a request, and vice versa.  It stays a separate class only
-     * because retrieval batches through [multiget] and because a socket subscription on any
-     * condition the item matches keeps it live, not just a subscription to its ID.
-     */
-    public inner class ModelCacheItemReadableImpl(
-        public val id: ID,
-        maximumAge: Duration,
-        pullFrequency: Duration,
-    ) : SelfRefreshing<T?>(maximumAge, pullFrequency), ModelCacheItemReadable<T> {
+    ) : SelfRefreshing<T?>(maximumAge, pullFrequency) {
         override val log: Log? = this@ModelCache.log?.tag("$id")
 
         private val query: Query<T> = store.idQuery(id)
@@ -475,41 +432,13 @@ public class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
         override fun cached(): WithTimestamp<T?>? =
             store.known(query)?.let { WithTimestamp(it.items.firstOrNull(), it.at) }
 
-        override suspend fun retrieve() { multiget(id) }
-
-        override fun isLive(cached: WithTimestamp<T?>): Boolean {
-            val item = cached.item ?: return false
-            return socketCoveredSince(cached.at) { it(item) }
+        override suspend fun retrieve() {
+            multiget(id)
         }
 
-        /** Discards what is known about this ID and retrieves fresh data immediately. */
-        override suspend fun invalidate() {
-            store.invalidate(id)
-            fetch()
-            interruptPolling()
-        }
+        override fun isLive(cached: WithTimestamp<T?>): Boolean = itemIsLive(cached.item, cached.at)
 
-        override suspend fun modify(modification: Modification<T>): T? =
-            skipCache.modify(id, modification).also { store.mutated(listOf(it), scope.now()) }
-
-        override suspend fun delete() {
-            skipCache.delete(id)
-            deletionRecorded(setOf(id))
-        }
-
-        /**
-         * Deletes when [value] is null, inserts when the item does not exist yet, and otherwise
-         * sends only the fields that actually differ.
-         */
-        override suspend fun set(value: T?) {
-            if (value == null) return delete()
-            val existing = awaitOnce()
-            val updated = if (existing == null) skipCache.insert(value)
-            else modification(serializer, existing, value)?.let { skipCache.modify(id, it) }
-            updated?.let { store.mutated(listOf(it), scope.now()) }
-        }
-
-        override fun equals(other: Any?): Boolean = other is ModelCache<T, ID>.ModelCacheItemReadableImpl
+        override fun equals(other: Any?): Boolean = other is ModelCache<*, *>.ItemReader
                 && id == other.id
                 && maximumAge == other.maximumAge
                 && pullFrequency == other.pullFrequency
@@ -517,52 +446,26 @@ public class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
         override fun hashCode(): Int = id.hashCode() + maximumAge.hashCode() + pullFrequency.hashCode()
     }
 
-    override fun list(
-        query: Query<T>,
+    private inner class ListReader(
+        val query: Query<T>,
         maximumAge: Duration,
         pullFrequency: Duration,
-    ): ModelCacheLimitReadable<T> {
-        // A skipped query says nothing about the rows before it, so "everything from the start of
-        // the order through here" - the only claim this cache knows how to make - is unavailable.
-        require(query.skip == 0) { "ModelCache cannot cache a query with skip; page with limit() instead." }
-        require(query.limit > 0) { "ModelCache needs a positive limit; a limit of ${query.limit} asks the server for nothing." }
-        return ModelCacheLimitReadableImpl(
-            // Make the sort total before it ever reaches the server.  The cache already materializes
-            // lists with `ensureTotal` applied, so without this the server and the client can disagree
-            // about which tied rows fall inside the limit; it is also what makes a pagination cursor
-            // (`orderBy.after`) well defined.  Note this changes the ORDER BY sent to the server.
-            query.copy(orderBy = query.orderBy.ensureTotal(serializer)),
-            maximumAge,
-            pullFrequency,
-        )
-    }
-
-    /** Tracks the results of a query.  See [SelfRefreshing] for the lifecycle. */
-    public inner class ModelCacheLimitReadableImpl(
-        public val query: Query<T>,
-        maximumAge: Duration,
-        pullFrequency: Duration,
-    ) : SelfRefreshing<List<T>>(maximumAge, pullFrequency), ModelCacheLimitReadable<T> {
+    ) : SelfRefreshing<List<T>>(maximumAge, pullFrequency), LimitReactiveList<T> {
         override val log: Log? = this@ModelCache.log?.tag("${query.condition} ${query.orderBy}")
 
-        /** [query] with the current [limit] applied. */
         private var currentQuery: Query<T> = query
 
         override val socketCondition: Condition<T> get() = query.condition
         override fun cached(): WithTimestamp<List<T>>? =
             store.known(currentQuery)?.let { WithTimestamp(it.items, it.at) }
 
-        override fun isLive(cached: WithTimestamp<List<T>>): Boolean =
-            socketCoveredSince(cached.at) { it == query.condition }
+        override fun isLive(cached: WithTimestamp<List<T>>): Boolean = queryIsLive(query.condition, cached.at)
 
-        /**
-         * True when knowledge runs out before the limit does - because the limit was raised, or
-         * because a row inside the covered range was deleted or moved out of it and the list is now
-         * a row short of what was asked for.
-         */
         override fun needsMore(): Boolean = store.known(currentQuery)?.partial == true
 
-        override suspend fun retrieve() { queryInternal(currentQuery) }
+        override suspend fun retrieve() {
+            queryInternal(currentQuery)
+        }
 
         override var limit: Int
             get() = currentQuery.limit
@@ -574,18 +477,6 @@ public class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
                 interruptPolling()
             }
 
-        /**
-         * Grows or shrinks the list, retrieving only what is actually missing.
-         *
-         * When knowledge already reaches the new limit - because the list was shortened, or because
-         * an earlier answer proved there is nothing more to find - this returns without a request.
-         * Otherwise it pages forward from the edge of what is known, with
-         * `condition AND orderBy.after(boundary)`, and appends.  Scrolling therefore costs one page
-         * per page rather than growing with the length of the list.
-         *
-         * The limit moves immediately, so readers keep seeing the rows already retrieved while the
-         * next page loads rather than blanking.
-         */
         override suspend fun limit(count: Int) {
             require(count > 0) { "A limit of $count asks the server for nothing." }
             if (count == currentQuery.limit) return
@@ -600,7 +491,7 @@ public class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
             recordingOutcome {
                 val at = scope.now()
                 val pageLimit = count - known.items.size
-                val page = skipCache.query(
+                val page = uncached.query(
                     Query(
                         condition = Condition.And(listOf(currentQuery.condition, currentQuery.orderBy.after(boundary))),
                         orderBy = currentQuery.orderBy,
@@ -611,94 +502,11 @@ public class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
             }
         }
 
-        override fun equals(other: Any?): Boolean = other is ModelCache<T, ID>.ModelCacheLimitReadableImpl
+        override fun equals(other: Any?): Boolean = other is ModelCache<*, *>.ListReader
                 && query == other.query
                 && maximumAge == other.maximumAge
                 && pullFrequency == other.pullFrequency
 
         override fun hashCode(): Int = query.hashCode() + maximumAge.hashCode() + pullFrequency.hashCode()
-    }
-
-
-    // =============================================================================
-    // Mutation operations - all recorded in the store as changes we watched happen
-    // =============================================================================
-
-    /**
-     * Records a deletion and wakes the polling loops.
-     *
-     * A limited list that loses a row from inside its covered range is now a row short of what its
-     * reader asked for, and waking the loops lets it fetch the row that moved up to fill the gap.
-     * Loops with nothing to do re-check and go straight back to sleep.
-     */
-    private fun deletionRecorded(ids: Set<ID>) {
-        store.deleted(ids, scope.now())
-        interrupt.interrupt()
-    }
-
-    override suspend fun add(item: T): T =
-        skipCache.insert(item).also { store.mutated(listOf(it), scope.now()) }
-
-    override suspend fun addAll(items: List<T>): List<T> =
-        skipCache.insertBulk(items).also { store.mutated(it, scope.now()) }
-
-    override suspend fun upsert(item: T): ModelCacheItemReadable<T> {
-        skipCache.upsert(item._id, item).let { store.mutated(listOf(it), scope.now()) }
-        return this[item._id]
-    }
-
-    /**
-     * Performs a bulk modification (e.g., update all items matching a condition).
-     *
-     * Clears the whole cache, because the server does not tell us which items the modification
-     * actually touched.  Intentionally aggressive - serving stale data is worse than refetching.
-     * Polling loops are interrupted too, or observers would sit in a loading state until their next
-     * poll.
-     *
-     * @return Number of items modified
-     */
-    override suspend fun bulkModify(bulkUpdate: MassModification<T>): Int =
-        skipCache.bulkModify(bulkUpdate).also {
-            store.invalidate()
-            interrupt.interrupt()
-        }
-
-    // =============================================================================
-    // Local/testing utilities - manipulate cache without API calls
-    // =============================================================================
-
-    /**
-     * Completely invalidates the cache and interrupts all polling loops.
-     * Useful for forcing a full refresh or handling auth changes.
-     */
-    override suspend fun totallyInvalidate() {
-        store.invalidate()
-        interrupt.interrupt()
-    }
-
-    /**
-     * Applies [modify] to every cached item matching [matching], marking an item deleted when
-     * [modify] returns null.
-     *
-     * Bypasses the API, so local and server state diverge until the next poll or socket update.
-     * For optimistic updates and testing.
-     */
-    public fun localSignalUpdate(matching: (T) -> Boolean, modify: (T) -> T?) {
-        val updates = HashSet<T>()
-        val removals = HashSet<ID>()
-        store.cachedItems().filter(matching).forEach {
-            modify(it)?.let { updated -> updates.add(updated) } ?: removals.add(it._id)
-        }
-        if (updates.isNotEmpty()) store.mutated(updates, scope.now())
-        if (removals.isNotEmpty()) deletionRecorded(removals)
-    }
-
-    /**
-     * Inserts into the cache without an API call; the item exists only locally until the server
-     * confirms it.  For optimistic updates and testing.
-     */
-    public fun localInsert(item: T): T {
-        store.mutated(listOf(item), scope.now())
-        return item
     }
 }

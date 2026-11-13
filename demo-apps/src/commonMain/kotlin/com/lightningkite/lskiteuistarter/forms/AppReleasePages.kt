@@ -44,11 +44,11 @@ class AppReleaseListPage : Page {
             val module = session().formModule()
             AppReleaseTableContext(module, Signal(AppRelease.serializer().defaultColumns().map { ColumnInfo(it, module) }))
         }
-        val releases = remember { session().appReleases.list(Query(Condition.Always)) }
+        val releases = remember { session().appReleases.query(Query(Condition.Always)) }
 
         val elementContext = this.context
         val createNew = Action("New Release") {
-            val created = session().appReleases.add(
+            val created = session().appReleases.insert(
                 AppRelease(version = "1.0.0", platform = null, requiredUpdate = false)
             )
             elementContext.pageNavigator.navigate(AppReleaseEditPage(created._id.toString()))
@@ -87,7 +87,7 @@ class AppReleaseEditPage(val id: String) : Page {
         val session = currentSessionNotNull
         val releaseId = Uuid.parse(id)
         val module = rememberSuspending { session().formModule() }
-        val item = remember { session().appReleases.item(releaseId) }
+        val item = remember { session().appReleases.ref(releaseId) }
 
         var seeded = false
         val draft = Signal(AppRelease(_id = releaseId, version = "", requiredUpdate = false, platform = null))

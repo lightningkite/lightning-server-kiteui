@@ -9,7 +9,7 @@ import com.lightningkite.kiteui.navigation.Page
 import com.lightningkite.kiteui.views.*
 import com.lightningkite.kiteui.views.direct.*
 import com.lightningkite.kiteui.views.l2.children
-import com.lightningkite.lightningserver.db.ModelCacheLimitReadable
+import com.lightningkite.lightningserver.db.LimitReactiveList
 import com.lightningkite.lightningserver.db.flatten
 import com.lightningkite.lskiteuistarter.pressure.Oracle
 import com.lightningkite.lskiteuistarter.sdk.UserSession
@@ -94,7 +94,7 @@ class RaceConsolePage : Page {
 
         // One list object for the life of the filter, because paging is done by growing this list's
         // window - rebuilding it per page would throw away the boundary the cache paged from.
-        val board = remember { session().racers.list(query(), pullFrequency = 15.seconds) }.flatten()
+        val board = remember { session().racers.query(query(), pullFrequency = 15.seconds) }.flatten()
 
         // Hand the oracle exactly what the screen is showing, on every change and on its tick, so a
         // board that happens to be still is not mistaken for a screen that has gone away.
@@ -236,7 +236,7 @@ class RaceConsolePage : Page {
 
     private fun ElementWriter.CanAddWeight.leaderboard(
         session: Reactive<UserSession>,
-        board: ModelCacheLimitReadable<Racer>,
+        board: LimitReactiveList<Racer>,
     ) {
         // Adds straight into the caller's weighted column.  An intermediate plain column would be
         // content-height rather than a flex container, and the expanding recycler inside it would
@@ -269,7 +269,7 @@ class RaceConsolePage : Page {
                             ::content {
                                 val clubId = racer().club
                                 if (clubId == null) "unattached"
-                                else session().clubs.item(clubId)()?.name ?: "loading club..."
+                                else session().clubs.ref(clubId)()?.name ?: "loading club..."
                             }
                         }
                     }
@@ -293,7 +293,7 @@ class RaceConsolePage : Page {
             text {
                 ::content {
                     val id = selectedRacer()
-                    val racer = id?.let { session().racers.item(it)() }
+                    val racer = id?.let { session().racers.ref(it)() }
                     if (racer == null) (if (id == null) "nothing selected" else "not found")
                     else "#${racer.bib} ${racer.name} - CP ${racer.checkpoint}, ${elapsed(racer.elapsedSeconds)}, v${racer.version}"
                 }
@@ -362,7 +362,7 @@ class RaceConsolePage : Page {
 
     private fun ElementWriter.CanAddTheme.scenarioPanel(
         session: Reactive<UserSession>,
-        board: ModelCacheLimitReadable<Racer>,
+        board: LimitReactiveList<Racer>,
         query: Reactive<Query<Racer>>,
     ) {
         card.col {
@@ -374,7 +374,7 @@ class RaceConsolePage : Page {
                 if (items.isEmpty()) return@scenarioButton false to "board is empty - seed the race first"
                 val target = items.last()
                 session.awaitOnce().instruments.reset()
-                val fetched = session.awaitOnce().racers.item(target._id).awaitOnce()
+                val fetched = session.awaitOnce().racers.ref(target._id).awaitOnce()
                 delay(400)
                 val queries = session.awaitOnce().instruments.count("racer.query")
                 (queries == 0) to
@@ -385,12 +385,12 @@ class RaceConsolePage : Page {
                 val s = session.awaitOnce()
                 val clubIds = board.awaitOnce().mapNotNull { it.club }.distinct()
                 if (clubIds.isEmpty()) return@scenarioButton false to "no clubs referenced - seed the race first"
-                s.clubs.store.invalidate()
+                s.clubs.invalidateAll()
                 s.instruments.reset()
                 // Concurrently, because coalescing is exactly what is being measured; asking one at a
                 // time would serialise them and each would legitimately be its own request.
                 val names = coroutineScope {
-                    clubIds.map { id -> async { s.clubs.item(id).awaitOnce()?.name } }.awaitAll()
+                    clubIds.map { id -> async { s.clubs.ref(id).awaitOnce()?.name } }.awaitAll()
                 }
                 delay(400)
                 val queries = s.instruments.count("club.query")
@@ -459,10 +459,10 @@ class RaceConsolePage : Page {
                 if (clubIds.isEmpty()) return@scenarioButton false to "no clubs referenced - seed the race first"
                 // Warm them without invalidating first, then ask again.  The second read is the
                 // measurement: coverage the cache already has should cost nothing to reuse.
-                coroutineScope { clubIds.map { id -> async { s.clubs.item(id).awaitOnce() } }.awaitAll() }
+                coroutineScope { clubIds.map { id -> async { s.clubs.ref(id).awaitOnce() } }.awaitAll() }
                 delay(500)
                 s.instruments.reset()
-                coroutineScope { clubIds.map { id -> async { s.clubs.item(id).awaitOnce() } }.awaitAll() }
+                coroutineScope { clubIds.map { id -> async { s.clubs.ref(id).awaitOnce() } }.awaitAll() }
                 delay(500)
                 val queries = s.instruments.count("club.query")
                 (queries == 0) to
@@ -529,10 +529,10 @@ class RaceConsolePage : Page {
                 val s = session.awaitOnce()
                 val target = board.awaitOnce().firstOrNull()
                     ?: return@scenarioButton false to "board is empty - seed the race first"
-                val before = s.racers.item(target._id).awaitOnce()
+                val before = s.racers.ref(target._id).awaitOnce()
                 httpOffline.value = true
                 val thrown = try {
-                    s.racers.item(target._id).modify(Modification<Racer> { it.name assign "SHOULD NOT STICK" })
+                    s.racers.ref(target._id).modify(Modification<Racer> { it.name assign "SHOULD NOT STICK" })
                     null
                 } catch (e: Exception) {
                     e
@@ -540,7 +540,7 @@ class RaceConsolePage : Page {
                     httpOffline.value = false
                 }
                 delay(500)
-                val after = s.racers.item(target._id).awaitOnce()
+                val after = s.racers.ref(target._id).awaitOnce()
                 val unchanged = after?.name == before?.name
                 // A failed write must leave nothing behind.  A cache that optimistically kept the new
                 // value would show a change the server never accepted.

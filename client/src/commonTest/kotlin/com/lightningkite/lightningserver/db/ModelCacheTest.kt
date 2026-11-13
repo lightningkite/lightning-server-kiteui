@@ -5,6 +5,7 @@ import com.lightningkite.kiteui.LogRoot
 import com.lightningkite.kiteui.Platform
 import com.lightningkite.kiteui.current
 import com.lightningkite.services.database.*
+import com.lightningkite.reactive.context.awaitOnce
 import com.lightningkite.reactive.context.reactive
 import com.lightningkite.reactive.core.ReactiveState
 import kotlinx.coroutines.CoroutineScope
@@ -12,11 +13,13 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.advanceTimeBy
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
 import kotlin.test.assertFails
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.minutes
@@ -56,6 +59,7 @@ class ModelCacheTest {
         val cache = ModelCache<LargeTestModel, Uuid>(
             mock,
             LargeTestModel.serializer(),
+            defaultPullFrequency = Duration.ZERO,
             scope = backgroundScope,
             log = testLog
         )
@@ -149,6 +153,7 @@ class ModelCacheTest {
         val cache = ModelCache<LargeTestModel, Uuid>(
             mock,
             LargeTestModel.serializer(),
+            defaultPullFrequency = Duration.ZERO,
             scope = backgroundScope,
             log = testLog
         )
@@ -242,6 +247,7 @@ class ModelCacheTest {
         val cache = ModelCache<LargeTestModel, Uuid>(
             mock,
             LargeTestModel.serializer(),
+            defaultPullFrequency = Duration.ZERO,
             scope = backgroundScope,
             log = testLog
         )
@@ -395,6 +401,7 @@ class ModelCacheTest {
         val cache = ModelCache<LargeTestModel, Uuid>(
             mock,
             LargeTestModel.serializer(),
+            defaultPullFrequency = Duration.ZERO,
             scope = backgroundScope,
             log = testLog
         )
@@ -506,6 +513,7 @@ class ModelCacheTest {
         val cache = ModelCache<LargeTestModel, Uuid>(
             mock,
             LargeTestModel.serializer(),
+            defaultPullFrequency = Duration.ZERO,
             scope = backgroundScope,
             log = testLog
         )
@@ -582,6 +590,7 @@ class ModelCacheTest {
         val cache = ModelCache<LargeTestModel, Uuid>(
             mock,
             LargeTestModel.serializer(),
+            defaultPullFrequency = Duration.ZERO,
             scope = backgroundScope,
             log = testLog
         )
@@ -674,11 +683,11 @@ class ModelCacheTest {
     }
 
     /**
-     * Tests that ModelCache's totallyInvalidate() forces a complete cache refresh.
+     * Tests that ModelCache's invalidateAll() forces a complete cache refresh.
      *
      * Verifies that:
      * 1. Cache initially returns stale data
-     * 2. After totallyInvalidate() is called, cache fetches fresh data from server
+     * 2. After invalidateAll() is called, cache fetches fresh data from server
      * 3. Updated data is properly reflected in reactive contexts
      */
     @Test
@@ -707,7 +716,7 @@ class ModelCacheTest {
         mock.data[initialItem._id] = updatedItem
 
         // Total invalidation should force a refresh
-        cache.totallyInvalidate()
+        cache.invalidateAll()
         delay(5.seconds)
 
         // Verify the updated data is received
@@ -736,7 +745,8 @@ class ModelCacheTest {
         val newItem = LargeTestModel(int = 1)
 
         // Upsert the item
-        val ref = cache.upsert(newItem)
+        cache.upsert(newItem._id, newItem)
+        val ref = cache.item(newItem._id)
         var lastRead: LargeTestModel? = null
         reactive {
             lastRead = ref()
@@ -749,11 +759,146 @@ class ModelCacheTest {
 
         // Update the item
         val updatedItem = newItem.copy(short = 99)
-        cache.upsert(updatedItem)
+        cache.upsert(updatedItem._id, updatedItem)
         delay(5.seconds)
 
         // Verify the item was updated
         assertEquals(updatedItem, lastRead)
+    }
+
+    @Test
+    fun modelRef() = runTest2 {
+        val mock = ClientModelRestEndpointsMock<LargeTestModel, Uuid>(this)
+        val original = LargeTestModel(int = 1)
+        mock.data[original._id] = original
+        val cache = ModelCache<LargeTestModel, Uuid>(mock, LargeTestModel.serializer(), scope = backgroundScope, log = testLog)
+
+        val ref = cache.ref(original._id)
+        assertEquals(cache.ref(original._id), ref)
+        var lastRead: LargeTestModel? = null
+        reactive { lastRead = ref() }
+        delay(5.seconds)
+        assertEquals(original, lastRead)
+
+        ref.modify(Modification { it.short assign 3 })
+        delay(1.seconds)
+        assertEquals(original.copy(short = 3), lastRead)
+
+        ref.set(original.copy(short = 4))
+        delay(1.seconds)
+        assertEquals(original.copy(short = 4), mock.data[original._id])
+
+        ref.set(null)
+        delay(1.seconds)
+        assertEquals(null, lastRead)
+        assertFalse(mock.data.containsKey(original._id))
+
+        ref.set(original)
+        delay(1.seconds)
+        assertEquals(original, mock.data[original._id])
+    }
+
+    @Test
+    fun draftOfMissingRecord() = runTest2 {
+        val mock = ClientModelRestEndpointsMock<LargeTestModel, Uuid>(this)
+        val cache = ModelCache<LargeTestModel, Uuid>(mock, LargeTestModel.serializer(), scope = backgroundScope, log = testLog)
+        val missing = LargeTestModel(int = 1)
+
+        val failing = cache.ref(missing._id).draft()
+        var failure: Throwable? = null
+        reactive { failure = runCatching { failing() }.exceptionOrNull() }
+        delay(5.seconds)
+        assertTrue(failure is NoSuchElementException)
+
+        val creating = cache.ref(missing._id).draft(notFound = { missing })
+        var shown: LargeTestModel? = null
+        reactive { shown = creating() }
+        delay(5.seconds)
+        assertEquals(missing, shown)
+
+        creating.valueSet(missing.copy(short = 2))
+        creating.publish()
+        delay(1.seconds)
+        assertEquals(missing.copy(short = 2), mock.data[missing._id])
+        assertEquals(missing.copy(short = 2), shown)
+        assertFalse(creating.changesMade.awaitOnce())
+    }
+
+    @Test
+    fun draftKeepsLiveChangesAndPublishesOnlyEdits() = runTest2 {
+        val mock = ClientModelRestEndpointsMock<LargeTestModel, Uuid>(this)
+        val original = LargeTestModel(int = 1)
+        mock.data[original._id] = original
+        val cache = ModelCache<LargeTestModel, Uuid>(mock, LargeTestModel.serializer(), scope = backgroundScope, log = testLog)
+
+        val draft = cache.ref(original._id).draft()
+        var shown: LargeTestModel? = null
+        reactive { shown = draft() }
+        delay(5.seconds)
+        assertEquals(original, shown)
+
+        draft.valueSet(original.copy(int = 2))
+        assertTrue(draft.changesMade.awaitOnce())
+
+        // Someone else changes a different field while the draft is open.
+        cache.modify(original._id, Modification { it.short assign 5 })
+        delay(1.seconds)
+        assertEquals(original.copy(int = 2, short = 5), shown)
+
+        draft.publish()
+        delay(1.seconds)
+        assertEquals(original.copy(int = 2, short = 5), mock.data[original._id])
+        assertFalse(draft.changesMade.awaitOnce())
+
+        draft.valueSet(original.copy(int = 3, short = 5))
+        draft.cancel()
+        delay(1.seconds)
+        assertEquals(original.copy(int = 2, short = 5), shown)
+    }
+
+    @Test
+    fun lastUpdatedAtReportsWhetherASocketCoversIt() = runTest2 {
+        val mock = ClientModelRestEndpointsPlusUpdatesWebSocketMock<LargeTestModel, Uuid>(this)
+        val row = LargeTestModel(int = 1)
+        mock.data[row._id] = row
+        val cache = ModelCache<LargeTestModel, Uuid>(mock, LargeTestModel.serializer(), scope = backgroundScope, log = testLog)
+        val query = Query<LargeTestModel>(Condition.Always, sort { it.int.ascending() })
+        assertEquals(null, cache.lastUpdate(row._id).state.getOrNull())
+
+        val polled = cache.query(query, pullFrequency = 10.minutes)
+        val releasePolled = polled.addListener { }
+        delay(1.seconds)
+        assertEquals(false, cache.lastUpdate(query).state.getOrNull()?.live)
+        assertEquals(false, cache.lastUpdate(row._id).state.getOrNull()?.live)
+        releasePolled()
+
+        val live = cache.query(query, pullFrequency = Duration.ZERO)
+        val releaseLive = live.addListener { }
+        delay(7.seconds)
+        assertEquals(true, cache.lastUpdate(query).state.getOrNull()?.live)
+        assertEquals(true, cache.lastUpdate(row._id).state.getOrNull()?.live)
+        releaseLive()
+    }
+
+    @Test
+    fun replace() = runTest2 {
+        val mock = ClientModelRestEndpointsMock<LargeTestModel, Uuid>(this)
+        val original = LargeTestModel(int = 1)
+        mock.data[original._id] = original
+        val cache = ModelCache<LargeTestModel, Uuid>(mock, LargeTestModel.serializer(), scope = backgroundScope, log = testLog)
+
+        var lastRead: LargeTestModel? = null
+        val ref = cache.item(original._id)
+        reactive { lastRead = ref() }
+        delay(5.seconds)
+        assertEquals(original, lastRead)
+
+        val replaced = original.copy(short = 7)
+        cache.replace(original._id, replaced)
+        delay(1.seconds)
+
+        assertEquals(replaced, lastRead)
+        assertEquals(replaced, mock.data[original._id])
     }
 
     /**
@@ -809,7 +954,7 @@ class ModelCacheTest {
      *
      * Verifies that:
      * 1. Cache starts with an empty list
-     * 2. Elements can be added one by one via cache.add()
+     * 2. Elements can be added one by one via cache.insert()
      * 3. Each addition is reflected in reactive list queries
      * 4. Elements are properly sorted according to the query
      * 5. All elements are persisted in the backend
@@ -838,7 +983,7 @@ class ModelCacheTest {
 
         // Add first element
         val item1 = LargeTestModel(int = 1)
-        cache.add(item1)
+        cache.insert(item1)
         delay(5.seconds)
 
         // Verify the first element is in the list
@@ -846,7 +991,7 @@ class ModelCacheTest {
 
         // Add second element
         val item2 = LargeTestModel(int = 2)
-        cache.add(item2)
+        cache.insert(item2)
         delay(5.seconds)
 
         // Verify both elements are in the list, sorted by int
@@ -854,7 +999,7 @@ class ModelCacheTest {
 
         // Add third element
         val item3 = LargeTestModel(int = 3)
-        cache.add(item3)
+        cache.insert(item3)
         delay(5.seconds)
 
         // Verify all three elements are in the list, sorted by int
@@ -868,9 +1013,9 @@ class ModelCacheTest {
     }
 
     /**
-     * Tests that totallyInvalidate() works immediately, not relying on cache expiration timing.
+     * Tests that invalidateAll() works immediately, not relying on cache expiration timing.
      *
-     * This test verifies that after totallyInvalidate():
+     * This test verifies that after invalidateAll():
      * 1. Fresh data is fetched from the server
      * 2. The updated data is received
      */
@@ -900,7 +1045,7 @@ class ModelCacheTest {
         mock.data[initialItem._id] = updatedItem
 
         // Total invalidation should clear cache and trigger refetch
-        cache.totallyInvalidate()
+        cache.invalidateAll()
 
         // Give time for refetch
         delay(5.seconds)
@@ -910,7 +1055,7 @@ class ModelCacheTest {
     }
 
     /**
-     * Tests that totallyInvalidate() works with WebSocket connections.
+     * Tests that invalidateAll() works with WebSocket connections.
      *
      * When using WebSockets, data is considered "live" and the polling loop
      * won't refetch unless the cache is truly cleared.
@@ -926,6 +1071,7 @@ class ModelCacheTest {
         val cache = ModelCache<LargeTestModel, Uuid>(
             mock,
             LargeTestModel.serializer(),
+            defaultPullFrequency = Duration.ZERO,
             scope = backgroundScope,
             log = testLog
         )
@@ -945,7 +1091,7 @@ class ModelCacheTest {
         mock.data[initialItem._id] = updatedItem
 
         // Total invalidation should force a refetch even with WebSocket
-        cache.totallyInvalidate()
+        cache.invalidateAll()
         delay(5.seconds)
 
         // Verify the updated data is received
@@ -953,7 +1099,7 @@ class ModelCacheTest {
     }
 
     /**
-     * Tests that totallyInvalidate() properly clears list caches.
+     * Tests that invalidateAll() properly clears list caches.
      *
      * BUG EXPOSURE: The current implementation doesn't call cache.clear()
      * on the ListReconstructionCalculator, so list queries continue
@@ -989,7 +1135,7 @@ class ModelCacheTest {
         mock.data[newItem._id] = newItem
 
         // Total invalidation should clear list cache and refetch
-        cache.totallyInvalidate()
+        cache.invalidateAll()
         delay(5.seconds)
 
         // Verify the new item is included
@@ -998,7 +1144,7 @@ class ModelCacheTest {
     }
 
     /**
-     * Tests that totallyInvalidate() clears individual item cache entries.
+     * Tests that invalidateAll() clears individual item cache entries.
      *
      * BUG EXPOSURE: The current implementation doesn't clear lastIndividualValues,
      * so the cached item data persists even after invalidation.
@@ -1035,7 +1181,7 @@ class ModelCacheTest {
         mock.data[item2._id] = updatedItem2
 
         // Total invalidation should clear ALL cached items and refetch
-        cache.totallyInvalidate()
+        cache.invalidateAll()
         delay(5.seconds)
 
         // Verify both items are updated
@@ -1044,7 +1190,7 @@ class ModelCacheTest {
     }
 
     /**
-     * Tests that reactive state becomes notReady after totallyInvalidate().
+     * Tests that reactive state becomes notReady after invalidateAll().
      *
      * After invalidation, the cache should indicate that data is stale/unavailable
      * until fresh data is fetched.
@@ -1070,7 +1216,7 @@ class ModelCacheTest {
         assertTrue(ref.state.ready, "State should be ready before invalidation")
 
         // Invalidate - state should become notReady briefly
-        cache.totallyInvalidate()
+        cache.invalidateAll()
 
         // Immediately after invalidation, state should be notReady
         // (This is the expected behavior - current implementation may not do this)
@@ -1098,6 +1244,7 @@ class ModelCacheTest {
         val cache = ModelCache<LargeTestModel, Uuid>(
             mock,
             LargeTestModel.serializer(),
+            defaultPullFrequency = Duration.ZERO,
             scope = backgroundScope,
             log = testLog
         )
@@ -1516,20 +1663,17 @@ class ModelCacheTest {
      */
     @Test fun pagingForwardDoesNotRefreshTheHeadOfTheList() = runTest2 {
         val (_, _, cache) = backgroundScope.pagingFixture(10)
-        val ref = cache.list(
-            Query(Condition.Always, sort { it.int.ascending() }, limit = 3),
-            maximumAge = 10.minutes,
-            pullFrequency = 10.minutes,
-        )
+        val query = Query<LargeTestModel>(Condition.Always, sort { it.int.ascending() }, limit = 3)
+        val ref = cache.list(query, maximumAge = 10.minutes, pullFrequency = 10.minutes)
         val release = ref.addListener { }
         delay(5.seconds)
-        val retrievedAt = ref.lastUpdatedAt.state.getOrNull()
+        val retrievedAt = cache.lastUpdate(query).state.getOrNull()?.at
         assertNotNull(retrievedAt)
 
         delay(1.minutes)
         ref.limit(6)
 
-        assertEquals(retrievedAt, ref.lastUpdatedAt.state.getOrNull(), "the extended list is only as fresh as its oldest part")
+        assertEquals(retrievedAt, cache.lastUpdate(query.copy(limit = 6)).state.getOrNull()?.at, "the extended list is only as fresh as its oldest part")
 
         release()
     }

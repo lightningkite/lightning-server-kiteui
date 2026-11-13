@@ -12,6 +12,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
@@ -402,16 +403,13 @@ class ModelCacheTimingTest {
     /**
      * A socket that goes down and stays down has to leave its readers asking again.
      *
-     * The whole reason a reader takes a socket is that polling at its `pullFrequency` would be
-     * wasteful next to a server that promises to tell us - and `watch()`, which is what nearly every
-     * screen uses, asks for no polling at all. So when the promise stops being kept there is nothing
-     * else holding the screen up: without a fallback the list freezes on whatever it last saw, for as
-     * long as the screen is open, with no error and no way back.
+     * A `pullFrequency` of zero asks for live data.  The socket is how that is usually delivered, so
+     * when it stops being kept the reader has to fall back to polling, or the list freezes on whatever
+     * it last saw, for as long as the screen is open, with no error and no way back.
      */
     @Test fun aSocketOnlyListKeepsAskingWhileTheSocketIsDown() = runTest2 {
         val (mock, data, cache) = backgroundScope.socketFixture(3)
-        // No polling and no expiry - the defaults, and what watch() passes.
-        val ref = cache.list(everything())
+        val ref = cache.list(everything(), pullFrequency = Duration.ZERO)
         val release = ref.addListener { }
         delay(7.seconds)
         assertEquals(data, ref.state.getOrNull())
@@ -433,7 +431,7 @@ class ModelCacheTimingTest {
     /** The same for an item, which is how a detail screen goes quietly wrong. */
     @Test fun aSocketOnlyItemKeepsAskingWhileTheSocketIsDown() = runTest2 {
         val (mock, data, cache) = backgroundScope.socketFixture(3)
-        val ref = cache.item(data[0]._id)
+        val ref = cache.item(data[0]._id, pullFrequency = Duration.ZERO)
         val release = ref.addListener { }
         delay(7.seconds)
         assertEquals(data[0], ref.state.getOrNull())
@@ -448,11 +446,11 @@ class ModelCacheTimingTest {
     }
 
     /**
-     * The fallback is a fallback: a covered reader that asked for no polling still asks for nothing.
+     * The fallback is a fallback: a covered live reader asks for nothing.
      */
     @Test fun aCoveredSocketOnlyListStillDoesNotPoll() = runTest2 {
         val (mock, data, cache) = backgroundScope.socketFixture(3)
-        val ref = cache.list(everything())
+        val ref = cache.list(everything(), pullFrequency = Duration.ZERO)
         val release = ref.addListener { }
         delay(7.seconds)
         assertEquals(data, ref.state.getOrNull())
@@ -573,14 +571,14 @@ class ModelCacheTimingTest {
     // is the whole of the second question: how often this screen refreshes itself while it is up.
 
     /**
-     * The defaults ask for nothing: `maximumAge` of [kotlin.time.Duration.INFINITE] says the value
-     * never expires, and a `pullFrequency` of zero says do not poll.  Between them there is no reason
+     * A `maximumAge` of [kotlin.time.Duration.INFINITE] says the value never expires, and a
+     * `pullFrequency` of [kotlin.time.Duration.INFINITE] says do not poll.  Between them there is no reason
      * to ever go back to the server, and a reader that goes back anyway costs a request every few
      * seconds for as long as the screen is open.
      */
     @Test fun anItemThatNeitherExpiresNorPollsIsFetchedOnce() = runTest2 {
         val (mock, data, cache) = backgroundScope.fixture(3)
-        val ref = cache.item(data[0]._id)
+        val ref = cache.item(data[0]._id, pullFrequency = Duration.INFINITE)
         val keep = ref.addListener { }
 
         delay(1.seconds)
@@ -595,7 +593,7 @@ class ModelCacheTimingTest {
     /** The same for a list, which is where the cost multiplies with everything else on screen. */
     @Test fun aListThatNeitherExpiresNorPollsIsFetchedOnce() = runTest2 {
         val (mock, data, cache) = backgroundScope.fixture(3)
-        val ref = cache.list(everything())
+        val ref = cache.list(everything(), pullFrequency = Duration.INFINITE)
         val keep = ref.addListener { }
 
         delay(1.seconds)
@@ -604,6 +602,22 @@ class ModelCacheTimingTest {
 
         delay(5.minutes)
         assertEquals(1, mock.queries.size, "nothing expired and nothing was asked for, so nothing should have been sent")
+        keep()
+    }
+
+    /** Zero asks for live data, so without a socket to deliver it the reader polls at the floor. */
+    @Test fun aLiveListWithoutASocketPolls() = runTest2 {
+        val (mock, data, cache) = backgroundScope.fixture(3)
+        val ref = cache.list(everything(), pullFrequency = Duration.ZERO)
+        val keep = ref.addListener { }
+        delay(1.seconds)
+        assertEquals(data, ref.state.getOrNull())
+
+        val added = LargeTestModel(int = 4)
+        mock.data[added._id] = added
+        delay(6.seconds)
+
+        assertEquals(data + added, ref.state.getOrNull())
         keep()
     }
 

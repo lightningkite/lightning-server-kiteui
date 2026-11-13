@@ -46,12 +46,12 @@ class DocumentListPage : Page {
             val module = session().formModule()
             DocumentTableContext(module, Signal(Document.serializer().defaultColumns().map { ColumnInfo(it, module) }))
         }
-        val documents = remember { session().documents.list(Query(Condition.Always)) }
+        val documents = remember { session().documents.query(Query(Condition.Always)) }
 
         val elementContext = this.context
         val createNew = Action("New Document") {
             val owner = session().userId
-            val created = session().documents.add(Document(title = "New Document", owner = owner))
+            val created = session().documents.insert(Document(title = "New Document", owner = owner))
             elementContext.pageNavigator.navigate(DocumentEditPage(created._id.toString()))
         }
 
@@ -88,7 +88,7 @@ class DocumentEditPage(val id: String) : Page {
         val session = currentSessionNotNull
         val documentId = Uuid.parse(id)
         val module = rememberSuspending { session().formModule() }
-        val item = remember { session().documents.item(documentId) }
+        val item = remember { session().documents.ref(documentId) }
 
         var seeded = false
         val draft = Signal(Document(_id = documentId))

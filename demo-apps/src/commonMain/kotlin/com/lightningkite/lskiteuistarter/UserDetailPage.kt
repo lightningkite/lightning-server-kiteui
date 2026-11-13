@@ -1,5 +1,5 @@
 // Demonstrates editing through the ModelCache write API directly (no forms engine involved
-// here - that's the `forms` package's job): ModelCacheItemReadable.modify()/.delete(), field
+// here - that's the `forms` package's job): ModelRef.modify()/.delete(), field
 // binding via com.lightningkite.serialization.lens + .asString(), and computing a diff with
 // lightningdb.modification(old, new) instead of hand-writing a Modification. Also the page a
 // foreign key to User opens (see forms/FormsSupport.kt's typeInfo wiring).
@@ -36,7 +36,7 @@ class UserDetailPage(val id: String) : Page {
     override fun ElementWriter.CanAddTheme.render() {
         val session = currentSessionNotNull
         val userId = Uuid.parse(id)
-        val item = remember { session().users.item(userId) }
+        val item = remember { session().users.ref(userId) }
 
         // Local edit buffer, seeded once from the loaded record - editing the live cache value
         // directly would fight every background refresh (see kiteui skill pitfall #8).

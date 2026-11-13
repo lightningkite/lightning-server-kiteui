@@ -86,7 +86,7 @@ class DetailAdminPage(val collectionName: String, val itemId: String) : Page {
     override val title: Reactive<String> = remember {
         val type = itemTypeTitle(collectionName)
         val mc = mcOrNull() ?: return@remember type
-        val item = mc[DefaultUriFormat.decodeFromString(mc.serializer._id().serializer, itemId)]() ?: return@remember type
+        val item = mc.ref(DefaultUriFormat.decodeFromString(mc.serializer._id().serializer, itemId))() ?: return@remember type
         val name = mc.serializer.defaultTitleFields().joinToString(" ") { it.get(item).toString() }
         if (name.isBlank()) type else "$type: $name"
     }
@@ -115,7 +115,7 @@ class DetailAdminPage(val collectionName: String, val itemId: String) : Page {
         val tracked = remember {
             val mc = mc()
             val actualId = DefaultUriFormat.decodeFromString(mc.serializer._id().serializer, itemId)
-            if (live()) mc.item(actualId, pullFrequency = LIVE_PULL_FREQUENCY) else mc[actualId]
+            if (live()) mc.ref(actualId, pullFrequency = LIVE_PULL_FREQUENCY) else mc.ref(actualId)
         }
         // Only flips when the item appears or disappears, so edits aren't interrupted by updates.
         val exists = remember { tracked()() != null }
@@ -197,7 +197,7 @@ class DetailAdminPage(val collectionName: String, val itemId: String) : Page {
                                     val mc = mc()
                                     val actualId =
                                         DefaultUriFormat.decodeFromString(mc.serializer._id().serializer, itemId)
-                                    mc[actualId].delete()
+                                    mc.ref(actualId).delete()
                                     toast {
                                         row {
                                             centered.icon(Icon.deleteForever, "Deleted")
@@ -227,8 +227,8 @@ class DetailAdminPage(val collectionName: String, val itemId: String) : Page {
                                     val actualId =
                                         DefaultUriFormat.decodeFromString(mc.serializer._id().serializer, itemId)
                                     val newItem = item()
-                                    val newId = mc.add(newItem)._id
-                                    mc[actualId].delete()
+                                    val newId = mc.insert(newItem)._id
+                                    mc.ref(actualId).delete()
                                     toast {
                                         row {
                                             centered.icon(Icon.done, "Done")
@@ -287,7 +287,7 @@ class DetailAdminPage(val collectionName: String, val itemId: String) : Page {
                             centered.expanding.text(label)
                             centered.subtext {
                                 val count = rememberSuspending {
-                                    (model.value.cache(adminAuthentication()) as ModelCache<HasId<*>, *>).skipCache.count(condition)
+                                    (model.value.cache(adminAuthentication()) as ModelCache<HasId<*>, *>).uncached.count(condition)
                                 }
                                 ::content { count().toString() }
                             }

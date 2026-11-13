@@ -47,11 +47,11 @@ class SealedModelListPage : Page {
                 Signal(SealedPolymorhphicModel.serializer().defaultColumns().map { ColumnInfo(it, module) })
             )
         }
-        val items = remember { session().sealedPolymorhphicModels.list(Query(Condition.Always)) }
+        val items = remember { session().sealedPolymorhphicModels.query(Query(Condition.Always)) }
 
         val elementContext = this.context
         val createNew = Action("New") {
-            val created = session().sealedPolymorhphicModels.add(SealedPolymorhphicModel())
+            val created = session().sealedPolymorhphicModels.insert(SealedPolymorhphicModel())
             elementContext.pageNavigator.navigate(SealedModelEditPage(created._id.toString()))
         }
 
@@ -88,7 +88,7 @@ class SealedModelEditPage(val id: String) : Page {
         val session = currentSessionNotNull
         val modelId = Uuid.parse(id)
         val module = rememberSuspending { session().formModule() }
-        val item = remember { session().sealedPolymorhphicModels.item(modelId) }
+        val item = remember { session().sealedPolymorhphicModels.ref(modelId) }
 
         var seeded = false
         val draft = Signal(SealedPolymorhphicModel(_id = modelId))

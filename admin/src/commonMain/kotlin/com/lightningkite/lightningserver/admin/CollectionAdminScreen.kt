@@ -19,15 +19,12 @@ import com.lightningkite.kiteui.navigation.pageNavigator
 import com.lightningkite.kiteui.reactive.Action
 import com.lightningkite.kiteui.views.*
 import com.lightningkite.kiteui.views.direct.*
-import com.lightningkite.kiteui.views.l2.dialog
 import com.lightningkite.kiteui.views.direct.icon
 import com.lightningkite.kotlinx.serialization.csv.CsvFormat
 import com.lightningkite.kotlinx.serialization.csv.StringDeferringConfig
 import com.lightningkite.services.database.*
 import com.lightningkite.lightningserver.db.ModelCache
-import com.lightningkite.lightningserver.db.ModelCacheLike
 import com.lightningkite.reactive.context.ReactiveContext
-import com.lightningkite.reactive.context.invoke
 import com.lightningkite.reactive.context.reactive
 import com.lightningkite.reactive.core.*
 import com.lightningkite.reactive.extensions.debounce
@@ -52,7 +49,7 @@ fun ViewWriter.liveControls(collectionName: String, live: Signal<Boolean>, mc: M
     }
     shownWhen { !live() }.button {
         icon(refreshIcon, "Refresh")
-        action = Action("Refresh", refreshIcon) { mc.totallyInvalidate() }
+        action = Action("Refresh", refreshIcon) { mc.invalidateAll() }
     }
 }
 
@@ -355,7 +352,7 @@ class CollectionAdminPage(val collectionName: String) : Page {
                 subtext {
                     val itemCount = rememberSuspending {
                         val q = query()
-                        mc.skipCache.count(q.condition)
+                        mc.uncached.count(q.condition)
                     }
                     ::content {
                         buildString {
@@ -401,7 +398,7 @@ class CollectionAdminPage(val collectionName: String) : Page {
             expanding.renderTable(
                 module = forms,
                 innerSerializer = mc.serializer,
-                items = remember { mc.list(query(), 0.minutes, if (live()) LIVE_PULL_FREQUENCY else 5.minutes) },
+                items = remember { mc.query(query(), 0.minutes, if (live()) LIVE_PULL_FREQUENCY else 5.minutes) },
                 columns = columns as MutableReactive<List<ColumnInfo<UnknownModel>>>,
                 linkTo = {
                     val id = UrlProperties.encodeToString(mc.serializer._id().serializer, it._id)
@@ -481,7 +478,7 @@ class CollectionAdminPage(val collectionName: String) : Page {
 
                         val itemCount = rememberSuspending {
                             val c = query().condition
-                            mc.skipCache.count(c)
+                            mc.uncached.count(c)
                         }
 
                         subtext {
@@ -505,8 +502,8 @@ class CollectionAdminPage(val collectionName: String) : Page {
                                     "Delete all matching items?",
                                     "Are you sure you want to delete all items matching the current query? This action cannot be undone."
                                 ) {
-                                    mc.skipCache.bulkDelete(c)
-                                    mc.totallyInvalidate()
+                                    mc.uncached.bulkDelete(c)
+                                    mc.invalidateAll()
                                 }
                                 close()
                             }

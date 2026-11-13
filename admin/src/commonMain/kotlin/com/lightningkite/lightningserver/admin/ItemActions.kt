@@ -161,7 +161,7 @@ private fun ViewWriter.itemActionDialog(collectionName: String, itemId: String, 
                         )
                         result.value = ActionResult(output)
                         // The action may well have changed the item; show it as it is now.
-                        model.cache(adminAuthentication.await()).totallyInvalidate()
+                        model.cache(adminAuthentication.await()).invalidateAll()
                     } catch (e: CancellationException) {
                         throw e
                     } catch (e: Exception) {
