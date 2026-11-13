@@ -7,6 +7,7 @@ import com.lightningkite.kiteui.current
 import com.lightningkite.services.database.*
 import com.lightningkite.reactive.context.awaitOnce
 import com.lightningkite.reactive.context.reactive
+import com.lightningkite.reactive.core.Constant
 import com.lightningkite.reactive.core.ReactiveState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -804,13 +805,13 @@ class ModelCacheTest {
         val cache = ModelCache<LargeTestModel, Uuid>(mock, LargeTestModel.serializer(), scope = backgroundScope, log = testLog)
         val missing = LargeTestModel(int = 1)
 
-        val failing = cache.ref(missing._id).draft()
+        val failing = Constant(cache.ref(missing._id)).draft()
         var failure: Throwable? = null
         reactive { failure = runCatching { failing() }.exceptionOrNull() }
         delay(5.seconds)
         assertTrue(failure is NoSuchElementException)
 
-        val creating = cache.ref(missing._id).draft(notFound = { missing })
+        val creating = Constant(cache.ref(missing._id)).draft(notFound = { missing })
         var shown: LargeTestModel? = null
         reactive { shown = creating() }
         delay(5.seconds)
@@ -831,7 +832,7 @@ class ModelCacheTest {
         mock.data[original._id] = original
         val cache = ModelCache<LargeTestModel, Uuid>(mock, LargeTestModel.serializer(), scope = backgroundScope, log = testLog)
 
-        val draft = cache.ref(original._id).draft()
+        val draft = Constant(cache.ref(original._id)).draft()
         var shown: LargeTestModel? = null
         reactive { shown = draft() }
         delay(5.seconds)

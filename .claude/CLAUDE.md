@@ -86,7 +86,7 @@ Forms are **cached** to handle recursive/nested data structures efficiently.
   - `detail(id)` - Single item tracking by ID (`Reactive<T?>`)
   - `query(query)` - Collection tracking with pagination (`LimitReactiveList<T>`)
   - `ref(id)` - `ModelReference`: the cache plus an ID, readable/writable like a file handle, with `draft()` for edit forms
-- **One store**: `CoverageStore` holds every item once, plus timestamped *claims* about which queries
+- **One store**: `CoverageIndex` holds every item once, plus timestamped *claims* about which queries
   it knows completely. A read is answered locally only when a claim backs it; otherwise it fetches.
   Looking an item up by ID is not a special case - it is a query for one row, so a list that already
   covered the item answers it without a request.
@@ -149,7 +149,7 @@ Related files: `admin/src/commonMain/kotlin/com/lightningkite/lightningserver/ad
 
 - `client/src/commonMain/kotlin/com/lightningkite/kiteui/forms/FormModule.kt` - Form registry
 - `client/src/commonMain/kotlin/com/lightningkite/lightningserver/db/ModelCache.kt` - Caching system
-- `client/src/commonMain/kotlin/com/lightningkite/lightningserver/db/CoverageStore.kt` - What the cache knows
+- `client/src/commonMain/kotlin/com/lightningkite/lightningserver/db/CoverageIndex.kt` - What the cache knows
 - `client/src/commonMain/kotlin/com/lightningkite/kiteui/auth/` - Auth components
 - `admin/src/commonMain/kotlin/com/lightningkite/lightningserver/admin/CollectionAdminScreen.kt` - Main admin CRUD screen
 

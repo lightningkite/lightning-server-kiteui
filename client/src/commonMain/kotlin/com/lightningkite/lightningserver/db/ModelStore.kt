@@ -16,7 +16,7 @@ import kotlin.time.Duration
 import kotlin.time.Instant
 import kotlin.time.Duration.Companion.minutes
 
-public interface CachedRestEndpoints<T : HasId<ID>, ID : Comparable<ID>> {
+public interface ModelStore<T : HasId<ID>, ID : Comparable<ID>> {
     public val serializer: KSerializer<T>
     public val defaultMaxAge: Duration
     public val defaultPullFrequency: Duration
@@ -104,12 +104,12 @@ public interface CachedRestEndpoints<T : HasId<ID>, ID : Comparable<ID>> {
 public data class LastUpdate(val at: Instant, val live: Boolean)
 
 public data class ModelReference<T : HasId<ID>, ID : Comparable<ID>>(
-    public val endpoints: CachedRestEndpoints<T, ID>,
+    public val store: ModelStore<T, ID>,
     public val id: ID,
-    public val maximumAge: Duration = endpoints.defaultMaxAge,
-    public val pullFrequency: Duration = endpoints.defaultPullFrequency,
+    public val maximumAge: Duration = store.defaultMaxAge,
+    public val pullFrequency: Duration = store.defaultPullFrequency,
 ) : MutableReactive<T?> {
-    private val detail: Reactive<T?> by lazy { endpoints.detail(id, maximumAge, pullFrequency) }
+    private val detail: Reactive<T?> by lazy { store.detail(id, maximumAge, pullFrequency) }
     override val state: ReactiveState<T?> get() = detail.state
     override fun addListener(listener: () -> Unit): () -> Unit = detail.addListener(listener)
 
@@ -117,14 +117,12 @@ public data class ModelReference<T : HasId<ID>, ID : Comparable<ID>>(
         if (value == null) return delete()
         val existing = awaitOnce()
         if (existing == null) upsert(value)
-        else modification(endpoints.serializer, existing, value)?.let { modify(it) }
+        else modification(store.serializer, existing, value)?.let { modify(it) }
     }
 
-    public fun draft(notFound: (ModelReference<T, ID>) -> T = ::throwNotFound): Draft<T> = ModelDraft(Constant(this), notFound)
-
-    public suspend fun upsert(item: T): T = endpoints.upsert(id, item)
-    public suspend fun replace(item: T): T = endpoints.replace(id, item)
-    public suspend fun modify(modification: Modification<T>): T = endpoints.modify(id, modification)
-    public suspend fun delete(): Unit = endpoints.delete(id)
-    public suspend fun invalidate(): Unit = endpoints.invalidate(id)
+    public suspend fun upsert(item: T): T = store.upsert(id, item)
+    public suspend fun replace(item: T): T = store.replace(id, item)
+    public suspend fun modify(modification: Modification<T>): T = store.modify(id, modification)
+    public suspend fun delete(): Unit = store.delete(id)
+    public suspend fun invalidate(): Unit = store.invalidate(id)
 }

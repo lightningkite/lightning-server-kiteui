@@ -15,11 +15,10 @@ import com.lightningkite.services.database.HasId
 import com.lightningkite.services.database.Modification
 
 public fun <T : HasId<ID>, ID : Comparable<ID>> Reactive<ModelReference<T, ID>>.draft(
-    notFound: (ModelReference<T, ID>) -> T = ::throwNotFound,
+    notFound: (ModelReference<T, ID>) -> T = {
+        ref: ModelReference<*, *> -> throw NoSuchElementException("${ref.store.serializer.descriptor.serialName} ${ref.id} does not exist")
+    },
 ): Draft<T> = ModelDraft(this, notFound)
-
-internal fun throwNotFound(ref: ModelReference<*, *>): Nothing =
-    throw NoSuchElementException("${ref.endpoints.serializer.descriptor.serialName} ${ref.id} does not exist")
 
 // Claude: Holds only the user's edits, so live changes to other fields keep showing and publish sends just the edits.
 internal class ModelDraft<T : HasId<ID>, ID : Comparable<ID>>(
@@ -45,7 +44,7 @@ internal class ModelDraft<T : HasId<ID>, ID : Comparable<ID>>(
         val ref = ref.state.getOrNull()
         val live = live.state.getOrNull()
         check(ref != null && live != null) { "A draft cannot be edited before its record has loaded" }
-        edits.value = modification(ref.endpoints.serializer, live, value)
+        edits.value = modification(ref.store.serializer, live, value)
     }
 
     override val published: MutableReactive<T> = live.withWrite { ref.awaitOnce().set(it) }

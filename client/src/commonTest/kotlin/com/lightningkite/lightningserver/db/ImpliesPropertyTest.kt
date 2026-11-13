@@ -11,7 +11,7 @@ import kotlin.time.Instant
 import kotlin.uuid.Uuid
 
 /**
- * An attack on [CoverageStore]'s condition subsumption.
+ * An attack on [CoverageIndex]'s condition subsumption.
  *
  * The rules that decide *"does a claim about this condition cover a query for that one?"* are the one
  * place in this library where being wrong is silent: a claim accepted on a false implication serves a
@@ -19,7 +19,7 @@ import kotlin.uuid.Uuid
  * demonstrate that the rules work, it is to try to catch them claiming something they cannot support.
  *
  * The implication function itself is private, so everything here goes through
- * [CoverageStore.known] - which is the honest place to test it anyway, since that is where a wrong
+ * [CoverageIndex.known] - which is the honest place to test it anyway, since that is where a wrong
  * answer would actually escape.  The shape is always the same: give the store complete knowledge of
  * one condition, ask it a different one, and compare whatever it says against a brute-force filter
  * over rows it was never told about.  A store that refuses to answer is always allowed; a store that
@@ -35,7 +35,7 @@ class ImpliesPropertyTest {
 
     private fun t(seconds: Long): Instant = Instant.fromEpochSeconds(seconds)
 
-    private fun store() = CoverageStore<LargeTestModel, Uuid>(serializer)
+    private fun store() = CoverageIndex<LargeTestModel, Uuid>(serializer)
 
     private fun query(condition: Condition<LargeTestModel>, limit: Int) = Query(condition, byInt, limit = limit)
 
@@ -178,7 +178,7 @@ class ImpliesPropertyTest {
     }
 
     /**
-     * The same property where the claim stops part way, which is the other half of [CoverageStore.known].
+     * The same property where the claim stops part way, which is the other half of [CoverageIndex.known].
      *
      * A broad claim bounded at one of its own rows covers a narrower query only as far as that row
      * reaches, and the truncation is done in the *query's* terms rather than the claim's.  Getting

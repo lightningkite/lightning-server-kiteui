@@ -12,7 +12,7 @@ import kotlin.time.Instant
 import kotlin.uuid.Uuid
 
 /**
- * [CoverageStore] on its own terms.
+ * [CoverageIndex] on its own terms.
  *
  * These exist because the store is where the one invariant that must never break lives - *a list
  * this cache calls complete really is complete* - and testing it through [ModelCache] means testing
@@ -22,13 +22,13 @@ import kotlin.uuid.Uuid
  *
  * The last section is the important one: rather than asserting hand-picked expected lists, it drives
  * random operation sequences and checks every answer against a server that has been told about the
- * same changes.  That property is what makes it safe to loosen [CoverageStore.known]'s claim lookup
+ * same changes.  That property is what makes it safe to loosen [CoverageIndex.known]'s claim lookup
  * later, because it is the *complete* statement of what the store promises.
  */
-class CoverageStoreTest {
+class CoverageIndexTest {
     private val serializer = LargeTestModel.serializer()
 
-    private fun store() = CoverageStore<LargeTestModel, Uuid>(serializer)
+    private fun store() = CoverageIndex<LargeTestModel, Uuid>(serializer)
 
     /** Sorts always reach the store already total; [ModelCache.list] guarantees it. */
     private val byInt: List<SortPart<LargeTestModel>> =
@@ -165,7 +165,7 @@ class CoverageStoreTest {
      * made no claim at all, which is how a test comes to pass for a reason that has nothing to do
      * with what it is named after.
      */
-    private fun CoverageStore<LargeTestModel, Uuid>.assertRefuses(
+    private fun CoverageIndex<LargeTestModel, Uuid>.assertRefuses(
         refused: Query<LargeTestModel>,
         control: Query<LargeTestModel>,
         message: String? = null,
@@ -195,7 +195,7 @@ class CoverageStoreTest {
      * A complete claim has no stretch to reinterpret - it holds every match - so the sort only still
      * matters for the read mask it imposes.  A sort reading fewer fields picks up fewer mask terms,
      * so its claim is the broader one and can be re-sorted into any sort that reads at least those
-     * fields.  See [CoverageStore].
+     * fields.  See [CoverageIndex].
      */
     @Test fun aCompleteClaimCanBeResortedIntoASortReadingAtLeastItsFields() {
         val store = store()
@@ -1054,12 +1054,12 @@ class CoverageStoreTest {
     }
 
     /**
-     * The complete statement of what [CoverageStore] promises:
+     * The complete statement of what [CoverageIndex] promises:
      *
-     * > if every change was reported to the store, then whenever [CoverageStore.known] answers
-     * > without [CoverageStore.Answer.partial], its answer is what the server would have returned.
+     * > if every change was reported to the store, then whenever [CoverageIndex.known] answers
+     * > without [CoverageIndex.Answer.partial], its answer is what the server would have returned.
      *
-     * Staleness is deliberately out of scope - a claim is "complete as of [CoverageStore.Answer.at]",
+     * Staleness is deliberately out of scope - a claim is "complete as of [CoverageIndex.Answer.at]",
      * and deciding whether that is recent enough belongs to [ModelCache].  So this drives changes the
      * store is *told* about, which is the condition under which its guarantee applies.
      *
@@ -1170,7 +1170,7 @@ class CoverageStoreTest {
     }
 
     /**
-     * The same property for reads by ID, which take a different path through [CoverageStore.known]
+     * The same property for reads by ID, which take a different path through [CoverageIndex.known]
      * and so would not be covered by the panel above.
      */
     @Test fun aCompleteIdAnswerIsAlwaysWhatTheServerWouldReturn() {

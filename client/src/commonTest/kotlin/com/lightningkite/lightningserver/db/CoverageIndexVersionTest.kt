@@ -19,14 +19,14 @@ import kotlin.uuid.Uuid
  * The interesting cases are all the ones where version and timestamp *disagree* - anywhere they
  * agree, these tests would pass with the version support removed entirely and would prove nothing.
  */
-class CoverageStoreVersionTest {
+class CoverageIndexVersionTest {
     private val serializer = LargeTestModel.serializer()
 
     /** `long` stands in for a version field; the model has no dedicated one. */
-    private fun versionedStore() = CoverageStore<LargeTestModel, Uuid>(serializer) { it.long }
+    private fun versionedStore() = CoverageIndex<LargeTestModel, Uuid>(serializer) { it.long }
 
     /** The same store with no way to read a version, which is every model today. */
-    private fun unversionedStore() = CoverageStore<LargeTestModel, Uuid>(serializer)
+    private fun unversionedStore() = CoverageIndex<LargeTestModel, Uuid>(serializer)
 
     private val byInt: List<SortPart<LargeTestModel>> =
         sort<LargeTestModel> { it.int.ascending() }.ensureTotal(serializer)
@@ -39,7 +39,7 @@ class CoverageStoreVersionTest {
     private fun row(version: Long, marker: Short, id: Uuid = Uuid.random()) =
         LargeTestModel(_id = id, int = 1, long = version, short = marker)
 
-    private fun CoverageStore<LargeTestModel, Uuid>.only(): LargeTestModel =
+    private fun CoverageIndex<LargeTestModel, Uuid>.only(): LargeTestModel =
         assertNotNull(known(query())).items.single()
 
     // =========================================================================
@@ -106,7 +106,7 @@ class CoverageStoreVersionTest {
      * would let any versioned row overwrite it regardless of order.
      */
     @Test fun aRowWithoutAVersionFallsBackToTimestamps() {
-        val store = CoverageStore<LargeTestModel, Uuid>(serializer) { it.long.takeIf { v -> v != 0L } }
+        val store = CoverageIndex<LargeTestModel, Uuid>(serializer) { it.long.takeIf { v -> v != 0L } }
         val id = Uuid.random()
         store.queried(query(), listOf(row(version = 0, marker = 1, id = id)), t(99))
 
@@ -163,9 +163,9 @@ class CoverageStoreVersionTest {
         val cache = ModelCache(mock, serializer, scope = backgroundScope, versionOf = { it.long })
         val id = Uuid.random()
 
-        cache.store.queried(query(), listOf(row(version = 5, marker = 5, id = id)), t(1))
-        cache.store.mutated(listOf(row(version = 2, marker = 2, id = id)), t(99))
+        cache.coverage.queried(query(), listOf(row(version = 5, marker = 5, id = id)), t(1))
+        cache.coverage.mutated(listOf(row(version = 2, marker = 2, id = id)), t(99))
 
-        assertEquals<Short>(5, cache.store.only().short)
+        assertEquals<Short>(5, cache.coverage.only().short)
     }
 }

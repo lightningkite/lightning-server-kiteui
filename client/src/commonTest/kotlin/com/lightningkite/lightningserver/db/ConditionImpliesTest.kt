@@ -13,7 +13,7 @@ import kotlin.test.assertTrue
  * This is the one function in the library whose wrong answer is silent.  It decides whether a claim
  * about one condition covers a query for another; a true it cannot support makes the cache serve a
  * list that is short a row, and every layer above believes the list.  [ImpliesPropertyTest] attacks
- * it through [CoverageStore.known], which is where such a mistake would actually escape - this file
+ * it through [CoverageIndex.known], which is where such a mistake would actually escape - this file
  * attacks the function directly, which is where the mistake would be *made*.
  *
  * The heart of it is one property: **if it says yes, then every row matching the stricter condition
@@ -231,7 +231,7 @@ class ConditionImpliesTest {
             val random = Random(seed)
             val narrow = anyCondition(random)
             val broad = anyCondition(random)
-            val store = CoverageStore<LargeTestModel, kotlin.uuid.Uuid>(serializer)
+            val store = CoverageIndex<LargeTestModel, kotlin.uuid.Uuid>(serializer)
             val order = listOf<com.lightningkite.services.database.SortPart<LargeTestModel>>().ensureTotal(serializer)
             // An empty answer under the limit, so the claim is complete and holds no rows: whether
             // the store answers at all is then purely the implication verdict.

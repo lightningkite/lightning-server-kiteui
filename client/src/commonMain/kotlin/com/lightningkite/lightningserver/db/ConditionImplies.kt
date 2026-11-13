@@ -8,7 +8,7 @@ import com.lightningkite.services.database.Condition
  *
  * Decided structurally, and conservative in one direction only: returning false costs a request,
  * while a true this cannot justify serves a list missing rows, which is the one thing
- * [CoverageStore] must never do.  Every rule below is therefore one that holds by the shape of the
+ * [CoverageIndex] must never do.  Every rule below is therefore one that holds by the shape of the
  * conditions alone.
  *
  * Recursion is over field types as well as conditions - `OnField` compares what is inside it - which

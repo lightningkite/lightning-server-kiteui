@@ -19,7 +19,7 @@ import kotlin.time.Duration.Companion.seconds
 import kotlin.uuid.Uuid
 
 /**
- * How [ModelCache] behaves now that items and lists share one [CoverageStore].
+ * How [ModelCache] behaves now that items and lists share one [CoverageIndex].
  *
  * These are the invariants that used to be asserted against `ListReconstructionCalculator` directly,
  * re-expressed through `item()` and `list()` where they belong, plus the ones the store's notion of
@@ -332,7 +332,7 @@ class ModelCacheCoverageTest {
 
     /**
      * A list that knows every row of its condition knows every row of a stricter one, so filtering an
-     * already-loaded screen costs no request.  The sort has to match; see [CoverageStore].
+     * already-loaded screen costs no request.  The sort has to match; see [CoverageIndex].
      */
     @Test fun aNarrowerListIsAnsweredByABroaderOne() = runTest2 {
         val (mock, _, cache) = backgroundScope.fixture(6)
