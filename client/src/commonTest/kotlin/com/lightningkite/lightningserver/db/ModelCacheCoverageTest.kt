@@ -73,10 +73,10 @@ class ModelCacheCoverageTest {
         assertEquals(data, ref.state.getOrNull())
 
         repeat(3) {
-            cache.localInsert(data[0])
-            cache.localInsert(data[1])
+            cache.localUpsert(data[0])
+            cache.localUpsert(data[1])
         }
-        cache.localInsert(data[2].copy(int = 0))
+        cache.localUpsert(data[2].copy(int = 0))
 
         val result = assertNotNull(ref.state.getOrNull())
         assertEquals(3, result.size)
@@ -95,11 +95,11 @@ class ModelCacheCoverageTest {
         assertEquals(data.take(3), ref.state.getOrNull())
 
         // A row inside the limit moves past the end of the list.
-        cache.localInsert(data[1].copy(int = 100))
+        cache.localUpsert(data[1].copy(int = 100))
         assertTrue(assertNotNull(ref.state.getOrNull()).size <= 3)
 
         // A row from outside moves inside, and one is fetched by ID for good measure.
-        cache.localInsert(data[8].copy(int = 0))
+        cache.localUpsert(data[8].copy(int = 0))
         cache.quietItem(data[7]._id).addListener { }
         delay(1.seconds)
         assertTrue(assertNotNull(ref.state.getOrNull()).size <= 3)
@@ -117,7 +117,7 @@ class ModelCacheCoverageTest {
         assertEquals(listOf(1, 2, 3, 4, 5), low.state.getOrNull()?.map { it.int })
         assertEquals(listOf(6, 7, 8, 9, 10), high.state.getOrNull()?.map { it.int })
 
-        cache.localInsert(data[2].copy(int = 100))
+        cache.localUpsert(data[2].copy(int = 100))
 
         assertEquals(listOf(1, 2, 4, 5), low.state.getOrNull()?.map { it.int }, "the row should have left")
         assertEquals(listOf(6, 7, 8, 9, 10, 100), high.state.getOrNull()?.map { it.int }, "and arrived here")
@@ -156,7 +156,7 @@ class ModelCacheCoverageTest {
         val retrievedAt = assertNotNull(cache.lastUpdate(query).state.getOrNull()?.at)
 
         delay(1.minutes)
-        cache.localInsert(LargeTestModel(int = 9))
+        cache.localUpsert(LargeTestModel(int = 9))
 
         assertEquals(retrievedAt, cache.lastUpdate(query).state.getOrNull()?.at)
 
@@ -605,7 +605,7 @@ class ModelCacheCoverageTest {
         val late = LargeTestModel(int = 3)
         afterQuery = {
             mock.data[late._id] = late
-            cache.localInsert(late)
+            cache.localUpsert(late)
         }
         delay(15.seconds)
 

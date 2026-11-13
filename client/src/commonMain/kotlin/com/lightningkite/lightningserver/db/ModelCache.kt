@@ -18,20 +18,20 @@ import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
-public open class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
+public class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
     public val uncached: ClientModelRestEndpoints<T, ID>,
     override val serializer: KSerializer<T>,
-    public val websocket: ClientModelRestUpdatesWebSocket<T, ID>? = @Suppress("UNCHECKED_CAST") (uncached as? ClientModelRestUpdatesWebSocket<T, ID>),
+    websocket: ClientModelRestUpdatesWebSocket<T, ID>? = @Suppress("UNCHECKED_CAST") (uncached as? ClientModelRestUpdatesWebSocket<T, ID>),
     override val defaultMaxAge: Duration = Duration.INFINITE,
     override val defaultPullFrequency: Duration = 5.minutes,
-    public val scope: CoroutineScope = AppScope,
-    public val log: Log? = null,
+    private val scope: CoroutineScope = AppScope,
+    private val log: Log? = null,
     versionOf: ((T) -> Long?)? = null,
 ) : ModelStore<T, ID> {
     internal val coverage: CoverageIndex<T, ID> = CoverageIndex(serializer, versionOf)
     private val interrupt: InterruptibleDelay = InterruptibleDelay()
 
-    public val sockets: SharedCollectionUpdatesSocket<T, ID>? = websocket?.let {
+    private val sockets: SharedCollectionUpdatesSocket<T, ID>? = websocket?.let {
         SharedCollectionUpdatesSocket(
             scope = scope,
             socket = it.updates().toTypedWebSocket(),
@@ -46,7 +46,7 @@ public open class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
                         at = scope.now(),
                         live = { condition, since -> queryIsLive(condition, since) },
                     )
-                    // A list that lost a row is now short of the limit its reader asked for.
+                    // Claude: A list that lost a row is now short of the limit its reader asked for.
                     if (update.remove.isNotEmpty()) interrupt.interrupt()
                 }
             }
@@ -59,9 +59,7 @@ public open class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
         scope.launch {
             try {
                 coverage.useMasking(uncached.permissions().readMask)
-                // A non-empty mask invalidates the coverage, which can empty out what readers already
-                // hold - and they may be part-way through a poll interval worked out from it.
-                // Every other invalidation in this class wakes them; this one has to as well.
+                // Claude: A non-empty mask can empty out what readers hold mid-poll, so wake them.
                 interrupt.interrupt()
             } catch (e: CancellationException) {
                 throw e
@@ -142,6 +140,12 @@ public open class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
         return count
     }
 
+    override suspend fun bulkDelete(condition: Condition<T>): Int {
+        val count = uncached.bulkDelete(condition)
+        localBulkDelete(condition)
+        return count
+    }
+
     // Claude: Fetches rather than only forgetting, because a list that covers this ID would otherwise keep answering for it.
     override suspend fun invalidate(id: ID) {
         coverage.invalidate(id)
@@ -169,6 +173,26 @@ public open class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
     // Local updates - change the cache without calling the server
     // =============================================================================
 
+    override fun localUpsert(item: T) {
+        coverage.mutated(listOf(item), scope.now())
+    }
+
+    override fun localDelete(id: ID) {
+        deletionRecorded(setOf(id))
+    }
+
+    override fun localBulkModify(bulkUpdate: MassModification<T>) {
+        val updated = coverage.cachedItems().filter { bulkUpdate.condition(it) }.map { bulkUpdate.modification(it) }
+        coverage.bulkModified(bulkUpdate.modification)
+        coverage.mutated(updated, scope.now())
+        interrupt.interrupt()
+    }
+
+    override fun localBulkDelete(condition: Condition<T>) {
+        deletionRecorded(coverage.cachedItems().filter { condition(it) }.mapTo(HashSet()) { it._id })
+    }
+
+    @Deprecated("Use localBulkModify or localBulkDelete instead")
     public fun localSignalUpdate(matching: (T) -> Boolean, modify: (T) -> T?) {
         val updates = HashSet<T>()
         val removals = HashSet<ID>()
@@ -177,11 +201,6 @@ public open class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
         }
         if (updates.isNotEmpty()) coverage.mutated(updates, scope.now())
         if (removals.isNotEmpty()) deletionRecorded(removals)
-    }
-
-    public fun localInsert(item: T): T {
-        coverage.mutated(listOf(item), scope.now())
-        return item
     }
 
     // =============================================================================

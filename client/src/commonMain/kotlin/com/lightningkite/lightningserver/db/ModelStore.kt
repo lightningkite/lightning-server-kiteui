@@ -1,5 +1,6 @@
 package com.lightningkite.lightningserver.db
 
+import com.lightningkite.services.database.Condition
 import com.lightningkite.services.database.HasId
 import com.lightningkite.services.database.MassModification
 import com.lightningkite.services.database.Modification
@@ -49,13 +50,32 @@ public interface ModelStore<T : HasId<ID>, ID : Comparable<ID>> {
 
     public suspend fun bulkModify(ids: Set<ID>, modification: Modification<T>): Int
 
-    public suspend fun invalidate(id: ID)
-
-    public fun invalidateAll()
+    public suspend fun bulkDelete(condition: Condition<T>): Int
 
     public fun lastUpdate(id: ID): Reactive<LastUpdate?>
 
     public fun lastUpdate(query: Query<T>): Reactive<LastUpdate?>
+
+    public suspend fun invalidate(id: ID)
+
+    public fun invalidateAll()
+
+    /** Records [item] as the server's current version of its row, without making a request. */
+    public fun localUpsert(item: T)
+
+    /** Records that the row [id] was deleted, without making a request. */
+    public fun localDelete(id: ID)
+
+    /**
+     * Applies [bulkUpdate] to the rows held locally, without making a request.
+     *
+     * Use this to mirror a change the server made some other way. Lists that could have gained rows
+     * from the change fetch again.
+     */
+    public fun localBulkModify(bulkUpdate: MassModification<T>)
+
+    /** Removes the rows held locally that match [condition], without making a request. */
+    public fun localBulkDelete(condition: Condition<T>)
 
     public fun ref(
         id: ID,
@@ -96,6 +116,9 @@ public interface ModelStore<T : HasId<ID>, ID : Comparable<ID>> {
 
     @Deprecated("Use insertBulk instead", ReplaceWith("insertBulk(items)"))
     public suspend fun addAll(items: List<T>): List<T> = insertBulk(items)
+
+    @Deprecated("Use localUpsert instead", ReplaceWith("item.also { localUpsert(it) }"))
+    public fun localInsert(item: T): T = item.also { localUpsert(it) }
 
     @Deprecated("Use upsert(id, item) instead", ReplaceWith("upsert(item._id, item)"))
     public suspend fun upsert(item: T): ModelReference<T, ID> = ref(upsert(item._id, item)._id)

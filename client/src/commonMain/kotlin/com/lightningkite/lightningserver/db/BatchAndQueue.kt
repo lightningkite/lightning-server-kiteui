@@ -28,7 +28,7 @@ public class BatchAndQueue<T, R>(
     public val outgoing: HashMap<T, ArrayList<CompletableDeferred<R>>> = HashMap<T, ArrayList<CompletableDeferred<R>>>()
 
     /** The batch still accepting inputs, or `null` if none is. */
-    public var multigetQueue: HashSet<T>? = null
+    private var multigetQueue: HashSet<T>? = null
 
     /**
      * Returns the result for [input], fetched together with whatever else is requested within [batchWait].

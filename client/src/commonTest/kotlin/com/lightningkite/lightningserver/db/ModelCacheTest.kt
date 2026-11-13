@@ -625,8 +625,9 @@ class ModelCacheTest {
      * Tests that ModelCache correctly handles local modifications.
      *
      * Verifies that:
-     * 1. localSignalUpdate() correctly updates items matching a condition
-     * 2. localInsert() correctly adds new items to the cache
+     * 1. localBulkModify() correctly updates items matching a condition
+     * 2. localUpsert() correctly adds new items to the cache
+     * 3. localDelete() and localBulkDelete() remove items
      * 3. These local operations trigger reactive updates
      * 4. The cache remains synchronized with the mock backend
      */
@@ -655,15 +656,15 @@ class ModelCacheTest {
         delay(5.seconds)
         assertEquals(dataToInsert.sortedBy { it.int }, lastRead)
 
-        // Test localSignalUpdate - also update the mock data to match
+        // Test localBulkModify - also update the mock data to match
         val itemToUpdate = dataToInsert.first { it.int == 2 }
         val updatedItem = itemToUpdate.copy(short = 99)
         mock.data[itemToUpdate._id] = updatedItem
 
-        cache.localSignalUpdate(
-            matching = { it.int == 2 },
-            modify = { it.copy(short = 99) }
-        )
+        cache.localBulkModify(MassModification(
+            condition = Condition { it.int eq 2 },
+            modification = Modification { it.short assign 99 },
+        ))
         delay(5.seconds)
 
         // Verify the local update is reflected
@@ -672,15 +673,25 @@ class ModelCacheTest {
         }.sortedBy { it.int }
         assertEquals(expectedAfterUpdate, lastRead)
 
-        // Test localInsert - also add to mock data
+        // Test localUpsert - also add to mock data
         val newItem = LargeTestModel(int = 4)
         mock.data[newItem._id] = newItem
 
-        cache.localInsert(newItem)
+        cache.localUpsert(newItem)
         delay(5.seconds)
 
         // Verify the local insert is reflected
         assertEquals(expectedAfterUpdate.plus(newItem).sortedBy { it.int }, lastRead)
+
+        mock.data.remove(newItem._id)
+        cache.localDelete(newItem._id)
+        delay(5.seconds)
+        assertEquals(expectedAfterUpdate, lastRead)
+
+        mock.data.values.removeAll { it.int > 1 }
+        cache.localBulkDelete(Condition { it.int gt 1 })
+        delay(5.seconds)
+        assertEquals(expectedAfterUpdate.filter { it.int <= 1 }, lastRead)
     }
 
     /**
@@ -1361,6 +1372,39 @@ class ModelCacheTest {
             lastRead,
             "List should be refreshed promptly after bulkModify, but cache appears stale.",
         )
+    }
+
+    @Test
+    fun bulkDeleteRemovesRowsFromLists() = runTest2 {
+        val mock = ClientModelRestEndpointsMock<LargeTestModel, Uuid>(this)
+        val dataToInsert = listOf(
+            LargeTestModel(int = 1),
+            LargeTestModel(int = 2),
+            LargeTestModel(int = 3),
+        )
+        mock.data.putAll(dataToInsert.associateBy { it._id })
+        val cache = ModelCache<LargeTestModel, Uuid>(
+            mock,
+            LargeTestModel.serializer(),
+            scope = backgroundScope,
+            log = testLog,
+        )
+
+        var lastRead: List<LargeTestModel> = listOf()
+        val ref = cache.query(
+            Query(Condition.Always, sort { it.int.ascending() }),
+            maximumAge = 10.minutes,
+            pullFrequency = 60.seconds,
+        )
+        reactive { lastRead = ref() }
+        delay(1.seconds)
+        assertEquals(dataToInsert, lastRead)
+
+        assertEquals(2, cache.bulkDelete(Condition { it.int gt 1 }))
+        delay(1.seconds)
+
+        assertEquals(dataToInsert.take(1), lastRead)
+        assertEquals(dataToInsert.take(1), mock.data.values.toList())
     }
 
     /**
