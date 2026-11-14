@@ -20,7 +20,7 @@ dependencyResolutionManagement {
     versionCatalogs {
         create("sa") { from("com.lightningkite.stack:service-abstractions-catalog:1000.0.0") }
         create("ls") { from("com.lightningkite.stack:lightning-server-catalog:1000.0.0") }
-        create("kui") { from("com.lightningkite.stack:kiteui-catalog:1001.0.0") }
+        create("kui") { from("com.lightningkite.stack:kiteui-catalog:1000.0.0") }
     }
 }
 
