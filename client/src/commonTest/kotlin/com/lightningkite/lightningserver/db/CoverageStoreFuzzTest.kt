@@ -10,9 +10,9 @@ import kotlin.time.Instant
 import kotlin.uuid.Uuid
 
 /**
- * [CoverageIndex] driven by every operation it has, against a server that is told the same things.
+ * [CoverageStore] driven by every operation it has, against a server that is told the same things.
  *
- * `CoverageIndexTest` already fuzzes the everyday mix - insert, modify, delete, look up, query.  What
+ * `CoverageStoreTest` already fuzzes the everyday mix - insert, modify, delete, look up, query.  What
  * is left over is precisely where the interesting failures live: pagination extending somebody else's
  * claim, a socket removal that is not a deletion, a server that states totality rather than implying
  * it, a read mask that makes two sorts two different questions, and an answer that lands after a
@@ -26,7 +26,7 @@ import kotlin.uuid.Uuid
  * below never changes anything behind its back: a local change is reported directly, and a remote one
  * is only made to a row the socket subscription actually covers.
  */
-class CoverageIndexFuzzTest {
+class CoverageStoreFuzzTest {
     private val serializer = LargeTestModel.serializer()
 
     /** Sorts arrive at the store already total; [ModelCache.list] guarantees it. */
@@ -153,7 +153,7 @@ class CoverageIndexFuzzTest {
     ) {
         val random = Random(seed)
         val oracle = Oracle(mask)
-        val store = CoverageIndex<LargeTestModel, Uuid>(serializer)
+        val store = CoverageStore<LargeTestModel, Uuid>(serializer)
         val ids = ArrayList<Uuid>()
         val asked = HashSet<Query<LargeTestModel>>()
 
@@ -403,10 +403,10 @@ class CoverageIndexFuzzTest {
     /**
      * The whole promise, under every operation at once:
      *
-     * > if every change was reported to the store, then whenever [CoverageIndex.known] answers without
-     * > [CoverageIndex.Answer.partial], its answer is what the server would have returned.
+     * > if every change was reported to the store, then whenever [CoverageStore.known] answers without
+     * > [CoverageStore.Answer.partial], its answer is what the server would have returned.
      *
-     * Staleness is deliberately out of scope - a claim is "complete as of [CoverageIndex.Answer.at]",
+     * Staleness is deliberately out of scope - a claim is "complete as of [CoverageStore.Answer.at]",
      * and judging whether that is recent enough is [ModelCache]'s job - so the sequence only makes
      * changes the store is told about.
      *

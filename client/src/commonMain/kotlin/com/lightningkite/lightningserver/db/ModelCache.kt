@@ -27,8 +27,8 @@ public open class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
     public val scope: CoroutineScope = AppScope,
     public val log: Log? = null,
     versionOf: ((T) -> Long?)? = null,
-) : ModelStore<T, ID> {
-    internal val coverage: CoverageIndex<T, ID> = CoverageIndex(serializer, versionOf)
+) : CachedRestEndpoints<T, ID> {
+    internal val store: CoverageStore<T, ID> = CoverageStore(serializer, versionOf)
     private val interrupt: InterruptibleDelay = InterruptibleDelay()
 
     public val sockets: SharedCollectionUpdatesSocket<T, ID>? = websocket?.let {
@@ -40,7 +40,7 @@ public open class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
                 if (update.overload) {
                     invalidateAll()
                 } else {
-                    coverage.socketDelta(
+                    store.socketDelta(
                         changed = update.updates,
                         removed = update.remove,
                         at = scope.now(),
@@ -53,13 +53,13 @@ public open class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
         )
     }
 
-    private val freshnessChanges: Listenable = sockets?.let { coverage.updates + it.listeningStatus } ?: coverage.updates
+    private val freshnessChanges: Listenable = sockets?.let { store.updates + it.listeningStatus } ?: store.updates
 
     init {
         scope.launch {
             try {
-                coverage.useMasking(uncached.permissions().readMask)
-                // A non-empty mask invalidates the coverage, which can empty out what readers already
+                store.useMasking(uncached.permissions().readMask)
+                // A non-empty mask invalidates the store, which can empty out what readers already
                 // hold - and they may be part-way through a poll interval worked out from it.
                 // Every other invalidation in this class wakes them; this one has to as well.
                 interrupt.interrupt()
@@ -90,37 +90,37 @@ public open class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
     }
 
     override fun lastUpdate(id: ID): Reactive<LastUpdate?> {
-        val query = coverage.idQuery(id)
+        val query = store.idQuery(id)
         return freshnessChanges.lensListenable {
-            coverage.known(query)?.let { LastUpdate(it.at, live = itemIsLive(it.items.firstOrNull(), it.at)) }
+            store.known(query)?.let { LastUpdate(it.at, live = itemIsLive(it.items.firstOrNull(), it.at)) }
         }
     }
 
     override fun lastUpdate(query: Query<T>): Reactive<LastUpdate?> {
         val query = totallyOrdered(query)
         return freshnessChanges.lensListenable {
-            coverage.known(query)?.let { LastUpdate(it.at, live = queryIsLive(query.condition, it.at)) }
+            store.known(query)?.let { LastUpdate(it.at, live = queryIsLive(query.condition, it.at)) }
         }
     }
 
     // =============================================================================
-    // Writes - all recorded in the coverage index as changes we watched happen
+    // Writes - all recorded in the store as changes we watched happen
     // =============================================================================
 
     override suspend fun insert(item: T): T =
-        uncached.insert(item).also { coverage.mutated(listOf(it), scope.now()) }
+        uncached.insert(item).also { store.mutated(listOf(it), scope.now()) }
 
     override suspend fun insertBulk(items: List<T>): List<T> =
-        uncached.insertBulk(items).also { coverage.mutated(it, scope.now()) }
+        uncached.insertBulk(items).also { store.mutated(it, scope.now()) }
 
     override suspend fun upsert(id: ID, item: T): T =
-        uncached.upsert(id, item).also { coverage.mutated(listOf(it), scope.now()) }
+        uncached.upsert(id, item).also { store.mutated(listOf(it), scope.now()) }
 
     override suspend fun replace(id: ID, item: T): T =
-        uncached.replace(id, item).also { coverage.mutated(listOf(it), scope.now()) }
+        uncached.replace(id, item).also { store.mutated(listOf(it), scope.now()) }
 
     override suspend fun modify(id: ID, modification: Modification<T>): T =
-        uncached.modify(id, modification).also { coverage.mutated(listOf(it), scope.now()) }
+        uncached.modify(id, modification).also { store.mutated(listOf(it), scope.now()) }
 
     override suspend fun delete(id: ID) {
         uncached.delete(id)
@@ -129,9 +129,9 @@ public open class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
 
     override suspend fun bulkModify(bulkUpdate: MassModification<T>): Int {
         // Claude: Read before the change; afterwards the modified rows may no longer match.
-        val held = coverage.cachedItems().filter { bulkUpdate.condition(it) }.mapTo(HashSet()) { it._id }
+        val held = store.cachedItems().filter { bulkUpdate.condition(it) }.mapTo(HashSet()) { it._id }
         val count = uncached.bulkModify(bulkUpdate)
-        coverage.bulkModified(bulkUpdate.modification)
+        store.bulkModified(bulkUpdate.modification)
         reread(held)
         return count
     }
@@ -144,24 +144,24 @@ public open class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
 
     // Claude: Fetches rather than only forgetting, because a list that covers this ID would otherwise keep answering for it.
     override suspend fun invalidate(id: ID) {
-        coverage.invalidate(id)
+        store.invalidate(id)
         multiget(id)
         interrupt.interrupt()
     }
 
     override fun invalidateAll() {
-        coverage.invalidate()
+        store.invalidate()
         interrupt.interrupt()
     }
 
     // Claude: Waking the readers lets a list that lost a row fetch the one that moved up to fill the gap.
     private suspend fun reread(ids: Set<ID>) {
-        if (ids.isNotEmpty()) fetchByIds(ids)
+        coroutineScope { ids.map { async { multiget(it) } }.awaitAll() }
         interrupt.interrupt()
     }
 
     private fun deletionRecorded(ids: Set<ID>) {
-        coverage.deleted(ids, scope.now())
+        store.deleted(ids, scope.now())
         interrupt.interrupt()
     }
 
@@ -172,15 +172,15 @@ public open class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
     public fun localSignalUpdate(matching: (T) -> Boolean, modify: (T) -> T?) {
         val updates = HashSet<T>()
         val removals = HashSet<ID>()
-        coverage.cachedItems().filter(matching).forEach {
+        store.cachedItems().filter(matching).forEach {
             modify(it)?.let { updated -> updates.add(updated) } ?: removals.add(it._id)
         }
-        if (updates.isNotEmpty()) coverage.mutated(updates, scope.now())
+        if (updates.isNotEmpty()) store.mutated(updates, scope.now())
         if (removals.isNotEmpty()) deletionRecorded(removals)
     }
 
     public fun localInsert(item: T): T {
-        coverage.mutated(listOf(item), scope.now())
+        store.mutated(listOf(item), scope.now())
         return item
     }
 
@@ -191,11 +191,6 @@ public open class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
     private val idProp = serializer._id()
 
     private val multiget: BatchAndQueue<ID, T?> = BatchAndQueue<ID, T?>(scope, log = log?.tag("multiget")) { ids ->
-        val map = fetchByIds(ids.toSet()).associateBy { it._id }
-        ids.map { map[it] }
-    }
-
-    private suspend fun fetchByIds(ids: Set<ID>): List<T> {
         val at = scope.now()
         val found = uncached.query(
             Query(
@@ -206,8 +201,9 @@ public open class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
                 limit = ids.size,
             )
         )
-        coverage.identified(found, ids - found.mapTo(HashSet()) { it._id }, at)
-        return found
+        store.identified(found, ids.toSet() - found.mapTo(HashSet()) { it._id }, at)
+        val map = found.associateBy { it._id }
+        ids.map { map[it] }
     }
 
     private val queryInternal: BatchAndQueue<Query<T>, List<T>> =
@@ -218,7 +214,7 @@ public open class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
                         // Stamped before the request goes out, not after it returns, so a fetch that
                         // raced a change is never authoritative for longer than it was in flight.
                         val at = scope.now()
-                        uncached.query(query).also { coverage.queried(query, it, at) }
+                        uncached.query(query).also { store.queried(query, it, at) }
                     }
                 }.awaitAll()
             }
@@ -267,7 +263,7 @@ public open class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
 
         protected abstract val log: Log?
 
-        protected val changes: Listenable get() = coverage.updates
+        protected val changes: Listenable get() = store.updates
 
         private val interrupt: InterruptibleDelay = this@ModelCache.interrupt.child()
 
@@ -430,11 +426,11 @@ public open class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
     ) : SelfRefreshing<T?>(maximumAge, pullFrequency) {
         override val log: Log? = this@ModelCache.log?.tag("$id")
 
-        private val query: Query<T> = coverage.idQuery(id)
+        private val query: Query<T> = store.idQuery(id)
 
         override val socketCondition: Condition<T> get() = query.condition
         override fun cached(): WithTimestamp<T?>? =
-            coverage.known(query)?.let { WithTimestamp(it.items.firstOrNull(), it.at) }
+            store.known(query)?.let { WithTimestamp(it.items.firstOrNull(), it.at) }
 
         override suspend fun retrieve() {
             multiget(id)
@@ -461,11 +457,11 @@ public open class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
 
         override val socketCondition: Condition<T> get() = query.condition
         override fun cached(): WithTimestamp<List<T>>? =
-            coverage.known(currentQuery)?.let { WithTimestamp(it.items, it.at) }
+            store.known(currentQuery)?.let { WithTimestamp(it.items, it.at) }
 
         override fun isLive(cached: WithTimestamp<List<T>>): Boolean = queryIsLive(query.condition, cached.at)
 
-        override fun needsMore(): Boolean = coverage.known(currentQuery)?.partial == true
+        override fun needsMore(): Boolean = store.known(currentQuery)?.partial == true
 
         override suspend fun retrieve() {
             queryInternal(currentQuery)
@@ -487,10 +483,10 @@ public open class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
             currentQuery = currentQuery.copy(limit = count)
 
             // Nothing is known yet, so there is no edge to page from - read the list instead.
-            val known = coverage.known(currentQuery) ?: return fetch()
+            val known = store.known(currentQuery) ?: return fetch()
             if (!known.partial) return
             // A partial answer always has a boundary; that is what makes it partial.
-            val boundary = coverage.boundary(currentQuery)!!
+            val boundary = store.boundary(currentQuery)!!
 
             recordingOutcome {
                 val at = scope.now()
@@ -502,7 +498,7 @@ public open class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
                         limit = pageLimit,
                     )
                 )
-                coverage.paged(currentQuery, boundary, page, pageLimit, at)
+                store.paged(currentQuery, boundary, page, pageLimit, at)
             }
         }
 
