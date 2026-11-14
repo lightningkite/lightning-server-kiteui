@@ -113,11 +113,11 @@ public object ForeignKeyRenderer : Renderer<Any?> {
                                 val searchText = textSearch.debounce(500)()
 
                                 if (searchText.isBlank()) {
-                                    cache.query(Query(Condition.Always, listOf()), pullFrequency = 1.minutes)()
+                                    cache.list(Query(Condition.Always, listOf()), pullFrequency = 1.minutes)()
                                 } else {
                                     // Search in string fields
                                     val props = typeInfo.serializer.fields
-                                        ?: return@remember cache.query(Query(Condition.Always, listOf()), pullFrequency = 1.minutes)()
+                                        ?: return@remember cache.list(Query(Condition.Always, listOf()), pullFrequency = 1.minutes)()
 
                                     val stringConditions = props.mapNotNull { prop ->
                                         val serialName = prop.serializer.let {
@@ -148,7 +148,7 @@ public object ForeignKeyRenderer : Renderer<Any?> {
                                         Condition.Always
                                     }
 
-                                    cache.query(Query(condition, listOf()), pullFrequency = 1.minutes)()
+                                    cache.list(Query(condition, listOf()), pullFrequency = 1.minutes)()
                                 }
                             }
 

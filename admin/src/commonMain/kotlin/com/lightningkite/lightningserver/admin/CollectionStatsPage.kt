@@ -182,7 +182,7 @@ class CollectionStatsPage(val collectionName: String) : Page {
 
                         aggregateProperty == null -> {
                             val counts = rememberSuspending {
-                                mc.uncached.groupCount2(
+                                mc.skipCache.groupCount2(
                                     GroupCountQuery(
                                         condition = condition(),
                                         groupBy = groupBy
@@ -236,7 +236,7 @@ class CollectionStatsPage(val collectionName: String) : Page {
 
                         else -> {
                             val aggregation = rememberSuspending {
-                                mc.uncached.groupAggregate2(
+                                mc.skipCache.groupAggregate2(
                                     GroupAggregateQuery(
                                         aggregate = aggregationType(),
                                         condition(),
