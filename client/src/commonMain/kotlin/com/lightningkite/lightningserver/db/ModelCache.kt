@@ -5,6 +5,7 @@ import com.lightningkite.lightningserver.networking.toTypedWebSocket
 import com.lightningkite.lightningserver.typed.ClientModelRestEndpoints
 import com.lightningkite.lightningserver.typed.ClientModelRestUpdatesWebSocket
 import com.lightningkite.services.database.*
+import com.lightningkite.services.database.optics.AnyOptic
 import com.lightningkite.reactive.context.onRemove
 import com.lightningkite.reactive.core.*
 import com.lightningkite.reactive.extensions.plus
@@ -87,6 +88,53 @@ public class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
         return ListReader(totallyOrdered(query), maximumAge, pullFrequency)
     }
 
+    override fun count(condition: Condition<T>, maximumAge: Duration, pullFrequency: Duration): Reactive<Int> =
+        SummaryReader(
+            key = CountKey(condition),
+            condition = condition,
+            fields = emptyList(),
+            maximumAge = maximumAge,
+            pullFrequency = pullFrequency,
+            local = {
+                // Claude: The server narrows a count by the read mask, which rows held can't reproduce.
+                coverage.takeIf { it.unmasked }
+                    ?.known(Query(condition, idOrder, limit = Int.MAX_VALUE))
+                    ?.takeIf { !it.partial }
+                    ?.let { WithTimestamp(it.items.size, it.at) }
+            },
+            request = { uncached.count(condition) },
+        )
+
+    override fun groupCount(query: GroupCountQuery<T>, maximumAge: Duration, pullFrequency: Duration): Reactive<Map<String, Int>> =
+        SummaryReader(
+            key = query,
+            condition = query.condition,
+            fields = listOf(query.groupBy),
+            maximumAge = maximumAge,
+            pullFrequency = pullFrequency,
+            request = { uncached.groupCount(query) },
+        )
+
+    override fun aggregate(query: AggregateQuery<T>, maximumAge: Duration, pullFrequency: Duration): Reactive<Double?> =
+        SummaryReader(
+            key = query,
+            condition = query.condition,
+            fields = listOf(query.property),
+            maximumAge = maximumAge,
+            pullFrequency = pullFrequency,
+            request = { uncached.aggregate(query) },
+        )
+
+    override fun groupAggregate(query: GroupAggregateQuery<T>, maximumAge: Duration, pullFrequency: Duration): Reactive<Map<String, Double?>> =
+        SummaryReader(
+            key = query,
+            condition = query.condition,
+            fields = listOf(query.groupBy, query.property),
+            maximumAge = maximumAge,
+            pullFrequency = pullFrequency,
+            request = { uncached.groupAggregate(query) },
+        )
+
     override fun lastUpdate(id: ID): Reactive<LastUpdate?> {
         val query = coverage.idQuery(id)
         return freshnessChanges.lensListenable {
@@ -129,13 +177,14 @@ public class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
         // Claude: Read before the change; afterwards the modified rows may no longer match.
         val held = coverage.cachedItems().filter { bulkUpdate.condition(it) }.mapTo(HashSet()) { it._id }
         val count = uncached.bulkModify(bulkUpdate)
-        coverage.bulkModified(bulkUpdate.modification)
+        coverage.bulkModified(bulkUpdate.modification, scope.now())
         reread(held)
         return count
     }
 
     override suspend fun bulkModify(ids: Set<ID>, modification: Modification<T>): Int {
         val count = uncached.bulkModify(MassModification(Condition.OnField(idProp, Condition.Inside(ids)), modification))
+        coverage.rowsModified(modification, scope.now())
         reread(ids)
         return count
     }
@@ -154,7 +203,7 @@ public class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
     }
 
     override fun invalidateAll() {
-        coverage.invalidate()
+        coverage.invalidate(scope.now())
         interrupt.interrupt()
     }
 
@@ -183,13 +232,14 @@ public class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
 
     override fun localBulkModify(bulkUpdate: MassModification<T>) {
         val updated = coverage.cachedItems().filter { bulkUpdate.condition(it) }.map { bulkUpdate.modification(it) }
-        coverage.bulkModified(bulkUpdate.modification)
+        coverage.bulkModified(bulkUpdate.modification, scope.now())
         coverage.mutated(updated, scope.now())
         interrupt.interrupt()
     }
 
     override fun localBulkDelete(condition: Condition<T>) {
-        deletionRecorded(coverage.cachedItems().filter { condition(it) }.mapTo(HashSet()) { it._id })
+        coverage.bulkDeleted(condition, scope.now())
+        interrupt.interrupt()
     }
 
     @Deprecated("Use localBulkModify or localBulkDelete instead")
@@ -208,6 +258,11 @@ public class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
     // =============================================================================
 
     private val idProp = serializer._id()
+
+    private val idOrder: List<SortPart<T>> = listOf<SortPart<T>>().ensureTotal(serializer)
+
+    // Claude: Keeps a count's key from equalling some other summary keyed by a bare condition.
+    private data class CountKey<T>(val condition: Condition<T>)
 
     private val multiget: BatchAndQueue<ID, T?> = BatchAndQueue<ID, T?>(scope, log = log?.tag("multiget")) { ids ->
         val map = fetchByIds(ids.toSet()).associateBy { it._id }
@@ -282,6 +337,10 @@ public class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
 
         protected open fun needsMore(): Boolean = false
 
+        // Claude: Lists can need more forever when the server matches differently than we do, so only
+        // readers whose need always ends with a fetch may chase it.
+        protected open val chasesChanges: Boolean = false
+
         protected abstract suspend fun retrieve()
 
         protected abstract val log: Log?
@@ -342,6 +401,8 @@ public class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
                 }
             } else null
 
+            if (chasesChanges) onRemove(changes.addListener { if (needsMore()) interrupt.interrupt() })
+
             val acceptable = cached()?.let { it.freshWithin(maximumAge) && !needsMore() } == true
             if (acceptable) log?.log("Found existing value")
             else {
@@ -399,7 +460,12 @@ public class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
                         log?.log("Needs pull, starting")
                         fetchInBackground()
                         // Wait a full interval before retrying, so failures don't spin.
-                        interrupt.delay(cadence ?: floor)
+                        val pause = cadence ?: floor
+                        // Claude: A reader that chases changes can't be woken early here, or a stream of
+                        // changes or failures would refetch on every one. After a success it rechecks at
+                        // the floor, which also catches a change that landed mid-fetch.
+                        if (chasesChanges) delay(if (fetchError.value == null) floor else pause)
+                        else interrupt.delay(pause)
                     }
                 }
             }
@@ -531,5 +597,47 @@ public class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
                 && pullFrequency == other.pullFrequency
 
         override fun hashCode(): Int = query.hashCode() + maximumAge.hashCode() + pullFrequency.hashCode()
+    }
+
+    private inner class SummaryReader<V>(
+        val key: Any,
+        val condition: Condition<T>,
+        val fields: List<AnyOptic<T>>,
+        maximumAge: Duration,
+        pullFrequency: Duration,
+        val local: () -> WithTimestamp<V>? = { null },
+        val request: suspend () -> V,
+    ) : SelfRefreshing<V>(maximumAge, pullFrequency) {
+        override val log: Log? = this@ModelCache.log?.tag("$key")
+
+        override val socketCondition: Condition<T> get() = condition
+
+        // Claude: A value worked out from rows held is preferred unless the server's is newer and still good.
+        @Suppress("UNCHECKED_CAST")
+        override fun cached(): WithTimestamp<V>? {
+            val stored = coverage.summary(key)
+            val local = local()
+            if (local != null && (stored == null || stored.stale || local.at >= stored.at)) return local
+            return stored?.let { WithTimestamp(it.value as V, it.at) }
+        }
+
+        override fun needsMore(): Boolean = coverage.summary(key)?.stale == true && local() == null
+
+        override val chasesChanges: Boolean get() = true
+
+        override fun isLive(cached: WithTimestamp<V>): Boolean = queryIsLive(condition, cached.at)
+
+        override suspend fun retrieve() {
+            val at = scope.now()
+            val value = request()
+            coverage.summarized(key, condition, fields, value, at, receivedAt = scope.now())
+        }
+
+        override fun equals(other: Any?): Boolean = other is ModelCache<*, *>.SummaryReader<*>
+                && key == other.key
+                && maximumAge == other.maximumAge
+                && pullFrequency == other.pullFrequency
+
+        override fun hashCode(): Int = key.hashCode() + maximumAge.hashCode() + pullFrequency.hashCode()
     }
 }

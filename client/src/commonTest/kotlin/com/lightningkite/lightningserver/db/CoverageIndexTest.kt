@@ -613,7 +613,7 @@ class CoverageIndexTest {
         val data = rows(1, 2, 3)
         store.queried(query(limit = 10), data, t(1))
 
-        store.invalidate()
+        store.invalidate(t(2))
 
         assertNull(store.known(query(limit = 10)))
         assertNull(store.known(store.idQuery(data[0]._id)))
@@ -944,7 +944,7 @@ class CoverageIndexTest {
         store.queried(unmaskedSort, rows(1, 2, 3), t(1))
         assertNotNull(store.known(maskedSort), "the stricter, masked query is covered by the broader one")
 
-        store.invalidate()
+        store.invalidate(t(1))
         store.queried(maskedSort, rows(1, 2, 3), t(1))
         store.assertRefuses(unmaskedSort, control = maskedSort, message = "the masked list may be missing rows this one wants")
     }
@@ -1025,7 +1025,7 @@ class CoverageIndexTest {
             },
             "useMasking" to { store.useMasking(maskOnInt) },
             "deleted" to { store.deleted(setOf(data[0]._id), t(7)) },
-            "invalidate" to { store.invalidate() },
+            "invalidate" to { store.invalidate(t(8)) },
             "invalidate(id)" to { store.invalidate(data[1]._id) },
         )
         for ((name, action) in checks) {

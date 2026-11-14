@@ -643,4 +643,29 @@ class ModelCacheCoverageTest {
 
         releases.forEach { it() }
     }
+
+    /** Matches strings ignoring case, unlike the client, so lists over it never look complete. */
+    private class CollationMock(scope: CoroutineScope) : ClientModelRestEndpointsMock<LargeTestModel, Uuid>(scope) {
+        var queries = 0
+        override suspend fun query(input: Query<LargeTestModel>): List<LargeTestModel> {
+            queries++
+            delay(delayAmount)
+            @Suppress("UNCHECKED_CAST")
+            val wanted = ((input.condition as Condition.OnField<LargeTestModel, String>).condition as Condition.Equal<String>).value
+            return data.values.filter { it.string.equals(wanted, ignoreCase = true) }.sortedBy { it._id }.take(input.limit)
+        }
+    }
+
+    /** A list that can never look complete must still wait out its pull frequency between fetches. */
+    @Test fun aListThatNeverLooksCompleteDoesNotHammerTheServer() = runTest2 {
+        val mock = CollationMock(backgroundScope)
+        repeat(3) { LargeTestModel(string = "X").let { mock.data[it._id] = it } }
+        repeat(3) { LargeTestModel(string = "Y").let { mock.data[it._id] = it } }
+        val cache = ModelCache(mock, LargeTestModel.serializer(), scope = backgroundScope, log = testLog)
+        cache.query(Query(Condition { it.string eq "x" }, listOf(), limit = 2), 10.minutes, 10.minutes).addListener { }
+        cache.query(Query(Condition { it.string eq "y" }, listOf(), limit = 2), 10.minutes, 10.minutes).addListener { }
+        delay(1.minutes)
+        // Claude: Each list fetches on opening and again on its first poll, then waits.
+        assertTrue(mock.queries <= 4, "quiet lists sent ${mock.queries} queries in one minute")
+    }
 }

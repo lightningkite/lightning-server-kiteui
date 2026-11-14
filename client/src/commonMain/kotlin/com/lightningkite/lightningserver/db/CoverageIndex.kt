@@ -50,6 +50,28 @@ internal class CoverageIndex<T : HasId<ID>, ID : Comparable<ID>>(
 
     private val claims = HashMap<Extent<T>, Claim<T>>()
 
+    // Claude: [changedAt] is the latest change that could have altered [value]; a change at or before
+    // [at] happened before the request went out, so the server already counted it.
+    private class Summary<T>(
+        val condition: Condition<T>,
+        val fields: List<AnyOptic<T>>,
+        val value: Any?,
+        val at: Instant,
+        var changedAt: Instant? = null,
+    ) {
+        val stale: Boolean get() = changedAt?.let { it > at } == true
+    }
+
+    private val summaries = HashMap<Any, Summary<T>>()
+
+    // Claude: A summary's first answer may have been requested before a change it never heard about,
+    // since it wasn't stored yet. Any change since its request makes it stale.
+    private var lastChangeAt: Instant? = null
+
+    // Claude: When each row's state, present or absent, was last known. Unlike the row's claim, this
+    // survives [invalidate] of the row, so a row reappearing still compares against what came before.
+    private val seenAt = HashMap<ID, Instant>()
+
     /** Fires whenever the rows or claims change. */
     public val updates: BasicListenable = BasicListenable()
 
@@ -73,6 +95,9 @@ internal class CoverageIndex<T : HasId<ID>, ID : Comparable<ID>>(
     // called, which keeps every comparison on the conservative path.
     private var masking: Mask<T>? = null
 
+    /** Whether the server's read mask is known to hide nothing, so conditions mean the same here as there. */
+    public val unmasked: Boolean get() = masking?.pairs?.isEmpty() == true
+
     private val permitSortCache = HashMap<List<SortPart<T>>, Condition<T>>()
 
     /**
@@ -84,7 +109,8 @@ internal class CoverageIndex<T : HasId<ID>, ID : Comparable<ID>>(
         if (masking == mask) return
         masking = mask
         permitSortCache.clear()
-        if (mask.pairs.isNotEmpty()) invalidate() else updates.invokeAll()
+        // Claude: Summaries are kept, since the server's answers never depended on us knowing the mask.
+        if (mask.pairs.isNotEmpty()) forgetRows() else updates.invokeAll()
     }
 
     // Claude: Terms the server adds to every query, like permissions, are left out; they cancel in
@@ -171,6 +197,38 @@ internal class CoverageIndex<T : HasId<ID>, ID : Comparable<ID>>(
         )
     }
 
+    /**
+     * A value the server computed from the rows matching a condition, such as a count.
+     *
+     * @property at when the request for [value] was sent.
+     * @property stale `true` if a change since [at] may have altered [value].
+     */
+    public class Stored(public val value: Any?, public val at: Instant, public val stale: Boolean)
+
+    /** Returns the value last recorded under [key] by [summarized], or `null` if there is none. */
+    public fun summary(key: Any): Stored? = summaries[key]?.let { Stored(it.value, it.at, it.stale) }
+
+    /**
+     * Records [value] as the server's answer to the summary [key], requested at [at] and received at
+     * [receivedAt].
+     *
+     * The value goes stale when a row matching [condition] is added, removed, or changes one of [fields].
+     */
+    public fun summarized(
+        key: Any,
+        condition: Condition<T>,
+        fields: List<AnyOptic<T>>,
+        value: Any?,
+        at: Instant,
+        receivedAt: Instant,
+    ) {
+        // Claude: A change "after" receipt means the clock went backwards; capping it keeps the summary
+        // from staying stale until the clock catches up.
+        val changedAt = (summaries[key]?.changedAt ?: lastChangeAt)?.coerceAtMost(receivedAt)
+        summaries[key] = Summary(condition, fields, value, at, changedAt)
+        updates.invokeAll()
+    }
+
     /** Returns the last row known for [query], or `null` if every row is known or no claim covers it. */
     public fun boundary(query: Query<T>): T? = backing(query)?.through
 
@@ -192,7 +250,7 @@ internal class CoverageIndex<T : HasId<ID>, ID : Comparable<ID>>(
         val extent = query.extent()
         val through = if (reachedEndOf(result, query.limit, reachedEnd)) null else result.lastOrNull()
         reconcile(extent.effective(), query.orderBy, after = null, through = through, returned = result, at = at)
-        result.forEach { record(it, at) }
+        result.forEach { record(it, at, change = false) }
         claims[extent] = Claim(through, at)
         updates.invokeAll()
     }
@@ -223,21 +281,21 @@ internal class CoverageIndex<T : HasId<ID>, ID : Comparable<ID>>(
         val extent = query.extent()
         val through = if (reachedEndOf(result, pageLimit, reachedEnd)) null else result.lastOrNull()
         reconcile(extent.effective(), query.orderBy, after = after, through = through, returned = result, at = at)
-        result.forEach { record(it, at) }
+        result.forEach { record(it, at, change = false) }
         claims[extent] = Claim(through, minOf(previous.at, at))
         updates.invokeAll()
     }
 
     /** Records a lookup by ID that found the rows [found] and confirmed the IDs [missing] don't exist. */
     public fun identified(found: List<T>, missing: Set<ID>, at: Instant) {
-        found.forEach { record(it, at) }
-        missing.forEach { gone(it, at) }
+        found.forEach { record(it, at, change = false) }
+        missing.forEach { gone(it, at, change = false) }
         updates.invokeAll()
     }
 
     /** Records rows this client changed itself. Every claim stays valid. */
     public fun mutated(changed: Collection<T>, at: Instant) {
-        changed.forEach { record(it, at) }
+        changed.forEach { record(it, at, change = true) }
         updates.invokeAll()
     }
 
@@ -247,7 +305,19 @@ internal class CoverageIndex<T : HasId<ID>, ID : Comparable<ID>>(
      * A list that was full comes up one row short until it fetches again.
      */
     public fun deleted(ids: Set<ID>, at: Instant) {
-        ids.forEach { gone(it, at) }
+        ids.forEach { gone(it, at, change = true) }
+        updates.invokeAll()
+    }
+
+    /**
+     * Records that the server deleted every row matching [condition], including rows not held.
+     *
+     * Every summary goes stale, since any of them could have counted a row this index never saw.
+     */
+    public fun bulkDeleted(condition: Condition<T>, at: Instant) {
+        items.values.filter { condition(it) }.forEach { gone(it._id, at, change = true) }
+        noteChange(at)
+        summaries.values.forEach { it.changed(at) }
         updates.invokeAll()
     }
 
@@ -265,9 +335,14 @@ internal class CoverageIndex<T : HasId<ID>, ID : Comparable<ID>>(
         at: Instant,
         live: (condition: Condition<T>, since: Instant) -> Boolean,
     ) {
-        changed.forEach { record(it, at) }
+        changed.forEach { record(it, at, change = true) }
         removed.forEach { id ->
-            val old = items.remove(id) ?: return@forEach
+            val old = items.remove(id)
+            seenAt.remove(id)
+            noteChange(at)
+            // Claude: Where the row went is unknown, so it may have left or entered any summary's condition.
+            summaries.values.forEach { it.changed(at) }
+            if (old == null) return@forEach
             // Claude: Otherwise the row would read as deleted rather than unknown.
             claims.remove(idExtent(id))
             claims.entries.removeAll { (extent, claim) ->
@@ -277,10 +352,26 @@ internal class CoverageIndex<T : HasId<ID>, ID : Comparable<ID>>(
         updates.invokeAll()
     }
 
-    /** Forgets every row and claim. */
-    public fun invalidate() {
+    /**
+     * Forgets every row, claim, and summary.
+     *
+     * A summary requested before [at] and recorded afterwards is stale, since changes may have been missed.
+     */
+    public fun invalidate(at: Instant) {
+        // Claude: Changes may have been missed, so an answer requested before now can't be trusted.
+        noteChange(at)
+        forgetEverything()
+    }
+
+    private fun forgetEverything() {
+        summaries.clear()
+        forgetRows()
+    }
+
+    private fun forgetRows() {
         items.clear()
         claims.clear()
+        seenAt.clear()
         updates.invokeAll()
     }
 
@@ -290,11 +381,25 @@ internal class CoverageIndex<T : HasId<ID>, ID : Comparable<ID>>(
      *
      * Rows already held that the modification changed are not updated; the caller has to re-read them.
      */
-    public fun bulkModified(modification: Modification<T>) {
+    public fun bulkModified(modification: Modification<T>, at: Instant) {
         claims.keys.removeAll { extent ->
             extent.effective().readPaths().any { modification.affects(it) } ||
                 extent.order.any { modification.affects(it.field) }
         }
+        rowsModified(modification, at)
+    }
+
+    /**
+     * Records that the server applied [modification] to some rows, possibly ones not held, which the
+     * caller re-reads.
+     *
+     * Claims are kept, but summaries reading a field [modification] writes go stale.
+     */
+    public fun rowsModified(modification: Modification<T>, at: Instant) {
+        noteChange(at)
+        summaries.values
+            .filter { s -> (s.condition.readPaths() + s.fields).any { modification.affects(it) } }
+            .forEach { it.changed(at) }
         updates.invokeAll()
     }
 
@@ -308,16 +413,46 @@ internal class CoverageIndex<T : HasId<ID>, ID : Comparable<ID>>(
         updates.invokeAll()
     }
 
-    private fun record(item: T, at: Instant) {
+    // Claude: [change] means the row changed on the server, not that we only read it. A read of a row
+    // we knew nothing about tells us nothing changed; a change to one could have altered any summary.
+    private fun record(item: T, at: Instant, change: Boolean) {
         if (alreadyKnowBetter(item._id, at, item)) return
+        summariesSee(item._id, item, at, change)
         items[item._id] = item
         claims[idExtent(item._id)] = Claim(through = null, at = at)
     }
 
-    private fun gone(id: ID, at: Instant) {
+    private fun gone(id: ID, at: Instant, change: Boolean) {
         if (alreadyKnowBetter(id, at, incoming = null)) return
+        summariesSee(id, null, at, change)
         items.remove(id)
         claims[idExtent(id)] = Claim(through = null, at = at)
+    }
+
+    // Claude: A read only reveals a change by comparing with a row we knew; reads of rows never seen
+    // are ignored, and polling covers them.
+    private fun summariesSee(id: ID, new: T?, at: Instant, change: Boolean) {
+        val seen = seenAt[id]
+        val old = items[id]
+        seenAt[id] = at
+        if (if (seen != null) old != new else change) noteChange(at)
+        summaries.values.forEach { s ->
+            if (if (seen != null) s.alters(old, new) else change) s.changed(at)
+        }
+    }
+
+    private fun Summary<T>.alters(old: T?, new: T?): Boolean {
+        val wasIn = old != null && condition(old)
+        val isIn = new != null && condition(new)
+        return wasIn != isIn || (wasIn && fields.any { it.get(old!!) != it.get(new!!) })
+    }
+
+    private fun Summary<T>.changed(at: Instant) {
+        if (changedAt.let { it == null || it < at }) changedAt = at
+    }
+
+    private fun noteChange(at: Instant) {
+        if (lastChangeAt.let { it == null || it < at }) lastChangeAt = at
     }
 
     // Claude: Decides which of two accounts of a row is newer, by version when both rows have one, else
@@ -352,7 +487,11 @@ internal class CoverageIndex<T : HasId<ID>, ID : Comparable<ID>>(
                     (after == null || comparator.compare(it, after) > 0) &&
                     (through == null || comparator.compare(it, through) <= 0)
         }.forEach { stale ->
+            noteChange(at)
+            // Claude: Where the row went is unknown, so it may have left or entered any summary's condition.
+            summaries.values.forEach { it.changed(at) }
             items.remove(stale._id)
+            seenAt.remove(stale._id)
             claims.keys.removeAll { it.effective()(stale) }
         }
     }

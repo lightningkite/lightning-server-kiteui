@@ -199,7 +199,7 @@ class CoverageIndexFuzzTest {
                 in 74..81 -> runPage(now)
                 in 82..91 -> socketStep(now)
                 in 92..94 -> invalidateOne(now)
-                95 -> { store.invalidate(); counters.invalidateAll++ }
+                95 -> { store.invalidate(now); counters.invalidateAll++ }
                 else -> inFlightQuery(now)
             }
             check(index, now, localOnly)

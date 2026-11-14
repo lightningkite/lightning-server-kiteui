@@ -164,15 +164,57 @@ public open class ClientModelRestEndpointsMock<T : HasId<ID>, ID : Comparable<ID
     override suspend fun count(input: Condition<T>): Int {
         if (connectivityFailure) throw ConnectionException("Dead")
         log?.log("count")
+        val effective = effectiveCondition(input, emptyList())
+        // Claude: Answered as of arrival, like a real server, so a change during the delay is missed.
+        val answer = data.values.count { effective(it) }
         delay(delayAmount)
-        return data.values.asSequence().filter { input(it) }.count { input(it) }
+        return answer
     }
 
-    override suspend fun groupCount(input: GroupCountQuery<T>): Map<String, Int> = TODO()
-    override suspend fun groupCount2(input: GroupCountQuery<T>): Map<String, Int> = TODO()
-    override suspend fun aggregate(input: AggregateQuery<T>): Double? = TODO()
-    override suspend fun groupAggregate(input: GroupAggregateQuery<T>): Map<String, Double?> = TODO()
-    override suspend fun groupAggregate2(input: GroupAggregateQuery<T>): Map<String, Double?> = TODO()
+    override suspend fun groupCount(input: GroupCountQuery<T>): Map<String, Int> {
+        if (connectivityFailure) throw ConnectionException("Dead")
+        log?.log("groupCount")
+        val effective = effectiveCondition(input.condition, emptyList())
+        val answer = data.values.filter { effective(it) }.groupingBy { input.groupBy.get(it).toString() }.eachCount()
+        delay(delayAmount)
+        return answer
+    }
+
+    override suspend fun groupCount2(input: GroupCountQuery<T>): Map<String, Int> = groupCount(input)
+
+    override suspend fun aggregate(input: AggregateQuery<T>): Double? {
+        if (connectivityFailure) throw ConnectionException("Dead")
+        log?.log("aggregate")
+        val effective = effectiveCondition(input.condition, emptyList())
+        val answer = data.values.filter { effective(it) }.mapNotNull { input.property.get(it)?.toDouble() }.aggregate(input.aggregate)
+        delay(delayAmount)
+        return answer
+    }
+
+    override suspend fun groupAggregate(input: GroupAggregateQuery<T>): Map<String, Double?> {
+        if (connectivityFailure) throw ConnectionException("Dead")
+        log?.log("groupAggregate")
+        val effective = effectiveCondition(input.condition, emptyList())
+        val answer = data.values.filter { effective(it) }
+            .groupBy { input.groupBy.get(it).toString() }
+            .mapValues { (_, rows) -> rows.mapNotNull { input.property.get(it)?.toDouble() }.aggregate(input.aggregate) }
+        delay(delayAmount)
+        return answer
+    }
+
+    override suspend fun groupAggregate2(input: GroupAggregateQuery<T>): Map<String, Double?> = groupAggregate(input)
+
+    private fun List<Double>.aggregate(aggregate: Aggregate): Double? {
+        if (isEmpty()) return null
+        val mean = average()
+        val squares = sumOf { (it - mean) * (it - mean) }
+        return when (aggregate) {
+            Aggregate.Sum -> sum()
+            Aggregate.Average -> mean
+            Aggregate.StandardDeviationSample -> if (size < 2) null else kotlin.math.sqrt(squares / (size - 1))
+            Aggregate.StandardDeviationPopulation -> kotlin.math.sqrt(squares / size)
+        }
+    }
     override suspend fun permissions(): ModelPermissions<T> = modelPermissions
 
 }

@@ -1,6 +1,9 @@
 package com.lightningkite.lightningserver.db
 
+import com.lightningkite.services.database.AggregateQuery
 import com.lightningkite.services.database.Condition
+import com.lightningkite.services.database.GroupAggregateQuery
+import com.lightningkite.services.database.GroupCountQuery
 import com.lightningkite.services.database.HasId
 import com.lightningkite.services.database.MassModification
 import com.lightningkite.services.database.Modification
@@ -33,6 +36,46 @@ public interface ModelStore<T : HasId<ID>, ID : Comparable<ID>> {
         maximumAge: Duration = defaultMaxAge,
         pullFrequency: Duration = defaultPullFrequency,
     ): LimitReactiveList<T>
+
+    /**
+     * Returns the number of rows matching [condition], kept up to date like [query].
+     *
+     * Rows held locally answer it without a request when a list already covers [condition] completely.
+     */
+    public fun count(
+        condition: Condition<T>,
+        maximumAge: Duration = defaultMaxAge,
+        pullFrequency: Duration = defaultPullFrequency,
+    ): Reactive<Int>
+
+    /** Returns the number of rows matching the query's condition for each value of its group field, kept up to date like [query]. */
+    public fun groupCount(
+        query: GroupCountQuery<T>,
+        maximumAge: Duration = defaultMaxAge,
+        pullFrequency: Duration = defaultPullFrequency,
+    ): Reactive<Map<String, Int>>
+
+    /**
+     * Returns the aggregate of a numeric field over the rows matching the query's condition, kept up to
+     * date like [query].
+     *
+     * The value is `null` when no rows match.
+     */
+    public fun aggregate(
+        query: AggregateQuery<T>,
+        maximumAge: Duration = defaultMaxAge,
+        pullFrequency: Duration = defaultPullFrequency,
+    ): Reactive<Double?>
+
+    /**
+     * Returns [aggregate] computed separately for each value of the query's group field, kept up to date
+     * like [query].
+     */
+    public fun groupAggregate(
+        query: GroupAggregateQuery<T>,
+        maximumAge: Duration = defaultMaxAge,
+        pullFrequency: Duration = defaultPullFrequency,
+    ): Reactive<Map<String, Double?>>
 
     public suspend fun insert(item: T): T
 
