@@ -112,26 +112,24 @@ public object ForeignKeyRenderer : Renderer<Any?> {
                                 val cache = typeInfo.cache()
                                 val searchText = textSearch.debounce(500)()
 
-                                if (searchText.isBlank()) {
-                                    cache.query(Query(Condition.Always, listOf()), cache.defaultRefreshPolicy.copy(pullFrequency = 1.minutes))()
+                                val props = typeInfo.serializer.fields
+                                val condition = if (searchText.isBlank() || props == null) {
+                                    Condition.Always
                                 } else {
                                     // Search in string fields
-                                    val props = typeInfo.serializer.fields
-                                        ?: return@remember cache.query(Query(Condition.Always, listOf()), cache.defaultRefreshPolicy.copy(pullFrequency = 1.minutes))()
-
                                     val stringConditions = props.mapNotNull { prop ->
                                         val serialName = prop.serializer.let {
                                             it.nullElement() ?: it
                                         }.descriptor.serialNameFQN()
 
-                                        when {
-                                            serialName == "kotlin.String" -> {
+                                        when (serialName) {
+                                            "kotlin.String" -> {
                                                 val path = prop as Field<HasId<Comparable<Comparable<*>>>, Any?>
                                                 path.mapCondition(
                                                     Condition.StringContains(searchText, true) as Condition<Any?>
                                                 )
                                             }
-                                            serialName in IsRawString.serialNames -> {
+                                            in IsRawString.serialNames -> {
                                                 val field = prop as Field<HasId<Comparable<Comparable<*>>>, IsRawString?>
                                                 val path =
                                                     if (field.serializer.descriptor.isNullable) field.notNull
@@ -142,14 +140,13 @@ public object ForeignKeyRenderer : Renderer<Any?> {
                                         }
                                     }
 
-                                    val condition = if (stringConditions.isNotEmpty()) {
+                                    if (stringConditions.isNotEmpty()) {
                                         Condition.Or(stringConditions)
                                     } else {
                                         Condition.Always
                                     }
-
-                                    cache.query(Query(condition, listOf()), cache.defaultRefreshPolicy.copy(pullFrequency = 1.minutes))()
                                 }
+                                cache.query(Query(condition, listOf()), cache.defaultRefreshPolicy.poll(1.minutes))()
                             }
 
                             // Search input

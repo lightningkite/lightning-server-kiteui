@@ -56,6 +56,7 @@ import com.lightningkite.services.database.ConditionSerializer
 import com.lightningkite.services.database.HasId
 import com.lightningkite.services.database._id
 import com.lightningkite.lightningserver.db.ModelCache
+import com.lightningkite.lightningserver.db.RefreshPolicy
 import com.lightningkite.reactive.context.invoke
 import com.lightningkite.reactive.context.reactive
 import com.lightningkite.reactive.core.Draft
@@ -115,7 +116,7 @@ class DetailAdminPage(val collectionName: String, val itemId: String) : Page {
         val tracked = remember {
             val mc = mc()
             val actualId = DefaultUriFormat.decodeFromString(mc.serializer._id().serializer, itemId)
-            if (live()) mc.ref(actualId, mc.defaultRefreshPolicy.copy(pullFrequency = LIVE_PULL_FREQUENCY)) else mc.ref(actualId)
+            if (live()) mc.ref(actualId, RefreshPolicy.LIVE_DATA) else mc.ref(actualId)
         }
         // Only flips when the item appears or disappears, so edits aren't interrupted by updates.
         val exists = remember { tracked()() != null }

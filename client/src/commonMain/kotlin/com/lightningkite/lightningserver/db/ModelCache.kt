@@ -23,7 +23,7 @@ public class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
     public val uncached: ClientModelRestEndpoints<T, ID>,
     override val serializer: KSerializer<T>,
     websocket: ClientModelRestUpdatesWebSocket<T, ID>? = @Suppress("UNCHECKED_CAST") (uncached as? ClientModelRestUpdatesWebSocket<T, ID>),
-    override val defaultRefreshPolicy: RefreshPolicy = RefreshPolicy.onDemand(5.minutes),
+    override val defaultRefreshPolicy: RefreshPolicy = RefreshPolicy.maxAge(5.minutes),
     private val scope: CoroutineScope = AppScope,
     private val log: Log? = null,
     versionOf: ((T) -> Long?)? = null,

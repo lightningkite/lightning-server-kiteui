@@ -32,10 +32,6 @@ import com.lightningkite.reactive.extensions.debounce
 import kotlinx.serialization.builtins.ListSerializer
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
-import kotlin.time.Duration.Companion.seconds
-
-/** Under 30 seconds, so a reader asking for it subscribes to the update socket.  Other readers must not. */
-val LIVE_PULL_FREQUENCY = 10.seconds
 
 private val refreshIcon = Icon(1.5.rem, 1.5.rem, 0, -960, 960, 960, listOf("M480-160q-134 0-227-93t-93-227q0-134 93-227t227-93q69 0 132 28.5T720-690v-110h80v280H520v-80h168q-32-56-87.5-88T480-720q-100 0-170 70t-70 170q0 100 70 170t170 70q77 0 139-44t87-116h84q-28 106-114 173t-196 67Z"))
 
@@ -400,7 +396,7 @@ class CollectionAdminPage(val collectionName: String) : Page {
             expanding.renderTable(
                 module = forms,
                 innerSerializer = mc.serializer,
-                items = remember { mc.query(query(), RefreshPolicy(Duration.ZERO, if (live()) LIVE_PULL_FREQUENCY else 5.minutes)) },
+                items = remember { mc.query(query(), if (live()) RefreshPolicy.LIVE_DATA else RefreshPolicy(Duration.ZERO, 5.minutes)) },
                 columns = columns as MutableReactive<List<ColumnInfo<UnknownModel>>>,
                 linkTo = {
                     val id = UrlProperties.encodeToString(mc.serializer._id().serializer, it._id)

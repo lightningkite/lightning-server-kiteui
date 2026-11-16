@@ -179,7 +179,7 @@ public data class RefreshPolicy(
          *
          * Data that is already shown stays until something replaces it.
          */
-        public fun onDemand(maximumAge: Duration): RefreshPolicy = RefreshPolicy(maximumAge, pullFrequency = Duration.INFINITE)
+        public fun maxAge(maximumAge: Duration): RefreshPolicy = RefreshPolicy(maximumAge, pullFrequency = Duration.INFINITE)
 
         /**
          * Returns a policy that fetches every [pullFrequency] while a reader is open, and opens on whatever data is
@@ -188,13 +188,13 @@ public data class RefreshPolicy(
         public fun poll(pullFrequency: Duration): RefreshPolicy = RefreshPolicy(maximumAge = Duration.INFINITE, pullFrequency)
 
         /** Keeps the data current, through the update socket when there is one and by polling otherwise. */
-        public val LIVE_DATA: RefreshPolicy = RefreshPolicy(maximumAge = Duration.ZERO, pullFrequency = Duration.ZERO)
+        public val LIVE_DATA: RefreshPolicy = RefreshPolicy(Duration.ZERO, Duration.ZERO)
 
         /** Fetches again each time a cached value is read for the first time, but never while it stays open. */
-        public val FETCH_ON_OPEN: RefreshPolicy = onDemand(Duration.ZERO)
+        public val FETCH_ON_OPEN: RefreshPolicy = maxAge(Duration.ZERO)
 
-        /** Fetches only when nothing is held, then keeps what it has. */
-        public val FETCH_ONCE: RefreshPolicy = RefreshPolicy(Duration.ZERO, Duration.ZERO)
+        /** Fetches only when nothing is held. Result is cached for the lifetime of the cached entity and never re-fetched. */
+        public val FETCH_ONCE: RefreshPolicy = RefreshPolicy(Duration.INFINITE, Duration.INFINITE)
     }
 }
 

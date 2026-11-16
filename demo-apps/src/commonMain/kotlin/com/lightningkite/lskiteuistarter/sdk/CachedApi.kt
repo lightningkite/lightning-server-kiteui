@@ -6,7 +6,7 @@ import kotlin.time.Duration.Companion.minutes
 
 open class CachedApi(
 	val uncached: Api,
-	defaultRefreshPolicy: RefreshPolicy = RefreshPolicy.onDemand(5.minutes),
+	defaultRefreshPolicy: RefreshPolicy = RefreshPolicy.maxAge(5.minutes),
 ) {
 	open val appReleases = ModelCache(uncached.appRelease, com.lightningkite.lskiteuistarter.AppRelease.serializer(), defaultRefreshPolicy = defaultRefreshPolicy)
 	open val users = ModelCache(uncached.user, com.lightningkite.lskiteuistarter.User.serializer(), defaultRefreshPolicy = defaultRefreshPolicy)
