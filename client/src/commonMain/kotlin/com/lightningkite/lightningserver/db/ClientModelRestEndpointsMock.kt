@@ -2,13 +2,16 @@ package com.lightningkite.lightningserver.db
 
 import com.lightningkite.kiteui.ConnectionException
 import com.lightningkite.kiteui.Log
+import com.lightningkite.kiteui.navigation.DefaultJson
 import com.lightningkite.services.database.*
 import com.lightningkite.lightningserver.LSError
 import com.lightningkite.lightningserver.LsErrorException
 import com.lightningkite.lightningserver.typed.ClientModelRestEndpoints
 import com.lightningkite.services.database.Partial
+import com.lightningkite.services.database.optics.coerceToOptic
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.serialization.KSerializer
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
@@ -180,7 +183,15 @@ public open class ClientModelRestEndpointsMock<T : HasId<ID>, ID : Comparable<ID
         return answer
     }
 
-    override suspend fun groupCount2(input: GroupCountQuery<T>): Map<String, Int> = groupCount(input)
+    override suspend fun groupCount2(input: GroupCountQuery<T>): Map<String, Int> {
+        if (connectivityFailure) throw ConnectionException("Dead")
+        log?.log("groupCount2")
+        val effective = effectiveCondition(input.condition, emptyList())
+        @Suppress("UNCHECKED_CAST") val keys = input.groupBy.coerceToOptic().serializer as KSerializer<Any?>
+        val answer = data.values.filter { effective(it) }.groupingBy { DefaultJson.encodeToString(keys, input.groupBy.get(it)) }.eachCount()
+        delay(delayAmount)
+        return answer
+    }
 
     override suspend fun aggregate(input: AggregateQuery<T>): Double? {
         if (connectivityFailure) throw ConnectionException("Dead")
@@ -202,7 +213,17 @@ public open class ClientModelRestEndpointsMock<T : HasId<ID>, ID : Comparable<ID
         return answer
     }
 
-    override suspend fun groupAggregate2(input: GroupAggregateQuery<T>): Map<String, Double?> = groupAggregate(input)
+    override suspend fun groupAggregate2(input: GroupAggregateQuery<T>): Map<String, Double?> {
+        if (connectivityFailure) throw ConnectionException("Dead")
+        log?.log("groupAggregate2")
+        val effective = effectiveCondition(input.condition, emptyList())
+        @Suppress("UNCHECKED_CAST") val keys = input.groupBy.coerceToOptic().serializer as KSerializer<Any?>
+        val answer = data.values.filter { effective(it) }
+            .groupBy { DefaultJson.encodeToString(keys, input.groupBy.get(it)) }
+            .mapValues { (_, rows) -> rows.mapNotNull { input.property.get(it)?.toDouble() }.aggregate(input.aggregate) }
+        delay(delayAmount)
+        return answer
+    }
 
     private fun List<Double>.aggregate(aggregate: Aggregate): Double? {
         if (isEmpty()) return null

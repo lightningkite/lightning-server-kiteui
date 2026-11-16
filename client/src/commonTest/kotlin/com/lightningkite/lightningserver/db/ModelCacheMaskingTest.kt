@@ -104,10 +104,10 @@ class ModelCacheMaskingTest {
         condition: Condition<LargeTestModel> = Condition.Always,
         sort: List<SortPart<LargeTestModel>>,
         limit: Int = 100,
-    ) = list(Query(condition, sort, limit = limit), RefreshPolicy(10.minutes, 10.minutes))
+    ) = query(Query(condition, sort, limit = limit), RefreshPolicy.CACHED_IF_ANY)
 
     private fun ModelCache<LargeTestModel, Uuid>.quietItem(id: Uuid) =
-        item(id, RefreshPolicy(10.minutes, 10.minutes))
+        ref(id, RefreshPolicy.CACHED_IF_ANY)
 
     // =========================================================================
     // What the server imposes, and what the client reproduces
@@ -310,7 +310,7 @@ class ModelCacheMaskingTest {
         mock.data.putAll(rows().associateBy { it._id })
         val cache = ModelCache(mock, LargeTestModel.serializer(), scope = backgroundScope, log = testLog)
 
-        val ref = cache.list(
+        val ref = cache.query(
             Query(Condition.Always, sort { it.short.ascending() }, limit = 100),
             RefreshPolicy(10.minutes, 10.seconds),
         )
@@ -345,7 +345,7 @@ class ModelCacheMaskingTest {
         val cache = ModelCache(mock, LargeTestModel.serializer(), scope = backgroundScope, log = testLog)
 
         val query = Query<LargeTestModel>(Condition.Always, sort { it.short.ascending() }, limit = 100)
-        val ref = cache.list(query, RefreshPolicy(10.minutes, 10.minutes))
+        val ref = cache.query(query, RefreshPolicy.CACHED_IF_ANY)
         val release = ref.addListener { }
         delay(1.seconds)
         assertEquals(4, ref.state.getOrNull()?.size)
@@ -406,7 +406,7 @@ class ModelCacheMaskingTest {
 
         val masked = cache.quietList(sort = sort { it.int.ascending() })
         // Subscribes, so the socket starts delivering changes to rows the masked list cannot see.
-        val subscribed = cache.list(
+        val subscribed = cache.query(
             Query(Condition { it.short gt 0 }, sort { it.short.ascending() }, limit = 100),
             RefreshPolicy.poll(10.seconds),
         )
@@ -437,7 +437,7 @@ class ModelCacheMaskingTest {
         val cache = ModelCache(mock, LargeTestModel.serializer(), scope = backgroundScope, log = testLog)
 
         val masked = cache.quietList(sort = sort { it.int.ascending() })
-        val subscribed = cache.list(
+        val subscribed = cache.query(
             Query(Condition { it.short gt 0 }, sort { it.short.ascending() }, limit = 100),
             RefreshPolicy.poll(10.seconds),
         )
@@ -472,7 +472,7 @@ class ModelCacheMaskingTest {
         val cache = ModelCache(mock, LargeTestModel.serializer(), scope = backgroundScope, log = testLog)
 
         val masked = cache.quietList(sort = sort { it.int.ascending() })
-        val subscribed = cache.list(
+        val subscribed = cache.query(
             Query(Condition { it.short gt 0 }, sort { it.short.ascending() }, limit = 100),
             RefreshPolicy.poll(10.seconds),
         )

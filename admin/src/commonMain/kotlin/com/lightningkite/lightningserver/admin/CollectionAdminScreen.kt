@@ -396,7 +396,7 @@ class CollectionAdminPage(val collectionName: String) : Page {
             expanding.renderTable(
                 module = forms,
                 innerSerializer = mc.serializer,
-                items = remember { mc.query(query(), if (live()) RefreshPolicy.LIVE_DATA else RefreshPolicy(Duration.ZERO, 5.minutes)) },
+                items = remember { mc.query(query(), if (live()) RefreshPolicy.LIVE else RefreshPolicy(Duration.ZERO, 5.minutes)) },
                 columns = columns as MutableReactive<List<ColumnInfo<UnknownModel>>>,
                 linkTo = {
                     val id = UrlProperties.encodeToString(mc.serializer._id().serializer, it._id)

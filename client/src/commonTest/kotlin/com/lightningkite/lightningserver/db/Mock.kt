@@ -9,6 +9,9 @@ import com.lightningkite.reactive.core.Constant
 import com.lightningkite.reactive.core.Reactive
 import com.lightningkite.reactive.core.Signal
 import com.lightningkite.services.database.Partial
+import com.lightningkite.services.database.optics.coerceToOptic
+import com.lightningkite.kiteui.navigation.DefaultJson
+import kotlinx.serialization.KSerializer
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
@@ -167,9 +170,10 @@ class MockClientModelRestEndpoints<T : HasId<ID>, ID : Comparable<ID>>(val log: 
         return items.values.groupBy { input.groupBy.get(it).toString() }.mapValues { it.value.size }
     }
     override suspend fun groupCount2(input: GroupCountQuery<T>): Map<String, Int> {
-        log("groupCount $input")
+        log("groupCount2 $input")
         hold.await()
-        return items.values.groupBy { input.groupBy.get(it).toString() }.mapValues { it.value.size }
+        @Suppress("UNCHECKED_CAST") val keys = input.groupBy.coerceToOptic().serializer as KSerializer<Any?>
+        return items.values.groupBy { DefaultJson.encodeToString(keys, input.groupBy.get(it)) }.mapValues { it.value.size }
     }
 
     override suspend fun aggregate(input: AggregateQuery<T>): Double? {

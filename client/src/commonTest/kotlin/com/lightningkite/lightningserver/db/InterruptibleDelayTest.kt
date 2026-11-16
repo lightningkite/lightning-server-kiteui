@@ -6,16 +6,14 @@ import kotlinx.coroutines.yield
 import kotlin.test.Test
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
-import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 
 /**
- * Whether [InterruptibleDelay.interrupt] can be lost.
+ * Whether [InterruptibleDelay.interrupt] reliably ends a delay.
  *
- * It notifies whoever is listening at the instant it is called and keeps no record, so a wake that
- * arrives before the delay has established its listener has nowhere to land.  [ModelCache] relies on
- * exactly this to tell a sleeping reader that what it holds has been thrown away, and a reader that
- * misses that sleeps out its whole poll interval holding nothing.
+ * [ModelCache] relies on it to tell a sleeping reader that what it holds has been thrown away, and a
+ * reader that misses that sleeps out its whole poll interval holding nothing.
  */
 class InterruptibleDelayTest {
 
@@ -36,14 +34,8 @@ class InterruptibleDelayTest {
     /**
      * An interrupt that arrives while the delay is still starting up must still end it.
      *
-     * [delay] does not establish its listener synchronously: it goes through [race], which collects a
-     * `channelFlow` and `launch`es each racer, so registration lands three scheduler turns after the
-     * call.  An [interrupt] inside that window reaches nobody and is gone, and the caller then sleeps
-     * out the full duration - for a [ModelCache] reader whose held value was just invalidated, that
-     * means a whole poll interval showing nothing.
-     *
-     * Measured window, by turns of head start given before interrupting:
-     *   0 lost, 1 lost, 2 lost, 3 heard, 4+ heard.
+     * Otherwise the caller sleeps out the full duration - for a [ModelCache] reader whose held value was
+     * just invalidated, that means a whole poll interval showing nothing.
      */
     @Test fun anInterruptArrivingWhileTheDelayIsStartingIsNotLost() = runTest2 {
         for (turns in 0..2) {
@@ -104,46 +96,17 @@ class InterruptibleDelayTest {
         }
     }
 
-    /**
-     * A delay that ends on its own timer must leave nothing registered.
-     *
-     * The interrupt racers lose that race and are cancelled part-way through their suspension, so
-     * releasing their listeners cannot be left to the statement after the suspend - cancellation
-     * skips it.  [ModelCache]'s poll loop delays for as long as anything is listening, so a listener
-     * leaked per cycle accumulates for the life of the page and is re-invoked on every interrupt.
-     */
-    @Test fun aDelayThatEndsOnItsTimerLeavesNoListenersBehind() = runTest2 {
-        val parent = InterruptibleDelay()
-        val child = parent.child()
+    @Test fun anInfiniteDelayIsEndedByAnInterrupt() = runTest2 {
+        val interrupt = InterruptibleDelay()
+        var woke = false
+        val job = backgroundScope.launch { interrupt.delay(Duration.INFINITE); woke = true }
+        repeat(20) { yield() }
+        assertFalse(woke)
 
-        repeat(5) { child.delay(10.milliseconds) }
-
-        assertTrue(
-            child.pendingListenerCountForTesting == 0,
-            "the child kept ${child.pendingListenerCountForTesting} listener(s) from delays that timed out"
-        )
-        assertTrue(
-            parent.pendingListenerCountForTesting == 0,
-            "the parent kept ${parent.pendingListenerCountForTesting} listener(s) from delays that timed out"
-        )
-    }
-
-    /** And a delay ended by an interrupt must clean up just the same. */
-    @Test fun aDelayEndedByAnInterruptLeavesNoListenersBehind() = runTest2 {
-        val parent = InterruptibleDelay()
-        val child = parent.child()
-        repeat(3) {
-            val job = backgroundScope.launch { child.delay(10.minutes) }
-            repeat(20) { yield() }
-            parent.interrupt()
-            repeat(20) { yield() }
-            job.cancel()
-        }
-
-        assertTrue(
-            child.pendingListenerCountForTesting == 0 && parent.pendingListenerCountForTesting == 0,
-            "after interrupts, child=${child.pendingListenerCountForTesting} parent=${parent.pendingListenerCountForTesting}"
-        )
+        interrupt.interrupt()
+        repeat(20) { yield() }
+        assertTrue(woke)
+        job.cancel()
     }
 
     /** Interrupting more than once while a delay is established must not resume it twice. */

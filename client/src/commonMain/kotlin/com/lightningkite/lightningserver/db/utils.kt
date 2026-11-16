@@ -7,13 +7,12 @@ import com.lightningkite.services.database.optics.IdentityLens
 import com.lightningkite.services.database.optics.Field
 import com.lightningkite.services.database.optics.fields
 import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.channelFlow
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.selects.onTimeout
+import kotlinx.coroutines.selects.select
 import kotlin.time.Instant
 import kotlinx.serialization.KSerializer
-import kotlin.concurrent.atomics.AtomicInt
+import kotlin.concurrent.atomics.AtomicReference
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
-import kotlin.concurrent.atomics.incrementAndFetch
 import kotlin.coroutines.AbstractCoroutineContextElement
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.coroutineContext
@@ -278,17 +277,16 @@ public fun ResourceUse(parentScope: CoroutineScope = AppScope, action: suspend C
  */
 @OptIn(ExperimentalAtomicApi::class)
 public class InterruptibleDelay(public val parent: InterruptibleDelay? = null) {
-    private val listenable = BasicListenable()
-    private val num = AtomicInt(0)
-    internal val pendingListenerCountForTesting: Int get() = listenable.listenerCount
+    // Claude: Completed and replaced on each interrupt, so a delay waits on the one current when it starts.
+    private val interrupted = AtomicReference(CompletableDeferred<Unit>())
 
     /**
-     * Interrupts any active delays on this instance, causing them to complete immediately.
-     * Does not affect delays on parent or child instances.
+     * Ends the active delays on this instance and on its children immediately.
+     *
+     * Delays on the parent are not affected, and a delay that starts afterwards waits normally.
      */
     public fun interrupt() {
-        num.incrementAndFetch()
-        listenable.invokeAll()
+        interrupted.exchange(CompletableDeferred()).complete(Unit)
     }
 
     /**
@@ -303,56 +301,15 @@ public class InterruptibleDelay(public val parent: InterruptibleDelay? = null) {
      *
      * @param duration How long to delay (if not interrupted).
      */
+    @OptIn(ExperimentalCoroutinesApi::class)
     public suspend fun delay(duration: Duration) {
-        // Race between the time delay and interrupt signals from this and all parents
-        val toRace = listOf(suspend { kotlinx.coroutines.delay(duration) })
-            .plus(generateSequence(this) { it.parent }.map { inter ->
-                val current = inter.num.load()
-                suspend {
-                    var closer: () -> Unit = {}
-                    suspendCancellableCoroutine { cont ->
-                        var resumed: Boolean = false
-                        cont.invokeOnCancellation {
-                            closer()
-                        }
-                        closer = inter.listenable.addListener {
-                            if (!resumed) {
-                                resumed = true
-                                cont.resume(Unit)
-                            }
-                        }
-                        if (inter.num.load() > current) {
-                            if (!resumed) {
-                                resumed = true
-                                cont.resume(Unit)
-                            }
-                        }
-                    }
-                    closer()
-                }
-            })
-        race(*toRace.toTypedArray())
-    }
-}
-
-/**
- * Races multiple suspend functions, returning the result of whichever completes first.
- *
- * All racing operations are launched concurrently, and the flow completes as soon as
- * any one of them produces a result.
- *
- * **Note**: Other racing operations are not explicitly cancelled and may continue running
- * until the flow collector is cancelled.
- *
- * @param races Suspend functions to race against each other.
- * @return The result of the first function to complete.
- */
-public suspend fun <R> race(vararg races: suspend () -> R): R {
-    return channelFlow {
-        for (race in races) {
-            launch { send(race()) }
+        val interrupts = generateSequence(this) { it.parent }.map { it.interrupted.load() }.toList()
+        select {
+            // Claude: Unlike delay, onTimeout schedules a real timer even for INFINITE.
+            if (duration.isFinite()) onTimeout(duration) {}
+            interrupts.forEach { it.onAwait {} }
         }
-    }.first()
+    }
 }
 
 /**

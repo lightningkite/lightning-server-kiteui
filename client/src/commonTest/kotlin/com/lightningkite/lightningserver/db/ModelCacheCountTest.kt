@@ -54,13 +54,13 @@ class ModelCacheCountTest {
 
     /** A count that neither expires nor polls, so only what the test does causes a request. */
     private fun ModelCache<LargeTestModel, Uuid>.quietCount(condition: Condition<LargeTestModel>) =
-        count(condition, RefreshPolicy(10.minutes, 10.minutes))
+        count(condition, RefreshPolicy.CACHED_IF_ANY)
 
     private fun ModelCache<LargeTestModel, Uuid>.quietList(condition: Condition<LargeTestModel>, limit: Int = 100) =
-        query(Query(condition, sort { it.int.ascending() }, limit = limit), RefreshPolicy(10.minutes, 10.minutes))
+        query(Query(condition, sort { it.int.ascending() }, limit = limit), RefreshPolicy.CACHED_IF_ANY)
 
     private fun ModelCache<LargeTestModel, Uuid>.quietItem(id: Uuid) =
-        detail(id, RefreshPolicy(10.minutes, 10.minutes))
+        detail(id, RefreshPolicy.CACHED_IF_ANY)
 
     private val <V> Reactive<V>.value: V? get() = state.getOrNull()
 
@@ -167,7 +167,7 @@ class ModelCacheCountTest {
 
     @Test fun aFailedRefreshKeepsShowingAFreshCount() = runTest2 {
         val f = backgroundScope.fixture()
-        val count = f.cache.quietCount(above1)
+        val count = f.cache.count(above1, RefreshPolicy(10.minutes, 10.minutes))
         count.watch()
         delay(1.seconds)
         f.mock.connectivityFailure = true
@@ -178,7 +178,7 @@ class ModelCacheCountTest {
 
     @Test fun aFailedRefreshRetriesAndRecovers() = runTest2 {
         val f = backgroundScope.fixture()
-        val count = f.cache.quietCount(above1)
+        val count = f.cache.count(above1, RefreshPolicy(10.minutes, 10.minutes))
         count.watch()
         delay(1.seconds)
         f.mock.connectivityFailure = true
@@ -535,7 +535,7 @@ class ModelCacheCountTest {
         mock.data.putAll(data.associateBy { it._id })
         val cache = ModelCache(mock, LargeTestModel.serializer(), scope = backgroundScope, log = testLog)
         delay(1.seconds)
-        cache.query(Query(Condition.Always, listOf(), limit = 100), RefreshPolicy(10.minutes, 10.minutes)).watch()
+        cache.query(Query(Condition.Always, listOf(), limit = 100), RefreshPolicy.CACHED_IF_ANY).watch()
         delay(1.seconds)
 
         val count = cache.quietCount(Condition { it.int eq 0 })
@@ -639,7 +639,7 @@ class ModelCacheCountTest {
         val count = cache.count(above1, RefreshPolicy(10.minutes, Duration.ZERO))
         count.watch()
         delay(10.seconds)
-        cache.detail(data[2]._id, RefreshPolicy(10.minutes, 10.minutes)).watch()
+        cache.detail(data[2]._id, RefreshPolicy.CACHED_IF_ANY).watch()
         delay(1.seconds)
         val before = mock.counts.size
 
@@ -655,7 +655,7 @@ class ModelCacheCountTest {
         count.watch()
         delay(10.seconds)
         // Claude: Read after the count was requested, so it is the version the count saw.
-        cache.detail(data[2]._id, RefreshPolicy(10.minutes, 10.minutes)).watch()
+        cache.detail(data[2]._id, RefreshPolicy.CACHED_IF_ANY).watch()
         delay(1.seconds)
         val before = mock.counts.size
 
@@ -666,7 +666,7 @@ class ModelCacheCountTest {
 
     @Test fun aLiveCountFollowsARowHeldFromBeforeItsRequest() = runTest2 {
         val (mock, data, cache) = backgroundScope.socketFixture()
-        cache.detail(data[0]._id, RefreshPolicy(10.minutes, 10.minutes)).watch()
+        cache.detail(data[0]._id, RefreshPolicy.CACHED_IF_ANY).watch()
         delay(6.seconds)
         // Claude: Changed while nothing was subscribed, so the held copy is out of date.
         mock.data[data[0]._id] = data[0].copy(int = 5)

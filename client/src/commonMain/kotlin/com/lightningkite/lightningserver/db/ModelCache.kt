@@ -1,11 +1,13 @@
 package com.lightningkite.lightningserver.db
 
 import com.lightningkite.kiteui.Log
+import com.lightningkite.kiteui.navigation.DefaultJson
 import com.lightningkite.lightningserver.networking.toTypedWebSocket
 import com.lightningkite.lightningserver.typed.ClientModelRestEndpoints
 import com.lightningkite.lightningserver.typed.ClientModelRestUpdatesWebSocket
 import com.lightningkite.services.database.*
 import com.lightningkite.services.database.optics.AnyOptic
+import com.lightningkite.services.database.optics.Optic
 import com.lightningkite.reactive.context.onRemove
 import com.lightningkite.reactive.core.*
 import com.lightningkite.reactive.extensions.plus
@@ -15,6 +17,7 @@ import com.lightningkite.reactive.lensing.lensListenable
 import kotlinx.coroutines.*
 import kotlin.time.Instant
 import kotlinx.serialization.KSerializer
+import kotlinx.serialization.json.Json
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
@@ -27,9 +30,11 @@ public class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
     private val scope: CoroutineScope = AppScope,
     private val log: Log? = null,
     versionOf: ((T) -> Long?)? = null,
+    // Claude: Decodes the group keys the server JSON-encodes, so it should match the fetcher's Json.
+    private val json: Json = DefaultJson,
 ) : ModelStore<T, ID> {
     internal val coverage: CoverageIndex<T, ID> = CoverageIndex(serializer, versionOf)
-    private val interrupt: InterruptibleDelay = InterruptibleDelay()
+    private val pollWaits: InterruptibleDelay = InterruptibleDelay()
 
     override fun toString(): String = "ModelCache(${serializer.descriptor.serialName})"
 
@@ -49,7 +54,7 @@ public class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
                         live = { condition, since -> queryIsLive(condition, since) },
                     )
                     // Claude: A list that lost a row is now short of the limit its reader asked for.
-                    if (update.remove.isNotEmpty()) interrupt.interrupt()
+                    if (update.remove.isNotEmpty()) pollWaits.interrupt()
                 }
             }
         )
@@ -62,7 +67,7 @@ public class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
             try {
                 coverage.useMasking(uncached.permissions().readMask)
                 // Claude: A non-empty mask can empty out what readers hold mid-poll, so wake them.
-                interrupt.interrupt()
+                pollWaits.interrupt()
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -105,14 +110,17 @@ public class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
             request = { uncached.count(condition) },
         )
 
-    override fun groupCount(query: GroupCountQuery<T>, refresh: RefreshPolicy): Reactive<Map<String, Int>> =
-        SummaryReader(
+    override fun <K> groupCount(condition: Condition<T>, groupBy: Optic<T, K>, refresh: RefreshPolicy): Reactive<Map<K, Int>> {
+        val query = GroupCountQuery(condition, groupBy)
+        return SummaryReader(
             key = query,
-            condition = query.condition,
-            fields = listOf(query.groupBy),
+            condition = condition,
+            fields = listOf(groupBy),
             refreshPolicy = refresh,
-            request = { uncached.groupCount(query) },
+            // Claude: The "2" endpoints JSON-encode their keys; the others use toString, which can't be decoded.
+            request = { uncached.groupCount2(query).mapKeys { json.decodeFromString(groupBy.serializer, it.key) } },
         )
+    }
 
     override fun aggregate(query: AggregateQuery<T>, refresh: RefreshPolicy): Reactive<Double?> =
         SummaryReader(
@@ -123,14 +131,22 @@ public class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
             request = { uncached.aggregate(query) },
         )
 
-    override fun groupAggregate(query: GroupAggregateQuery<T>, refresh: RefreshPolicy): Reactive<Map<String, Double?>> =
-        SummaryReader(
+    override fun <K> groupAggregate(
+        aggregate: Aggregate,
+        condition: Condition<T>,
+        groupBy: Optic<T, K>,
+        property: Optic<T, out Number?>,
+        refresh: RefreshPolicy,
+    ): Reactive<Map<K, Double?>> {
+        val query = GroupAggregateQuery(aggregate, condition, groupBy, property)
+        return SummaryReader(
             key = query,
-            condition = query.condition,
-            fields = listOf(query.groupBy, query.property),
+            condition = condition,
+            fields = listOf(groupBy, property),
             refreshPolicy = refresh,
-            request = { uncached.groupAggregate(query) },
+            request = { uncached.groupAggregate2(query).mapKeys { json.decodeFromString(groupBy.serializer, it.key) } },
         )
+    }
 
     override fun lastUpdate(id: ID): Reactive<ModelStore.LastUpdate?> {
         val query = coverage.idQuery(id)
@@ -153,7 +169,7 @@ public class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
     override suspend fun insert(item: T): T =
         uncached.insert(item).also { coverage.mutated(listOf(it), scope.now()) }
 
-    override suspend fun insertBulk(items: List<T>): List<T> =
+    override suspend fun bulkInsert(items: List<T>): List<T> =
         uncached.insertBulk(items).also { coverage.mutated(it, scope.now()) }
 
     override suspend fun upsert(id: ID, item: T): T =
@@ -196,23 +212,23 @@ public class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
     override suspend fun invalidate(id: ID) {
         coverage.invalidate(id)
         multiget(id)
-        interrupt.interrupt()
+        pollWaits.interrupt()
     }
 
     override fun invalidateAll() {
         coverage.invalidate(scope.now())
-        interrupt.interrupt()
+        pollWaits.interrupt()
     }
 
     // Claude: Waking the readers lets a list that lost a row fetch the one that moved up to fill the gap.
     private suspend fun reread(ids: Set<ID>) {
         if (ids.isNotEmpty()) fetchByIds(ids)
-        interrupt.interrupt()
+        pollWaits.interrupt()
     }
 
     private fun deletionRecorded(ids: Set<ID>) {
         coverage.deleted(ids, scope.now())
-        interrupt.interrupt()
+        pollWaits.interrupt()
     }
 
     // =============================================================================
@@ -231,12 +247,12 @@ public class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
         val updated = coverage.cachedItems().filter { bulkUpdate.condition(it) }.map { bulkUpdate.modification(it) }
         coverage.bulkModified(bulkUpdate.modification, scope.now())
         coverage.mutated(updated, scope.now())
-        interrupt.interrupt()
+        pollWaits.interrupt()
     }
 
     override fun localBulkDelete(condition: Condition<T>) {
         coverage.bulkDeleted(condition, scope.now())
-        interrupt.interrupt()
+        pollWaits.interrupt()
     }
 
     @Deprecated("Use localBulkModify or localBulkDelete instead")
@@ -343,7 +359,7 @@ public class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
 
         protected val changes: Listenable get() = coverage.updates
 
-        private val interrupt: InterruptibleDelay = this@ModelCache.interrupt.child()
+        protected val pollWait: InterruptibleDelay = this@ModelCache.pollWaits.child()
 
         private val fetchError: Signal<Exception?> = Signal(null)
 
@@ -397,7 +413,7 @@ public class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
                 }
             } else null
 
-            if (chasesChanges) onRemove(changes.addListener { if (needsMore()) interrupt.interrupt() })
+            if (chasesChanges) onRemove(changes.addListener { if (needsMore()) pollWait.interrupt() })
 
             val acceptable = cached()?.let { it.freshWithin(refreshPolicy.maximumAge) && !needsMore() } == true
             if (acceptable) log?.log("Found existing value")
@@ -444,24 +460,26 @@ public class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
                         // down does not interrupt us, and noticing it late is how a reader ends up
                         // trusting a promise nobody is keeping any more.  Waking is not fetching.
                         log?.log("Nothing to refresh for")
-                        interrupt.delay(floor)
+                        pollWait.delay(floor)
                     }
 
                     wait > Duration.ZERO -> {
                         log?.log("No need to pull for $wait")
-                        interrupt.delay(wait)
+                        pollWait.delay(wait)
                     }
 
                     else -> {
                         log?.log("Needs pull, starting")
                         fetchInBackground()
                         // Wait a full interval before retrying, so failures don't spin.
-                        val pause = cadence ?: floor
+                        // Claude: With no pull frequency, only a failure retries on the clock. A list the
+                        // server can never complete waits for a change instead.
+                        val pause = cadence ?: if (fetchError.value != null) floor else Duration.INFINITE
                         // Claude: A reader that chases changes can't be woken early here, or a stream of
                         // changes or failures would refetch on every one. After a success it rechecks at
                         // the floor, which also catches a change that landed mid-fetch.
                         if (chasesChanges) delay(if (fetchError.value == null) floor else pause)
-                        else interrupt.delay(pause)
+                        else pollWait.delay(pause)
                     }
                 }
             }
@@ -500,8 +518,6 @@ public class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
         // [state] also changes when a retrieve starts failing or recovers, which [observed] can't
         // see, so both have to be listened to.
         override fun addListener(listener: () -> Unit): Release = (observed + fetchError).addListener(listener)
-
-        protected fun interruptPolling(): Unit = interrupt.interrupt()
     }
 
     private inner class ItemReader(
@@ -556,7 +572,7 @@ public class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
                 require(value > 0) { "A limit of $value asks the server for nothing." }
                 currentQuery = currentQuery.copy(limit = value)
                 // Nobody is awaiting the extra items, so let the polling loop pick them up.
-                interruptPolling()
+                pollWait.interrupt()
             }
 
         override suspend fun limit(count: Int) {

@@ -208,7 +208,7 @@ class ModelCacheTest {
         reactive {
             // Polling has to be asked for: the defaults say this never expires and is never pulled,
             // which is exactly the case where nothing should go back to the server at all.
-            val ref = cache.list(
+            val ref = cache.query(
                 Query(Condition { it.int gt 2 }, sort { it.int.ascending() }),
                 RefreshPolicy.poll(10.seconds),
             )
@@ -290,7 +290,7 @@ class ModelCacheTest {
 
         reactive {
             // As above: without a pull frequency there is nothing to detect the change with.
-            val ref = cache.item(currentValue._id, RefreshPolicy.poll(10.seconds))
+            val ref = cache.ref(currentValue._id, RefreshPolicy.poll(10.seconds))
             val read = ref()
             lastRead = read
         }
@@ -1052,7 +1052,7 @@ class ModelCacheTest {
 
         // Get initial data with a LONG maximumAge so it won't naturally expire
         var lastRead: LargeTestModel? = null
-        val ref = cache.item(initialItem._id, RefreshPolicy(10.minutes, 60.seconds))
+        val ref = cache.ref(initialItem._id, RefreshPolicy(10.minutes, 60.seconds))
         reactive {
             lastRead = ref()
         }
@@ -1097,7 +1097,7 @@ class ModelCacheTest {
 
         // Get initial data with WebSocket (pullFrequency < 30s triggers socket use)
         var lastRead: LargeTestModel? = null
-        val ref = cache.item(initialItem._id, RefreshPolicy(10.minutes, 10.seconds))
+        val ref = cache.ref(initialItem._id, RefreshPolicy(10.minutes, 10.seconds))
         reactive {
             lastRead = ref()
         }
@@ -1142,7 +1142,7 @@ class ModelCacheTest {
 
         // Get initial list data
         var lastRead: List<LargeTestModel> = listOf()
-        val ref = cache.list(Query(Condition.Always, sort { it.int.ascending() }), RefreshPolicy(10.minutes, 60.seconds))
+        val ref = cache.query(Query(Condition.Always, sort { it.int.ascending() }), RefreshPolicy(10.minutes, 60.seconds))
         reactive {
             lastRead = ref()
         }
@@ -1185,8 +1185,8 @@ class ModelCacheTest {
         // Fetch both items
         var lastRead1: LargeTestModel? = null
         var lastRead2: LargeTestModel? = null
-        val ref1 = cache.item(item1._id, RefreshPolicy(10.minutes, 60.seconds))
-        val ref2 = cache.item(item2._id, RefreshPolicy(10.minutes, 60.seconds))
+        val ref1 = cache.ref(item1._id, RefreshPolicy(10.minutes, 60.seconds))
+        val ref2 = cache.ref(item2._id, RefreshPolicy(10.minutes, 60.seconds))
         reactive { lastRead1 = ref1() }
         reactive { lastRead2 = ref2() }
         delay(5.seconds)
@@ -1227,7 +1227,7 @@ class ModelCacheTest {
         )
 
         // Get initial data
-        val ref = cache.item(initialItem._id, RefreshPolicy(10.minutes, 60.seconds))
+        val ref = cache.ref(initialItem._id, RefreshPolicy(10.minutes, 60.seconds))
         reactive { ref() }
         delay(5.seconds)
 
@@ -1352,7 +1352,7 @@ class ModelCacheTest {
         )
 
         var lastRead: List<LargeTestModel> = listOf()
-        val ref = cache.list(
+        val ref = cache.query(
             Query(Condition.Always, sort { it.int.ascending() }),
             RefreshPolicy(10.minutes, 60.seconds),
         )
@@ -1444,7 +1444,7 @@ class ModelCacheTest {
         )
 
         var lastRead: LargeTestModel? = null
-        val ref = cache.item(initial._id, RefreshPolicy(10.minutes, 60.seconds))
+        val ref = cache.ref(initial._id, RefreshPolicy(10.minutes, 60.seconds))
         reactive { lastRead = ref() }
         delay(2.seconds)
         assertEquals(initial, lastRead)
@@ -1486,7 +1486,7 @@ class ModelCacheTest {
         )
 
         var lastRead: LargeTestModel? = null
-        val ref = cache.item(initial._id, RefreshPolicy(10.minutes, 60.seconds))
+        val ref = cache.ref(initial._id, RefreshPolicy(10.minutes, 60.seconds))
         reactive { lastRead = ref() }
         delay(1.seconds)
         assertEquals(initial, lastRead)
@@ -1517,7 +1517,7 @@ class ModelCacheTest {
         mock.connectivityFailure = true
         val cache = ModelCache(mock, LargeTestModel.serializer(), scope = backgroundScope, log = testLog)
 
-        val ref = cache.item(item._id, RefreshPolicy(1.minutes, 10.seconds))
+        val ref = cache.ref(item._id, RefreshPolicy(1.minutes, 10.seconds))
         var observed: ReactiveState<LargeTestModel?> = ReactiveState.notReady
         val release = ref.addListener { observed = ref.state }
 
@@ -1539,7 +1539,7 @@ class ModelCacheTest {
         mock.connectivityFailure = true
         val cache = ModelCache(mock, LargeTestModel.serializer(), scope = backgroundScope, log = testLog)
 
-        val ref = cache.list(
+        val ref = cache.query(
             Query(Condition.Always, sort { it.int.ascending() }),
             RefreshPolicy(1.minutes, 10.seconds),
         )
@@ -1566,7 +1566,7 @@ class ModelCacheTest {
         mock.data[item._id] = item
         val cache = ModelCache(mock, LargeTestModel.serializer(), scope = backgroundScope, log = testLog)
 
-        val ref = cache.item(item._id, RefreshPolicy(10.seconds, 10.seconds))
+        val ref = cache.ref(item._id, RefreshPolicy(10.seconds, 10.seconds))
         val sticky = ref.showPreviousOnLoadOrError()
         val release = sticky.addListener { sticky.state }
 
@@ -1713,7 +1713,7 @@ class ModelCacheTest {
     @Test fun pagingForwardDoesNotRefreshTheHeadOfTheList() = runTest2 {
         val (_, _, cache) = backgroundScope.pagingFixture(10)
         val query = Query<LargeTestModel>(Condition.Always, sort { it.int.ascending() }, limit = 3)
-        val ref = cache.list(query, RefreshPolicy(10.minutes, 10.minutes))
+        val ref = cache.query(query, RefreshPolicy.CACHED_IF_ANY)
         val release = ref.addListener { }
         delay(5.seconds)
         val retrievedAt = cache.lastUpdate(query).state.getOrNull()?.at

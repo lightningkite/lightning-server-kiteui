@@ -58,9 +58,9 @@ class ModelCacheSummaryReviewTest {
     @Test fun aRowMovingIntoACountIsNoticedThroughAListReRead() = runTest2 {
         val mock = CountingMock(backgroundScope)
         val (data, cache) = backgroundScope.setup(mock)
-        cache.query(Query(Condition { it.int gt 2 }, sort { it.int.ascending() }, limit = 100), RefreshPolicy(10.minutes, 10.minutes)).watch()
+        cache.query(Query(Condition { it.int gt 2 }, sort { it.int.ascending() }, limit = 100), RefreshPolicy.CACHED_IF_ANY).watch()
         delay(1.seconds)
-        val count = cache.count(below3, RefreshPolicy(10.minutes, 10.minutes))
+        val count = cache.count(below3, RefreshPolicy.CACHED_IF_ANY)
         count.watch()
         delay(1.seconds)
         assertEquals(2, count.value)
@@ -77,9 +77,9 @@ class ModelCacheSummaryReviewTest {
     @Test fun anUnrelatedEditToARowLoadedBeforeTheCountDoesNotRefetch() = runTest2 {
         val mock = CountingMock(backgroundScope)
         val (data, cache) = backgroundScope.setup(mock)
-        cache.query(Query(Condition { it.int eq 1 }, sort { it.int.ascending() }, limit = 100), RefreshPolicy(10.minutes, 10.minutes)).watch()
+        cache.query(Query(Condition { it.int eq 1 }, sort { it.int.ascending() }, limit = 100), RefreshPolicy.CACHED_IF_ANY).watch()
         delay(1.seconds)
-        val count = cache.count(above1, RefreshPolicy(10.minutes, 10.minutes))
+        val count = cache.count(above1, RefreshPolicy.CACHED_IF_ANY)
         count.watch()
         delay(1.seconds)
         cache.modify(data[0]._id, Modification { it.short assign 5 })
@@ -90,9 +90,9 @@ class ModelCacheSummaryReviewTest {
     @Test fun aLocalBulkModifyOfAnUnrelatedFieldDoesNotRefetchWhenRowsAreHeld() = runTest2 {
         val mock = CountingMock(backgroundScope)
         val (_, cache) = backgroundScope.setup(mock)
-        cache.query(Query(Condition { it.int eq 1 }, sort { it.int.ascending() }, limit = 100), RefreshPolicy(10.minutes, 10.minutes)).watch()
+        cache.query(Query(Condition { it.int eq 1 }, sort { it.int.ascending() }, limit = 100), RefreshPolicy.CACHED_IF_ANY).watch()
         delay(1.seconds)
-        val count = cache.count(above1, RefreshPolicy(10.minutes, 10.minutes))
+        val count = cache.count(above1, RefreshPolicy.CACHED_IF_ANY)
         count.watch()
         delay(1.seconds)
         cache.localBulkModify(MassModification(Condition.Always, Modification { it.short assign 4 }))
@@ -122,7 +122,7 @@ class ModelCacheSummaryReviewTest {
     @Test fun aFailingRefreshDoesNotRetryOnEveryUpdate() = runTest2 {
         val mock = CountingMock(backgroundScope)
         val (_, cache) = backgroundScope.setup(mock)
-        val count = cache.count(above1, RefreshPolicy(10.minutes, 10.minutes))
+        val count = cache.count(above1, RefreshPolicy.CACHED_IF_ANY)
         count.watch()
         delay(1.seconds)
         mock.failing = true
@@ -143,7 +143,7 @@ class ModelCacheSummaryReviewTest {
             readMask = Mask(listOf(Condition<LargeTestModel> { it.boolean eq true } to Modification<LargeTestModel> { it.short assign 0 }))
         )
         val (_, cache) = backgroundScope.setup(mock)
-        val count = cache.count(above1, RefreshPolicy(10.minutes, 10.minutes))
+        val count = cache.count(above1, RefreshPolicy.CACHED_IF_ANY)
         count.watch()
         delay(5.seconds)
         assertEquals(1, mock.attempts, "the server's count does not depend on the client knowing the mask")

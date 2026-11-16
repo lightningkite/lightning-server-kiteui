@@ -553,8 +553,8 @@ class RaceConsolePage : Page {
             scenarioButton("10. An idle list with no socket costs nothing") {
                 val s = session.awaitOnce()
                 // Clubs have no update socket, so this is the pure polling path.  Nothing is changing
-                // and nothing is being asked for, so a cache honouring maximumAge=INFINITE and
-                // pullFrequency=0 should send no requests at all.
+                // and nothing is being asked for, so a cache honouring pullFrequency=INFINITE (the
+                // default maxAge policy) should send no requests at all.
                 s.instruments.reset()
                 delay(13000)
                 val queries = s.instruments.count("club.query")
