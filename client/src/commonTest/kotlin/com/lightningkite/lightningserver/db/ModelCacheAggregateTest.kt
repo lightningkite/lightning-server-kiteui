@@ -54,7 +54,7 @@ class ModelCacheAggregateTest {
     private val sumOfInt = AggregateQuery(Aggregate.Sum, above1, LargeTestModel.int)
     private val sumOfIntByBoolean = GroupAggregateQuery(Aggregate.Sum, above1, LargeTestModel.boolean, LargeTestModel.int)
 
-    private val quiet = 10.minutes
+    private val quiet = RefreshPolicy(10.minutes, 10.minutes)
 
     private val <V> Reactive<V>.value: V? get() = state.getOrNull()
     private fun <V> Reactive<V>.watch(): () -> Unit = addListener { }
@@ -65,7 +65,7 @@ class ModelCacheAggregateTest {
 
     @Test fun groupCountAnswers() = runTest2 {
         val f = backgroundScope.fixture()
-        val r = f.cache.groupCount(byBoolean, quiet, quiet)
+        val r = f.cache.groupCount(byBoolean, quiet)
         r.watch()
         delay(1.seconds)
         assertEquals(mapOf("true" to 2, "false" to 1), r.value)
@@ -83,7 +83,7 @@ class ModelCacheAggregateTest {
             Aggregate.StandardDeviationSample to sqrt(squares / 2),
             Aggregate.StandardDeviationPopulation to sqrt(squares / 3),
         )
-        val readers = expected.keys.associateWith { f.cache.aggregate(AggregateQuery(it, above1, LargeTestModel.int), quiet, quiet) }
+        val readers = expected.keys.associateWith { f.cache.aggregate(AggregateQuery(it, above1, LargeTestModel.int), quiet) }
         readers.values.forEach { it.watch() }
         delay(1.seconds)
         expected.forEach { (kind, value) -> assertEquals(value, assertNotNull(readers[kind]!!.value), 1e-9, "$kind") }
@@ -92,7 +92,7 @@ class ModelCacheAggregateTest {
 
     @Test fun anAggregateOfNoRowsIsNull() = runTest2 {
         val f = backgroundScope.fixture()
-        val r = f.cache.aggregate(AggregateQuery(Aggregate.Sum, Condition { it.int gt 100 }, LargeTestModel.int), quiet, quiet)
+        val r = f.cache.aggregate(AggregateQuery(Aggregate.Sum, Condition { it.int gt 100 }, LargeTestModel.int), quiet)
         r.watch()
         delay(1.seconds)
         assertNull(r.value)
@@ -101,7 +101,7 @@ class ModelCacheAggregateTest {
 
     @Test fun groupAggregateAnswers() = runTest2 {
         val f = backgroundScope.fixture()
-        val r = f.cache.groupAggregate(sumOfIntByBoolean, quiet, quiet)
+        val r = f.cache.groupAggregate(sumOfIntByBoolean, quiet)
         r.watch()
         delay(1.seconds)
         assertEquals(mapOf("true" to 6.0, "false" to 3.0), r.value)
@@ -109,10 +109,10 @@ class ModelCacheAggregateTest {
 
     @Test fun summariesOfTheSameConditionDoNotShareAnswers() = runTest2 {
         val f = backgroundScope.fixture()
-        val count = f.cache.count(above1, quiet, quiet)
-        val groups = f.cache.groupCount(byBoolean, quiet, quiet)
-        val sum = f.cache.aggregate(sumOfInt, quiet, quiet)
-        val groupSum = f.cache.groupAggregate(sumOfIntByBoolean, quiet, quiet)
+        val count = f.cache.count(above1, quiet)
+        val groups = f.cache.groupCount(byBoolean, quiet)
+        val sum = f.cache.aggregate(sumOfInt, quiet)
+        val groupSum = f.cache.groupAggregate(sumOfIntByBoolean, quiet)
         listOf(count, groups, sum, groupSum).forEach { it.watch() }
         delay(1.seconds)
         assertEquals(3, count.value)
@@ -124,9 +124,9 @@ class ModelCacheAggregateTest {
 
     @Test fun aCompleteListDoesNotAnswerAnAggregate() = runTest2 {
         val f = backgroundScope.fixture()
-        f.cache.query(Query(Condition.Always, sort { it.int.ascending() }), quiet, quiet).watch()
+        f.cache.query(Query(Condition.Always, sort { it.int.ascending() }), quiet).watch()
         delay(1.seconds)
-        val sum = f.cache.aggregate(sumOfInt, quiet, quiet)
+        val sum = f.cache.aggregate(sumOfInt, quiet)
         sum.watch()
         delay(1.seconds)
         assertEquals(9.0, sum.value)
@@ -136,20 +136,20 @@ class ModelCacheAggregateTest {
     @Test fun equalQueriesAreEqualReaders() = runTest2 {
         val f = backgroundScope.fixture()
         assertEquals(
-            f.cache.aggregate(sumOfInt, quiet, quiet),
-            f.cache.aggregate(AggregateQuery(Aggregate.Sum, Condition { it.int gt 1 }, LargeTestModel.int), quiet, quiet),
+            f.cache.aggregate(sumOfInt, quiet),
+            f.cache.aggregate(AggregateQuery(Aggregate.Sum, Condition { it.int gt 1 }, LargeTestModel.int), quiet),
         )
         assertFalse(
-            f.cache.aggregate(sumOfInt, quiet, quiet) ==
-                    f.cache.aggregate(AggregateQuery(Aggregate.Average, above1, LargeTestModel.int), quiet, quiet)
+            f.cache.aggregate(sumOfInt, quiet) ==
+                    f.cache.aggregate(AggregateQuery(Aggregate.Average, above1, LargeTestModel.int), quiet)
         )
-        assertEquals(f.cache.groupCount(byBoolean, quiet, quiet), f.cache.groupCount(GroupCountQuery(above1, LargeTestModel.boolean), quiet, quiet))
+        assertEquals(f.cache.groupCount(byBoolean, quiet), f.cache.groupCount(GroupCountQuery(above1, LargeTestModel.boolean), quiet))
     }
 
     @Test fun aFailedFirstFetchIsReportedAsAnError() = runTest2 {
         val f = backgroundScope.fixture()
         f.mock.connectivityFailure = true
-        val sum = f.cache.aggregate(sumOfInt, quiet, quiet)
+        val sum = f.cache.aggregate(sumOfInt, quiet)
         sum.watch()
         delay(1.seconds)
         assertNotNull(sum.state.exception)
@@ -160,14 +160,14 @@ class ModelCacheAggregateTest {
     // =========================================================================
 
     /** Watches every row by ID, so changes to them compare against a known old version. */
-    private fun Fixture.holdEveryRow() = data.forEach { cache.detail(it._id, quiet, quiet).watch() }
+    private fun Fixture.holdEveryRow() = data.forEach { cache.detail(it._id, quiet).watch() }
 
     @Test fun changingTheGroupOfAHeldMatchingRowRefetchesGroupedSummaries() = runTest2 {
         val f = backgroundScope.fixture()
-        val count = f.cache.count(above1, quiet, quiet)
-        val groups = f.cache.groupCount(byBoolean, quiet, quiet)
-        val sum = f.cache.aggregate(sumOfInt, quiet, quiet)
-        val groupSum = f.cache.groupAggregate(sumOfIntByBoolean, quiet, quiet)
+        val count = f.cache.count(above1, quiet)
+        val groups = f.cache.groupCount(byBoolean, quiet)
+        val sum = f.cache.aggregate(sumOfInt, quiet)
+        val groupSum = f.cache.groupAggregate(sumOfIntByBoolean, quiet)
         listOf(count, groups, sum, groupSum).forEach { it.watch() }
         delay(1.seconds)
         // Claude: Held after the summaries were requested, so changes compare against what they saw.
@@ -184,9 +184,9 @@ class ModelCacheAggregateTest {
 
     @Test fun changingTheValueOfAHeldMatchingRowRefetchesAggregates() = runTest2 {
         val f = backgroundScope.fixture()
-        val groups = f.cache.groupCount(byBoolean, quiet, quiet)
-        val sum = f.cache.aggregate(sumOfInt, quiet, quiet)
-        val groupSum = f.cache.groupAggregate(sumOfIntByBoolean, quiet, quiet)
+        val groups = f.cache.groupCount(byBoolean, quiet)
+        val sum = f.cache.aggregate(sumOfInt, quiet)
+        val groupSum = f.cache.groupAggregate(sumOfIntByBoolean, quiet)
         listOf(groups, sum, groupSum).forEach { it.watch() }
         delay(1.seconds)
         // Claude: Held after the summaries were requested, so changes compare against what they saw.
@@ -203,9 +203,9 @@ class ModelCacheAggregateTest {
 
     @Test fun changingAHeldRowOutsideTheConditionRefetchesNothing() = runTest2 {
         val f = backgroundScope.fixture()
-        val groups = f.cache.groupCount(byBoolean, quiet, quiet)
-        val sum = f.cache.aggregate(sumOfInt, quiet, quiet)
-        val groupSum = f.cache.groupAggregate(sumOfIntByBoolean, quiet, quiet)
+        val groups = f.cache.groupCount(byBoolean, quiet)
+        val sum = f.cache.aggregate(sumOfInt, quiet)
+        val groupSum = f.cache.groupAggregate(sumOfIntByBoolean, quiet)
         listOf(groups, sum, groupSum).forEach { it.watch() }
         delay(1.seconds)
         // Claude: Held after the summaries were requested, so changes compare against what they saw.
@@ -221,9 +221,9 @@ class ModelCacheAggregateTest {
 
     @Test fun changingAnUnrelatedFieldOfAHeldMatchingRowRefetchesNothing() = runTest2 {
         val f = backgroundScope.fixture()
-        val groups = f.cache.groupCount(byBoolean, quiet, quiet)
-        val sum = f.cache.aggregate(sumOfInt, quiet, quiet)
-        val groupSum = f.cache.groupAggregate(sumOfIntByBoolean, quiet, quiet)
+        val groups = f.cache.groupCount(byBoolean, quiet)
+        val sum = f.cache.aggregate(sumOfInt, quiet)
+        val groupSum = f.cache.groupAggregate(sumOfIntByBoolean, quiet)
         listOf(groups, sum, groupSum).forEach { it.watch() }
         delay(1.seconds)
         // Claude: Held after the summaries were requested, so changes compare against what they saw.
@@ -238,9 +238,9 @@ class ModelCacheAggregateTest {
 
     @Test fun aBulkModifyRefetchesOnlySummariesReadingWhatItWrites() = runTest2 {
         val f = backgroundScope.fixture()
-        val groups = f.cache.groupCount(byBoolean, quiet, quiet)
-        val sum = f.cache.aggregate(sumOfInt, quiet, quiet)
-        val sumOfShort = f.cache.aggregate(AggregateQuery(Aggregate.Sum, above1, LargeTestModel.short), quiet, quiet)
+        val groups = f.cache.groupCount(byBoolean, quiet)
+        val sum = f.cache.aggregate(sumOfInt, quiet)
+        val sumOfShort = f.cache.aggregate(AggregateQuery(Aggregate.Sum, above1, LargeTestModel.short), quiet)
         listOf(groups, sum, sumOfShort).forEach { it.watch() }
         delay(1.seconds)
         // Claude: Held after the summaries were requested, so changes compare against what they saw.
@@ -261,9 +261,9 @@ class ModelCacheAggregateTest {
 
     @Test fun insertingAndDeletingRefetchesEverySummary() = runTest2 {
         val f = backgroundScope.fixture()
-        val groups = f.cache.groupCount(byBoolean, quiet, quiet)
-        val sum = f.cache.aggregate(sumOfInt, quiet, quiet)
-        val groupSum = f.cache.groupAggregate(sumOfIntByBoolean, quiet, quiet)
+        val groups = f.cache.groupCount(byBoolean, quiet)
+        val sum = f.cache.aggregate(sumOfInt, quiet)
+        val groupSum = f.cache.groupAggregate(sumOfIntByBoolean, quiet)
         listOf(groups, sum, groupSum).forEach { it.watch() }
         delay(6.seconds)
 
@@ -288,7 +288,7 @@ class ModelCacheAggregateTest {
 
     @Test fun aLiveAggregateRefetchesWhenTheSocketReportsAChange() = runTest2 {
         val f = backgroundScope.fixture()
-        val sum = f.cache.aggregate(sumOfInt, maximumAge = quiet, pullFrequency = Duration.ZERO)
+        val sum = f.cache.aggregate(sumOfInt, RefreshPolicy(10.minutes, Duration.ZERO))
         sum.watch()
         delay(10.seconds)
         assertEquals(9.0, sum.value)
@@ -300,7 +300,7 @@ class ModelCacheAggregateTest {
 
     @Test fun anAggregatePollsAtItsPullFrequency() = runTest2 {
         val f = backgroundScope.fixture()
-        val sum = f.cache.aggregate(sumOfInt, maximumAge = quiet, pullFrequency = 1.minutes)
+        val sum = f.cache.aggregate(sumOfInt, RefreshPolicy(10.minutes, 1.minutes))
         sum.watch()
         delay(1.seconds)
         f.mock.data[f.data[3]._id] = f.data[3].copy(int = 100)
@@ -312,7 +312,7 @@ class ModelCacheAggregateTest {
 
     @Test fun aChangeWhileAnAggregateIsInFlightIsNotLost() = runTest2 {
         val f = backgroundScope.fixture()
-        val sum = f.cache.aggregate(sumOfInt, quiet, quiet)
+        val sum = f.cache.aggregate(sumOfInt, quiet)
         sum.watch()
         delay(50.milliseconds)
         val moved = f.data[3].copy(int = 100)

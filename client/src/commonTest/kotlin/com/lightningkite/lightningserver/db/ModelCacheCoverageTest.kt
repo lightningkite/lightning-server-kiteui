@@ -14,6 +14,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNotEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import kotlin.uuid.Uuid
@@ -53,12 +54,11 @@ class ModelCacheCoverageTest {
         limit: Int = 100,
     ) = list(
         Query(condition, sort { it.int.ascending() }, limit = limit),
-        maximumAge = 10.minutes,
-        pullFrequency = 10.minutes,
+        RefreshPolicy(10.minutes, 10.minutes),
     )
 
     private fun ModelCache<LargeTestModel, Uuid>.quietItem(id: Uuid) =
-        item(id, maximumAge = 10.minutes, pullFrequency = 10.minutes)
+        item(id, RefreshPolicy(10.minutes, 10.minutes))
 
     // =========================================================================
     // Invariants carried over from the calculator safety tests
@@ -167,7 +167,7 @@ class ModelCacheCoverageTest {
     @Test fun aBulkModifyByIdRereadsOnlyThoseRows() = runTest2 {
         val (mock, data, cache) = backgroundScope.fixture(4)
         val query = Query<LargeTestModel>(Condition.Always, sort { it.int.ascending() }, limit = 100)
-        val ref = cache.query(query, maximumAge = 10.minutes, pullFrequency = 10.minutes)
+        val ref = cache.query(query, RefreshPolicy(10.minutes, 10.minutes))
         val release = ref.addListener { }
         delay(1.seconds)
         val retrievedAt = assertNotNull(cache.lastUpdate(query).state.getOrNull()?.at)
@@ -190,8 +190,8 @@ class ModelCacheCoverageTest {
         val (_, data, cache) = backgroundScope.fixture(4)
         val byInt = Query<LargeTestModel>(Condition.Always, sort { it.int.ascending() }, limit = 100)
         val byShort = Query<LargeTestModel>(Condition { it.short gt 0 }, sort { it.int.ascending() }, limit = 100)
-        val intList = cache.query(byInt, maximumAge = 10.minutes, pullFrequency = 10.minutes)
-        val shortList = cache.query(byShort, maximumAge = 10.minutes, pullFrequency = 10.minutes)
+        val intList = cache.query(byInt, RefreshPolicy(10.minutes, 10.minutes))
+        val shortList = cache.query(byShort, RefreshPolicy(10.minutes, 10.minutes))
         val releases = listOf(intList.addListener { }, shortList.addListener { })
         delay(1.seconds)
         assertEquals(listOf(), shortList.state.getOrNull())
@@ -234,7 +234,7 @@ class ModelCacheCoverageTest {
         val cache = ModelCache(mock, LargeTestModel.serializer(), scope = backgroundScope, log = testLog)
 
         // Subscribed, so the socket's condition is this one.
-        val subscribed = cache.list(Query(Condition { it.int gt 2 }, sort { it.int.ascending() }), pullFrequency = 10.seconds)
+        val subscribed = cache.list(Query(Condition { it.int gt 2 }, sort { it.int.ascending() }), RefreshPolicy.poll(10.seconds))
         // Polls slowly instead of subscribing, so it can only learn from the other one's socket.
         val polling = cache.quietList()
         val releases = listOf(subscribed.addListener { }, polling.addListener { })
@@ -257,7 +257,7 @@ class ModelCacheCoverageTest {
         val cache = ModelCache(mock, LargeTestModel.serializer(), scope = backgroundScope, log = testLog)
 
         val query = Query<LargeTestModel>(Condition { it.int gt 2 }, sort { it.int.ascending() })
-        val ref = cache.list(query, pullFrequency = 10.seconds)
+        val ref = cache.list(query, RefreshPolicy.poll(10.seconds))
         val release = ref.addListener { }
         delay(7.seconds)
         assertEquals(listOf(3, 4, 5), ref.state.getOrNull()?.map { it.int })
@@ -291,9 +291,9 @@ class ModelCacheCoverageTest {
         val cache = ModelCache(mock, LargeTestModel.serializer(), scope = backgroundScope, log = testLog)
 
         // Subscribed, so the socket's condition is this list's.
-        val list = cache.list(Query(Condition { it.int gt 5 }, sort { it.int.ascending() }), pullFrequency = 10.seconds)
+        val list = cache.list(Query(Condition { it.int gt 5 }, sort { it.int.ascending() }), RefreshPolicy.poll(10.seconds))
         // Polls rather than subscribing, so the removal says nothing about this ID.
-        val item = cache.item(leaving._id, maximumAge = 10.minutes, pullFrequency = 31.seconds)
+        val item = cache.item(leaving._id, RefreshPolicy(10.minutes, 31.seconds))
         var reportedDeleted = false
         val releases = listOf(
             list.addListener { },
@@ -399,7 +399,7 @@ class ModelCacheCoverageTest {
     }
 
     private fun ModelCache<LargeTestModel, Uuid>.quietListSortedBy(sort: List<SortPart<LargeTestModel>>) =
-        list(Query(Condition.Always, sort, limit = 100), maximumAge = 10.minutes, pullFrequency = 10.minutes)
+        list(Query(Condition.Always, sort, limit = 100), RefreshPolicy(10.minutes, 10.minutes))
 
     /** Sorting by a masked field excludes the rows the mask covers - the server says so, not us. */
     @Test fun aMaskedSortSeesOnlyTheRowsTheMaskAdmits() = runTest2 {
@@ -425,8 +425,7 @@ class ModelCacheCoverageTest {
         // which is the reuse another test covers - here the masked query has to actually happen.
         val unmasked = cache.list(
             Query(Condition.Always, sort { it.short.ascending() }, limit = 3),
-            maximumAge = 10.minutes,
-            pullFrequency = 10.minutes,
+            RefreshPolicy(10.minutes, 10.minutes),
         )
         val unmaskedRelease = unmasked.addListener { }
         delay(1.seconds)
@@ -513,8 +512,7 @@ class ModelCacheCoverageTest {
         val (_, data, cache) = backgroundScope.fixture(10)
         val ref = cache.list(
             Query(Condition.Always, sort { it.int.ascending() }, limit = 3),
-            maximumAge = 10.minutes,
-            pullFrequency = 10.seconds,
+            RefreshPolicy(10.minutes, 10.seconds),
         )
         val release = ref.addListener { }
         delay(1.seconds)
@@ -555,8 +553,7 @@ class ModelCacheCoverageTest {
         val (mock, data, cache) = backgroundScope.fixture(3)
         val list = cache.list(
             Query(Condition.Always, sort { it.int.ascending() }),
-            maximumAge = 10.minutes,
-            pullFrequency = 10.seconds,
+            RefreshPolicy(10.minutes, 10.seconds),
         )
         val listRelease = list.addListener { }
         delay(1.seconds)
@@ -594,8 +591,7 @@ class ModelCacheCoverageTest {
 
         val ref = cache.list(
             Query(Condition.Always, sort { it.int.ascending() }),
-            maximumAge = 10.minutes,
-            pullFrequency = 10.seconds,
+            RefreshPolicy(10.minutes, 10.seconds),
         )
         val release = ref.addListener { }
         delay(1.seconds)
@@ -662,8 +658,8 @@ class ModelCacheCoverageTest {
         repeat(3) { LargeTestModel(string = "X").let { mock.data[it._id] = it } }
         repeat(3) { LargeTestModel(string = "Y").let { mock.data[it._id] = it } }
         val cache = ModelCache(mock, LargeTestModel.serializer(), scope = backgroundScope, log = testLog)
-        cache.query(Query(Condition { it.string eq "x" }, listOf(), limit = 2), 10.minutes, 10.minutes).addListener { }
-        cache.query(Query(Condition { it.string eq "y" }, listOf(), limit = 2), 10.minutes, 10.minutes).addListener { }
+        cache.query(Query(Condition { it.string eq "x" }, listOf(), limit = 2), RefreshPolicy(10.minutes, 10.minutes)).addListener { }
+        cache.query(Query(Condition { it.string eq "y" }, listOf(), limit = 2), RefreshPolicy(10.minutes, 10.minutes)).addListener { }
         delay(1.minutes)
         // Claude: Each list fetches on opening and again on its first poll, then waits.
         assertTrue(mock.queries <= 4, "quiet lists sent ${mock.queries} queries in one minute")

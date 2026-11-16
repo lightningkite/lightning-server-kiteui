@@ -23,8 +23,7 @@ public class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
     public val uncached: ClientModelRestEndpoints<T, ID>,
     override val serializer: KSerializer<T>,
     websocket: ClientModelRestUpdatesWebSocket<T, ID>? = @Suppress("UNCHECKED_CAST") (uncached as? ClientModelRestUpdatesWebSocket<T, ID>),
-    override val defaultMaxAge: Duration = Duration.INFINITE,
-    override val defaultPullFrequency: Duration = 5.minutes,
+    override val defaultRefreshPolicy: RefreshPolicy = RefreshPolicy.onDemand(5.minutes),
     private val scope: CoroutineScope = AppScope,
     private val log: Log? = null,
     versionOf: ((T) -> Long?)? = null,
@@ -77,24 +76,23 @@ public class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
     // Reads
     // =============================================================================
 
-    override fun detail(id: ID, maximumAge: Duration, pullFrequency: Duration): Reactive<T?> =
-        ItemReader(id, maximumAge, pullFrequency)
+    override fun detail(id: ID, refresh: RefreshPolicy): Reactive<T?> =
+        ItemReader(id, refresh)
 
-    override fun query(query: Query<T>, maximumAge: Duration, pullFrequency: Duration): LimitReactiveList<T> {
+    override fun query(query: Query<T>, refresh: RefreshPolicy): LimitReactiveList<T> {
         // A skipped query says nothing about the rows before it, so "everything from the start of
         // the order through here" - the only claim this cache knows how to make - is unavailable.
         require(query.skip == 0) { "ModelCache cannot cache a query with skip; page with limit() instead." }
         require(query.limit > 0) { "ModelCache needs a positive limit; a limit of ${query.limit} asks the server for nothing." }
-        return ListReader(totallyOrdered(query), maximumAge, pullFrequency)
+        return ListReader(totallyOrdered(query), refresh)
     }
 
-    override fun count(condition: Condition<T>, maximumAge: Duration, pullFrequency: Duration): Reactive<Int> =
+    override fun count(condition: Condition<T>, refresh: RefreshPolicy): Reactive<Int> =
         SummaryReader(
             key = CountKey(condition),
             condition = condition,
             fields = emptyList(),
-            maximumAge = maximumAge,
-            pullFrequency = pullFrequency,
+            refreshPolicy = refresh,
             local = {
                 // Claude: The server narrows a count by the read mask, which rows held can't reproduce.
                 coverage.takeIf { it.unmasked }
@@ -105,33 +103,30 @@ public class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
             request = { uncached.count(condition) },
         )
 
-    override fun groupCount(query: GroupCountQuery<T>, maximumAge: Duration, pullFrequency: Duration): Reactive<Map<String, Int>> =
+    override fun groupCount(query: GroupCountQuery<T>, refresh: RefreshPolicy): Reactive<Map<String, Int>> =
         SummaryReader(
             key = query,
             condition = query.condition,
             fields = listOf(query.groupBy),
-            maximumAge = maximumAge,
-            pullFrequency = pullFrequency,
+            refreshPolicy = refresh,
             request = { uncached.groupCount(query) },
         )
 
-    override fun aggregate(query: AggregateQuery<T>, maximumAge: Duration, pullFrequency: Duration): Reactive<Double?> =
+    override fun aggregate(query: AggregateQuery<T>, refresh: RefreshPolicy): Reactive<Double?> =
         SummaryReader(
             key = query,
             condition = query.condition,
             fields = listOf(query.property),
-            maximumAge = maximumAge,
-            pullFrequency = pullFrequency,
+            refreshPolicy = refresh,
             request = { uncached.aggregate(query) },
         )
 
-    override fun groupAggregate(query: GroupAggregateQuery<T>, maximumAge: Duration, pullFrequency: Duration): Reactive<Map<String, Double?>> =
+    override fun groupAggregate(query: GroupAggregateQuery<T>, refresh: RefreshPolicy): Reactive<Map<String, Double?>> =
         SummaryReader(
             key = query,
             condition = query.condition,
             fields = listOf(query.groupBy, query.property),
-            maximumAge = maximumAge,
-            pullFrequency = pullFrequency,
+            refreshPolicy = refresh,
             request = { uncached.groupAggregate(query) },
         )
 
@@ -326,8 +321,7 @@ public class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
     // =============================================================================
 
     private abstract inner class SelfRefreshing<V>(
-        protected val maximumAge: Duration,
-        protected val pullFrequency: Duration,
+        protected val refreshPolicy: RefreshPolicy,
     ) : Reactive<V> {
         protected abstract val socketCondition: Condition<T>
 
@@ -354,7 +348,7 @@ public class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
         private var enteredAt: Instant = Instant.DISTANT_PAST
 
         private fun WithTimestamp<V>.acceptableOnArrival(): Boolean =
-            isLive(this) || enteredAt - at < maximumAge
+            isLive(this) || enteredAt - at < refreshPolicy.maximumAge
 
         private fun WithTimestamp<V>.freshWithin(window: Duration): Boolean =
             isLive(this) || scope.now() - at < window
@@ -387,7 +381,7 @@ public class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
 
             // Sockets are preferred whenever we would otherwise poll often, since frequent polling
             // is wasteful when the server can just tell us.
-            val socket = if (pullFrequency < 30.seconds && sockets != null) {
+            val socket = if (refreshPolicy.pullFrequency < 30.seconds && sockets != null) {
                 log?.log("Using socket")
                 sockets.require(socketCondition).also { r ->
                     use(r)
@@ -403,7 +397,7 @@ public class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
 
             if (chasesChanges) onRemove(changes.addListener { if (needsMore()) interrupt.interrupt() })
 
-            val acceptable = cached()?.let { it.freshWithin(maximumAge) && !needsMore() } == true
+            val acceptable = cached()?.let { it.freshWithin(refreshPolicy.maximumAge) && !needsMore() } == true
             if (acceptable) log?.log("Found existing value")
             else {
                 if (socket != null) {
@@ -421,14 +415,14 @@ public class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
 
             // How often this screen refreshes itself, or null when the caller asked for no polling.
             //
-            // [maximumAge] deliberately plays no part here.  It is an entry condition, answered once
+            // [RefreshPolicy.maximumAge] deliberately plays no part here.  It is an entry condition, answered once
             // by [acceptable] above: arriving somewhere new is when it matters whether what we
             // inherited is fresh enough to show, because a screen that opens on stale data betrays
             // what people expect a page transition to do.  Staying on that screen is a different
             // question, and letting a tolerance for slightly stale data double as a polling rate is
             // how "I'll accept data ten seconds old" turns into hitting the server every ten seconds.
             // Zero asks for live data, which without a covering socket means polling at the floor.
-            val cadence: Duration? = pullFrequency.takeIf { it.isFinite() }?.coerceAtLeast(floor)
+            val cadence: Duration? = refreshPolicy.pullFrequency.takeIf { it.isFinite() }?.coerceAtLeast(floor)
 
             while (true) {
                 val held = cached()
@@ -487,7 +481,7 @@ public class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
                     // better answer; after it, saying nothing about a server we cannot reach would
                     // leave someone reading minutes-old rows with no sign anything is wrong.
                     fetchError.value
-                        ?.takeIf { !held.freshWithin(maximumAge) }
+                        ?.takeIf { !held.freshWithin(refreshPolicy.maximumAge) }
                         ?.let { return ReactiveState.exception(it) }
                     return ReactiveState(held.item)
                 }
@@ -510,9 +504,8 @@ public class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
 
     private inner class ItemReader(
         val id: ID,
-        maximumAge: Duration,
-        pullFrequency: Duration,
-    ) : SelfRefreshing<T?>(maximumAge, pullFrequency) {
+        refreshPolicy: RefreshPolicy,
+    ) : SelfRefreshing<T?>(refreshPolicy) {
         override val log: Log? = this@ModelCache.log?.tag("$id")
 
         private val query: Query<T> = coverage.idQuery(id)
@@ -529,17 +522,15 @@ public class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
 
         override fun equals(other: Any?): Boolean = other is ModelCache<*, *>.ItemReader
                 && id == other.id
-                && maximumAge == other.maximumAge
-                && pullFrequency == other.pullFrequency
+                && refreshPolicy == other.refreshPolicy
 
-        override fun hashCode(): Int = id.hashCode() + maximumAge.hashCode() + pullFrequency.hashCode()
+        override fun hashCode(): Int = id.hashCode() + refreshPolicy.hashCode()
     }
 
     private inner class ListReader(
         val query: Query<T>,
-        maximumAge: Duration,
-        pullFrequency: Duration,
-    ) : SelfRefreshing<List<T>>(maximumAge, pullFrequency), LimitReactiveList<T> {
+        refreshPolicy: RefreshPolicy,
+    ) : SelfRefreshing<List<T>>(refreshPolicy), LimitReactiveList<T> {
         override val log: Log? = this@ModelCache.log?.tag("${query.condition} ${query.orderBy}")
 
         private var currentQuery: Query<T> = query
@@ -593,21 +584,19 @@ public class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
 
         override fun equals(other: Any?): Boolean = other is ModelCache<*, *>.ListReader
                 && query == other.query
-                && maximumAge == other.maximumAge
-                && pullFrequency == other.pullFrequency
+                && refreshPolicy == other.refreshPolicy
 
-        override fun hashCode(): Int = query.hashCode() + maximumAge.hashCode() + pullFrequency.hashCode()
+        override fun hashCode(): Int = query.hashCode() + refreshPolicy.hashCode()
     }
 
     private inner class SummaryReader<V>(
         val key: Any,
         val condition: Condition<T>,
         val fields: List<AnyOptic<T>>,
-        maximumAge: Duration,
-        pullFrequency: Duration,
+        refreshPolicy: RefreshPolicy,
         val local: () -> WithTimestamp<V>? = { null },
         val request: suspend () -> V,
-    ) : SelfRefreshing<V>(maximumAge, pullFrequency) {
+    ) : SelfRefreshing<V>(refreshPolicy) {
         override val log: Log? = this@ModelCache.log?.tag("$key")
 
         override val socketCondition: Condition<T> get() = condition
@@ -635,9 +624,8 @@ public class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
 
         override fun equals(other: Any?): Boolean = other is ModelCache<*, *>.SummaryReader<*>
                 && key == other.key
-                && maximumAge == other.maximumAge
-                && pullFrequency == other.pullFrequency
+                && refreshPolicy == other.refreshPolicy
 
-        override fun hashCode(): Int = key.hashCode() + maximumAge.hashCode() + pullFrequency.hashCode()
+        override fun hashCode(): Int = key.hashCode() + refreshPolicy.hashCode()
     }
 }

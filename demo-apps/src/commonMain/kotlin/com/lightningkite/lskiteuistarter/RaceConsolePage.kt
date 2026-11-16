@@ -9,6 +9,7 @@ import com.lightningkite.kiteui.navigation.Page
 import com.lightningkite.kiteui.views.*
 import com.lightningkite.kiteui.views.direct.*
 import com.lightningkite.kiteui.views.l2.children
+import com.lightningkite.lightningserver.db.RefreshPolicy
 import com.lightningkite.lightningserver.db.LimitReactiveList
 import com.lightningkite.lightningserver.db.flatten
 import com.lightningkite.lskiteuistarter.pressure.Oracle
@@ -94,7 +95,7 @@ class RaceConsolePage : Page {
 
         // One list object for the life of the filter, because paging is done by growing this list's
         // window - rebuilding it per page would throw away the boundary the cache paged from.
-        val board = remember { session().racers.query(query(), pullFrequency = 15.seconds) }.flatten()
+        val board = remember { session().racers.query(query(), RefreshPolicy.poll(15.seconds)) }.flatten()
 
         // Hand the oracle exactly what the screen is showing, on every change and on its tick, so a
         // board that happens to be still is not mistaken for a screen that has gone away.

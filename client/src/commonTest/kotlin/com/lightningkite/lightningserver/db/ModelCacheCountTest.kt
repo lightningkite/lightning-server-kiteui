@@ -54,13 +54,13 @@ class ModelCacheCountTest {
 
     /** A count that neither expires nor polls, so only what the test does causes a request. */
     private fun ModelCache<LargeTestModel, Uuid>.quietCount(condition: Condition<LargeTestModel>) =
-        count(condition, maximumAge = 10.minutes, pullFrequency = 10.minutes)
+        count(condition, RefreshPolicy(10.minutes, 10.minutes))
 
     private fun ModelCache<LargeTestModel, Uuid>.quietList(condition: Condition<LargeTestModel>, limit: Int = 100) =
-        query(Query(condition, sort { it.int.ascending() }, limit = limit), maximumAge = 10.minutes, pullFrequency = 10.minutes)
+        query(Query(condition, sort { it.int.ascending() }, limit = limit), RefreshPolicy(10.minutes, 10.minutes))
 
     private fun ModelCache<LargeTestModel, Uuid>.quietItem(id: Uuid) =
-        detail(id, maximumAge = 10.minutes, pullFrequency = 10.minutes)
+        detail(id, RefreshPolicy(10.minutes, 10.minutes))
 
     private val <V> Reactive<V>.value: V? get() = state.getOrNull()
 
@@ -96,7 +96,7 @@ class ModelCacheCountTest {
         f.cache.quietCount(above1).watch()
         delay(1.seconds)
 
-        val second = f.cache.count(above1, maximumAge = 1.minutes, pullFrequency = 10.minutes)
+        val second = f.cache.count(above1, RefreshPolicy(1.minutes, 10.minutes))
         second.watch()
         delay(1.seconds)
         assertEquals(2, second.value)
@@ -121,7 +121,7 @@ class ModelCacheCountTest {
         f.mock.data.values.first { it.int == 1 }.let { f.mock.data[it._id] = it.copy(int = 9) }
 
         delay(2.minutes)
-        val strict = f.cache.count(above1, maximumAge = 1.minutes, pullFrequency = 10.minutes)
+        val strict = f.cache.count(above1, RefreshPolicy(1.minutes, 10.minutes))
         strict.watch()
         assertFalse(strict.state.ready, "opened on a count older than it accepts")
         delay(1.seconds)
@@ -131,7 +131,7 @@ class ModelCacheCountTest {
 
     @Test fun aCountPollsAtItsPullFrequency() = runTest2 {
         val f = backgroundScope.fixture()
-        val count = f.cache.count(above1, maximumAge = 10.minutes, pullFrequency = 1.minutes)
+        val count = f.cache.count(above1, RefreshPolicy(10.minutes, 1.minutes))
         count.watch()
         delay(1.seconds)
         assertEquals(2, count.value)
@@ -149,7 +149,7 @@ class ModelCacheCountTest {
         assertEquals(f.cache.quietCount(above1), f.cache.quietCount(Condition { it.int gt 1 }))
         assertEquals(f.cache.quietCount(above1).hashCode(), f.cache.quietCount(Condition { it.int gt 1 }).hashCode())
         assertFalse(f.cache.quietCount(above1) == f.cache.quietCount(Condition { it.int gt 2 }))
-        assertFalse(f.cache.quietCount(above1) == f.cache.count(above1, maximumAge = 1.minutes))
+        assertFalse(f.cache.quietCount(above1) == f.cache.count(above1, RefreshPolicy(1.minutes, 5.minutes)))
     }
 
     // =========================================================================
@@ -425,7 +425,7 @@ class ModelCacheCountTest {
         assertEquals(1, f.mock.counts.size)
 
         f.mock.data.remove(f.data[2]._id)
-        f.cache.query(Query(Condition { it.int gt 2 }, sort { it.int.ascending() }), maximumAge = Duration.ZERO).watch()
+        f.cache.query(Query(Condition { it.int gt 2 }, sort { it.int.ascending() }), RefreshPolicy(Duration.ZERO, 5.minutes)).watch()
         delay(1.seconds)
         assertEquals(1, count.value)
     }
@@ -535,7 +535,7 @@ class ModelCacheCountTest {
         mock.data.putAll(data.associateBy { it._id })
         val cache = ModelCache(mock, LargeTestModel.serializer(), scope = backgroundScope, log = testLog)
         delay(1.seconds)
-        cache.query(Query(Condition.Always, listOf(), limit = 100), 10.minutes, 10.minutes).watch()
+        cache.query(Query(Condition.Always, listOf(), limit = 100), RefreshPolicy(10.minutes, 10.minutes)).watch()
         delay(1.seconds)
 
         val count = cache.quietCount(Condition { it.int eq 0 })
@@ -576,7 +576,7 @@ class ModelCacheCountTest {
         f.mock.data[Uuid.random()] = LargeTestModel(int = 5)
 
         delay(1.minutes)
-        val count = f.cache.count(above1, maximumAge = 30.seconds, pullFrequency = 10.minutes)
+        val count = f.cache.count(above1, RefreshPolicy(30.seconds, 10.minutes))
         count.watch()
         delay(1.seconds)
         assertEquals(3, count.value, "rows held were too old, so the server should have been asked")
@@ -595,7 +595,7 @@ class ModelCacheCountTest {
 
     @Test fun aLiveCountRefetchesWhenTheSocketReportsAChange() = runTest2 {
         val (mock, _, cache) = backgroundScope.socketFixture()
-        val count = cache.count(above1, maximumAge = 10.minutes, pullFrequency = Duration.ZERO)
+        val count = cache.count(above1, RefreshPolicy(10.minutes, Duration.ZERO))
         count.watch()
         delay(10.seconds)
         assertEquals(2, count.value)
@@ -610,7 +610,7 @@ class ModelCacheCountTest {
 
     @Test fun aLiveCountRefetchesWhenARowLeavesTheCondition() = runTest2 {
         val (mock, data, cache) = backgroundScope.socketFixture()
-        val count = cache.count(above1, maximumAge = 10.minutes, pullFrequency = Duration.ZERO)
+        val count = cache.count(above1, RefreshPolicy(10.minutes, Duration.ZERO))
         count.watch()
         delay(10.seconds)
 
@@ -621,7 +621,7 @@ class ModelCacheCountTest {
 
     @Test fun aLiveCountDoesNotPoll() = runTest2 {
         val (mock, _, cache) = backgroundScope.socketFixture()
-        val count = cache.count(above1, maximumAge = 10.minutes, pullFrequency = Duration.ZERO)
+        val count = cache.count(above1, RefreshPolicy(10.minutes, Duration.ZERO))
         count.watch()
         delay(10.seconds)
         val before = mock.counts.size
@@ -636,10 +636,10 @@ class ModelCacheCountTest {
 
     @Test fun aLiveCountRefetchesWhenAHeldRowItCountedLeaves() = runTest2 {
         val (mock, data, cache) = backgroundScope.socketFixture()
-        val count = cache.count(above1, maximumAge = 10.minutes, pullFrequency = Duration.ZERO)
+        val count = cache.count(above1, RefreshPolicy(10.minutes, Duration.ZERO))
         count.watch()
         delay(10.seconds)
-        cache.detail(data[2]._id, 10.minutes, 10.minutes).watch()
+        cache.detail(data[2]._id, RefreshPolicy(10.minutes, 10.minutes)).watch()
         delay(1.seconds)
         val before = mock.counts.size
 
@@ -651,11 +651,11 @@ class ModelCacheCountTest {
 
     @Test fun aLiveCountIgnoresAHeldRowChangingInPlace() = runTest2 {
         val (mock, data, cache) = backgroundScope.socketFixture()
-        val count = cache.count(above1, maximumAge = 10.minutes, pullFrequency = Duration.ZERO)
+        val count = cache.count(above1, RefreshPolicy(10.minutes, Duration.ZERO))
         count.watch()
         delay(10.seconds)
         // Claude: Read after the count was requested, so it is the version the count saw.
-        cache.detail(data[2]._id, 10.minutes, 10.minutes).watch()
+        cache.detail(data[2]._id, RefreshPolicy(10.minutes, 10.minutes)).watch()
         delay(1.seconds)
         val before = mock.counts.size
 
@@ -666,12 +666,12 @@ class ModelCacheCountTest {
 
     @Test fun aLiveCountFollowsARowHeldFromBeforeItsRequest() = runTest2 {
         val (mock, data, cache) = backgroundScope.socketFixture()
-        cache.detail(data[0]._id, 10.minutes, 10.minutes).watch()
+        cache.detail(data[0]._id, RefreshPolicy(10.minutes, 10.minutes)).watch()
         delay(6.seconds)
         // Claude: Changed while nothing was subscribed, so the held copy is out of date.
         mock.data[data[0]._id] = data[0].copy(int = 5)
 
-        val count = cache.count(above1, maximumAge = 10.minutes, pullFrequency = Duration.ZERO)
+        val count = cache.count(above1, RefreshPolicy(10.minutes, Duration.ZERO))
         count.watch()
         delay(10.seconds)
         assertEquals(3, count.value)
@@ -685,7 +685,7 @@ class ModelCacheCountTest {
 
     @Test fun releasingTheLastListenerStopsRefreshing() = runTest2 {
         val f = backgroundScope.fixture()
-        val count = f.cache.count(above1, maximumAge = 10.minutes, pullFrequency = 1.minutes)
+        val count = f.cache.count(above1, RefreshPolicy(10.minutes, 1.minutes))
         val release = count.watch()
         delay(1.seconds)
         release()

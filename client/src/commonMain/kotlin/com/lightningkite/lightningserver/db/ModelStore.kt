@@ -10,8 +10,6 @@ import com.lightningkite.services.database.Modification
 import com.lightningkite.services.database.Query
 import com.lightningkite.lightningdb.modification
 import com.lightningkite.reactive.context.awaitOnce
-import com.lightningkite.reactive.core.Constant
-import com.lightningkite.reactive.core.Draft
 import com.lightningkite.reactive.core.MutableReactive
 import com.lightningkite.reactive.core.Reactive
 import com.lightningkite.reactive.core.ReactiveState
@@ -22,19 +20,16 @@ import kotlin.time.Duration.Companion.minutes
 
 public interface ModelStore<T : HasId<ID>, ID : Comparable<ID>> {
     public val serializer: KSerializer<T>
-    public val defaultMaxAge: Duration
-    public val defaultPullFrequency: Duration
+    public val defaultRefreshPolicy: RefreshPolicy
 
     public fun detail(
         id: ID,
-        maximumAge: Duration = defaultMaxAge,
-        pullFrequency: Duration = defaultPullFrequency,
+        refresh: RefreshPolicy = defaultRefreshPolicy,
     ): Reactive<T?>
 
     public fun query(
         query: Query<T>,
-        maximumAge: Duration = defaultMaxAge,
-        pullFrequency: Duration = defaultPullFrequency,
+        refresh: RefreshPolicy = defaultRefreshPolicy,
     ): LimitReactiveList<T>
 
     /**
@@ -44,15 +39,13 @@ public interface ModelStore<T : HasId<ID>, ID : Comparable<ID>> {
      */
     public fun count(
         condition: Condition<T>,
-        maximumAge: Duration = defaultMaxAge,
-        pullFrequency: Duration = defaultPullFrequency,
+        refresh: RefreshPolicy = defaultRefreshPolicy,
     ): Reactive<Int>
 
     /** Returns the number of rows matching the query's condition for each value of its group field, kept up to date like [query]. */
     public fun groupCount(
         query: GroupCountQuery<T>,
-        maximumAge: Duration = defaultMaxAge,
-        pullFrequency: Duration = defaultPullFrequency,
+        refresh: RefreshPolicy = defaultRefreshPolicy,
     ): Reactive<Map<String, Int>>
 
     /**
@@ -63,8 +56,7 @@ public interface ModelStore<T : HasId<ID>, ID : Comparable<ID>> {
      */
     public fun aggregate(
         query: AggregateQuery<T>,
-        maximumAge: Duration = defaultMaxAge,
-        pullFrequency: Duration = defaultPullFrequency,
+        refresh: RefreshPolicy = defaultRefreshPolicy,
     ): Reactive<Double?>
 
     /**
@@ -73,8 +65,7 @@ public interface ModelStore<T : HasId<ID>, ID : Comparable<ID>> {
      */
     public fun groupAggregate(
         query: GroupAggregateQuery<T>,
-        maximumAge: Duration = defaultMaxAge,
-        pullFrequency: Duration = defaultPullFrequency,
+        refresh: RefreshPolicy = defaultRefreshPolicy,
     ): Reactive<Map<String, Double?>>
 
     public suspend fun insert(item: T): T
@@ -122,37 +113,34 @@ public interface ModelStore<T : HasId<ID>, ID : Comparable<ID>> {
 
     public fun ref(
         id: ID,
-        maximumAge: Duration = defaultMaxAge,
-        pullFrequency: Duration = defaultPullFrequency,
-    ): ModelReference<T, ID> = ModelReference(this, id, maximumAge, pullFrequency)
+        refresh: RefreshPolicy = defaultRefreshPolicy,
+    ): ModelReference<T, ID> = ModelReference(this, id, refresh)
 
     // ========== Backwards Compatibility / Convenience Methods ==========
 
     @Deprecated("Use invalidateAll instead", ReplaceWith("invalidateAll()"))
     public suspend fun totallyInvalidate(): Unit = invalidateAll()
 
-    @Deprecated("Use ref instead", ReplaceWith("this.ref(id, maximumAge, pullFrequency)"))
+    @Deprecated("Use ref instead", ReplaceWith("this.ref(id, refresh)"))
     public fun item(
         id: ID,
-        maximumAge: Duration = defaultMaxAge,
-        pullFrequency: Duration = defaultPullFrequency,
-    ): ModelReference<T, ID> = ref(id, maximumAge, pullFrequency)
+        refresh: RefreshPolicy = defaultRefreshPolicy,
+    ): ModelReference<T, ID> = ref(id, refresh)
 
-    @Deprecated("Use query instead", ReplaceWith("this.query(query, maximumAge, pullFrequency)"))
+    @Deprecated("Use query instead", ReplaceWith("this.query(query, refresh)"))
     public fun list(
         query: Query<T>,
-        maximumAge: Duration = defaultMaxAge,
-        pullFrequency: Duration = defaultPullFrequency,
-    ): LimitReactiveList<T> = query(query, maximumAge, pullFrequency)
+        refresh: RefreshPolicy = defaultRefreshPolicy,
+    ): LimitReactiveList<T> = query(query, refresh)
 
-    @Deprecated("Use ref instead", ReplaceWith("this.ref(id, pullFrequency = 1.minutes)", "kotlin.time.Duration.Companion.minutes"))
-    public operator fun get(id: ID): ModelReference<T, ID> = ref(id, pullFrequency = 1.minutes)
+    @Deprecated("Use ref instead", ReplaceWith("this.ref(id, defaultRefreshPolicy.copy(pullFrequency = 1.minutes))", "kotlin.time.Duration.Companion.minutes"))
+    public operator fun get(id: ID): ModelReference<T, ID> = ref(id, defaultRefreshPolicy.copy(pullFrequency = 1.minutes))
 
-    @Deprecated("Use ref instead", ReplaceWith("this.ref(id, pullFrequency = Duration.ZERO)", "kotlin.time.Duration"))
-    public fun watch(id: ID): ModelReference<T, ID> = ref(id, pullFrequency = Duration.ZERO)
+    @Deprecated("Use ref instead", ReplaceWith("this.ref(id, defaultRefreshPolicy.copy(pullFrequency = Duration.ZERO))", "kotlin.time.Duration"))
+    public fun watch(id: ID): ModelReference<T, ID> = ref(id, defaultRefreshPolicy.copy(pullFrequency = Duration.ZERO))
 
-    @Deprecated("Use query instead", ReplaceWith("this.query(query, pullFrequency = Duration.ZERO)", "kotlin.time.Duration"))
-    public fun watch(query: Query<T>): LimitReactiveList<T> = this.query(query, pullFrequency = Duration.ZERO)
+    @Deprecated("Use query instead", ReplaceWith("this.query(query, defaultRefreshPolicy.copy(pullFrequency = Duration.ZERO))", "kotlin.time.Duration"))
+    public fun watch(query: Query<T>): LimitReactiveList<T> = this.query(query, defaultRefreshPolicy.copy(pullFrequency = Duration.ZERO))
 
     @Deprecated("Use insert instead", ReplaceWith("insert(item)"))
     public suspend fun add(item: T): T = insert(item)
@@ -167,15 +155,57 @@ public interface ModelStore<T : HasId<ID>, ID : Comparable<ID>> {
     public suspend fun upsert(item: T): ModelReference<T, ID> = ref(upsert(item._id, item)._id)
 }
 
+/**
+ * Says when a [ModelStore] read fetches its data again.
+ *
+ * Define the settings an app uses once and pass them to [ModelStore.query], [ModelStore.ref] and the rest,
+ * or set one as a store's [ModelStore.defaultRefreshPolicy].
+ *
+ * @property maximumAge how old held data may be when a reader opens; older data is fetched again before it
+ *   is shown. Data already shown is not withdrawn when it passes this age.
+ * @property pullFrequency how often an open reader fetches again. [Duration.ZERO] asks for live data, using
+ *   the update socket when there is one, and [Duration.INFINITE] never polls.
+ */
+public data class RefreshPolicy(
+    val maximumAge: Duration,
+    val pullFrequency: Duration,
+) {
+    public fun maxAge(maximumAge: Duration): RefreshPolicy = copy(maximumAge = maximumAge)
+    public fun poll(pullFrequency: Duration): RefreshPolicy = copy(pullFrequency = pullFrequency)
+
+    public companion object {
+        /**
+         * Returns a policy that fetches when a reader opens on data older than [maximumAge], and never polls.
+         *
+         * Data that is already shown stays until something replaces it.
+         */
+        public fun onDemand(maximumAge: Duration): RefreshPolicy = RefreshPolicy(maximumAge, pullFrequency = Duration.INFINITE)
+
+        /**
+         * Returns a policy that fetches every [pullFrequency] while a reader is open, and opens on whatever data is
+         * held, however old.
+         */
+        public fun poll(pullFrequency: Duration): RefreshPolicy = RefreshPolicy(maximumAge = Duration.INFINITE, pullFrequency)
+
+        /** Keeps the data current, through the update socket when there is one and by polling otherwise. */
+        public val LIVE_DATA: RefreshPolicy = RefreshPolicy(maximumAge = Duration.ZERO, pullFrequency = Duration.ZERO)
+
+        /** Fetches again each time a cached value is read for the first time, but never while it stays open. */
+        public val FETCH_ON_OPEN: RefreshPolicy = onDemand(Duration.ZERO)
+
+        /** Fetches only when nothing is held, then keeps what it has. */
+        public val FETCH_ONCE: RefreshPolicy = RefreshPolicy(Duration.ZERO, Duration.ZERO)
+    }
+}
+
 public data class LastUpdate(val at: Instant, val live: Boolean)
 
 public data class ModelReference<T : HasId<ID>, ID : Comparable<ID>>(
     public val store: ModelStore<T, ID>,
     public val id: ID,
-    public val maximumAge: Duration = store.defaultMaxAge,
-    public val pullFrequency: Duration = store.defaultPullFrequency,
+    public val refreshPolicy: RefreshPolicy = store.defaultRefreshPolicy,
 ) : MutableReactive<T?> {
-    private val detail: Reactive<T?> by lazy { store.detail(id, maximumAge, pullFrequency) }
+    private val detail: Reactive<T?> by lazy { store.detail(id, refreshPolicy) }
     override val state: ReactiveState<T?> get() = detail.state
     override fun addListener(listener: () -> Unit): () -> Unit = detail.addListener(listener)
 

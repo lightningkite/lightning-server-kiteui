@@ -185,7 +185,7 @@ public suspend fun <T> Reactive<T>.waitFor(matching: (T) -> Boolean) {
  * still worth showing - typically for read-only displays that refresh in the background.
  *
  * ```kotlin
- * val users = cache.list(query, maximumAge = 30.seconds).showPreviousOnLoadOrError()
+ * val users = cache.query(query, RefreshPolicy(30.seconds, 5.minutes)).showPreviousOnLoadOrError()
  * ```
  *
  * Nothing is remembered until a success has actually been observed, so the first load still

@@ -23,12 +23,14 @@ import com.lightningkite.kiteui.views.direct.icon
 import com.lightningkite.kotlinx.serialization.csv.CsvFormat
 import com.lightningkite.kotlinx.serialization.csv.StringDeferringConfig
 import com.lightningkite.services.database.*
+import com.lightningkite.lightningserver.db.RefreshPolicy
 import com.lightningkite.lightningserver.db.ModelCache
 import com.lightningkite.reactive.context.ReactiveContext
 import com.lightningkite.reactive.context.reactive
 import com.lightningkite.reactive.core.*
 import com.lightningkite.reactive.extensions.debounce
 import kotlinx.serialization.builtins.ListSerializer
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
@@ -398,7 +400,7 @@ class CollectionAdminPage(val collectionName: String) : Page {
             expanding.renderTable(
                 module = forms,
                 innerSerializer = mc.serializer,
-                items = remember { mc.query(query(), 0.minutes, if (live()) LIVE_PULL_FREQUENCY else 5.minutes) },
+                items = remember { mc.query(query(), RefreshPolicy(Duration.ZERO, if (live()) LIVE_PULL_FREQUENCY else 5.minutes)) },
                 columns = columns as MutableReactive<List<ColumnInfo<UnknownModel>>>,
                 linkTo = {
                     val id = UrlProperties.encodeToString(mc.serializer._id().serializer, it._id)

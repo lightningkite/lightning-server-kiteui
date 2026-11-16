@@ -12,6 +12,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNotEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import kotlin.uuid.Uuid
@@ -103,10 +104,10 @@ class ModelCacheMaskingTest {
         condition: Condition<LargeTestModel> = Condition.Always,
         sort: List<SortPart<LargeTestModel>>,
         limit: Int = 100,
-    ) = list(Query(condition, sort, limit = limit), maximumAge = 10.minutes, pullFrequency = 10.minutes)
+    ) = list(Query(condition, sort, limit = limit), RefreshPolicy(10.minutes, 10.minutes))
 
     private fun ModelCache<LargeTestModel, Uuid>.quietItem(id: Uuid) =
-        item(id, maximumAge = 10.minutes, pullFrequency = 10.minutes)
+        item(id, RefreshPolicy(10.minutes, 10.minutes))
 
     // =========================================================================
     // What the server imposes, and what the client reproduces
@@ -311,8 +312,7 @@ class ModelCacheMaskingTest {
 
         val ref = cache.list(
             Query(Condition.Always, sort { it.short.ascending() }, limit = 100),
-            maximumAge = 10.minutes,
-            pullFrequency = 10.seconds,
+            RefreshPolicy(10.minutes, 10.seconds),
         )
         val release = ref.addListener { }
         delay(1.seconds)
@@ -345,7 +345,7 @@ class ModelCacheMaskingTest {
         val cache = ModelCache(mock, LargeTestModel.serializer(), scope = backgroundScope, log = testLog)
 
         val query = Query<LargeTestModel>(Condition.Always, sort { it.short.ascending() }, limit = 100)
-        val ref = cache.list(query, maximumAge = 10.minutes, pullFrequency = 10.minutes)
+        val ref = cache.list(query, RefreshPolicy(10.minutes, 10.minutes))
         val release = ref.addListener { }
         delay(1.seconds)
         assertEquals(4, ref.state.getOrNull()?.size)
@@ -408,7 +408,7 @@ class ModelCacheMaskingTest {
         // Subscribes, so the socket starts delivering changes to rows the masked list cannot see.
         val subscribed = cache.list(
             Query(Condition { it.short gt 0 }, sort { it.short.ascending() }, limit = 100),
-            pullFrequency = 10.seconds,
+            RefreshPolicy.poll(10.seconds),
         )
         val releases = listOf(masked.addListener { }, subscribed.addListener { })
         delay(7.seconds)
@@ -439,7 +439,7 @@ class ModelCacheMaskingTest {
         val masked = cache.quietList(sort = sort { it.int.ascending() })
         val subscribed = cache.list(
             Query(Condition { it.short gt 0 }, sort { it.short.ascending() }, limit = 100),
-            pullFrequency = 10.seconds,
+            RefreshPolicy.poll(10.seconds),
         )
         val releases = listOf(masked.addListener { }, subscribed.addListener { })
         delay(7.seconds)
@@ -474,7 +474,7 @@ class ModelCacheMaskingTest {
         val masked = cache.quietList(sort = sort { it.int.ascending() })
         val subscribed = cache.list(
             Query(Condition { it.short gt 0 }, sort { it.short.ascending() }, limit = 100),
-            pullFrequency = 10.seconds,
+            RefreshPolicy.poll(10.seconds),
         )
         val releases = listOf(masked.addListener { }, subscribed.addListener { })
         delay(7.seconds)

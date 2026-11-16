@@ -40,17 +40,16 @@ public fun <T> MaybeTextIndexQuery(
 /**
  * Performs a regular query or text-index query based on the provided [query].
  *
- * - When [query] is a regular [Query] this is equivalent to [list]. The result is ordered based on the [Query.orderBy] parameter and is a [LimitReactiveList].
+ * - When [query] is a regular [Query] this is equivalent to [ModelCache.query]. The result is ordered based on the [Query.orderBy] parameter and is a [LimitReactiveList].
  * - When [query] is a [TextIndexQuery] the cache is skipped to perform a [textQuery][com.lightningkite.lightningserver.typed.ClientModelRestEndpoints.textQuery].
  *   The result is ordered based on relevance score to the search string and is *not* a [LimitReactiveList]
  * */
 public fun <T : HasId<ID>, ID : Comparable<ID>> ModelCache<T, ID>.listOrTextSearch(
     query: MaybeTextIndexQuery<T>,
-    maximumAge: Duration,
-    pullFrequency: Duration,
+    refresh: RefreshPolicy,
 ): Reactive<List<T>> {
     return when (query) {
-        is MaybeTextIndexQuery.Filter<T> -> list(query.query, maximumAge, pullFrequency)
+        is MaybeTextIndexQuery.Filter<T> -> query(query.query, refresh)
         is MaybeTextIndexQuery.Search<T> -> rememberSuspending { uncached.textQuery(query.query).map(ScoredResult<T>::model) }
     }
 }

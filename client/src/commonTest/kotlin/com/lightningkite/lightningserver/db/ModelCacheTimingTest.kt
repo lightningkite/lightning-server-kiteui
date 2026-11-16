@@ -75,10 +75,10 @@ class ModelCacheTimingTest {
 
     /** A list that neither expires nor polls, so assertions see only what the test caused. */
     private fun ModelCache<LargeTestModel, Uuid>.quietList(limit: Int = 100) =
-        list(everything(limit), maximumAge = 10.minutes, pullFrequency = 10.minutes)
+        list(everything(limit), RefreshPolicy(10.minutes, 10.minutes))
 
     private fun ModelCache<LargeTestModel, Uuid>.quietItem(id: Uuid) =
-        item(id, maximumAge = 10.minutes, pullFrequency = 10.minutes)
+        item(id, RefreshPolicy(10.minutes, 10.minutes))
 
     // =========================================================================
     // Listeners arriving and leaving around a fetch
@@ -135,7 +135,7 @@ class ModelCacheTimingTest {
      */
     @Test fun aListenerArrivingMidFetchKeepsThePollingAliveWhenTheFirstOneLeaves() = runTest2 {
         val (mock, data, cache) = backgroundScope.fixture(3)
-        val ref = cache.list(everything(), maximumAge = 10.minutes, pullFrequency = 5.seconds)
+        val ref = cache.list(everything(), RefreshPolicy(10.minutes, 5.seconds))
 
         val first = ref.addListener { }
         delay(50.milliseconds)
@@ -159,7 +159,7 @@ class ModelCacheTimingTest {
     /** Asking for a very short pull frequency does not get you one; five seconds is the floor. */
     @Test fun pollingNeverRunsFasterThanTheFiveSecondFloor() = runTest2 {
         val (mock, _, cache) = backgroundScope.fixture(3)
-        val ref = cache.list(everything(), maximumAge = 10.minutes, pullFrequency = 100.milliseconds)
+        val ref = cache.list(everything(), RefreshPolicy(10.minutes, 100.milliseconds))
 
         val release = ref.addListener { }
         delay(30.seconds)
@@ -175,7 +175,7 @@ class ModelCacheTimingTest {
     @Test fun aFailingFetchWaitsAFullIntervalBeforeRetrying() = runTest2 {
         val (mock, _, cache) = backgroundScope.fixture(3)
         mock.queryFails = true
-        val ref = cache.list(everything(), maximumAge = 10.minutes, pullFrequency = 10.seconds)
+        val ref = cache.list(everything(), RefreshPolicy(10.minutes, 10.seconds))
 
         val release = ref.addListener { }
         delay(60.seconds)
@@ -191,7 +191,7 @@ class ModelCacheTimingTest {
      */
     @Test fun freshCachedDataOutranksAFailedRefreshUntilItGoesStale() = runTest2 {
         val (mock, data, cache) = backgroundScope.fixture(3)
-        val ref = cache.list(everything(), maximumAge = 30.seconds, pullFrequency = 5.seconds)
+        val ref = cache.list(everything(), RefreshPolicy(30.seconds, 5.seconds))
         val release = ref.addListener { }
         delay(1.seconds)
         assertEquals(data, ref.state.getOrNull())
@@ -270,8 +270,8 @@ class ModelCacheTimingTest {
      */
     @Test fun pollingReadersOfOneQueryWithDifferentLimitsSettleInsteadOfFighting() = runTest2 {
         val (mock, data, cache) = backgroundScope.fixture(10)
-        val short = cache.list(everything(3), maximumAge = 10.minutes, pullFrequency = 10.seconds)
-        val long = cache.list(everything(8), maximumAge = 10.minutes, pullFrequency = 10.seconds)
+        val short = cache.list(everything(3), RefreshPolicy(10.minutes, 10.seconds))
+        val long = cache.list(everything(8), RefreshPolicy(10.minutes, 10.seconds))
         val releases = listOf(short.addListener { }, long.addListener { })
         delay(3.seconds)
         assertEquals(data.take(3), short.state.getOrNull())
@@ -380,7 +380,7 @@ class ModelCacheTimingTest {
      */
     @Test fun everyReconnectionRefetchesWhatItMightHaveMissed() = runTest2 {
         val (mock, data, cache) = backgroundScope.socketFixture(3)
-        val ref = cache.list(everything(), maximumAge = 10.minutes, pullFrequency = 10.seconds)
+        val ref = cache.list(everything(), RefreshPolicy(10.minutes, 10.seconds))
         val release = ref.addListener { }
         delay(7.seconds)
         assertEquals(data, ref.state.getOrNull())
@@ -409,7 +409,7 @@ class ModelCacheTimingTest {
      */
     @Test fun aSocketOnlyListKeepsAskingWhileTheSocketIsDown() = runTest2 {
         val (mock, data, cache) = backgroundScope.socketFixture(3)
-        val ref = cache.list(everything(), pullFrequency = Duration.ZERO)
+        val ref = cache.list(everything(), RefreshPolicy.poll(Duration.ZERO))
         val release = ref.addListener { }
         delay(7.seconds)
         assertEquals(data, ref.state.getOrNull())
@@ -431,7 +431,7 @@ class ModelCacheTimingTest {
     /** The same for an item, which is how a detail screen goes quietly wrong. */
     @Test fun aSocketOnlyItemKeepsAskingWhileTheSocketIsDown() = runTest2 {
         val (mock, data, cache) = backgroundScope.socketFixture(3)
-        val ref = cache.item(data[0]._id, pullFrequency = Duration.ZERO)
+        val ref = cache.item(data[0]._id, RefreshPolicy.poll(Duration.ZERO))
         val release = ref.addListener { }
         delay(7.seconds)
         assertEquals(data[0], ref.state.getOrNull())
@@ -450,7 +450,7 @@ class ModelCacheTimingTest {
      */
     @Test fun aCoveredSocketOnlyListStillDoesNotPoll() = runTest2 {
         val (mock, data, cache) = backgroundScope.socketFixture(3)
-        val ref = cache.list(everything(), pullFrequency = Duration.ZERO)
+        val ref = cache.list(everything(), RefreshPolicy.poll(Duration.ZERO))
         val release = ref.addListener { }
         delay(7.seconds)
         assertEquals(data, ref.state.getOrNull())
@@ -469,7 +469,7 @@ class ModelCacheTimingTest {
      */
     @Test fun aListTheSocketCoversStaysReadyWithoutPolling() = runTest2 {
         val (mock, data, cache) = backgroundScope.socketFixture(3)
-        val ref = cache.list(everything(), maximumAge = 20.seconds, pullFrequency = 5.seconds)
+        val ref = cache.list(everything(), RefreshPolicy(20.seconds, 5.seconds))
         val release = ref.addListener { }
         delay(7.seconds)
         assertEquals(data, ref.state.getOrNull())
@@ -495,12 +495,11 @@ class ModelCacheTimingTest {
         // Subscribed, and matching nothing in the collection.
         val elsewhere = cache.list(
             Query(Condition { it.int gt 100 }, order),
-            maximumAge = 10.minutes,
-            pullFrequency = 5.seconds,
+            RefreshPolicy(10.minutes, 5.seconds),
         )
         val elsewhereRelease = elsewhere.addListener { }
         // Too slow to subscribe on its own, so its only hope of hearing anything is the other one.
-        val item = cache.item(data[0]._id, maximumAge = 20.seconds, pullFrequency = 10.minutes)
+        val item = cache.item(data[0]._id, RefreshPolicy(20.seconds, 10.minutes))
         val itemRelease = item.addListener { }
         delay(7.seconds)
         assertEquals(data[0], item.state.getOrNull())
@@ -546,7 +545,7 @@ class ModelCacheTimingTest {
      */
     @Test fun anOverloadedSocketMakesItsReadersRefetchPromptly() = runTest2 {
         val (mock, data, cache) = backgroundScope.socketFixture(3)
-        val ref = cache.list(everything(), maximumAge = 10.minutes, pullFrequency = 60.seconds)
+        val ref = cache.list(everything(), RefreshPolicy(10.minutes, 60.seconds))
         val release = ref.addListener { }
         delay(7.seconds)
         assertEquals(data, ref.state.getOrNull())
@@ -578,7 +577,7 @@ class ModelCacheTimingTest {
      */
     @Test fun anItemThatNeitherExpiresNorPollsIsFetchedOnce() = runTest2 {
         val (mock, data, cache) = backgroundScope.fixture(3)
-        val ref = cache.item(data[0]._id, pullFrequency = Duration.INFINITE)
+        val ref = cache.item(data[0]._id, RefreshPolicy.FETCH_ONCE)
         val keep = ref.addListener { }
 
         delay(1.seconds)
@@ -593,7 +592,7 @@ class ModelCacheTimingTest {
     /** The same for a list, which is where the cost multiplies with everything else on screen. */
     @Test fun aListThatNeitherExpiresNorPollsIsFetchedOnce() = runTest2 {
         val (mock, data, cache) = backgroundScope.fixture(3)
-        val ref = cache.list(everything(), pullFrequency = Duration.INFINITE)
+        val ref = cache.list(everything(), RefreshPolicy.FETCH_ONCE)
         val keep = ref.addListener { }
 
         delay(1.seconds)
@@ -608,7 +607,7 @@ class ModelCacheTimingTest {
     /** Zero asks for live data, so without a socket to deliver it the reader polls at the floor. */
     @Test fun aLiveListWithoutASocketPolls() = runTest2 {
         val (mock, data, cache) = backgroundScope.fixture(3)
-        val ref = cache.list(everything(), pullFrequency = Duration.ZERO)
+        val ref = cache.list(everything(), RefreshPolicy.poll(Duration.ZERO))
         val keep = ref.addListener { }
         delay(1.seconds)
         assertEquals(data, ref.state.getOrNull())
@@ -627,7 +626,7 @@ class ModelCacheTimingTest {
      */
     @Test fun aMaximumAgeAloneDoesNotPoll() = runTest2 {
         val (mock, _, cache) = backgroundScope.fixture(3)
-        val ref = cache.list(everything(), maximumAge = 10.seconds)
+        val ref = cache.list(everything(), RefreshPolicy(10.seconds, 5.minutes))
         val keep = ref.addListener { }
 
         delay(1.seconds)
@@ -650,7 +649,7 @@ class ModelCacheTimingTest {
 
         delay(3.minutes) // long enough that what they left behind is well past the tolerance below
 
-        val arriving = cache.list(everything(), maximumAge = 10.seconds, pullFrequency = 60.seconds)
+        val arriving = cache.list(everything(), RefreshPolicy(10.seconds, 60.seconds))
         val keep = arriving.addListener { }
         // Too old to show, so the screen waits rather than opening on it - the whole point of saying
         // how old is acceptable when you arrive somewhere.
@@ -668,7 +667,7 @@ class ModelCacheTimingTest {
      */
     @Test fun dataAlreadyShownIsNotWithdrawnWhenItPassesTheMaximumAge() = runTest2 {
         val (_, data, cache) = backgroundScope.fixture(3)
-        val ref = cache.list(everything(), maximumAge = 10.seconds)
+        val ref = cache.list(everything(), RefreshPolicy(10.seconds, 5.minutes))
         val keep = ref.addListener { }
 
         delay(1.seconds)
@@ -695,7 +694,7 @@ class ModelCacheTimingTest {
         // Half a minute on: still inside the tolerance below, but half way through the interval.
         delay(30.seconds)
 
-        val arriving = cache.list(everything(), maximumAge = 60.seconds, pullFrequency = 60.seconds)
+        val arriving = cache.list(everything(), RefreshPolicy(60.seconds, 60.seconds))
         val keep = arriving.addListener { }
         delay(1.seconds)
         assertEquals(1, mock.queries.size, "what was already here was fresh enough to show at once")

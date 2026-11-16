@@ -6,7 +6,7 @@ import kotlin.time.Instant
  * Wraps a value with a timestamp indicating when it was last known to be accurate.
  *
  * Used throughout the caching system to track data freshness. The timestamp allows
- * determining if cached data is still within acceptable age ([ModelCache] maximumAge parameter).
+ * determining if cached data is still within acceptable age ([RefreshPolicy.maximumAge]).
  *
  * @param T The type of the wrapped value
  * @param item The cached value
