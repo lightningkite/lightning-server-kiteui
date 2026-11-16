@@ -1,10 +1,13 @@
 package com.lightningkite.lightningserver.db
 
-@Deprecated("Use ModelReference instead", ReplaceWith("ModelReference<T, *>"))
-public typealias WritableModel<T> = ModelReference<T, *>
+@Deprecated("Use ModelStore.Reference instead", ReplaceWith("ModelStore.Reference<T, ID>"))
+public typealias ModelReference<T, ID> = ModelStore.Reference<T, ID>
 
-@Deprecated("Use ModelReference instead", ReplaceWith("ModelReference<T, *>"))
-public typealias ModelCacheItemReadable<T> = ModelReference<T, *>
+@Deprecated("Use ModelStore.Reference instead", ReplaceWith("ModelStore.Reference<T, *>"))
+public typealias WritableModel<T> = ModelStore.Reference<T, *>
+
+@Deprecated("Use ModelStore.Reference instead", ReplaceWith("ModelStore.Reference<T, *>"))
+public typealias ModelCacheItemReadable<T> = ModelStore.Reference<T, *>
 
 @Deprecated("Use LimitReactiveList instead", ReplaceWith("LimitReactiveList")) public typealias LimitReadable<T> = LimitReactiveList<T>
 

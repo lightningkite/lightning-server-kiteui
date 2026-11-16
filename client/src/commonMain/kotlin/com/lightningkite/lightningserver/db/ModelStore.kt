@@ -114,32 +114,51 @@ public interface ModelStore<T : HasId<ID>, ID : Comparable<ID>> {
     public fun ref(
         id: ID,
         refresh: RefreshPolicy = defaultRefreshPolicy,
-    ): ModelReference<T, ID> = ModelReference(this, id, refresh)
+    ): Reference<T, ID> = Reference(this, id, refresh)
 
     // ========== Backwards Compatibility / Convenience Methods ==========
 
     @Deprecated("Use invalidateAll instead", ReplaceWith("invalidateAll()"))
     public suspend fun totallyInvalidate(): Unit = invalidateAll()
 
-    @Deprecated("Use ref instead", ReplaceWith("this.ref(id, refresh)"))
+    @Deprecated("Use ref instead. Share refresh policies across the app.", ReplaceWith("ref(id, RefreshPolicy(maximumAge, pullFrequency))"))
     public fun item(
         id: ID,
-        refresh: RefreshPolicy = defaultRefreshPolicy,
-    ): ModelReference<T, ID> = ref(id, refresh)
+        maximumAge: Duration = defaultRefreshPolicy.maximumAge,
+        pullFrequency: Duration = defaultRefreshPolicy.pullFrequency
+    ): Reference<T, ID> = ref(id, RefreshPolicy(maximumAge, pullFrequency))
 
-    @Deprecated("Use query instead", ReplaceWith("this.query(query, refresh)"))
+    @Deprecated("Use query instead. Share refresh policies across the app.", ReplaceWith("query(query, RefreshPolicy(maximumAge, pullFrequency))"))
     public fun list(
         query: Query<T>,
-        refresh: RefreshPolicy = defaultRefreshPolicy,
-    ): LimitReactiveList<T> = query(query, refresh)
+        maximumAge: Duration = defaultRefreshPolicy.maximumAge,
+        pullFrequency: Duration = defaultRefreshPolicy.pullFrequency
+    ): LimitReactiveList<T> = query(query, RefreshPolicy(maximumAge, pullFrequency))
 
-    @Deprecated("Use ref instead", ReplaceWith("this.ref(id, defaultRefreshPolicy.copy(pullFrequency = 1.minutes))", "kotlin.time.Duration.Companion.minutes"))
-    public operator fun get(id: ID): ModelReference<T, ID> = ref(id, defaultRefreshPolicy.copy(pullFrequency = 1.minutes))
+    @Deprecated("Use refresh policies instead, and share across the app", ReplaceWith("query(query, RefreshPolicy(maximumAge, pullFrequency))"))
+    public fun query(
+        query: Query<T>,
+        maximumAge: Duration = defaultRefreshPolicy.maximumAge,
+        pullFrequency: Duration = defaultRefreshPolicy.pullFrequency
+    ): LimitReactiveList<T> = query(query, RefreshPolicy(maximumAge, pullFrequency))
 
-    @Deprecated("Use ref instead", ReplaceWith("this.ref(id, defaultRefreshPolicy.copy(pullFrequency = Duration.ZERO))", "kotlin.time.Duration"))
-    public fun watch(id: ID): ModelReference<T, ID> = ref(id, defaultRefreshPolicy.copy(pullFrequency = Duration.ZERO))
+    @Deprecated("Use ref instead.", ReplaceWith("ref(id)"))
+    public fun item(
+        id: ID,
+    ): Reference<T, ID> = ref(id)
 
-    @Deprecated("Use query instead", ReplaceWith("this.query(query, defaultRefreshPolicy.copy(pullFrequency = Duration.ZERO))", "kotlin.time.Duration"))
+    @Deprecated("Use query instead.", ReplaceWith("query(query)"))
+    public fun list(
+        query: Query<T>,
+    ): LimitReactiveList<T> = query(query)
+
+    @Deprecated("Use ref instead", ReplaceWith("ref(id, defaultRefreshPolicy.copy(pullFrequency = 1.minutes))", "kotlin.time.Duration.Companion.minutes"))
+    public operator fun get(id: ID): Reference<T, ID> = ref(id, defaultRefreshPolicy.copy(pullFrequency = 1.minutes))
+
+    @Deprecated("Use ref instead", ReplaceWith("ref(id, defaultRefreshPolicy.copy(pullFrequency = Duration.ZERO))", "kotlin.time.Duration"))
+    public fun watch(id: ID): Reference<T, ID> = ref(id, defaultRefreshPolicy.copy(pullFrequency = Duration.ZERO))
+
+    @Deprecated("Use query instead", ReplaceWith("query(query, defaultRefreshPolicy.copy(pullFrequency = Duration.ZERO))", "kotlin.time.Duration"))
     public fun watch(query: Query<T>): LimitReactiveList<T> = this.query(query, defaultRefreshPolicy.copy(pullFrequency = Duration.ZERO))
 
     @Deprecated("Use insert instead", ReplaceWith("insert(item)"))
@@ -152,7 +171,32 @@ public interface ModelStore<T : HasId<ID>, ID : Comparable<ID>> {
     public fun localInsert(item: T): T = item.also { localUpsert(it) }
 
     @Deprecated("Use upsert(id, item) instead", ReplaceWith("upsert(item._id, item)"))
-    public suspend fun upsert(item: T): ModelReference<T, ID> = ref(upsert(item._id, item)._id)
+    public suspend fun upsert(item: T): Reference<T, ID> = ref(upsert(item._id, item)._id)
+
+    public data class LastUpdate(val at: Instant, val live: Boolean)
+
+    public data class Reference<T : HasId<ID>, ID : Comparable<ID>>(
+        public val store: ModelStore<T, ID>,
+        public val id: ID,
+        public val refreshPolicy: RefreshPolicy = store.defaultRefreshPolicy,
+    ) : MutableReactive<T?> {
+        private val detail: Reactive<T?> by lazy { store.detail(id, refreshPolicy) }
+        override val state: ReactiveState<T?> get() = detail.state
+        override fun addListener(listener: () -> Unit): () -> Unit = detail.addListener(listener)
+
+        override suspend fun set(value: T?) {
+            if (value == null) return delete()
+            val existing = awaitOnce()
+            if (existing == null) upsert(value)
+            else modification(store.serializer, existing, value)?.let { modify(it) }
+        }
+
+        public suspend fun upsert(item: T): T = store.upsert(id, item)
+        public suspend fun replace(item: T): T = store.replace(id, item)
+        public suspend fun modify(modification: Modification<T>): T = store.modify(id, modification)
+        public suspend fun delete(): Unit = store.delete(id)
+        public suspend fun invalidate(): Unit = store.invalidate(id)
+    }
 }
 
 /**
@@ -196,29 +240,4 @@ public data class RefreshPolicy(
         /** Fetches only when nothing is held. Result is cached for the lifetime of the cached entity and never re-fetched. */
         public val FETCH_ONCE: RefreshPolicy = RefreshPolicy(Duration.INFINITE, Duration.INFINITE)
     }
-}
-
-public data class LastUpdate(val at: Instant, val live: Boolean)
-
-public data class ModelReference<T : HasId<ID>, ID : Comparable<ID>>(
-    public val store: ModelStore<T, ID>,
-    public val id: ID,
-    public val refreshPolicy: RefreshPolicy = store.defaultRefreshPolicy,
-) : MutableReactive<T?> {
-    private val detail: Reactive<T?> by lazy { store.detail(id, refreshPolicy) }
-    override val state: ReactiveState<T?> get() = detail.state
-    override fun addListener(listener: () -> Unit): () -> Unit = detail.addListener(listener)
-
-    override suspend fun set(value: T?) {
-        if (value == null) return delete()
-        val existing = awaitOnce()
-        if (existing == null) upsert(value)
-        else modification(store.serializer, existing, value)?.let { modify(it) }
-    }
-
-    public suspend fun upsert(item: T): T = store.upsert(id, item)
-    public suspend fun replace(item: T): T = store.replace(id, item)
-    public suspend fun modify(modification: Modification<T>): T = store.modify(id, modification)
-    public suspend fun delete(): Unit = store.delete(id)
-    public suspend fun invalidate(): Unit = store.invalidate(id)
 }

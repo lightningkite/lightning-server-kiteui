@@ -22,6 +22,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFails
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
@@ -816,13 +817,19 @@ class ModelCacheTest {
         val cache = ModelCache<LargeTestModel, Uuid>(mock, LargeTestModel.serializer(), scope = backgroundScope, log = testLog)
         val missing = LargeTestModel(int = 1)
 
-        val failing = Constant(cache.ref(missing._id)).draft()
+        val failing = Constant(cache.ref(missing._id)).draftOrThrow()
         var failure: Throwable? = null
         reactive { failure = runCatching { failing() }.exceptionOrNull() }
         delay(5.seconds)
         assertTrue(failure is NoSuchElementException)
 
-        val creating = Constant(cache.ref(missing._id)).draft(notFound = { missing })
+        val absent = Constant(cache.ref(missing._id)).draftOrNull()
+        var absentShown: LargeTestModel? = missing
+        reactive { absentShown = absent() }
+        delay(5.seconds)
+        assertNull(absentShown)
+
+        val creating = Constant(cache.ref(missing._id)).draftOrElse { missing }
         var shown: LargeTestModel? = null
         reactive { shown = creating() }
         delay(5.seconds)
@@ -843,7 +850,7 @@ class ModelCacheTest {
         mock.data[original._id] = original
         val cache = ModelCache<LargeTestModel, Uuid>(mock, LargeTestModel.serializer(), scope = backgroundScope, log = testLog)
 
-        val draft = Constant(cache.ref(original._id)).draft()
+        val draft = Constant(cache.ref(original._id)).draftOrThrow()
         var shown: LargeTestModel? = null
         reactive { shown = draft() }
         delay(5.seconds)

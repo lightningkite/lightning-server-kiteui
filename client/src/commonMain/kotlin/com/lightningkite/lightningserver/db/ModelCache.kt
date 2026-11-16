@@ -31,6 +31,8 @@ public class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
     internal val coverage: CoverageIndex<T, ID> = CoverageIndex(serializer, versionOf)
     private val interrupt: InterruptibleDelay = InterruptibleDelay()
 
+    override fun toString(): String = "ModelCache(${serializer.descriptor.serialName})"
+
     private val sockets: SharedCollectionUpdatesSocket<T, ID>? = websocket?.let {
         SharedCollectionUpdatesSocket(
             scope = scope,
@@ -130,17 +132,17 @@ public class ModelCache<T : HasId<ID>, ID : Comparable<ID>>(
             request = { uncached.groupAggregate(query) },
         )
 
-    override fun lastUpdate(id: ID): Reactive<LastUpdate?> {
+    override fun lastUpdate(id: ID): Reactive<ModelStore.LastUpdate?> {
         val query = coverage.idQuery(id)
         return freshnessChanges.lensListenable {
-            coverage.known(query)?.let { LastUpdate(it.at, live = itemIsLive(it.items.firstOrNull(), it.at)) }
+            coverage.known(query)?.let { ModelStore.LastUpdate(it.at, live = itemIsLive(it.items.firstOrNull(), it.at)) }
         }
     }
 
-    override fun lastUpdate(query: Query<T>): Reactive<LastUpdate?> {
+    override fun lastUpdate(query: Query<T>): Reactive<ModelStore.LastUpdate?> {
         val query = totallyOrdered(query)
         return freshnessChanges.lensListenable {
-            coverage.known(query)?.let { LastUpdate(it.at, live = queryIsLive(query.condition, it.at)) }
+            coverage.known(query)?.let { ModelStore.LastUpdate(it.at, live = queryIsLive(query.condition, it.at)) }
         }
     }
 

@@ -14,18 +14,22 @@ import com.lightningkite.reactive.extensions.withWrite
 import com.lightningkite.services.database.HasId
 import com.lightningkite.services.database.Modification
 
-public fun <T : HasId<ID>, ID : Comparable<ID>> Reactive<ModelReference<T, ID>>.draft(
-    notFound: (ModelReference<T, ID>) -> T = {
-        ref: ModelReference<*, *> -> throw NoSuchElementException("${ref.store.serializer.descriptor.serialName} ${ref.id} does not exist")
-    },
+public fun <T : HasId<ID>?, ID : Comparable<ID>> Reactive<ModelStore.Reference<T & Any, ID>>.draftOrElse(
+    notFound: (ModelStore.Reference<T & Any, ID>) -> T,
 ): Draft<T> = ModelDraft(this, notFound)
 
+public fun <T : HasId<ID>, ID : Comparable<ID>> Reactive<ModelStore.Reference<T, ID>>.draftOrNull(): Draft<T?> =
+    draftOrElse { null }
+
+public fun <T : HasId<ID>, ID : Comparable<ID>> Reactive<ModelStore.Reference<T, ID>>.draftOrThrow(): Draft<T> =
+    draftOrElse { throw NoSuchElementException("${it.store.serializer.descriptor.serialName} ${it.id} does not exist") }
+
 // Claude: Holds only the user's edits, so live changes to other fields keep showing and publish sends just the edits.
-internal class ModelDraft<T : HasId<ID>, ID : Comparable<ID>>(
-    private val ref: Reactive<ModelReference<T, ID>>,
-    private val notFound: (ModelReference<T, ID>) -> T,
+internal class ModelDraft<T : HasId<ID>?, ID : Comparable<ID>>(
+    private val ref: Reactive<ModelStore.Reference<T & Any, ID>>,
+    private val notFound: (ModelStore.Reference<T & Any, ID>) -> T,
 ) : Draft<T>, ReactiveWithMutableValue<T> {
-    private val edits = Signal<Modification<T>?>(null)
+    private val edits = Signal<Modification<T & Any>?>(null)
 
     private val live: Reactive<T> = remember {
         val ref = ref()
@@ -34,7 +38,8 @@ internal class ModelDraft<T : HasId<ID>, ID : Comparable<ID>>(
 
     private val shown: Reactive<T> = remember {
         val live = live()
-        edits()?.invoke(live) ?: live
+        val edits = edits()
+        if (live != null && edits != null) edits(live) else live
     }
 
     override val state: ReactiveState<T> get() = shown.state
@@ -43,7 +48,7 @@ internal class ModelDraft<T : HasId<ID>, ID : Comparable<ID>>(
     override fun valueSet(value: T) {
         val ref = ref.state.getOrNull()
         val live = live.state.getOrNull()
-        check(ref != null && live != null) { "A draft cannot be edited before its record has loaded" }
+        check(ref != null && live != null && value != null) { "A draft can only be edited while it holds a record" }
         edits.value = modification(ref.store.serializer, live, value)
     }
 
@@ -54,7 +59,7 @@ internal class ModelDraft<T : HasId<ID>, ID : Comparable<ID>>(
     override suspend fun publish(): T {
         val ref = ref.awaitOnce()
         // Claude: A missing record is shown via notFound, so publishing creates it.
-        if (ref.awaitOnce() == null) ref.upsert(awaitOnce())
+        if (ref.awaitOnce() == null) awaitOnce()?.let { ref.upsert(it) }
         else edits.value?.let { ref.modify(it) }
         edits.value = null
         return awaitOnce()
