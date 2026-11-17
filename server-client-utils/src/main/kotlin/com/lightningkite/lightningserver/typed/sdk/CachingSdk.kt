@@ -70,7 +70,7 @@ public class CachingSdk(
 
         appendLine("open class Cached${data.info.interfaceName}(")
         appendLine("\tval uncached: ${data.info.interfaceName},")
-        appendLine("\tdefaultRefreshPolicy: RefreshPolicy = RefreshPolicy.onDemand(5.minutes),")
+        appendLine("\tdefaultRefreshPolicy: RefreshPolicy = RefreshPolicy.maxAge(5.minutes),")
         appendLine(") {")
 
         fun SDK.Module.appendCaches(chain: List<SDK.Module>) {
