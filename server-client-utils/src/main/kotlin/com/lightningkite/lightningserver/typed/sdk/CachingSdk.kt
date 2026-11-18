@@ -107,17 +107,17 @@ public class CachingSdk(
 
 private val pluralizeRules = listOf(
     // Irregular/Static mappings
-    "person" to "people",
-    "child" to "children",
-    "mouse" to "mice",
-    "tooth" to "teeth",
-    "goose" to "geese",
+    "person$" to "people",
+    "child$" to "children",
+    "mouse$" to "mice",
+    "tooth$" to "teeth",
+    "goose$" to "geese",
 
     // Regex rules (Pattern to Replacement)
     "(quiz)$" to "$1zes",
     "^(ox)$" to "$1en",
-    "([m|l])ouse$" to "$1ice",
-    "(matr|vert|ind)ix|ex$" to "$1ices",
+    "([ml])ouse$" to "$1ice",
+    "(matr|vert|ind)(?:ix|ex)$" to "$1ices",
     "(x|ch|ss|sh)$" to "$1es",
     "([^aeiouy]|qu)y$" to "$1ies",
     "(hive)$" to "$1s",

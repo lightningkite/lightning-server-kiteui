@@ -3,6 +3,7 @@ package com.lightningkite.lightningserver.files
 import com.lightningkite.kiteui.FileReference
 import com.lightningkite.kiteui.HttpMethod
 import com.lightningkite.kiteui.fetch
+import com.lightningkite.kiteui.fileName
 import com.lightningkite.kiteui.models.AudioLocal
 import com.lightningkite.kiteui.models.AudioRemote
 import com.lightningkite.kiteui.models.AudioSource
@@ -30,7 +31,8 @@ public fun ServerFile.asAudio(): AudioSource = LocalFileRegistry.fileReference[t
 public suspend fun FileReference.toServerFile(api: ClientUploadEarlyEndpoints): ServerFile? {
     val local = this
     val early = api.uploadFileForRequest()
-    val result = fetch(early.uploadUrl, HttpMethod.PUT, body = local)
+    val upload = fetch(early.uploadUrl, HttpMethod.PUT, body = local)
+    if (!upload.ok) throw IllegalStateException("Upload of ${local.fileName()} failed with status ${upload.status}: ${upload.text()}")
     val remote = ServerFile(api.verifyUploadedFile(early.futureCallToken))
     LocalFileRegistry.fileReference[remote] = local
     return remote

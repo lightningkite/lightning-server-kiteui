@@ -47,7 +47,8 @@ class ModelCacheTest {
      * Verifies that:
      * 1. Cache works normally when connectivity is available
      * 2. Cache continues to function during connectivity failures
-     * 3. Cache resumes updates after connectivity is restored
+     * 3. A change made while disconnected - which the socket never reported - is picked up once
+     *    connectivity is restored
      */
     @Test fun connectivityIssue() = runTest2 {
         val mock = ClientModelRestEndpointsPlusUpdatesWebSocketMock<LargeTestModel, Uuid>(this)
@@ -60,30 +61,29 @@ class ModelCacheTest {
             log = testLog
         )
 
-        reactive {
-            val ref = cache.item(currentValue._id)
-            assertEquals(
-                currentValue,
-                ref()
-            )
-        }
+        val ref = cache.item(currentValue._id)
+        var shown: LargeTestModel? = null
+        reactive { shown = ref() }
         delay(5.seconds)
+        assertEquals(currentValue, shown)
 
-        // Start out as working - verify initial modification is received
         val mod = Modification<LargeTestModel> { it.short assign 2 }
         currentValue = mod(currentValue)
         mock.modify(currentValue._id, mod)
         delay(5.seconds)
+        assertEquals(currentValue, shown, "a change reported by the socket should arrive")
 
-        // Simulate connectivity failure
         mock.connectivityFailure = true
         delay(5.minutes)
+        assertEquals(currentValue, shown, "the last known value should still show while offline")
 
-        // Restore connectivity and verify cache recovers
+        // Out of band, so nothing announces it: only a refetch after reconnecting can find it.
+        currentValue = currentValue.copy(short = 3)
+        mock.data[currentValue._id] = currentValue
+
         mock.connectivityFailure = false
         delay(5.seconds)
-
-        // TODO: Add explicit assertions for post-reconnection state
+        assertEquals(currentValue, shown, "the change missed while offline should arrive after reconnecting")
     }
 
     /**

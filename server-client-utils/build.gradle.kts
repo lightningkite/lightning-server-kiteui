@@ -12,6 +12,7 @@ dependencies {
     api(ls.typed)
     // The artifact of kiteui library's jvmSsr target: two JVM targets can't be told apart by attributes.
     api("com.lightningkite.kiteui:library-jvmssr:${kui.library.asProvider().get().version}")
+    testImplementation(kotlin("test"))
 }
 
 ksp {

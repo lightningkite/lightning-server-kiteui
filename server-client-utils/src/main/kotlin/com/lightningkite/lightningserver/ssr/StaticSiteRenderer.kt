@@ -44,7 +44,7 @@ public data class RenderResult(
  * Usage:
  * ```kotlin
  * val renderer = StaticSiteRenderer(
- *     router = SsrRouter(AutoRoutes, myTheme, appWrapper = { n, d -> app(n, d) }),
+ *     router = SsrRouter(AutoRoutes, myTheme, appWrapper = { navigator -> app(navigator) }),
  *     outputDir = File("build/site"),
  *     baseUrl = "https://example.com",
  *     scriptUrls = listOf("https://cdn.example.com/app.js"),

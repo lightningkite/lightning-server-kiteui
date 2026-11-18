@@ -331,6 +331,8 @@ public typealias AccessToken = suspend () -> String
  * val authApi = api.withMetadata { set("Authorization", accessToken()) }
  * ```
  *
+ * A failed fetch is not reused: the next invocation tries again.
+ *
  * @param forceInvalidate when it fires, the next invocation fetches a new token.
  */
 public fun AuthClientEndpoints<*, *>.accessToken(
@@ -356,6 +358,12 @@ public fun AuthClientEndpoints<*, *>.accessToken(
             token = out
             toUse = out
         }
-        toUse.await()
+        try {
+            toUse.await()
+        } catch (e: Exception) {
+            // Only a failed fetch is forgotten; a caller cancelled mid-await leaves the fetch running for others.
+            if (toUse.isCompleted && token === toUse) token = null
+            throw e
+        }
     }
 }

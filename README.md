@@ -1,42 +1,65 @@
-# Lightning Server / KiteUI Combo Library
+# Lightning Server + KiteUI
 
-This library bridges [Lightning Server](https://github.com/lightningkite/lightning-server) and [KiteUI](https://github.com/lightningkite/kiteui), providing pre-built form generation, live-querying utilities, type-safe API client helpers, and an auto-generated admin interface. It also ships server-side SSR utilities for static site generation.
+Glue between a [Lightning Server](https://github.com/lightningkite/lightning-server) backend and a
+[KiteUI](https://github.com/lightningkite/kiteui) app.  Your server generates a typed client; this library makes it
+live and gives it UI:
 
-## Modules
-
-| Module | Artifact | Target |
-|---|---|---|
-| `client` | `com.lightningkite.lightningserver:client` | Multiplatform (JVM, JS, Android, iOS) |
-| `server-client-utils` | `com.lightningkite.lightningserver:server-client-utils` | JVM (server-side only) |
-| `admin` | Internal — consumed via `client` | Multiplatform |
-| `demo-shared` / `demo-server` / `demo-apps` | Not published — a working app exercising this library's own features | KMP models / JVM server / Android, JVM, JS, iOS |
-
-See [`demo-apps/README.md`](demo-apps/README.md) for what the demo covers and how to run it.
-
-## Gradle dependency
-
-Pick the version matching your Lightning Server version (check the [CHANGELOG](CHANGELOG.md) or the published releases).
+- **`ModelCache`**: reactive lists and items that load once, share data across screens, and update over websockets.
+- **Auth screens**: a complete multi-proof login, re-authentication, and security settings, from your server's
+  proof endpoints.
+- **Forms**: editable forms, read-only views and tables generated from any `@Serializable` class.
+- **Admin panel**: a CRUD console for every model, served by any server that mounts `MetaEndpoints`.
+- **Static site rendering**: pre-render KiteUI pages to HTML with a sitemap.
 
 ```kotlin
-// build.gradle.kts (shared/client module — multiplatform or JVM)
-dependencies {
-    implementation("com.lightningkite.lightningserver:client:<version>")
-}
-
-// build.gradle.kts (server module — JVM only; includes StaticSiteRenderer)
-dependencies {
-    implementation("com.lightningkite.lightningserver:server-client-utils:<version>")
+// A live, paginated list of the signed-in user's open todos.
+val todos = remember { currentSessionNotNull().todos.list(Query { it.done eq false }) }
+col {
+    expanding.recyclerView {
+        children(items = todos) { todo -> text { ::content { todo().title } } }
+    }
 }
 ```
 
-Artifacts are published to the LightningKite Maven repository:
+## Install
 
 ```kotlin
-repositories {
-    maven("https://lightningkite-maven.s3.us-west-2.amazonaws.com")
+// settings.gradle.kts
+dependencyResolutionManagement {
+    repositories { maven("https://lightningkite-maven.s3.us-west-2.amazonaws.com"); google(); mavenCentral() }
+    versionCatalogs { create("lk") { from("com.lightningkite:stack-catalog:1000.0.0") } }
 }
+
+// apps/build.gradle.kts (KMP: Android, iOS, JS, JVM)
+commonMain.dependencies { api(lk.lightningserver.client) }
+
+// server/build.gradle.kts (JVM): CachingSdk and StaticSiteRenderer
+dependencies { implementation(lk.lightningserver.server.client.utils) }
 ```
+
+Coordinates: `com.lightningkite.lightningserver:client` and `com.lightningkite.lightningserver:server-client-utils`.
+Or skip the setup and copy [ls-kiteui-starter](https://github.com/lightningkite/ls-kiteui-starter).
 
 ## Docs
 
-- [Static site rendering](docs/static-site-rendering.md) — generate pre-rendered HTML pages from your KiteUI app at build time
+Start at [docs/](docs/README.md):
+[getting started](docs/getting-started.md) ·
+[API client](docs/api-client.md) ·
+[ModelCache](docs/model-cache.md) ·
+[auth](docs/auth.md) ·
+[forms](docs/forms.md) ·
+[admin](docs/admin.md) ·
+[static sites](docs/static-site-rendering.md) ·
+[testing](docs/testing.md) ·
+[demo apps](docs/demo-apps.md)
+
+## Repository
+
+| Module | Published | Contents |
+|---|---|---|
+| `client` | yes | Fetchers, `ModelCache`, auth components, forms engine |
+| `server-client-utils` | yes | `CachingSdk`, `StaticSiteRenderer` |
+| `admin` | no (hosted) | The admin panel web app |
+| `demo-shared`, `demo-server`, `demo-apps`, `demo-android` | no | A working app using all of the above |
+
+Changes are in the [CHANGELOG](CHANGELOG.md).  Notes for working on this repo: [.claude/CLAUDE.md](.claude/CLAUDE.md).
