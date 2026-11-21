@@ -1,9 +1,9 @@
 package com.lightningkite.kiteui
 
-import com.lightningkite.kiteui.exceptions.PlainTextException
 import com.lightningkite.lightningserver.sessions.proofs.WebAuthN
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.serialization.ExperimentalSerializationApi
+import org.khronos.webgl.ArrayBuffer
 import org.khronos.webgl.Int8Array
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
@@ -110,8 +110,9 @@ public actual class ClientAuthenticator {
                     onFulfilled = { result: PublicKeyCredential ->
 
                         val typedResponse = result.response.unsafeCast<AuthenticatorAttestationResponse>()
+                        val transports = typedResponse.getTransports().asIterable().toWebAuthNTransports()
                         val output = WebAuthN.Registration.AttestedPublicKeyCredential(
-                            authenticatorAttachment = result.authenticatorAttachment!!,
+                            authenticatorAttachment = webAuthNAttachment(result.authenticatorAttachment, transports),
                             clientExtensionResults = result.getClientExtensionResults()?.let { extensions ->
                                 WebAuthN.Registration.CreateExtensionResponse(
                                     appidExclude = extensions.appidExclude,
@@ -125,16 +126,15 @@ public actual class ClientAuthenticator {
                             },
                             id = result.id!!,
                             response = WebAuthN.Registration.AuthenticatorAttestationResponse(
-                                attestationObject = WebAuthN.base64Encoder.encode(Int8Array(typedResponse.attestationObject!!).unsafeCast<ByteArray>()),
-                                clientDataJSON = WebAuthN.base64Encoder.encode(Int8Array(typedResponse.clientDataJSON!!).unsafeCast<ByteArray>()),
-                                transports = typedResponse.getTransports()
-                                    .map { WebAuthN.Transport.fromStandardName(it) },
+                                attestationObject = typedResponse.attestationObject!!.toBase64Url(),
+                                clientDataJSON = typedResponse.clientDataJSON!!.toBase64Url(),
+                                transports = transports,
                             )
                         )
                         cont.resume(output)
                     },
                     onRejected = { error ->
-                        cont.resumeWithException(error.asKotlinException())
+                        cont.resumeWithException(error.toWebAuthNException())
                     }
                 )
             cont.invokeOnCancellation { controller.abort() }
@@ -166,11 +166,12 @@ public actual class ClientAuthenticator {
                         ?.also {
                             largeBlob = object : LargeBlob {}.apply {
                                 read = it.read
-                                write = it.write?.encodeToByteArray()
+                                write = it.write?.let { WebAuthN.base64Decoder.decode(it) }
                             }
                         }
                 }
-                rp = request.rpId
+                hints = request.hints.map { it.standardName }.toTypedArray()
+                rpId = request.rpId
                 timeout = request.timeout
                 userVerification = request.userVerification.standardName
             }
@@ -194,36 +195,43 @@ public actual class ClientAuthenticator {
                                     largeBlob = extensions.largeBlob
                                         ?.let {
                                             WebAuthN.Authentication.LargeBlobResponse(
-                                                it.written!!,
-                                                it.blob
-                                                    ?.let { WebAuthN.base64Encoder.encode(Int8Array(it).unsafeCast<ByteArray>()) },
+                                                // Only reported for a write, so a read reports false.
+                                                written = it.written ?: false,
+                                                blob = it.blob?.toBase64Url(),
                                             )
                                         },
                                 )
                             },
                             response = WebAuthN.Authentication.AuthenticatorAssertionResponse(
-                                authenticatorData = WebAuthN.base64Encoder.encode(Int8Array(typedResponse.authenticatorData!!).unsafeCast<ByteArray>()),
-                                clientDataJSON = WebAuthN.base64Encoder.encode(Int8Array(typedResponse.clientDataJSON!!).unsafeCast<ByteArray>()),
-                                signature = WebAuthN.base64Encoder.encode(Int8Array(typedResponse.signature!!).unsafeCast<ByteArray>()),
-                                userHandle = typedResponse.userHandle?.let { handle ->
-                                    WebAuthN.base64Encoder.encode(
-                                        Int8Array(handle).unsafeCast<ByteArray>()
-                                    )
-                                },
+                                authenticatorData = typedResponse.authenticatorData!!.toBase64Url(),
+                                clientDataJSON = typedResponse.clientDataJSON!!.toBase64Url(),
+                                signature = typedResponse.signature!!.toBase64Url(),
+                                userHandle = typedResponse.userHandle?.toBase64Url(),
                             )
                         )
                         cont.resume(output)
                     },
                     onRejected = { error ->
-                        cont.resumeWithException(error.asKotlinException())
+                        cont.resumeWithException(error.toWebAuthNException())
                     }
                 )
             cont.invokeOnCancellation { controller.abort() }
         }
 
-    private fun Throwable.asKotlinException(): Exception {
-        val message: String = asDynamic().message
-        return PlainTextException(message)
+    /** Maps the browser's DOMException onto the failure kinds every platform reports. */
+    private fun Throwable.toWebAuthNException(): Exception {
+        val name: String? = asDynamic().name
+        val message: String? = asDynamic().message
+        return when (name) {
+            "NotAllowedError" -> WebAuthNFailure.NotAllowed
+            "InvalidStateError" -> WebAuthNFailure.AlreadyRegistered
+            "SecurityError" -> WebAuthNFailure.Misconfigured
+            "NotSupportedError" -> WebAuthNFailure.NotSupported
+            else -> WebAuthNFailure.Failed
+        }.exception(message)
     }
+
+    @OptIn(ExperimentalEncodingApi::class)
+    private fun ArrayBuffer.toBase64Url(): String = webAuthNBase64.encode(Int8Array(this).unsafeCast<ByteArray>())
 }
 
