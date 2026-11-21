@@ -62,6 +62,13 @@ kotlin {
                 srcDir(file("build/generated/ksp/common/commonMain/kotlin"))
             }
         }
+        getByName("androidMain") {
+            dependencies {
+                // Deliberately not credentials-play-services-auth: apps opt into Play services themselves
+                // to support WebAuthn on Android 9-13. See ClientAuthenticator (androidMain).
+                implementation(libs.androidx.credentials)
+            }
+        }
         val commonTest = getByName("commonTest") {
             dependencies {
                 implementation(kotlin("test"))

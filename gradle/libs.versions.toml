@@ -1,6 +1,7 @@
 [versions]
 agp = "9.1.1"
 androidDesugaring = "2.1.5"
+androidxCredentials = "1.6.0"
 dokka = "2.3.0"
 firebaseMessagingKtx = "24.1.2"
 graalVmNative = "1.1.14"
@@ -15,6 +16,7 @@ vanniktechPublishing = "0.37.0"
 
 [libraries]
 androidDesugaring = { module = "com.android.tools:desugar_jdk_libs", version = { ref = "androidDesugaring" } }
+androidx-credentials = { module = "androidx.credentials:credentials", version = { ref = "androidxCredentials" } }
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version = { ref = "kotlinxCoroutinesTest" } }
 qrcode-kotlin = { module = "io.github.g0dkar:qrcode-kotlin", version = { ref = "qrcodeKotlin" } }
 proguard = { module = "com.guardsquare:proguard-gradle", version = { ref = "proguard" } }
