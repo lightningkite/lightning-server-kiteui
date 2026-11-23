@@ -1,5 +1,6 @@
 package com.lightningkite.kiteui.forms
 
+import com.lightningkite.services.files.ServerFile
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.MapSerializer
 import kotlinx.serialization.builtins.SetSerializer
@@ -27,5 +28,11 @@ class NullableCollectionRendererTest {
     fun nullableSetIsRenderedByNullableRenderer() {
         val context = RenderContext(SetSerializer(String.serializer()).nullable)
         assertEquals<Any?>(NullableRenderer, module.select(context))
+    }
+
+    @Test
+    fun nullableServerFileIsRenderedByServerFileRenderer() {
+        val context = RenderContext(ServerFile.serializer().nullable)
+        assertEquals<Any?>(ServerFileRenderer, module.select(context))
     }
 }
