@@ -195,7 +195,10 @@ public external interface PublicKeyCredentialRequestOptions {
     public var extensions: Extensions?
         get() = definedExternally
         set(value) = definedExternally
-    public var rp: String?
+    public var hints: Array<String>?
+        get() = definedExternally
+        set(value) = definedExternally
+    public var rpId: String?
         get() = definedExternally
         set(value) = definedExternally
     public var timeout: Int?
