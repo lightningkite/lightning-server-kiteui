@@ -85,7 +85,7 @@ kotlin {
     }
 }
 ksp {
-    arg("generateFields", "true")
+    arg("lightningdb.singleTarget", "true")
 }
 
 dependencies {
@@ -127,8 +127,3 @@ fun env(name: String, profile: String) {
 }
 env("ls5", "lk")
 env("beta", "lk")
-
-// commonMain compiles the database processor's shared output (written by kspCommonMainKotlinMetadata alone) as plain
-// source, so every other KSP run and compile must wait for it.
-tasks.matching { (it.name.startsWith("ksp") || it.name.startsWith("compile")) && it.name != "kspCommonMainKotlinMetadata" }
-    .configureEach { dependsOn("kspCommonMainKotlinMetadata") }
