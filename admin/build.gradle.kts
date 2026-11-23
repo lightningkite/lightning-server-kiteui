@@ -59,7 +59,7 @@ kotlin {
         val commonMain = getByName("commonMain") {
             dependencies {
                 api(project(":client"))
-                api(libs.kotlinx.serialization.csv.durable)
+                api(csv.kotlinx.serialization.csv.durable)
             }
             kotlin {
                 srcDir(file("build/generated/ksp/common/commonMain/kotlin"))

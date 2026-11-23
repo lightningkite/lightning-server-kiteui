@@ -56,7 +56,7 @@ kotlin {
         val commonMain = getByName("commonMain") {
             dependencies {
                 api(kui.library)
-                api(libs.kotlinx.serialization.csv.durable)
+                api(csv.kotlinx.serialization.csv.durable)
                 api(ls.core.shared)
                 api(ls.typed.shared)
                 api(ls.sessions.shared)

@@ -18,6 +18,8 @@ dependencyResolutionManagement {
         maven("https://lightningkite-maven.s3.us-west-2.amazonaws.com")
     }
     versionCatalogs {
+        create("cli") { from("com.lightningkite.stack:kotliner-cli-catalog:1000.0.0") }
+        create("csv") { from("com.lightningkite.stack:kotlinx-serialization-csv-durable-catalog:1000.0.0") }
         create("sa") { from("com.lightningkite.stack:service-abstractions-catalog:1000.0.0") }
         create("ls") { from("com.lightningkite.stack:lightning-server-catalog:1000.0.0") }
         create("kui") { from("com.lightningkite.stack:kiteui-catalog:1000.0.0") }

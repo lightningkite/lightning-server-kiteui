@@ -6,9 +6,7 @@ firebaseMessagingKtx = "24.1.2"
 graalVmNative = "1.1.14"
 kfc = "19.16.0"
 kotlin = "2.4.21"
-kotlinerCli = "1.0.5"
 kotlinxCoroutinesTest = "1.11.0"
-kotlinxSerializationCsvDurable = "0.2.21-1"
 ksp = "2.3.13"
 proguard = "7.10.0"
 qrcodeKotlin = "4.5.0"
@@ -18,13 +16,11 @@ vanniktechPublishing = "0.37.0"
 [libraries]
 androidDesugaring = { module = "com.android.tools:desugar_jdk_libs", version = { ref = "androidDesugaring" } }
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version = { ref = "kotlinxCoroutinesTest" } }
-kotlinx-serialization-csv-durable = { module = "com.lightningkite:kotlinx-serialization-csv-durable", version = { ref = "kotlinxSerializationCsvDurable" } }
 qrcode-kotlin = { module = "io.github.g0dkar:qrcode-kotlin", version = { ref = "qrcodeKotlin" } }
 proguard = { module = "com.guardsquare:proguard-gradle", version = { ref = "proguard" } }
 
 # Demo module dependencies - by Claude
 firebaseMessagingKtx = { module = "com.google.firebase:firebase-messaging-ktx", version = { ref = "firebaseMessagingKtx" } }
-kotlinerCli = { module = "com.lightningkite:kotliner-cli", version = { ref = "kotlinerCli" } }
 
 [plugins]
 androidApp = { id = "com.android.application", version = { ref = "agp" } }
