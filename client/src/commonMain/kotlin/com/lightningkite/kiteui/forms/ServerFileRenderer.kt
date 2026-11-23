@@ -16,7 +16,6 @@ import com.lightningkite.kiteui.views.direct.icon
 import com.lightningkite.reactive.core.MutableReactive
 import com.lightningkite.reactive.core.Reactive
 import com.lightningkite.reactive.core.Signal
-import com.lightningkite.services.data.serialNameFQN
 import com.lightningkite.services.database.HasId
 import com.lightningkite.services.files.ServerFile
 import kotlinx.serialization.KSerializer
@@ -38,34 +37,28 @@ import kotlinx.serialization.KSerializer
 public object ServerFileRenderer : Renderer<ServerFile?> {
     override val name: String = "File Upload"  // by Claude
 
-    override fun priority(context: RenderContext<ServerFile?>, module: FormModule): Float {
-        return if (context.serializer.descriptor.serialNameFQN() == "com.lightningkite.services.files.ServerFile") 1f else -1f
-    }
-
     override fun form(context: RenderContext<ServerFile?>, value: MutableReactive<ServerFile?>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
         row {
             val localFile = Signal<FileReference?>(null)
+            centered.expanding.text {
+                ::shown { value().url() == null }
+                content = "No file"
+            }
             expanding.externalLink {
                 newTab = true
-                ::enabled { value() != null }
-                ::to { value()?.location }
+                ::shown { value().url() != null }
+                ::to { value().url() }
                 row {
                     sizeConstraints(width = 3.rem, height = 3.rem).card.unpadded.frame {
                         centered.icon(Icon.download, "File")
                         image {
-                            ::source { localFile()?.let(::ImageLocal) ?: value()?.location?.let(::ImageRemote) }
+                            ::source { localFile()?.let(::ImageLocal) ?: value().url()?.let(::ImageRemote) }
                         }
                     }
                     centered.expanding.text {
                         ellipsis = true
                         wraps = false
-                        ::content {
-                            value()?.location
-                                ?.substringAfterLast('/')
-                                ?.substringBefore('?')
-                                ?.takeUnless { it.isBlank() }
-                                ?: "None"
-                        }
+                        ::content { value().fileName() ?: "" }
                     }
                 }
             }
@@ -81,28 +74,38 @@ public object ServerFileRenderer : Renderer<ServerFile?> {
                     }
                 }
             }
+            centered.button {
+                ::shown { context.serializer.descriptor.isNullable && value() != null }
+                icon(Icon.close, "Remove")
+                onClick {
+                    localFile.set(null)
+                    value set null
+                }
+            }
         }
     }
 
     override fun view(context: RenderContext<ServerFile?>, value: Reactive<ServerFile?>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
-        externalLink {
-            newTab = true
-            ::to { value()?.location ?: "" }
-            row {
-                sizeConstraints(width = 3.rem, height = 3.rem).card.unpadded.frame {
-                    centered.icon(Icon.download, "File")
-                    image {
-                        ::source { value()?.location?.let(::ImageRemote) }
+        frame {
+            text {
+                ::shown { value().url() == null }
+                content = "No file"
+            }
+            externalLink {
+                newTab = true
+                ::shown { value().url() != null }
+                ::to { value().url() ?: "" }
+                row {
+                    sizeConstraints(width = 3.rem, height = 3.rem).card.unpadded.frame {
+                        centered.icon(Icon.download, "File")
+                        image {
+                            ::source { value().url()?.let(::ImageRemote) }
+                        }
                     }
-                }
-                centered.expanding.text {
-                    ellipsis = true
-                    wraps = false
-                    ::content {
-                        value()?.location
-                            ?.substringAfterLast('/')
-                            ?.substringBefore('?')
-                            ?: "None"
+                    centered.expanding.text {
+                        ellipsis = true
+                        wraps = false
+                        ::content { value().fileName() ?: "" }
                     }
                 }
             }
@@ -110,17 +113,15 @@ public object ServerFileRenderer : Renderer<ServerFile?> {
     }
 
     override fun cellView(context: RenderContext<ServerFile?>, value: Reactive<ServerFile?>, module: FormModule): ElementWriter.CanAddTheme.() -> Unit = {
-        text {
-            ::content {
-                value()?.location
-                    ?.substringAfterLast('/')
-                    ?.substringBefore('?')
-                    ?: "—"
-            }
-        }
+        text { ::content { value().fileName() ?: "—" } }
     }
 
     override fun columnWidth(context: RenderContext<ServerFile?>, module: FormModule): Double = 12.0
+
+    // Claude: a blank location (the default for a new non-null ServerFile) means no file; loading it as an image spins forever.
+    private fun ServerFile?.url(): String? = this?.location?.takeUnless { it.isBlank() }
+
+    private fun ServerFile?.fileName(): String? = url()?.substringAfterLast('/')?.substringBefore('?')
 }
 
 /**
@@ -144,4 +145,5 @@ public class TypeInfo<T : HasId<ID>, ID : Comparable<ID>>(
 
 public fun FormModule.registerServerFile() {
     register(Selector(type = "com.lightningkite.services.files.ServerFile"), ServerFileRenderer)
+    register(Selector(type = "com.lightningkite.services.files.ServerFile?"), ServerFileRenderer)
 }
