@@ -26,7 +26,7 @@ public object MapRenderer : Renderer<Map<Any?, Any?>> {
     override val name: String = "Key-Value Pairs"  // by Claude
 
     override fun priority(context: RenderContext<Map<Any?, Any?>>, module: FormModule): Float {
-        return if (context.serializer.descriptor.kind == StructureKind.MAP) 0.8f else -1f
+        return if (context.serializer.descriptor.kind == StructureKind.MAP && !context.serializer.descriptor.isNullable) 0.8f else -1f
     }
 
     @Suppress("UNCHECKED_CAST")

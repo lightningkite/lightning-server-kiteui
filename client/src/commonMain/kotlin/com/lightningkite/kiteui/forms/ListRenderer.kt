@@ -43,7 +43,7 @@ public object ListRenderer : Renderer<List<Any?>> {
     override val name: String = "List"  // by Claude
 
     override fun priority(context: RenderContext<List<Any?>>, module: FormModule): Float {
-        return if (context.serializer.descriptor.kind == StructureKind.LIST) 0.8f else -1f
+        return if (context.serializer.descriptor.kind == StructureKind.LIST && !context.serializer.descriptor.isNullable) 0.8f else -1f
     }
 
     @Suppress("UNCHECKED_CAST")
