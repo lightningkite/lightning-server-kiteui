@@ -34,7 +34,7 @@ public fun BulkFetcher(
     wsMultiplex: String,
     json: Json = DefaultJson,
     pingTime: Duration = 5_000.milliseconds,
-    delay: Duration = 100.milliseconds,
+    delay: Duration = 10.milliseconds,
     log: Log? = null,
     calculator: suspend () -> List<Pair<String, String>>,
 ): BulkFetcher = BulkFetcher(httpBulk, wsMultiplex, json, pingTime, delay, log, metadata = { for ((name, value) in calculator()) append(name, value) })
@@ -45,7 +45,9 @@ public class BulkFetcher(
     public val wsMultiplex: String,
     public val json: Json = DefaultJson,
     public val pingTime: Duration = 5_000.milliseconds,
-    public val delay: Duration = 100.milliseconds,
+    // Only needs to gather the calls a screen makes in one pass, and every step of a chain of reads
+    // that each depend on the last pays it again.
+    public val delay: Duration = 10.milliseconds,
     public val log: Log? = null,
     public val metadata: suspend RequestMetadata.() -> Unit = {},
 ) : Fetcher {
