@@ -37,9 +37,14 @@ public class ConnectivityFetcher(
     public val json: Json = DefaultJson,
     public val pingTime: Duration = 5_000.milliseconds,
     public val metadata: suspend RequestMetadata.() -> Unit = {},
+    /**
+     * Send and accept cookies on cross-origin browser requests. For the cookie session endpoints
+     * (`setRefreshTokenCookie`, `getTokenFromCookie`); the server's CORS must allow credentials for this origin.
+     */
+    public val webIncludeCredentials: Boolean = false,
 ) : Fetcher {
     override fun withMetadata(block: suspend RequestMetadata.() -> Unit): Fetcher =
-        ConnectivityFetcher(http, ws, json, pingTime, metadata = { metadata(); block() })
+        ConnectivityFetcher(http, ws, json, pingTime, metadata = { metadata(); block() }, webIncludeCredentials)
 
     override suspend fun <I, O> invoke(
         url: String,
@@ -56,7 +61,8 @@ public class ConnectivityFetcher(
             },
             body = if (inSerializer.descriptor.serialName != "kotlin.Unit")
                 RequestBodyText(json.encodeToString(inSerializer, body), "application/json")
-            else null
+            else null,
+            webIncludeCredentials = webIncludeCredentials,
         ).let {
             if (!it.ok) {
                 val text = it.text()

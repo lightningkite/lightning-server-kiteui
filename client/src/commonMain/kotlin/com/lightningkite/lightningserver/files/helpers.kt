@@ -27,11 +27,12 @@ public fun ServerFile.asImage(cacheStrategy: UrlCacheStrategy = UrlCacheStrategy
     LocalFileRegistry.fileReference[this]?.let(::ImageLocal) ?: ImageRemote(this.location, cacheStrategy)
 public fun ServerFile.asVideo(): VideoSource = LocalFileRegistry.fileReference[this]?.let(::VideoLocal) ?: VideoRemote(this.location)
 public fun ServerFile.asAudio(): AudioSource = LocalFileRegistry.fileReference[this]?.let(::AudioLocal) ?: AudioRemote(this.location)
-public suspend fun FileReference.toServerFile(api: ClientUploadEarlyEndpoints): ServerFile? {
-    val local = this
-    val early = api.uploadFileForRequest()
-    val result = fetch(early.uploadUrl, HttpMethod.PUT, body = local)
-    val remote = ServerFile(api.verifyUploadedFile(early.futureCallToken))
-    LocalFileRegistry.fileReference[remote] = local
+/** Uploads this file through [api]: gets an upload URL, PUTs the file there, and has the server verify it. */
+public suspend fun FileReference.toServerFile(api: ClientFileUploadEndpoints): ServerFile {
+    val target = api.getFileUploadUrl()
+    val response = fetch(target.uploadUrl, HttpMethod.PUT, body = this)
+    check(response.ok) { "Upload to ${target.uploadUrl} failed with status ${response.status}" }
+    val remote = api.verifyUpload(target.token)
+    LocalFileRegistry.fileReference[remote] = this
     return remote
 }

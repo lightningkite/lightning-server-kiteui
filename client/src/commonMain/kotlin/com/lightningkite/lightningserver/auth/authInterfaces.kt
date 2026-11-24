@@ -13,6 +13,8 @@ import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.serialization.ExperimentalSerializationApi
+import com.lightningkite.lightningserver.db.default
+import kotlin.time.Clock
 import kotlin.time.Clock.System.now
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.days
@@ -135,7 +137,8 @@ public data class AuthEndpoints(
                     )
                 }
 
-                override suspend fun subsession(input: SubSessionRequest): String = ""
+                override suspend fun getTokenFromCookie(): String = ""
+                override suspend fun setRefreshTokenCookie(input: String) {}
                 override suspend fun authRequirements(): AuthRequirements = TODO()
 
                 override suspend fun terminateSession() = TODO()
@@ -337,6 +340,28 @@ public fun AuthClientEndpoints<*, *>.accessToken(
     sessionToken: String,
     forceInvalidate: Listenable? = null,
     maxAge: Duration = 4.minutes,
+): AccessToken = cachedAccessToken(forceInvalidate, maxAge) { getTokenSimple(sessionToken) }
+
+/**
+ * Like [accessToken], but the refresh token is the HttpOnly cookie set by [AuthClientEndpoints.setRefreshTokenCookie],
+ * so the client never holds it; tokens come from [AuthClientEndpoints.getTokenFromCookie].
+ *
+ * Call it on endpoints built over a `ConnectivityFetcher(webIncludeCredentials = true)`, not a `BulkFetcher`: bulk
+ * requests go to a path outside the cookie's `Path`, and their responses drop `Set-Cookie`.
+ *
+ * A 401 on first use means there is no valid cookie: the user is logged out.
+ *
+ * @param forceInvalidate when it fires, the next invocation fetches a new token.
+ */
+public fun AuthClientEndpoints<*, *>.accessTokenFromCookie(
+    forceInvalidate: Listenable? = null,
+    maxAge: Duration = 4.minutes,
+): AccessToken = cachedAccessToken(forceInvalidate, maxAge) { getTokenFromCookie() }
+
+private fun cachedAccessToken(
+    forceInvalidate: Listenable?,
+    maxAge: Duration,
+    fetchToken: suspend () -> String,
 ): AccessToken {
     var lastRefresh: Instant = Instant.DISTANT_PAST
     var token: Deferred<String>? = null
@@ -347,12 +372,11 @@ public fun AuthClientEndpoints<*, *>.accessToken(
         }
     }
     return {
+        val now = Clock.default().now()
         var toUse = token
-        if (now() - lastRefresh > maxAge || toUse == null) {
-            lastRefresh = now()
-            val out = AppScope.async {
-                getTokenSimple(sessionToken)
-            }
+        if (now - lastRefresh > maxAge || toUse == null) {
+            lastRefresh = now
+            val out = AppScope.async { fetchToken() }
             token = out
             toUse = out
         }

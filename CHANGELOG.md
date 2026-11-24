@@ -8,6 +8,13 @@
 - **WebSocket metadata is now URL-encoded** when appended to the socket URL as query parameters.
 - **`AuthClientEndpoints.accessToken(sessionToken, forceInvalidate, maxAge)` now returns an `AccessToken`** (`suspend () -> String`), the bare token, instead of a header-list lambda (breaking). `maxAge` (default 4 minutes) is how long a fetched token is reused. Send it with `api.withMetadata { set("Authorization", accessToken()) }`.
 - **`LightningServerAuthentication.accessToken` is now an `AccessToken`**, not a header-list lambda.
+- **Added `AuthClientEndpoints.accessTokenFromCookie(forceInvalidate, maxAge)`**, which gets access tokens from the HttpOnly refresh-token cookie (`getTokenFromCookie`) with the same reuse rules as `accessToken`. After logging in, hand the refresh token to `setRefreshTokenCookie` instead of storing it. Call it on endpoints built over `ConnectivityFetcher(webIncludeCredentials = true)`, not `BulkFetcher`; a 401 on first use means logged out.
+- **`ConnectivityFetcher` gained `webIncludeCredentials`** (send and accept cookies on cross-origin browser requests; the server's CORS must allow credentials), carried through `withMetadata`.
+- Requires lightning-server with the cookie session endpoints (`subsession` and `SubSessionRequest` are gone) and KiteUI with `webIncludeCredentials` on `fetch`.
+
+### Files
+
+- **`FileReference.toServerFile` takes `ClientFileUploadEndpoints`** (what generated SDKs now emit) and follows its flow: `getFileUploadUrl()`, PUT the file, `verifyUpload(token)`. It now returns a non-null `ServerFile` and throws if the PUT is not successful. `ClientUploadEarlyEndpoints` is a deprecated typealias of the new interface in lightning-server, so existing callers still compile.
 
 ### Auth Components
 
