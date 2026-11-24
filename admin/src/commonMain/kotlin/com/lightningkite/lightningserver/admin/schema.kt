@@ -72,7 +72,8 @@ fun SerializationRegistry.register(schema: LightningServerKSchema) {
 }
 
 private fun LightningServerKSchema.uploadEarlyEndpoint() = endpoints.find {
-    it.output.serialName == "com.lightningkite.lightningserver.files.UploadInformation"
+    it.output.serialName == "com.lightningkite.lightningserver.files.UploadInformation" ||
+            it.output.serialName == "com.lightningkite.lightningserver.files.UploadTarget"
 }
 
 private fun LightningServerKSchema.uploadEarlyVerifyEndpoint(): LightningServerKSchemaEndpoint? {

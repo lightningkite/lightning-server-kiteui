@@ -103,7 +103,7 @@ public object DataClassRenderer : Renderer<Any> {
 
     // cellForm uses default dialog behavior
 
-    override fun columnWidth(context: RenderContext<Any>, module: FormModule): Double = 20.0
+    override fun columnWidth(context: RenderContext<Any>, module: FormModule): Double = 30.0
 
     // Data classes use a section header instead of the field() wrapper to avoid nesting labels
     override fun labeledForm(
@@ -166,7 +166,7 @@ private fun fieldRows(context: RenderContext<Any>, module: FormModule): List<Lis
     if (fields.isEmpty()) return emptyList()
 
     // A short class with no explicit grouping goes on one row; an explicit @Group is honored instead
-    if (fields.none { it.property.group != null } && fields.fitsInOneRow()) return listOf(fields)
+//    if (fields.none { it.property.group != null } && fields.fitsInOneRow()) return listOf(fields)
 
     val rows = mutableListOf<List<FormField>>()
     val emittedGroups = mutableSetOf<String>()

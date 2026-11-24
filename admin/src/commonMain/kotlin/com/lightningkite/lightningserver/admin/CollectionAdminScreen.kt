@@ -26,9 +26,11 @@ import com.lightningkite.services.database.*
 import com.lightningkite.lightningserver.db.RefreshPolicy
 import com.lightningkite.lightningserver.db.ModelCache
 import com.lightningkite.reactive.context.ReactiveContext
+import com.lightningkite.reactive.context.invoke
 import com.lightningkite.reactive.context.reactive
 import com.lightningkite.reactive.core.*
 import com.lightningkite.reactive.extensions.debounce
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.serialization.builtins.ListSerializer
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
@@ -116,7 +118,7 @@ class CollectionAdminPage(val collectionName: String) : Page {
                     renderNotFound()
                     return@reactive
                 }
-                CollectionContents(mc, adminFormModule()).run { render() }
+                CollectionContents(mc, adminFormModule(), this@col).run { render() }
             }
         }
     }
@@ -138,7 +140,8 @@ class CollectionAdminPage(val collectionName: String) : Page {
      */
     private inner class CollectionContents(
         val mc: ModelCache<UnknownModel, UnknownId>,
-        val forms: FormModule
+        val forms: FormModule,
+        val scope: CoroutineScope
     ) {
         // by Claude - converted from functions to properties since mc/forms are now in scope
         val condition: MutableReactiveValue<Condition<UnknownModel>> =
@@ -155,8 +158,8 @@ class CollectionAdminPage(val collectionName: String) : Page {
                 mc.serializer.defaultColumns().map { ColumnInfo(it, forms) }
             } as MutableReactiveValue<List<ColumnInfo<UnknownModel>>>
 
-        private val conditionD = condition.debounce(DEBOUNCE_MS, mc.scope)
-        private val sortD = sort.debounce(DEBOUNCE_MS, mc.scope)
+        private val conditionD = condition.debounce(DEBOUNCE_MS, scope)
+        private val sortD = sort.debounce(DEBOUNCE_MS, scope)
 
         /**
          * Builds a complete Query from text search, condition, sort, and columns.
@@ -175,7 +178,7 @@ class CollectionAdminPage(val collectionName: String) : Page {
 
         }
 
-        private val textSearchD = textSearch.debounce(DEBOUNCE_MS, mc.scope)
+        private val textSearchD = textSearch.debounce(DEBOUNCE_MS, scope)
         /**
          * Builds a text search condition from the current search text: each word must match at least one
          * visible string column (AND of ORs).
@@ -349,7 +352,7 @@ class CollectionAdminPage(val collectionName: String) : Page {
             row {
                 subtext {
                     val itemCount = rememberSuspending {
-                        val q = query()
+                        val q = query.invoke()
                         mc.uncached.count(q.condition)
                     }
                     ::content {
@@ -457,7 +460,7 @@ class CollectionAdminPage(val collectionName: String) : Page {
                         val items = csv.decodeFromString(ListSerializer(mc.serializer), text)
 
                         confirmDanger("Upload ${items.size} items?", "Are you sure you want to upload these items?") {
-                            mc.insert(items)
+                            mc.bulkInsert(items)
                         }
                         close()
                     }
