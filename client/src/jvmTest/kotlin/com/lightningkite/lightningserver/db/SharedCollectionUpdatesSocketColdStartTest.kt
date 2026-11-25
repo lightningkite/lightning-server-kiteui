@@ -10,9 +10,16 @@ import com.lightningkite.services.database.gt
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.job
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.setMain
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
+import kotlin.test.AfterTest
+import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertTrue
 import kotlin.uuid.Uuid
@@ -24,6 +31,13 @@ import kotlin.uuid.Uuid
  * than never, leaving every ModelCache reader to wait out its socket timeout and fall back to polling.
  */
 class SharedCollectionUpdatesSocketColdStartTest {
+
+    // AppScope runs on Dispatchers.Main, which a plain JVM test process lacks.
+    @BeforeTest
+    fun setMainDispatcher() { Dispatchers.setMain(UnconfinedTestDispatcher()) }
+
+    @AfterTest
+    fun resetMainDispatcher() { Dispatchers.resetMain() }
 
     private class FakeWebSocket : WebSocket {
         val sent = java.util.concurrent.CopyOnWriteArrayList<String>()
@@ -71,7 +85,8 @@ class SharedCollectionUpdatesSocketColdStartTest {
             assertTrue(transport.sent.isNotEmpty(), "the condition was never sent after the socket opened")
             release()
         } finally {
-            scope.cancel()
+            // Joined, not just cancelled: the socket is released as the scope finishes, and that must happen while this test still provides main.
+            runBlocking { scope.coroutineContext.job.cancelAndJoin() }
         }
     }
 }

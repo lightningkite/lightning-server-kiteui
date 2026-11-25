@@ -6,7 +6,7 @@ import com.lightningkite.lightningserver.sessions.IdAndAuthMethods
 import com.lightningkite.lightningserver.sessions.LogInRequest
 import com.lightningkite.lightningserver.sessions.proofs.AuthClientEndpoints
 import com.lightningkite.lightningserver.sessions.proofs.Proof
-import kotlinx.coroutines.test.runTest
+import com.lightningkite.lightningserver.db.runTest2
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -34,7 +34,7 @@ class AuthComponentTest {
     )
 
     @Test
-    fun logInPassesTheRefreshTokenOn() = runTest {
+    fun logInPassesTheRefreshTokenOn() = runTest2 {
         val received = ArrayList<String>()
         val returned = component(LogInOnly("token")) { received += it }.logIn(1.days)
         assertEquals(listOf("token"), received)
@@ -42,7 +42,7 @@ class AuthComponentTest {
     }
 
     @Test
-    fun logInWithoutARefreshTokenFailsVisibly() = runTest {
+    fun logInWithoutARefreshTokenFailsVisibly() = runTest2 {
         val received = ArrayList<String>()
         assertFailsWith<PlainTextException> {
             component(LogInOnly(null)) { received += it }.logIn(1.days)

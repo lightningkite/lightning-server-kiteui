@@ -5,14 +5,8 @@ import com.lightningkite.lightningserver.sessions.*
 import com.lightningkite.lightningserver.sessions.proofs.*
 import com.lightningkite.reactive.core.Signal
 import com.lightningkite.services.database.HasId
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
-import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.setMain
-import kotlin.test.AfterTest
-import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.time.Duration.Companion.minutes
@@ -21,12 +15,6 @@ import kotlin.uuid.Uuid
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class AccessTokenFromCookieTest {
-    // Tokens are fetched in AppScope, which runs on Dispatchers.Main; a plain JVM test process has none.
-    @BeforeTest
-    fun setMainDispatcher() { Dispatchers.setMain(UnconfinedTestDispatcher()) }
-
-    @AfterTest
-    fun resetMainDispatcher() { Dispatchers.resetMain() }
 
     private class CookieAuth : AuthClientEndpoints<HasId<String>, String> {
         var cookieFetches = 0

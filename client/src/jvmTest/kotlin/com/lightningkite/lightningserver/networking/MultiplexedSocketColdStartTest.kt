@@ -6,7 +6,12 @@ import com.lightningkite.kiteui.retryWebSocket
 import com.lightningkite.kiteui.typed
 import com.lightningkite.lightningserver.MultiplexMessage
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.setMain
 import kotlinx.serialization.json.Json
+import kotlin.test.AfterTest
+import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertTrue
 
@@ -19,6 +24,13 @@ import kotlin.test.assertTrue
  * to confirm the "start" frame is actually sent once the transport opens.
  */
 class MultiplexedSocketColdStartTest {
+
+    // AppScope runs on Dispatchers.Main, which a plain JVM test process lacks.
+    @BeforeTest
+    fun setMainDispatcher() { Dispatchers.setMain(UnconfinedTestDispatcher()) }
+
+    @AfterTest
+    fun resetMainDispatcher() { Dispatchers.resetMain() }
 
     /** A fake low-level transport that captures raw frames and lets the test drive open/close. */
     private class FakeWebSocket : WebSocket {
@@ -60,21 +72,25 @@ class MultiplexedSocketColdStartTest {
         // Cold start: neither the channel nor the underlying transport is connected yet - this is
         // the real app's initial activation path (ModelCache.list -> ... -> WebSocketChannel.connect()).
         channel.connect()
+        try {
+            // retryWebSocket reacts to shouldBeOn becoming true by launching reset() asynchronously
+            // (Dispatchers.Default, since retryWebSocket's own scope has no confined dispatcher) - wait
+            // for that launch to actually register handlers on the transport before simulating open(),
+            // just as a real network handshake would only complete after the browser's WebSocket
+            // object and its onopen handler already exist.
+            awaitTrue { fakeTransport.hasOpenHandler }
+            assertTrue(fakeTransport.hasOpenHandler, "retryWebSocket should have started connecting the transport")
+            fakeTransport.open()
 
-        // retryWebSocket reacts to shouldBeOn becoming true by launching reset() asynchronously
-        // (Dispatchers.Default, since retryWebSocket's own scope has no confined dispatcher) - wait
-        // for that launch to actually register handlers on the transport before simulating open(),
-        // just as a real network handshake would only complete after the browser's WebSocket
-        // object and its onopen handler already exist.
-        awaitTrue { fakeTransport.hasOpenHandler }
-        assertTrue(fakeTransport.hasOpenHandler, "retryWebSocket should have started connecting the transport")
-        fakeTransport.open()
-
-        awaitTrue { fakeTransport.sent.any { it.contains("\"start\":true") } }
-        assertTrue(
-            fakeTransport.sent.any { it.contains("\"start\":true") },
-            "channel.connect() should eventually send a multiplex 'start' frame once the real " +
-                    "retryWebSocket transport opens, starting from a fully cold (disconnected) state"
-        )
+            awaitTrue { fakeTransport.sent.any { it.contains("\"start\":true") } }
+            assertTrue(
+                fakeTransport.sent.any { it.contains("\"start\":true") },
+                "channel.connect() should eventually send a multiplex 'start' frame once the real " +
+                        "retryWebSocket transport opens, starting from a fully cold (disconnected) state"
+            )
+        } finally {
+            // Left open, the channel would go on asking for a start frame long after this test.
+            channel.close(1000, "test over")
+        }
     }
 }
