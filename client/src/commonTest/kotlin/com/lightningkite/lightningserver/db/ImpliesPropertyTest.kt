@@ -263,20 +263,16 @@ class ImpliesPropertyTest {
         )
     }
 
-    /**
-     * Values of two types can only meet on one field by way of erasure, but a condition arriving
-     * from anywhere but a compiler could carry one.  Comparing them would either crash or invent an
-     * ordering, and neither is an answer.
-     */
-    @Suppress("UNCHECKED_CAST")
-    @Test fun boundsOfDifferentTypesOnTheSameFieldAreNeverCompared() {
-        val longBound = p.int.mapCondition(Condition.GreaterThan(5L) as Condition<Int>)
-        val shortBound = p.int.mapCondition(Condition.GreaterThan(5.toShort()) as Condition<Int>)
-
-        assertFalse(covers(longBound, p.int gt 6))
-        assertFalse(covers(p.int gt 6, longBound))
-        assertFalse(covers(shortBound, p.int gt 6))
-        assertFalse(covers(p.int gt 4, shortBound))
+    /** On JS, `1.0::class` is `Int::class` while `1.5::class` is `Double::class`. */
+    @Test fun wholeAndFractionalBoundsOnOneFloatingPointFieldCompare() {
+        assertTrue(covers(p.double gt 1.0, p.double gt 1.5))
+        assertFalse(covers(p.double gt 1.5, p.double gt 1.0))
+        assertTrue(covers(p.float lte 2.5f, p.float lte 2f))
+        assertServesEveryMatch(
+            broad = p.double gt 1.0,
+            narrow = p.double gt 1.5,
+            world = listOf(LargeTestModel(double = 1.2), LargeTestModel(double = 2.0)),
+        )
     }
 
     // =========================================================================
