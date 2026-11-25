@@ -1,5 +1,6 @@
 package com.lightningkite.kiteui.auth
 
+import com.lightningkite.kiteui.exceptions.PlainTextException
 import com.lightningkite.kiteui.models.*
 import com.lightningkite.kiteui.views.*
 import com.lightningkite.kiteui.views.direct.*
@@ -214,19 +215,23 @@ public open class ReAuthComponent(
             important.buttonTheme.button {
                 debugName = "loginButton"
                 centered.text("Login")
-                onClick {
-                    val result = subject.logInV2(
-                        LogInRequest(
-                            proofs = proofs(),
-                            expires = newSessionDuration.let { now() + it }
-                        ))
-
-                    result.refreshToken?.let {
-                        onAuthentication(it)
-                    }
-                }
+                onClick { logIn() }
             }
         }
+    }
+
+    /**
+     * Exchanges the collected proofs for a new session and passes its refresh token to [onAuthentication].
+     *
+     * @throws PlainTextException when the server issues no session, so the login button shows why re-authentication failed.
+     */
+    public open suspend fun logIn() {
+        val result = subject.logInV2(LogInRequest(proofs = proofs.value, expires = now() + newSessionDuration))
+        val refreshToken = result.refreshToken ?: throw PlainTextException(
+            "The server did not accept your proofs as enough to sign in again.  They may have expired; go back and prove your identity again.",
+            title = "Re-authentication failed",
+        )
+        onAuthentication(refreshToken)
     }
 
     /**
