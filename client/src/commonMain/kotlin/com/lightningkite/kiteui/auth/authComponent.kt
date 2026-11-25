@@ -1,6 +1,7 @@
 package com.lightningkite.kiteui.auth
 
 import com.lightningkite.kiteui.*
+import com.lightningkite.kiteui.exceptions.PlainTextException
 import com.lightningkite.kiteui.models.*
 import com.lightningkite.kiteui.reactive.Action
 import com.lightningkite.kiteui.reactive.PersistentProperty
@@ -420,36 +421,45 @@ public open class AuthComponent(
                 debugName = "loginButton"
                 centered.text("Login")
                 onClick {
-                    val result = subject.logInV2(
-                        LogInRequest(
-                            proofs = proofs(),
-                            expires = desiredSessionLength.await()?.let { now() + it }
-                        ))
-
-                    result.refreshToken?.let {
-                        onAuthentication(it)
-                        (AppScope + Dispatchers.Main).launch {
-                            if (rememberDevice.await()) {
-                                endpoints.withAuth(
-                                    LightningServerAuthentication(
-                                        subject,
-                                        subjectType,
-                                        it
-                                    )
-                                ).knownDeviceProof?.establishKnownDeviceV2()?.let {
-                                    knownDevice?.value = KnownDeviceSecretInfoStuff(
-                                        info = it,
-                                        primaryIdentifier = primaryIdentifier.value?.value ?: ""
-                                    )
-                                }
-                            } else {
-                                knownDevice?.value = null
+                    val refreshToken = logIn(desiredSessionLength.await())
+                    (AppScope + Dispatchers.Main).launch {
+                        if (rememberDevice.await()) {
+                            endpoints.withAuth(
+                                LightningServerAuthentication(
+                                    subject,
+                                    subjectType,
+                                    refreshToken
+                                )
+                            ).knownDeviceProof?.establishKnownDeviceV2()?.let {
+                                knownDevice?.value = KnownDeviceSecretInfoStuff(
+                                    info = it,
+                                    primaryIdentifier = primaryIdentifier.value?.value ?: ""
+                                )
                             }
+                        } else {
+                            knownDevice?.value = null
                         }
                     }
                 }
             }
         }
+    }
+
+    /**
+     * Exchanges the collected proofs for a session and passes its refresh token to [onAuthentication].
+     *
+     * @param sessionLength How long the session should last, or null for the longest the server allows.
+     * @return The new session's refresh token.
+     * @throws PlainTextException when the server issues no session, so the login button shows why login failed.
+     */
+    public open suspend fun logIn(sessionLength: Duration?): String {
+        val result = subject.logInV2(LogInRequest(proofs = proofs.value, expires = sessionLength?.let { now() + it }))
+        val refreshToken = result.refreshToken ?: throw PlainTextException(
+            "The server did not accept your proofs as enough to sign in.  They may have expired; go back and prove your identity again.",
+            title = "Login failed",
+        )
+        onAuthentication(refreshToken)
+        return refreshToken
     }
 
     /**
