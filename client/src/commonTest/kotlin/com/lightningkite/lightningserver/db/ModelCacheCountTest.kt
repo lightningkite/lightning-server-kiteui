@@ -387,7 +387,7 @@ class ModelCacheCountTest {
         delay(6.seconds)
         assertEquals(2, count.value)
 
-        f.mock.data.replaceAll { _, it -> it.copy(int = it.int + 10) }
+        for (entry in f.mock.data.entries) entry.setValue(entry.value.copy(int = entry.value.int + 10))
         f.cache.localBulkModify(MassModification(Condition.Always, Modification { it.int += 10 }))
         delay(6.seconds)
         assertEquals(3, count.value)
