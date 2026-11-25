@@ -10,15 +10,9 @@ import com.lightningkite.services.database.gt
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.setMain
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
-import java.util.concurrent.Executors
-import kotlin.test.AfterTest
-import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertTrue
 import kotlin.uuid.Uuid
@@ -30,15 +24,6 @@ import kotlin.uuid.Uuid
  * than never, leaving every ModelCache reader to wait out its socket timeout and fall back to polling.
  */
 class SharedCollectionUpdatesSocketColdStartTest {
-
-    // retryWebSocket's ping loop runs on AppScope, which needs a Main dispatcher a plain JVM test lacks.
-    private val mainThread = Executors.newSingleThreadExecutor().asCoroutineDispatcher()
-
-    @BeforeTest
-    fun setMainDispatcher() { Dispatchers.setMain(mainThread) }
-
-    @AfterTest
-    fun resetMainDispatcher() { Dispatchers.resetMain(); mainThread.close() }
 
     private class FakeWebSocket : WebSocket {
         val sent = java.util.concurrent.CopyOnWriteArrayList<String>()

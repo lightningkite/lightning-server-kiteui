@@ -3,11 +3,7 @@ package com.lightningkite.lightningserver.networking
 import com.lightningkite.kiteui.suppressConnectivityIssues
 import com.lightningkite.lightningserver.HttpMethod
 import com.sun.net.httpserver.HttpServer
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.setMain
 import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.builtins.serializer
 import java.io.BufferedReader
@@ -16,10 +12,7 @@ import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.net.ServerSocket
 import java.util.concurrent.ArrayBlockingQueue
-import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
-import kotlin.test.AfterTest
-import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.time.Duration.Companion.seconds
@@ -37,16 +30,6 @@ import kotlin.time.Duration.Companion.seconds
  * check what the server actually receives.
  */
 class ConnectivityFetcherUrlTest {
-
-    // The JVM webSocket implementation hops to Dispatchers.Main, which a plain JVM test process
-    // does not provide.  Pure test-harness plumbing; see MultiplexedSocketColdStartTest.
-    private val mainThread = Executors.newSingleThreadExecutor().asCoroutineDispatcher()
-
-    @BeforeTest
-    fun setMainDispatcher() { Dispatchers.setMain(mainThread) }
-
-    @AfterTest
-    fun resetMainDispatcher() { Dispatchers.resetMain(); mainThread.close() }
 
     /** Serves `123` to any request and records the path it was asked for. */
     private fun withHttpServer(action: (fetcher: ConnectivityFetcher, pathsSeen: List<String>) -> Unit) {

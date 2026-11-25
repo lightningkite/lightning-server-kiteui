@@ -71,6 +71,14 @@ kotlin {
                 srcDir(file("build/generated/ksp/common/commonTest/kotlin"))
             }
         }
+        getByName("jvmTest") {
+            dependencies {
+                // AppScope runs on Dispatchers.Main and outlives every test, so the JVM needs one main thread for the
+                // whole run, as a browser or phone has.  A main installed per test with setMain is torn down under
+                // AppScope work (such as a socket's ping loop) still running from an earlier test, and setMain throws.
+                implementation(libs.kotlinx.coroutines.swing)
+            }
+        }
     }
     compilerOptions {
         optIn.add("kotlin.time.ExperimentalTime")
@@ -95,3 +103,6 @@ mavenPublishing {
 // source, so every other KSP run and compile must wait for it.
 tasks.matching { (it.name.startsWith("ksp") || it.name.startsWith("compile")) && it.name != "kspCommonMainKotlinMetadata" }
     .configureEach { dependsOn("kspCommonMainKotlinMetadata") }
+
+// Dispatchers.Main is Swing's event thread in JVM tests; it needs no display.
+tasks.named<Test>("jvmTest") { systemProperty("java.awt.headless", "true") }

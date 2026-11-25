@@ -6,13 +6,7 @@ import com.lightningkite.kiteui.retryWebSocket
 import com.lightningkite.kiteui.typed
 import com.lightningkite.lightningserver.MultiplexMessage
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.asCoroutineDispatcher
-import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.setMain
 import kotlinx.serialization.json.Json
-import java.util.concurrent.Executors
-import kotlin.test.AfterTest
-import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertTrue
 
@@ -25,18 +19,6 @@ import kotlin.test.assertTrue
  * to confirm the "start" frame is actually sent once the transport opens.
  */
 class MultiplexedSocketColdStartTest {
-
-    // AppScope (com.lightningkite.reactive.core.AppScope) eagerly resolves Dispatchers.Main.immediate
-    // at first use (retryWebSocket's ping loop, wsretry.kt), which browsers and Android always provide
-    // but a plain JVM test process does not. Real production (JS) always has a Main dispatcher, so
-    // this is purely test-harness plumbing, not something the fix depends on.
-    private val mainThread = Executors.newSingleThreadExecutor().asCoroutineDispatcher()
-
-    @BeforeTest
-    fun setMainDispatcher() { Dispatchers.setMain(mainThread) }
-
-    @AfterTest
-    fun resetMainDispatcher() { Dispatchers.resetMain(); mainThread.close() }
 
     /** A fake low-level transport that captures raw frames and lets the test drive open/close. */
     private class FakeWebSocket : WebSocket {
