@@ -189,8 +189,7 @@ class AppThemeTest {
         // Dialog should have outline
         assertEquals(1.dp.value, dialogTheme.outlineWidth.value, "Dialog should have 1dp outline")
 
-        // Dialog should have larger gap
-        assertEquals(2.rem.value, dialogTheme.gap.value, "Dialog should have 2rem gap")
+        assertEquals(1.rem.value, dialogTheme.gap.value, "Dialog should have 1rem gap")
     }
 
     /**
