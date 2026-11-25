@@ -562,7 +562,7 @@ class SchemaTest {
 
         val withoutSocket = ExternalLightningServer(schemaWithModel(updatesSocket = false))
         assertFalse(withoutSocket.models.getValue("/test-models/rest").hasUpdatesWs)
-        assertNull(withoutSocket.models.getValue("/test-models/rest").cache(null).sockets)
+        assertFalse(withoutSocket.models.getValue("/test-models/rest").cache(null).uncached is ClientModelRestUpdatesWebSocket<*, *>)
     }
 
     /**
@@ -572,6 +572,6 @@ class SchemaTest {
     @Test
     fun testUseLiveDataFalseDisablesSockets() {
         val server = ExternalLightningServer(schemaWithModel(updatesSocket = true), useLiveData = false)
-        assertNull(server.models.getValue("/test-models/rest").cache(null).sockets)
+        assertFalse(server.models.getValue("/test-models/rest").cache(null).uncached is ClientModelRestUpdatesWebSocket<*, *>)
     }
 }
